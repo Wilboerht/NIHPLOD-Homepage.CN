@@ -11,15 +11,11 @@
  *   退款冲正可负；账本逻辑见 points-ledger.ts
  * - 兑礼：银卡及以上可兑（普通档仅累积积分、不开积分商城，见 POINT_REDEEM_RATES）
  */
-import type { MembershipLevel } from "@/generated/prisma/client";
+import type { MembershipLevel, Prisma } from "@/generated/prisma/client";
 import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
-import {
-  creditSpendPoints,
-  refundSpendPoints,
-  withPointTxRetry,
-} from "@/lib/points-ledger";
+import { creditSpendPoints, refundSpendPoints, withPointTxRetry } from "@/lib/points-ledger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import { LEVEL_THRESHOLDS, MEMBERSHIP_LEVELS } from "@/lib/membership";
 import {
@@ -28,6 +24,11 @@ import {
   SpentOrderConflictError,
 } from "@/lib/spent-order";
 import type { SpentOrderSource } from "@/generated/prisma/client";
+import { getUtc8DayStart } from "@/lib/timezone";
+
+export class SpentDailyLimitError extends Error {
+  readonly code = "SYNC_DAILY_LIMIT_EXCEEDED";
+}
 
 /**
  * 根据历史消费金额计算会员等级
@@ -42,7 +43,9 @@ export function calculateLevel(totalSpent: number): MembershipLevel {
 }
 
 /** 首次达档激活日字段名（写入 User 表，仅成长展示） */
-const ACTIVATED_AT_FIELD: Partial<Record<MembershipLevel, "silverActivatedAt" | "goldActivatedAt" | "diamondActivatedAt">> = {
+const ACTIVATED_AT_FIELD: Partial<
+  Record<MembershipLevel, "silverActivatedAt" | "goldActivatedAt" | "diamondActivatedAt">
+> = {
   SILVER: "silverActivatedAt",
   GOLD: "goldActivatedAt",
   DIAMOND: "diamondActivatedAt",
@@ -64,14 +67,18 @@ const MAX_SYNC_CAS_RETRIES = 3;
  *
  * @returns 入账后的权威消费额与等级；用户不存在返回 null
  */
-export async function applyExternalSpentSync(params: {
-  userId: string;
-  spentDelta: number; // 消费额变动（元，整数，可为 0）
-  reference: string; // 商城侧唯一单据号（幂等键）
-  note?: string;
-  orderNo?: string | null;
-  source?: SpentOrderSource;
-}): Promise<{
+export async function applyExternalSpentSync(
+  params: {
+    userId: string;
+    spentDelta: number; // 消费额变动（元，整数，可为 0）
+    reference: string; // 商城侧唯一单据号（幂等键）
+    note?: string;
+    orderNo?: string | null;
+    source?: SpentOrderSource;
+  },
+  txClient?: Prisma.TransactionClient,
+  dailyLimitYuan?: number
+): Promise<{
   totalSpent: number;
   membershipLevel: MembershipLevel;
   appliedDelta: number;
@@ -80,13 +87,11 @@ export async function applyExternalSpentSync(params: {
   const { userId, spentDelta, reference, note, orderNo } = params;
   const source = params.source ?? "MALL_SYNC";
   // 兼容未升级的商城客户端：正向消费以 reference 作为订单号兜底；显式 orderNo 优先。
-  const normalizedOrder = normalizeOptionalOrderNo(
-    orderNo ?? (spentDelta > 0 ? reference : null)
-  );
+  const normalizedOrder = normalizeOptionalOrderNo(orderNo ?? (spentDelta > 0 ? reference : null));
 
   try {
     // 成功入账时事务额外返回 previous（入账前快照），用于提交后判断消费额/等级是否实际变化
-    const txOutcome = await withPointTxRetry(() => prisma.$transaction(async (tx) => {
+    const execute = async (tx: Prisma.TransactionClient) => {
       // 幂等检查：同一用户同一单据已入账过，直接返回当前权威消费额
       const existing = await tx.spentSyncRecord.findUnique({
         where: { userId_reference: { userId, reference } },
@@ -98,6 +103,22 @@ export async function applyExternalSpentSync(params: {
         });
         if (!current) return null;
         return { ...current, duplicated: true, previous: undefined, appliedDelta: 0 };
+      }
+
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+      if (spentDelta > 0 && dailyLimitYuan && dailyLimitYuan > 0 && source === "MALL_SYNC") {
+        const daily = await tx.spentSyncRecord.aggregate({
+          where: {
+            userId,
+            source: "MALL_SYNC",
+            createdAt: { gte: getUtc8DayStart() },
+            spentDelta: { gt: 0 },
+          },
+          _sum: { spentDelta: true },
+        });
+        if ((daily._sum.spentDelta ?? 0) + spentDelta > dailyLimitYuan) {
+          throw new SpentDailyLimitError();
+        }
       }
 
       if (spentDelta > 0 && normalizedOrder.orderNoKey) {
@@ -134,8 +155,7 @@ export async function applyExternalSpentSync(params: {
 
         // 首次达档激活日（仅写入、不覆盖）
         const activatedField = ACTIVATED_AT_FIELD[newLevel];
-        const activatedAt =
-          activatedField && !user[activatedField] ? new Date() : undefined;
+        const activatedAt = activatedField && !user[activatedField] ? new Date() : undefined;
 
         const cas = await tx.user.updateMany({
           where: { id: userId, totalSpent: user.totalSpent },
@@ -210,7 +230,10 @@ export async function applyExternalSpentSync(params: {
       }
       // CAS 重试耗尽（持续高频并发冲突），抛出后由 withPointTxRetry/路由层兜底
       throw new Error("SPENT_SYNC_CAS_CONFLICT");
-    }));
+    };
+    const txOutcome = txClient
+      ? await execute(txClient)
+      : await withPointTxRetry(() => prisma.$transaction(execute));
 
     if (txOutcome) {
       const result = {

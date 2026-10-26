@@ -95,9 +95,7 @@ export function BindingsPanel({ embedded }: BindingsPanelProps) {
 
   return (
     <PanelShell title="账号绑定" embedded={embedded} testId="panel-bindings">
-      <p className="mb-4 text-sm text-stone-400">
-        管理第三方平台绑定，可解除不再使用的平台授权。
-      </p>
+      <p className="mb-4 text-sm text-stone-400">管理第三方平台绑定，可解除不再使用的平台授权。</p>
       {loading ? (
         <div className="flex justify-center py-10">
           <Loader2 className="h-5 w-5 animate-spin text-stone-300" />

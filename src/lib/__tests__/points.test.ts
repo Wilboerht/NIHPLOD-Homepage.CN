@@ -16,10 +16,15 @@ const mockUserFindUnique = vi.fn();
 const mockSendProfileUpdateWebhook = vi.fn();
 
 const tx = {
-  spentSyncRecord: { findUnique: mockTxSpentSyncFindUnique, create: mockTxSpentSyncCreate },
+  spentSyncRecord: {
+    findUnique: mockTxSpentSyncFindUnique,
+    create: mockTxSpentSyncCreate,
+    aggregate: vi.fn().mockResolvedValue({ _sum: { spentDelta: 0 } }),
+  },
   spentOrderClaim: { findUnique: mockTxSpentClaimFindUnique, create: mockTxSpentClaimCreate },
   user: { findUnique: mockTxUserFindUnique, updateMany: mockTxUserUpdateMany },
   membershipLevelChange: { create: mockTxLevelChangeCreate },
+  $queryRaw: vi.fn().mockResolvedValue([{ id: "user-1" }]),
 };
 
 vi.mock("@/lib/prisma", () => ({

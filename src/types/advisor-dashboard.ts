@@ -56,10 +56,7 @@ export interface AdvisorSubsiteDashboard {
 }
 
 export type AdvisorDashboardDegradedReason =
-  | "not_configured"
-  | "unauthorized"
-  | "rate_limited"
-  | "upstream_error";
+  "not_configured" | "unauthorized" | "rate_limited" | "upstream_error";
 
 export interface AdvisorDashboardPayload {
   dashboard: AdvisorSubsiteDashboard | null;

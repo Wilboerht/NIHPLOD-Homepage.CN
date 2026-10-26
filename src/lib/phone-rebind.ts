@@ -15,8 +15,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
-  verifyCode,
-  recordSmsCodeFailure,
+  verifySmsCodeWithLimit,
   SMS_CODE_MAX_ATTEMPTS,
   sendLoginCode,
   sendPhoneChangedNotification,
@@ -48,7 +47,10 @@ export const changePhoneSchema = z.object({
   newPhone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   // 当前手机验证码：当前账号为真实手机号时必填；微信占位手机号（wx_ 前缀）账号无可用
   // 短信通道，已在会话内完成身份证明（微信 OAuth），换绑时仅需新手机验证码
-  currentCode: z.string().regex(/^\d{6}$/, "当前手机验证码为 6 位数字").optional(),
+  currentCode: z
+    .string()
+    .regex(/^\d{6}$/, "当前手机验证码为 6 位数字")
+    .optional(),
   newCode: z.string().regex(/^\d{6}$/, "新手机验证码为 6 位数字"),
 });
 
@@ -61,7 +63,11 @@ export interface PhoneRebindError {
 
 export type PhoneRebindResult<T> = { ok: true; data: T } | { ok: false; error: PhoneRebindError };
 
-function fail(status: number, code: string, message: string): { ok: false; error: PhoneRebindError } {
+function fail(
+  status: number,
+  code: string,
+  message: string
+): { ok: false; error: PhoneRebindError } {
   return { ok: false, error: { status, code, message } };
 }
 
@@ -302,8 +308,14 @@ export async function changeUserPhone(params: {
           return fail(400, "IP_MISMATCH", "验证环境异常，请重新获取验证码");
         }
       }
-      if (!verifyCode(user.phone, currentCode!, "rebind-current", currentSmsCode.codeHash)) {
-        await recordSmsCodeFailure(currentSmsCode.id);
+      if (
+        !(await verifySmsCodeWithLimit(
+          user.phone,
+          currentCode!,
+          "rebind-current",
+          currentSmsCode.id
+        ))
+      ) {
         return codeInvalidError();
       }
     }
@@ -321,8 +333,7 @@ export async function changeUserPhone(params: {
         return fail(400, "IP_MISMATCH", "验证环境异常，请重新获取验证码");
       }
     }
-    if (!verifyCode(newPhone, newCode, "rebind-new", newSmsCode.codeHash)) {
-      await recordSmsCodeFailure(newSmsCode.id);
+    if (!(await verifySmsCodeWithLimit(newPhone, newCode, "rebind-new", newSmsCode.id))) {
       return codeInvalidError();
     }
 
@@ -360,7 +371,7 @@ export async function changeUserPhone(params: {
 
         await tx.user.update({
           where: { id: user.id },
-          data: { phone: newPhone },
+          data: { phone: newPhone, sessionsInvalidatedAt: new Date() },
         });
       });
     } catch (txError) {

@@ -60,10 +60,7 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    return NextResponse.json(
-      { success: true, data: result },
-      { headers: NO_STORE_HEADERS }
-    );
+    return NextResponse.json({ success: true, data: result }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

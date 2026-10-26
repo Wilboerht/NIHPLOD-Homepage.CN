@@ -43,7 +43,9 @@ export function sfExpressConfigured(): boolean {
 
 /** 丰桥签名：Base64(SHA-1(msgData + timestamp + checkWord))，URL 编码后作为 msgDigest */
 function buildDigest(msgData: string, timestamp: string, checkWord: string): string {
-  const sha1 = createHash("sha1").update(msgData + timestamp + checkWord, "utf8").digest("base64");
+  const sha1 = createHash("sha1")
+    .update(msgData + timestamp + checkWord, "utf8")
+    .digest("base64");
   return encodeURIComponent(sha1);
 }
 

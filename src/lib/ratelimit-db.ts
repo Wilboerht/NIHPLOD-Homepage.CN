@@ -12,7 +12,7 @@ import { randomUUID } from "crypto";
 import { prisma } from "./prisma";
 import { LRUCache } from "lru-cache";
 import { apiConsole } from "./logger";
-import type { RateLimitResult, RateLimitOptions } from "./ratelimit";
+import { RATE_LIMIT_PRESETS, type RateLimitResult, type RateLimitOptions } from "./ratelimit";
 
 interface FallbackRecord {
   timestamps: number[];
@@ -112,10 +112,14 @@ export async function rateLimitDB(
  */
 export async function cleanupRateLimitRecords(): Promise<number> {
   try {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const longestWindowMs = Math.max(
+      48 * 60 * 60 * 1000,
+      ...Object.values(RATE_LIMIT_PRESETS).map((preset) => preset.windowMs)
+    );
+    const cleanupBefore = new Date(Date.now() - longestWindowMs);
     const result = await prisma.rateLimitRecord.deleteMany({
       where: {
-        windowStart: { lt: oneHourAgo },
+        windowStart: { lt: cleanupBefore },
       },
     });
     apiConsole.info(`[CleanupRateLimitRecords] 清理了 ${result.count} 条过期限流记录`);

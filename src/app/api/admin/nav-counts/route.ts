@@ -40,18 +40,10 @@ export async function GET(request: NextRequest) {
       approvals,
     ] = await Promise.all([
       canReadMessages ? prisma.contactMessage.count({ where: { read: false } }) : 0,
-      canReadUsers
-        ? prisma.accountDeletionRequest.count({ where: { status: "FAILED" } })
-        : 0,
-      canReadSpent
-        ? prisma.spentAdjustmentApplication.count({ where: { status: "PENDING" } })
-        : 0,
-      canReadRedemptions
-        ? prisma.pointRedemption.count({ where: { status: "PENDING" } })
-        : 0,
-      canReadApplications
-        ? prisma.jobApplication.count({ where: { status: "pending" } })
-        : 0,
+      canReadUsers ? prisma.accountDeletionRequest.count({ where: { status: "FAILED" } }) : 0,
+      canReadSpent ? prisma.spentAdjustmentApplication.count({ where: { status: "PENDING" } }) : 0,
+      canReadRedemptions ? prisma.pointRedemption.count({ where: { status: "PENDING" } }) : 0,
+      canReadApplications ? prisma.jobApplication.count({ where: { status: "pending" } }) : 0,
       canReviewApprovals || canRequestApprovals
         ? prisma.adminApprovalRequest.count({
             where: canReviewApprovals
@@ -59,10 +51,7 @@ export async function GET(request: NextRequest) {
               : {
                   requesterId: admin.id,
                   expiresAt: { gt: new Date() },
-                  OR: [
-                    { status: "PENDING" },
-                    { status: "APPROVED", executionMode: "REQUESTER" },
-                  ],
+                  OR: [{ status: "PENDING" }, { status: "APPROVED", executionMode: "REQUESTER" }],
                 },
           })
         : 0,

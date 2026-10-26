@@ -375,7 +375,7 @@ export async function GET(request: NextRequest) {
           tags: ["Authorization"],
           summary: "取消授权端点",
           description:
-            "用户在 SSO 登录/consent 页点击\"取消\"时调用。\n" +
+            '用户在 SSO 登录/consent 页点击"取消"时调用。\n' +
             "校验 client_id / redirect_uri 归属后，302 回传 `error=access_denied` 到子项目回调地址。",
           parameters: [
             {
@@ -593,7 +593,8 @@ export async function GET(request: NextRequest) {
             client_id: { type: "string" },
             client_secret: {
               type: "string",
-              description: "OAuth Client Secret（Confidential Client 必填；Public Client 无需提供）",
+              description:
+                "OAuth Client Secret（Confidential Client 必填；Public Client 无需提供）",
             },
             token: {
               type: "string",
@@ -621,7 +622,8 @@ export async function GET(request: NextRequest) {
             client_id: { type: "string", description: "OAuth Client ID" },
             client_secret: {
               type: "string",
-              description: "OAuth Client Secret（Confidential Client 必填；Public Client 无需提供）",
+              description:
+                "OAuth Client Secret（Confidential Client 必填；Public Client 无需提供）",
             },
             token: {
               type: "string",

@@ -69,8 +69,7 @@ export async function getSsoOverview(): Promise<SsoOverview> {
       thisWeek: weekEvents,
       thisMonth: monthEvents,
     },
-    successRate:
-      authorizeTotal > 0 ? Math.round((authorizeSuccess / authorizeTotal) * 100) : null,
+    successRate: authorizeTotal > 0 ? Math.round((authorizeSuccess / authorizeTotal) * 100) : null,
     eventsByType: Object.fromEntries(eventsByType.map((e) => [e.event, e._count.event])),
   };
 }

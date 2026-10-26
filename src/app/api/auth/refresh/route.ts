@@ -139,7 +139,11 @@ export async function POST(request: NextRequest) {
 
     // 6. 更新 Cookie 中的双 Token
     response.cookies.set(USER_COOKIE_NAME, result.accessToken, USER_ACCESS_COOKIE_OPTIONS);
-    response.cookies.set(USER_REFRESH_COOKIE_NAME, result.refreshToken, USER_REFRESH_COOKIE_OPTIONS);
+    response.cookies.set(
+      USER_REFRESH_COOKIE_NAME,
+      result.refreshToken,
+      USER_REFRESH_COOKIE_OPTIONS
+    );
 
     return response;
   } catch (error) {

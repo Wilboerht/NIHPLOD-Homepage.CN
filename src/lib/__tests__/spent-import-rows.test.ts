@@ -58,15 +58,13 @@ describe("buildNeedsAttentionCsv", () => {
   });
 
   it("对已脱敏手机号保持幂等（不会二次破坏）", () => {
-    const csv = buildNeedsAttentionCsv([
-      row({ status: "DUPLICATE", phone: "138****8000" }),
-    ]);
+    const csv = buildNeedsAttentionCsv([row({ status: "DUPLICATE", phone: "138****8000" })]);
     expect(csv).toContain("138****8000");
   });
 
   it("对以 = + - @ 开头的内容加单引号，防止 Excel 公式注入", () => {
     const csv = buildNeedsAttentionCsv([
-      row({ rowIndex: 6, status: "ERROR", error: "=HYPERLINK(\"http://evil\")" }),
+      row({ rowIndex: 6, status: "ERROR", error: '=HYPERLINK("http://evil")' }),
     ]);
     // 以单引号开头且整体被引号包裹（含逗号/引号）
     expect(csv).toContain(`"'=HYPERLINK(""http://evil"")"`);

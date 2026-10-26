@@ -111,14 +111,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-      const rateLimitResponse = await checkAdminRateLimit(request, "cron-tasks:trigger");
-      if (rateLimitResponse) return rateLimitResponse;
+    const rateLimitResponse = await checkAdminRateLimit(request, "cron-tasks:trigger");
+    if (rateLimitResponse) return rateLimitResponse;
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const body = await request.json();
-      const parsed = triggerSchema.safeParse(body);
+    const body = await request.json();
+    const parsed = triggerSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },

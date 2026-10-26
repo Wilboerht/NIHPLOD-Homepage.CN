@@ -36,21 +36,18 @@ const updateSchema = z
     message: "未提供可更新的字段",
   });
 
-function mapDegradedReason(
-  code: string,
-  status: number
-): AdvisorOverviewDegradedReason {
+function mapDegradedReason(code: string, status: number): AdvisorOverviewDegradedReason {
   if (code === "NOT_CONFIGURED") return "not_configured";
   if (code === "UNAUTHORIZED") return "unauthorized";
   if (status === 429) return "rate_limited";
   return "upstream_error";
 }
 
-function mapWriteError(result: {
+function mapWriteError(result: { status: number; code: string; message: string }): {
   status: number;
   code: string;
   message: string;
-}): { status: number; code: string; message: string } {
+} {
   if (result.status === 400) {
     return { status: 400, code: "INVALID_PARAMS", message: result.message };
   }

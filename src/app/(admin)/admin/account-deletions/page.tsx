@@ -19,6 +19,7 @@ import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useListQuery } from "@/hooks/useListQuery";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { cn } from "@/lib/utils";
 
 type DeletionStatus = "PENDING" | "RUNNING" | "CANCELLED" | "COMPLETED" | "FAILED";
@@ -70,9 +71,7 @@ function DeletionWarningHint() {
         <p className="mt-1.5">
           重试会立即同步执行注销任务（撤销全部会话与子站授权、解绑第三方身份、匿名化个人数据），操作不可逆。
         </p>
-        <p className="mt-2">
-          连续失败达到上限的申请不会自动重试，需排查失败原因后在此人工处理。
-        </p>
+        <p className="mt-2">连续失败达到上限的申请不会自动重试，需排查失败原因后在此人工处理。</p>
       </div>
     </details>
   );
@@ -97,6 +96,7 @@ function AdminAccountDeletionsContent() {
   const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const canRetry = canAdmin("users:security:write");
   const statusParam = get("status", "FAILED");
   const status: DeletionStatus = STATUS_TABS.some((tab) => tab.key === statusParam)
@@ -145,10 +145,24 @@ function AdminAccountDeletionsContent() {
   const handleRetry = async (item: DeletionItem, force: boolean) => {
     setActioningId(item.id);
     try {
-      const data = await apiPost<{ status: string; message: string }>(
-        "/api/admin/account-deletions",
-        { id: item.id, ...(force ? { force: true } : {}) }
-      );
+      const submit = () =>
+        apiPost<{ status: string; message: string }>("/api/admin/account-deletions", {
+          id: item.id,
+          ...(force ? { force: true } : {}),
+        });
+
+      let data: { status: string; message: string };
+      try {
+        data = await submit();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) {
+          setRetryTarget(null);
+          return;
+        }
+        data = await submit();
+      }
       if (data.status === "completed") {
         success(data.message);
       } else {
@@ -188,7 +202,6 @@ function AdminAccountDeletionsContent() {
           </Button>
         }
       />
-
 
       {/* 状态切换 */}
       <div className="flex flex-wrap gap-2">
@@ -475,6 +488,7 @@ function AdminAccountDeletionsContent() {
           </span>
         </label>
       </ConfirmDialog>
+      {totpModal}
     </div>
   );
 }

@@ -29,15 +29,27 @@ const inputClass =
 const DELETION_CONSEQUENCES = {
   removed: {
     title: "以下数据将被删除或不可逆匿名化",
-    items: ["手机号（脱敏后释放，可用于新注册）", "昵称、头像、生日、性别等个人资料", "微信/抖音等第三方账号绑定关系"],
+    items: [
+      "手机号（脱敏后释放，可用于新注册）",
+      "昵称、头像、生日、性别等个人资料",
+      "微信/抖音等第三方账号绑定关系",
+    ],
   },
   retained: {
     title: "以下数据将依法保留（不含可识别个人信息）",
-    items: ["订单、支付、发票等交易记录（法定留存期限）", "登录与操作审计日志", "积分与消费流水（账户标识以匿名 ID 替代）"],
+    items: [
+      "订单、支付、发票等交易记录（法定留存期限）",
+      "登录与操作审计日志",
+      "积分与消费流水（账户标识以匿名 ID 替代）",
+    ],
   },
   effects: {
     title: "其他影响",
-    items: ["所有已授权子站将退出登录", "未使用的积分、优惠与未履约的兑换权益将作废", "冷静期结束后注销不可撤销"],
+    items: [
+      "所有已授权子站将退出登录",
+      "未使用的积分、优惠与未履约的兑换权益将作废",
+      "冷静期结束后注销不可撤销",
+    ],
   },
 };
 
@@ -177,8 +189,8 @@ export function AccountDeletionPanel({ embedded }: AccountDeletionPanelProps) {
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
                 <p className="font-medium">
-                  注销处理中，将于 {formatScheduledAt(pending.scheduledAt)}（
-                  {pending.remainingDays} 天后）生效
+                  注销处理中，将于 {formatScheduledAt(pending.scheduledAt)}（{pending.remainingDays}{" "}
+                  天后）生效
                 </p>
                 <p className="mt-1 text-xs text-amber-700">
                   冷静期内账号可正常使用；生效后账号不可恢复，所有子站将退出登录。

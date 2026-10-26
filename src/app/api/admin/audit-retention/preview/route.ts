@@ -42,8 +42,7 @@ export async function GET(request: NextRequest) {
           enabled: process.env.AUDIT_RETENTION_ENABLED === "true",
           allowLocalOnly: process.env.AUDIT_RETENTION_ALLOW_LOCAL_ONLY === "true",
           canExecute:
-            admin.role === "owner" &&
-            hasAdminPermission(admin, "audit:retention:execute"),
+            admin.role === "owner" && hasAdminPermission(admin, "audit:retention:execute"),
         },
       },
       { headers: NO_STORE_HEADERS }

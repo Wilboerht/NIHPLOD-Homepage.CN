@@ -57,7 +57,15 @@ function createSignedRequest(body: unknown, options?: { badSignature?: boolean }
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = `test-nonce-${++nonceCounter}`;
   const bodyHash = hashRequestBody(bodyText);
-  let signature = generateInternalApiSignature(SECRET, "POST", PATH, timestamp, nonce, bodyHash, "");
+  let signature = generateInternalApiSignature(
+    SECRET,
+    "POST",
+    PATH,
+    timestamp,
+    nonce,
+    bodyHash,
+    ""
+  );
   if (options?.badSignature) {
     signature = signature.replace(/.$/, signature.endsWith("0") ? "1" : "0");
   }
@@ -95,7 +103,11 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
     process.env.INTERNAL_API_KEYS = JSON.stringify([{ project: "mall", key: KEY, secret: SECRET }]);
     mockRateLimit.mockResolvedValue({ success: true });
     (getClientIP as ReturnType<typeof vi.fn>).mockReturnValue("127.0.0.1");
-    mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "GOLD", status: "ACTIVE" });
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      membershipLevel: "GOLD",
+      status: "ACTIVE",
+    });
     txClient.user.findUnique.mockResolvedValue({ membershipLevel: "GOLD", status: "ACTIVE" });
     txClient.pointLedger.findUnique.mockResolvedValue(null);
     txClient.pointLedger.findMany.mockResolvedValue([]);
@@ -143,7 +155,11 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
   });
 
   it("普通档不可兑礼应返回 403 NOT_ELIGIBLE", async () => {
-    mockUserFindUnique.mockResolvedValue({ id: "user-1", membershipLevel: "REGULAR", status: "ACTIVE" });
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      membershipLevel: "REGULAR",
+      status: "ACTIVE",
+    });
 
     const res = await POST(createSignedRequest(VALID_BODY));
 

@@ -7,8 +7,7 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/auth", () => ({
   withUserAuth:
-    (handler: (req: NextRequest, payload: { id: string }) => unknown) =>
-    (req: NextRequest) =>
+    (handler: (req: NextRequest, payload: { id: string }) => unknown) => (req: NextRequest) =>
       handler(req, { id: "user-1" }),
 }));
 
@@ -71,7 +70,9 @@ describe("POST /api/user/points/redeem", () => {
   });
 
   it("缺少 requestId 应返回 400 INVALID_PARAMS", async () => {
-    const res = await POST(postRequest({ productId: VALID_BODY.productId, addressId: VALID_BODY.addressId }));
+    const res = await POST(
+      postRequest({ productId: VALID_BODY.productId, addressId: VALID_BODY.addressId })
+    );
 
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe("INVALID_PARAMS");

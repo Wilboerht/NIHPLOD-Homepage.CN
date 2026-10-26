@@ -196,7 +196,10 @@ describe("POST /api/oauth/token", () => {
 
   describe("限流（client_id 定向 DoS 防护）", () => {
     it("未认证请求不消耗 client 级限流桶，仅走 IP 桶", async () => {
-      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: null, reason: "invalid_secret" });
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
+        client: null,
+        reason: "invalid_secret",
+      });
       const req = createRequest({
         grant_type: "authorization_code",
         client_id: "victim-client",
@@ -317,7 +320,7 @@ describe("POST /api/oauth/token", () => {
       expect(body.error).toBe("invalid_grant");
       // 仅撤销关联的 OAuthSession（通过 authorizationCodeId）
       expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
-        where: { authorizationCodeId: "code-1", revokedAt: null },
+        where: { authorizationCodeId: "code-1", clientId: "test-client", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
       // 关键回归：不再全量吊销 user+client 的 refresh token（access/refresh 均由
@@ -363,9 +366,19 @@ describe("POST /api/oauth/token", () => {
       // —— 第二次请求：同一 client 携带同一 verifier 重放同一 code ——
       // 消费前预检发现 code 已被使用
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce({ id: "code-1", clientId: "test-client", userId: "user-1", used: true })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
         // findUsedAuthorizationCode 发现 code 已被使用
-        .mockResolvedValueOnce({ id: "code-1", clientId: "test-client", userId: "user-1", used: true })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
         // 良性判定查询：code 携带 PKCE challenge
         .mockResolvedValueOnce({ codeChallenge: "some-challenge", codeChallengeMethod: "S256" });
       // 预检发现 code 已被使用 → 不再发起消费（无 updateMany）
@@ -392,8 +405,18 @@ describe("POST /api/oauth/token", () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       // 消费前预检 + findUsedAuthorizationCode 均发现 code 已被使用
       (prisma.oAuthAuthorizationCode.findUnique as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce({ id: "code-1", clientId: "test-client", userId: "user-1", used: true })
-        .mockResolvedValueOnce({ id: "code-1", clientId: "test-client", userId: "user-1", used: true })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
+        .mockResolvedValueOnce({
+          id: "code-1",
+          clientId: "test-client",
+          userId: "user-1",
+          used: true,
+        })
         // 良性判定查询：code 携带 PKCE challenge
         .mockResolvedValueOnce({ codeChallenge: "some-challenge", codeChallengeMethod: "S256" });
       // 预检发现 code 已被使用 → 不再发起消费（无 updateMany）
@@ -412,7 +435,7 @@ describe("POST /api/oauth/token", () => {
       const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
-        where: { authorizationCodeId: "code-1", revokedAt: null },
+        where: { authorizationCodeId: "code-1", clientId: "test-client", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
       // 不再按 userId+clientId 全量吊销 refresh token
@@ -456,7 +479,7 @@ describe("POST /api/oauth/token", () => {
       const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
-        where: { authorizationCodeId: "code-1", revokedAt: null },
+        where: { authorizationCodeId: "code-1", clientId: "test-client", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
       // 仅撤销会话；不再全量吊销 refresh token
@@ -501,7 +524,7 @@ describe("POST /api/oauth/token", () => {
       const res = await POST(req as unknown as NextRequest);
       expect(res.status).toBe(400);
       expect(prisma.oAuthSession.updateMany).toHaveBeenCalledWith({
-        where: { authorizationCodeId: "code-1", revokedAt: null },
+        where: { authorizationCodeId: "code-1", clientId: "test-client", revokedAt: null },
         data: { revokedAt: expect.any(Date) },
       });
       expect(revokeRefreshToken).not.toHaveBeenCalled();

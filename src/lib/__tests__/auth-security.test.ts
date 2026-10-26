@@ -723,10 +723,7 @@ describe("auth-security", () => {
       // 过期但未撤销的会话也需被清理（OR 条件），阈值均为 30 天前
       expect(mockSession.deleteMany).toHaveBeenCalledWith({
         where: {
-          OR: [
-            { revokedAt: { lt: expect.any(Date) } },
-            { expiresAt: { lt: expect.any(Date) } },
-          ],
+          OR: [{ revokedAt: { lt: expect.any(Date) } }, { expiresAt: { lt: expect.any(Date) } }],
         },
       });
       expect(mockRt.deleteMany).toHaveBeenCalledWith({

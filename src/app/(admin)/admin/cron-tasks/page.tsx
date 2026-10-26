@@ -68,7 +68,7 @@ export default function AdminCronTasksPage() {
 function AdminCronTasksContent() {
   const { success, error: showError } = useToast();
   const { requireTotp, totpModal } = useTotpConfirm();
-    const { can: canAdmin } = useAdminPermissions();
+  const { can: canAdmin } = useAdminPermissions();
   const canRun = canAdmin("cron:run");
   const [tasks, setTasks] = useState<CronTask[]>([]);
   const [recentRuns, setRecentRuns] = useState<CronRun[]>([]);
@@ -104,24 +104,24 @@ function AdminCronTasksContent() {
 
   const handleTrigger = async () => {
     if (!triggerTarget) return;
-      setTriggering(true);
-      try {
-        const submit = () =>
-          apiPost<{ message: string }>("/api/admin/cron-tasks", {
-            taskName: triggerTarget.name,
-          });
+    setTriggering(true);
+    try {
+      const submit = () =>
+        apiPost<{ message: string }>("/api/admin/cron-tasks", {
+          taskName: triggerTarget.name,
+        });
 
-        let data: { message: string };
-        try {
-          data = await submit();
-        } catch (e) {
-          if (!isTotpRequired(e)) throw e;
-          const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
-          if (!verified) return;
-          data = await submit();
-        }
-        success(data.message);
-        setTriggerTarget(null);
+      let data: { message: string };
+      try {
+        data = await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        data = await submit();
+      }
+      success(data.message);
+      setTriggerTarget(null);
     } catch (e) {
       showError(e instanceof ApiError ? e.message : "任务执行失败");
     } finally {
@@ -175,10 +175,7 @@ function AdminCronTasksContent() {
           </div>
           <div className="space-y-2 p-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-12 animate-pulse rounded-lg bg-brand-charcoal/[0.04]"
-              />
+              <div key={index} className="h-12 animate-pulse rounded-lg bg-brand-charcoal/[0.04]" />
             ))}
           </div>
         </div>
@@ -211,14 +208,24 @@ function AdminCronTasksContent() {
             <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/65">
-                  <th scope="col" className="px-4 py-3 font-medium">任务</th>
-                  <th scope="col" className="px-4 py-3 font-medium">最近运行</th>
-                  <th scope="col" className="px-4 py-3 font-medium">结果</th>
-                  <th scope="col" className="px-4 py-3 font-medium">耗时</th>
-                  <th scope="col" className="px-4 py-3 font-medium text-right">操作</th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    任务
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    最近运行
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    结果
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    耗时
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">
+                    操作
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-charcoal/8">
+              <tbody className="divide-brand-charcoal/8 divide-y">
                 {tasks.map((task) => (
                   <tr key={task.name} className="hover:bg-brand-charcoal/[0.02]">
                     <td className="px-4 py-3">
@@ -289,63 +296,63 @@ function AdminCronTasksContent() {
           </div>
           <MobileList>
             {tasks.map((task) => (
-            <MobileListCard key={task.name}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-brand-charcoal">{task.name}</p>
-                  <p className="mt-0.5 font-mono text-xs text-brand-charcoal/65">
-                    {task.cronExpression}
-                  </p>
+              <MobileListCard key={task.name}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-brand-charcoal">{task.name}</p>
+                    <p className="mt-0.5 font-mono text-xs text-brand-charcoal/65">
+                      {task.cronExpression}
+                    </p>
+                  </div>
+                  {!task.lastRun ? (
+                    <Badge variant="secondary" className="shrink-0">
+                      未运行
+                    </Badge>
+                  ) : task.lastRun.success ? (
+                    <Badge variant="success" className="shrink-0">
+                      成功
+                    </Badge>
+                  ) : (
+                    <Badge variant="danger" className="shrink-0">
+                      失败
+                    </Badge>
+                  )}
                 </div>
-                {!task.lastRun ? (
-                  <Badge variant="secondary" className="shrink-0">
-                    未运行
-                  </Badge>
-                ) : task.lastRun.success ? (
-                  <Badge variant="success" className="shrink-0">
-                    成功
-                  </Badge>
-                ) : (
-                  <Badge variant="danger" className="shrink-0">
-                    失败
-                  </Badge>
-                )}
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
-                <span>最近：{task.lastRun ? formatDateTime(task.lastRun.startedAt) : "—"}</span>
-                <span>
-                  耗时：
-                  {task.lastRun
-                    ? formatDuration(task.lastRun.startedAt, task.lastRun.finishedAt)
-                    : "—"}
-                </span>
-                {task.lastRun && (
-                  <span className="col-span-2 text-brand-charcoal/65">
-                    {task.lastRun.trigger === "manual" ? "手动触发" : "自动调度"}
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
+                  <span>最近：{task.lastRun ? formatDateTime(task.lastRun.startedAt) : "—"}</span>
+                  <span>
+                    耗时：
+                    {task.lastRun
+                      ? formatDuration(task.lastRun.startedAt, task.lastRun.finishedAt)
+                      : "—"}
                   </span>
+                  {task.lastRun && (
+                    <span className="col-span-2 text-brand-charcoal/65">
+                      {task.lastRun.trigger === "manual" ? "手动触发" : "自动调度"}
+                    </span>
+                  )}
+                </div>
+                {task.lastRun && !task.lastRun.success && task.lastRun.error && (
+                  <p className="mt-1 line-clamp-2 text-xs text-red-500" title={task.lastRun.error}>
+                    {task.lastRun.error}
+                  </p>
                 )}
-              </div>
-              {task.lastRun && !task.lastRun.success && task.lastRun.error && (
-                <p className="mt-1 line-clamp-2 text-xs text-red-500" title={task.lastRun.error}>
-                  {task.lastRun.error}
-                </p>
-              )}
-              <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
-                {canRun ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<Play className="h-3.5 w-3.5" />}
-                    onClick={() => setTriggerTarget(task)}
-                  >
-                    手动执行
-                  </Button>
-                ) : (
-                  <span className="text-xs text-brand-charcoal/65">只读</span>
-                )}
-              </div>
-            </MobileListCard>
-          ))}
+                <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
+                  {canRun ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Play className="h-3.5 w-3.5" />}
+                      onClick={() => setTriggerTarget(task)}
+                    >
+                      手动执行
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-brand-charcoal/65">只读</span>
+                  )}
+                </div>
+              </MobileListCard>
+            ))}
           </MobileList>
         </>
       )}
@@ -359,7 +366,7 @@ function AdminCronTasksContent() {
         {recentRuns.length === 0 ? (
           <p className="py-10 text-center text-sm text-brand-charcoal/65">暂无运行记录</p>
         ) : (
-          <div className="divide-y divide-brand-charcoal/8">
+          <div className="divide-brand-charcoal/8 divide-y">
             {recentRuns.map((run) => (
               <div key={run.id} className="px-4 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">

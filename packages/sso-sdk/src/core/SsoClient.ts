@@ -11,11 +11,7 @@
  */
 
 import { SsoError, mapOAuthErrorToSsoCode } from "./errors";
-import {
-  generateCodeVerifier,
-  generateCodeChallenge,
-  generateState,
-} from "./pkce";
+import { generateCodeVerifier, generateCodeChallenge, generateState } from "./pkce";
 import {
   saveTokenData,
   getTokenData,
@@ -70,10 +66,7 @@ const EXPIRY_SKEW_MS = 10_000;
  *   主站 authorization_code 交换必然签发 refresh_token（refresh 场景按
  *   RFC 6749 §6 允许省略，调用方已做沿用旧值的回退），缺失即响应异常。
  */
-function assertValidTokenResponse(
-  data: TokenResponse,
-  requireRefreshToken: boolean
-): void {
+function assertValidTokenResponse(data: TokenResponse, requireRefreshToken: boolean): void {
   if (typeof data.access_token !== "string" || !data.access_token) {
     throw new SsoError("token_request_failed", "Token 响应缺少 access_token");
   }
@@ -87,10 +80,7 @@ function assertValidTokenResponse(
       `Token 响应 expires_in 非法: ${String(data.expires_in)}`
     );
   }
-  if (
-    requireRefreshToken &&
-    (typeof data.refresh_token !== "string" || !data.refresh_token)
-  ) {
+  if (requireRefreshToken && (typeof data.refresh_token !== "string" || !data.refresh_token)) {
     throw new SsoError(
       "token_request_failed",
       "Token 响应缺少 refresh_token（authorization_code 交换必须返回）"
@@ -185,11 +175,7 @@ export interface LoginOptions {
 }
 
 /** prompt=none 静默探测失败时 IdP 回跳的 error 值（OIDC Core §3.1.2.6） */
-const SILENT_PROBE_ERRORS = new Set([
-  "login_required",
-  "consent_required",
-  "interaction_required",
-]);
+const SILENT_PROBE_ERRORS = new Set(["login_required", "consent_required", "interaction_required"]);
 
 /** Token 响应 */
 export interface TokenResponse {
@@ -312,7 +298,7 @@ export class SsoClient {
         this._discoveryOriginWarned = true;
         console.warn(
           `[SSO SDK] OIDC Discovery 端点 origin 与 ssoBaseUrl/serverBaseUrl 不匹配（${bad.join(", ")}），` +
-          "已回退到默认端点。若 SSO 中心确实托管跨源端点，请设置 allowCrossOriginDiscoveryEndpoints: true"
+            "已回退到默认端点。若 SSO 中心确实托管跨源端点，请设置 allowCrossOriginDiscoveryEndpoints: true"
         );
       }
       return null;
@@ -330,10 +316,7 @@ export class SsoClient {
     const now = Date.now();
 
     // 命中缓存且未过期
-    if (
-      this._discovery &&
-      now - this._discoveryFetchedAt < SsoClient.DISCOVERY_TTL_MS
-    ) {
+    if (this._discovery && now - this._discoveryFetchedAt < SsoClient.DISCOVERY_TTL_MS) {
       return this._discovery;
     }
 
@@ -343,18 +326,13 @@ export class SsoClient {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        SsoClient.DISCOVERY_TIMEOUT_MS
-      );
+      const timeoutId = setTimeout(() => controller.abort(), SsoClient.DISCOVERY_TIMEOUT_MS);
 
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        console.warn(
-          `[SSO SDK] OIDC Discovery 请求失败: HTTP ${res.status}, 回退到默认端点`
-        );
+        console.warn(`[SSO SDK] OIDC Discovery 请求失败: HTTP ${res.status}, 回退到默认端点`);
         return null;
       }
 
@@ -607,10 +585,7 @@ export class SsoClient {
       removeOAuthState(this.config.clientId);
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(`${this.config.clientId}_popup_nonce`);
-      throw new SsoError(
-        "popup_blocked",
-        "弹窗被浏览器拦截，请允许弹窗后重试"
-      );
+      throw new SsoError("popup_blocked", "弹窗被浏览器拦截，请允许弹窗后重试");
     }
 
     // 计算 redirect_uri 的 origin，用于 postMessage 来源校验
@@ -658,9 +633,7 @@ export class SsoClient {
               // prompt=none 静默探测在弹窗模式不支持（loginPopup 不带 prompt），
               // null 结果视为探测无会话
               if (tokenData === null) {
-                reject(
-                  new SsoError("not_authenticated", "SSO 会话不存在（静默探测无会话）")
-                );
+                reject(new SsoError("not_authenticated", "SSO 会话不存在（静默探测无会话）"));
                 return;
               }
               resolve(tokenData);
@@ -673,12 +646,7 @@ export class SsoClient {
             if (!completed) {
               completed = true;
               cleanup();
-              reject(
-                new SsoError(
-                  "popup_closed",
-                  "登录窗口已关闭"
-                )
-              );
+              reject(new SsoError("popup_closed", "登录窗口已关闭"));
             }
           }
         }, 500);
@@ -711,9 +679,7 @@ export class SsoClient {
    *   （IdP 回跳 login_required / consent_required / interaction_required
    *   且回调 state 与探测标记匹配），此时临时数据已清理，调用方按"未登录"处理即可
    */
-  async handleCallback(
-    callbackUrl: string
-  ): Promise<TokenData | null> {
+  async handleCallback(callbackUrl: string): Promise<TokenData | null> {
     const url = new URL(callbackUrl);
     const params = url.searchParams;
 
@@ -769,10 +735,7 @@ export class SsoClient {
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
       removeSilentProbe(this.config.clientId);
-      throw new SsoError(
-        "state_mismatch",
-        "State 参数不匹配，可能存在 CSRF 攻击"
-      );
+      throw new SsoError("state_mismatch", "State 参数不匹配，可能存在 CSRF 攻击");
     }
 
     // state 校验通过：读取登录时保存的 OIDC nonce（validateIdToken 时 fail-closed 校验，
@@ -782,10 +745,7 @@ export class SsoClient {
     // 获取 code_verifier
     const verifier = getPkceVerifier(this.config.clientId);
     if (!verifier) {
-      throw new SsoError(
-        "pkce_required",
-        "code_verifier 不存在（可能已过期或来自其他标签页）"
-      );
+      throw new SsoError("pkce_required", "code_verifier 不存在（可能已过期或来自其他标签页）");
     }
 
     // 交换 token
@@ -819,7 +779,11 @@ export class SsoClient {
       removePkceVerifier(this.config.clientId);
       removeSilentProbe(this.config.clientId);
       let errData: Record<string, unknown> = {};
-      try { errData = await res.json(); } catch { /* ignore */ }
+      try {
+        errData = await res.json();
+      } catch {
+        /* ignore */
+      }
       const serverError = (errData.error as string) || "";
       throw new SsoError(
         mapOAuthErrorToSsoCode(serverError),
@@ -845,10 +809,7 @@ export class SsoClient {
       removePkceVerifier(this.config.clientId);
       removeSilentProbe(this.config.clientId);
       removeTokenData(this.config.clientId);
-      throw new SsoError(
-        "id_token_invalid",
-        "Token 响应缺少 id_token（scope 含 openid 时必需）"
-      );
+      throw new SsoError("id_token_invalid", "Token 响应缺少 id_token（scope 含 openid 时必需）");
     }
 
     // OIDC：验证 ID Token 签名、基本声明及 at_hash
@@ -928,19 +889,14 @@ export class SsoClient {
 
     let res: Response | null = null;
     let lastErr: unknown;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        res = await fetchWithTimeout(tokenEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: body.toString(),
-        });
-        lastErr = null;
-        break;
-      } catch (err) {
-        lastErr = err;
-        if (attempt < 1) await new Promise((r) => setTimeout(r, 1000));
-      }
+    try {
+      res = await fetchWithTimeout(tokenEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+    } catch (err) {
+      lastErr = err;
     }
     if (lastErr || !res) {
       throw new SsoError("network_error", "刷新 Token 网络请求失败", lastErr);
@@ -948,7 +904,11 @@ export class SsoClient {
 
     if (!res.ok) {
       let errData: Record<string, unknown> = {};
-      try { errData = await res.json(); } catch { /* ignore */ }
+      try {
+        errData = await res.json();
+      } catch {
+        /* ignore */
+      }
       const errorCode = (errData.error as string) || "";
       // 仅明确的 invalid_grant（refresh_token 已被撤销/过期）才清除本地登录态；
       // 网关/WAF 返回的 401（响应体无 OAuth error 字段）保留 token 按可重试处理，
@@ -1041,10 +1001,7 @@ export class SsoClient {
         removeTokenData(this.config.clientId);
         throw new SsoError("not_authenticated", "Token 已失效");
       }
-      throw new SsoError(
-        "userinfo_failed",
-        `获取用户信息失败: HTTP ${res.status}`
-      );
+      throw new SsoError("userinfo_failed", `获取用户信息失败: HTTP ${res.status}`);
     }
 
     return (await res.json()) as SsoUser;
@@ -1110,8 +1067,7 @@ export class SsoClient {
         const discovery = this.config.serverBaseUrl ? null : await this._getDiscovery();
         const revokeUrl = this.config.serverBaseUrl
           ? `${this._serverBase}/api/oauth/revoke`
-          : discovery?.revocation_endpoint ||
-            `${this.config.ssoBaseUrl}/api/oauth/revoke`;
+          : discovery?.revocation_endpoint || `${this.config.ssoBaseUrl}/api/oauth/revoke`;
         const revokeBody = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",
@@ -1143,10 +1099,7 @@ export class SsoClient {
       logoutUrl.searchParams.set("client_id", this.config.clientId);
       const postLogoutUri = this.config.postLogoutRedirectUri || this.config.redirectUri;
       if (postLogoutUri) {
-        logoutUrl.searchParams.set(
-          "post_logout_redirect_uri",
-          postLogoutUri
-        );
+        logoutUrl.searchParams.set("post_logout_redirect_uri", postLogoutUri);
       }
       if (idTokenHint) {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);

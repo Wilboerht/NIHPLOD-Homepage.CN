@@ -52,7 +52,7 @@ vi.mock("@/lib/password", async (importOriginal) => {
 });
 
 vi.mock("@/lib/sms", () => ({
-  verifyCode: vi.fn(),
+  verifySmsCodeWithLimit: vi.fn(),
   recordSmsCodeFailure: vi.fn().mockResolvedValue(undefined),
   SMS_CODE_MAX_ATTEMPTS: 5,
 }));
@@ -71,13 +71,13 @@ vi.mock("@/lib/password-policy", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { verifyCode } from "@/lib/sms";
+import { verifySmsCodeWithLimit } from "@/lib/sms";
 import { POST } from "@/app/api/auth/register/route";
 
 const mockSmsFindFirst = prisma.smsCode.findFirst as ReturnType<typeof vi.fn>;
 const mockSmsUpdateMany = prisma.smsCode.updateMany as ReturnType<typeof vi.fn>;
 const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
-const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
+const mockVerifyCode = verifySmsCodeWithLimit as ReturnType<typeof vi.fn>;
 
 function createRequest(body: unknown): NextRequest {
   return new NextRequest(new URL("/api/auth/register", "http://localhost:3000"), {

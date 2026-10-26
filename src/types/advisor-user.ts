@@ -57,10 +57,7 @@ export interface AdvisorUserUpdateResult {
 }
 
 export type AdvisorOverviewDegradedReason =
-  | "not_configured"
-  | "unauthorized"
-  | "rate_limited"
-  | "upstream_error";
+  "not_configured" | "unauthorized" | "rate_limited" | "upstream_error";
 
 export interface AdvisorOverviewPayload {
   overview: AdvisorUserOverview | null;

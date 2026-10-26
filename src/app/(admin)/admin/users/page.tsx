@@ -113,14 +113,7 @@ const membershipLevelMap: Record<
 };
 
 type DetailTab =
-  | "overview"
-  | "basic"
-  | "advisor"
-  | "points"
-  | "address"
-  | "spent"
-  | "growth"
-  | "login";
+  "overview" | "basic" | "advisor" | "points" | "address" | "spent" | "growth" | "login";
 
 const DETAIL_TABS: { key: DetailTab; label: string; icon: LucideIcon }[] = [
   { key: "overview", label: "概览", icon: LayoutDashboard },
@@ -607,6 +600,7 @@ function AdminUsersContent() {
 
   const fetchLedger = useCallback(
     async (userId: string, targetPage: number) => {
+      const isLatest = takeLatestDetail();
       setLedgerLoading(true);
       try {
         const data = await apiGet<{
@@ -614,18 +608,19 @@ function AdminUsersContent() {
           items: PointLedgerItem[];
           pagination: { totalPages: number };
         }>(`/api/admin/users/${userId}/points`, { page: targetPage, pageSize: 20 });
+        if (!isLatest()) return;
         setLedgerItems(data.items);
         setLedgerPage(targetPage);
         setLedgerTotalPages(data.pagination.totalPages);
         // 余额以流水接口物化结果为准（含过期处理）
         setDetailPoints((prev) => (prev ? { ...prev, available: data.available } : prev));
       } catch {
-        toast.error("加载积分流水失败");
+        if (isLatest()) toast.error("加载积分流水失败");
       } finally {
-        setLedgerLoading(false);
+        if (isLatest()) setLedgerLoading(false);
       }
     },
-    [toast]
+    [takeLatestDetail, toast]
   );
 
   // 仅按用户 id 重置流水：详情对象因状态变更刷新时不重置当前翻页
@@ -708,13 +703,13 @@ function AdminUsersContent() {
     if (!detailUser) return;
     setBirthdaySaving(true);
     try {
-        const data = await runWithStepUp(() =>
-          apiPatch<{ user: { birthday: string | null; birthdayLocked: boolean } }>(
-            `/api/admin/users/${detailUser.id}`,
-            { birthday: birthdayInput === "" ? null : birthdayInput }
-          )
-        );
-        if (data === null) return;
+      const data = await runWithStepUp(() =>
+        apiPatch<{ user: { birthday: string | null; birthdayLocked: boolean } }>(
+          `/api/admin/users/${detailUser.id}`,
+          { birthday: birthdayInput === "" ? null : birthdayInput }
+        )
+      );
+      if (data === null) return;
       toast.success(birthdayInput === "" ? "已清除生日并解锁" : "生日已更新");
       setDetailUser((prev) =>
         prev
@@ -738,10 +733,10 @@ function AdminUsersContent() {
     if (!detailUser) return;
     setBirthdaySaving(true);
     try {
-        const result = await runWithStepUp(() =>
-          apiPatch(`/api/admin/users/${detailUser.id}`, { unlockBirthday: true })
-        );
-        if (result === null) return;
+      const result = await runWithStepUp(() =>
+        apiPatch(`/api/admin/users/${detailUser.id}`, { unlockBirthday: true })
+      );
+      if (result === null) return;
       toast.success("已解锁生日，用户可自助修改");
       setDetailUser((prev) => (prev ? { ...prev, birthdayLocked: false } : prev));
       setBirthdayEditOpen(false);
@@ -757,10 +752,10 @@ function AdminUsersContent() {
     if (!detailUser || !identityUnbindTarget) return;
     setIdentityUnbinding(true);
     try {
-        const result = await runWithStepUp(() =>
-          apiDelete(`/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`)
-        );
-        if (result === null) return;
+      const result = await runWithStepUp(() =>
+        apiDelete(`/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`)
+      );
+      if (result === null) return;
       toast.success("已解绑该外部身份");
       setDetailUser((prev) =>
         prev
@@ -857,8 +852,8 @@ function AdminUsersContent() {
     const target = userStatusMap[status];
     setStatusLoading(true);
     try {
-        const result = await runWithStepUp(() => apiPatch(`/api/admin/users/${id}`, { status }));
-        if (result === null) return;
+      const result = await runWithStepUp(() => apiPatch(`/api/admin/users/${id}`, { status }));
+      if (result === null) return;
       toast.success(`已设置用户状态为「${target.label}」`);
       setStatusTarget(null);
       await fetchUsers();
@@ -902,13 +897,13 @@ function AdminUsersContent() {
     const { status: targetStatus } = batchTarget;
     setBatchLoading(true);
     try {
-        const result = await runWithStepUp(() =>
-          apiPost<{ updated: number }>("/api/admin/users", {
-            ids: Array.from(selectedIds),
-            status: targetStatus,
-          })
-        );
-        if (result === null) return;
+      const result = await runWithStepUp(() =>
+        apiPost<{ updated: number }>("/api/admin/users", {
+          ids: Array.from(selectedIds),
+          status: targetStatus,
+        })
+      );
+      if (result === null) return;
       toast.success(
         `已将选中的 ${selectedCount} 个用户设置为「${userStatusMap[targetStatus].label}」`
       );
@@ -929,30 +924,30 @@ function AdminUsersContent() {
     if (level) params.set("level", level);
     params.set("include", groups.join(","));
     const qs = params.toString();
-      setExporting(true);
-      try {
-        const preflight = await runWithStepUp(() =>
-          apiGet("/api/admin/users/export", {
-            check: "1",
-            search: search || undefined,
-            status: status || undefined,
-            level: level || undefined,
-            include: groups.join(","),
-          })
-        );
-        if (preflight === null) return;
+    setExporting(true);
+    try {
+      const preflight = await runWithStepUp(() =>
+        apiGet("/api/admin/users/export", {
+          check: "1",
+          search: search || undefined,
+          status: status || undefined,
+          level: level || undefined,
+          include: groups.join(","),
+        })
+      );
+      if (preflight === null) return;
 
-        setExportOpen(false);
-        const downloaded = await runWithStepUp(() =>
-          downloadFromUrl(`/api/admin/users/export?${qs}`, "users-export.zip")
-        );
-        if (downloaded === null) return;
-        toast.success("已开始生成导出文件，请保持页面打开");
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
-      } finally {
-        setExporting(false);
-      }
+      setExportOpen(false);
+      const downloaded = await runWithStepUp(() =>
+        downloadFromUrl(`/api/admin/users/export?${qs}`, "users-export.zip")
+      );
+      if (downloaded === null) return;
+      toast.success("已开始生成导出文件，请保持页面打开");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const openDetail = async (id: string) => {
@@ -1005,7 +1000,11 @@ function AdminUsersContent() {
     if (!detailUser || revealedPhone) return;
     setRevealingPhone(true);
     try {
-      const data = await apiPost<{ phone: string }>(`/api/admin/users/${detailUser.id}`);
+      const data = await runWithStepUp(() =>
+        apiPost<{ phone: string }>(`/api/admin/users/${detailUser.id}`)
+      );
+      // 取消 TOTP 时 runWithStepUp 返回 null，手机号保持脱敏。
+      if (data === null) return;
       setRevealedPhone(data.phone);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "获取手机号失败");
@@ -1061,60 +1060,60 @@ function AdminUsersContent() {
         }
       );
     }
-      if (!isOwnerActor && canRequestApproval) {
-        const approvalItems: DropdownItem[] = [];
-          approvalItems.push({
-            label: "申请调整积分",
-            icon: <Sparkles className="h-3.5 w-3.5" />,
-            onClick: () =>
-              setApprovalTarget({
-                policyKey: "points.adjust",
-                values: { userId: detailUser.id },
-              }),
-          });
-        if (detailUser.status !== "SUSPENDED") {
-          approvalItems.push({
-            label: "申请冻结账号",
-            icon: <Lock className="h-3.5 w-3.5" />,
-            onClick: () =>
-              setApprovalTarget({
-                policyKey: "user.status",
-                values: { userId: detailUser.id, status: "SUSPENDED" },
-              }),
-          });
-        }
-        if (detailUser.status !== "BANNED") {
-          approvalItems.push({
-            label: "申请封禁账号",
-            icon: <Ban className="h-3.5 w-3.5" />,
-            danger: true,
-            onClick: () =>
-              setApprovalTarget({
-                policyKey: "user.status",
-                values: { userId: detailUser.id, status: "BANNED" },
-              }),
-          });
-        }
+    if (!isOwnerActor && canRequestApproval) {
+      const approvalItems: DropdownItem[] = [];
+      approvalItems.push({
+        label: "申请调整积分",
+        icon: <Sparkles className="h-3.5 w-3.5" />,
+        onClick: () =>
+          setApprovalTarget({
+            policyKey: "points.adjust",
+            values: { userId: detailUser.id },
+          }),
+      });
+      if (detailUser.status !== "SUSPENDED") {
         approvalItems.push({
-          label: "申请删除用户",
-          icon: <Trash2 className="h-3.5 w-3.5" />,
+          label: "申请冻结账号",
+          icon: <Lock className="h-3.5 w-3.5" />,
+          onClick: () =>
+            setApprovalTarget({
+              policyKey: "user.status",
+              values: { userId: detailUser.id, status: "SUSPENDED" },
+            }),
+        });
+      }
+      if (detailUser.status !== "BANNED") {
+        approvalItems.push({
+          label: "申请封禁账号",
+          icon: <Ban className="h-3.5 w-3.5" />,
           danger: true,
           onClick: () =>
             setApprovalTarget({
-              policyKey: "user.delete",
-              values: { userId: detailUser.id },
+              policyKey: "user.status",
+              values: { userId: detailUser.id, status: "BANNED" },
             }),
         });
-        if (approvalItems.length > 0) {
-          detailMoreItems.push({ divider: true }, ...approvalItems);
-        }
+      }
+      approvalItems.push({
+        label: "申请删除用户",
+        icon: <Trash2 className="h-3.5 w-3.5" />,
+        danger: true,
+        onClick: () =>
+          setApprovalTarget({
+            policyKey: "user.delete",
+            values: { userId: detailUser.id },
+          }),
+      });
+      if (approvalItems.length > 0) {
+        detailMoreItems.push({ divider: true }, ...approvalItems);
       }
     }
+  }
 
-    return (
-      <div className="flex flex-col gap-6">
-        <PageHeader
-          title="用户管理"
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="用户管理"
         description="管理注册用户"
         actions={
           <>
@@ -1525,11 +1524,12 @@ function AdminUsersContent() {
                     <Badge variant={userStatusMap[detailUser.status].variant}>
                       {userStatusMap[detailUser.status].label}
                     </Badge>
-                    {detailUser.membershipLevel && membershipLevelMap[detailUser.membershipLevel] && (
-                      <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
-                        {membershipLevelMap[detailUser.membershipLevel].label}
-                      </Badge>
-                    )}
+                    {detailUser.membershipLevel &&
+                      membershipLevelMap[detailUser.membershipLevel] && (
+                        <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
+                          {membershipLevelMap[detailUser.membershipLevel].label}
+                        </Badge>
+                      )}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-brand-charcoal/65">
                     <span className="inline-flex items-center gap-1">
@@ -1642,638 +1642,642 @@ function AdminUsersContent() {
                 aria-labelledby={`detail-tab-${activeDetailTab}`}
                 className="min-w-0 flex-1"
               >
-              {/* 概览 */}
-              {activeDetailTab === "overview" && (
-                <div className="space-y-4">
-                  <DetailSection title="账号概览">
-                    <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-                      <DetailField label="账号状态">
-                        <Badge variant={userStatusMap[detailUser.status].variant}>
-                          {userStatusMap[detailUser.status].label}
-                        </Badge>
-                      </DetailField>
-                      <DetailField label="会员等级">
-                        {detailUser.membershipLevel &&
-                        membershipLevelMap[detailUser.membershipLevel] ? (
-                          <Badge
-                            variant={membershipLevelMap[detailUser.membershipLevel].variant}
-                          >
-                            {membershipLevelMap[detailUser.membershipLevel].label}
+                {/* 概览 */}
+                {activeDetailTab === "overview" && (
+                  <div className="space-y-4">
+                    <DetailSection title="账号概览">
+                      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <DetailField label="账号状态">
+                          <Badge variant={userStatusMap[detailUser.status].variant}>
+                            {userStatusMap[detailUser.status].label}
                           </Badge>
-                        ) : (
-                          <span className="text-brand-charcoal/65">未设置</span>
-                        )}
-                      </DetailField>
-                      <DetailField label="累计消费">
-                        <span className="font-mono font-medium tabular-nums">
-                          ¥{(detailUser.totalSpent ?? 0).toLocaleString()}
-                        </span>
-                      </DetailField>
-                      <DetailField label="可用积分">
-                        <span className="inline-flex flex-wrap items-center gap-2">
+                        </DetailField>
+                        <DetailField label="会员等级">
+                          {detailUser.membershipLevel &&
+                          membershipLevelMap[detailUser.membershipLevel] ? (
+                            <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
+                              {membershipLevelMap[detailUser.membershipLevel].label}
+                            </Badge>
+                          ) : (
+                            <span className="text-brand-charcoal/65">未设置</span>
+                          )}
+                        </DetailField>
+                        <DetailField label="累计消费">
                           <span className="font-mono font-medium tabular-nums">
-                            {detailPoints ? detailPoints.available.toLocaleString() : "—"}
+                            ¥{(detailUser.totalSpent ?? 0).toLocaleString()}
                           </span>
-                          {canAdjustPoints && (
+                        </DetailField>
+                        <DetailField label="可用积分">
+                          <span className="inline-flex flex-wrap items-center gap-2">
+                            <span className="font-mono font-medium tabular-nums">
+                              {detailPoints ? detailPoints.available.toLocaleString() : "—"}
+                            </span>
+                            {canAdjustPoints && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-auto px-1.5 py-0.5 text-xs"
+                                onClick={() => {
+                                  adjustRequestIdRef.current = createClientRequestId();
+                                  setAdjustOpen(true);
+                                }}
+                              >
+                                调整
+                              </Button>
+                            )}
+                          </span>
+                        </DetailField>
+                      </dl>
+                    </DetailSection>
+
+                    <DetailSection title="活跃信息">
+                      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <DetailField label="注册时间">
+                          {formatDate(detailUser.createdAt)}
+                        </DetailField>
+                        <DetailField label="最后登录">
+                          {detailLoginAttempts[0]
+                            ? formatDate(detailLoginAttempts[0].createdAt)
+                            : "—"}
+                        </DetailField>
+                        <DetailField label="收货地址">
+                          {detailAddresses.length > 0 ? `${detailAddresses.length} 个` : "暂无"}
+                        </DetailField>
+                        <DetailField label="最近等级变更">
+                          {detailLevelChanges[0]
+                            ? formatDate(detailLevelChanges[0].createdAt)
+                            : "—"}
+                        </DetailField>
+                      </dl>
+                    </DetailSection>
+                  </div>
+                )}
+
+                {/* 基本信息 */}
+                {activeDetailTab === "basic" && (
+                  <DetailSection title="账号资料">
+                    <dl className="grid gap-x-6 sm:grid-cols-2">
+                      <DetailRow label="性别">
+                        {detailUser.gender === "male"
+                          ? "男"
+                          : detailUser.gender === "female"
+                            ? "女"
+                            : "未设置"}
+                      </DetailRow>
+                      <DetailRow label="生日">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>
+                            {detailUser.birthday
+                              ? new Date(detailUser.birthday).toLocaleDateString("zh-CN")
+                              : "未设置"}
+                          </span>
+                          {detailUser.birthdayLocked && (
+                            <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
+                              已锁定
+                            </Badge>
+                          )}
+                          {canWriteUsers && (
                             <Button
                               size="sm"
                               variant="ghost"
                               className="h-auto px-1.5 py-0.5 text-xs"
                               onClick={() => {
-                                adjustRequestIdRef.current = createClientRequestId();
-                                setAdjustOpen(true);
+                                setBirthdayInput(
+                                  detailUser.birthday
+                                    ? new Date(detailUser.birthday).toISOString().slice(0, 10)
+                                    : ""
+                                );
+                                setBirthdayEditOpen(true);
                               }}
                             >
-                              调整
+                              修改
                             </Button>
                           )}
-                        </span>
-                      </DetailField>
-                    </dl>
-                  </DetailSection>
-
-                  <DetailSection title="活跃信息">
-                    <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-                      <DetailField label="注册时间">
-                        {formatDate(detailUser.createdAt)}
-                      </DetailField>
-                      <DetailField label="最后登录">
-                        {detailLoginAttempts[0]
-                          ? formatDate(detailLoginAttempts[0].createdAt)
-                          : "—"}
-                      </DetailField>
-                      <DetailField label="收货地址">
-                        {detailAddresses.length > 0
-                          ? `${detailAddresses.length} 个`
-                          : "暂无"}
-                      </DetailField>
-                      <DetailField label="最近等级变更">
-                        {detailLevelChanges[0]
-                          ? formatDate(detailLevelChanges[0].createdAt)
-                          : "—"}
-                      </DetailField>
-                    </dl>
-                  </DetailSection>
-                </div>
-              )}
-
-              {/* 基本信息 */}
-              {activeDetailTab === "basic" && (
-                <DetailSection title="账号资料">
-                  <dl className="grid gap-x-6 sm:grid-cols-2">
-                    <DetailRow label="性别">
-                      {detailUser.gender === "male"
-                        ? "男"
-                        : detailUser.gender === "female"
-                          ? "女"
-                          : "未设置"}
-                    </DetailRow>
-                    <DetailRow label="生日">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span>
-                          {detailUser.birthday
-                            ? new Date(detailUser.birthday).toLocaleDateString("zh-CN")
-                            : "未设置"}
-                        </span>
-                        {detailUser.birthdayLocked && (
-                          <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
-                            已锁定
-                          </Badge>
+                        </div>
+                      </DetailRow>
+                      <DetailRow label="最后更新">{formatDate(detailUser.updatedAt)}</DetailRow>
+                      <DetailRow label="微信 UnionID">
+                        {detailUser.wechatUnionId ? (
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <code
+                              className="min-w-0 truncate font-mono text-xs text-brand-charcoal/70"
+                              title={detailUser.wechatUnionId}
+                            >
+                              {detailUser.wechatUnionId}
+                            </code>
+                            <Tooltip content="复制 UnionID" side="top">
+                              <button
+                                type="button"
+                                aria-label="复制微信 UnionID"
+                                onClick={() =>
+                                  void copyText(detailUser.wechatUnionId ?? "", "微信 UnionID")
+                                }
+                                className="inline-flex shrink-0 rounded p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80"
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </button>
+                            </Tooltip>
+                          </div>
+                        ) : (
+                          <span className="text-brand-charcoal/65">未绑定</span>
                         )}
-                        {canWriteUsers && (
+                      </DetailRow>
+                      <DetailRow label="第三方平台绑定" className="sm:col-span-2">
+                        {detailUser.externalIdentities &&
+                        detailUser.externalIdentities.length > 0 ? (
+                          <div className="divide-y divide-brand-charcoal/[0.06] overflow-hidden rounded-lg border border-brand-charcoal/10">
+                            {detailUser.externalIdentities.map((identity) => {
+                              // 小程序渠道无昵称快照：优先显示来源小程序名称（新数据），
+                              // 其次平台昵称快照（网页扫码绑定）
+                              const identityLabel =
+                                identity.clientName || getIdentityNickname(identity.metadata);
+                              return (
+                                <div
+                                  key={identity.id}
+                                  className="flex flex-wrap items-center gap-2 px-3 py-2"
+                                >
+                                  <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
+                                    {providerLabelMap[identity.provider] || identity.provider}
+                                  </Badge>
+                                  {identityLabel && (
+                                    <span className="max-w-[12rem] truncate text-brand-charcoal/70">
+                                      {identityLabel}
+                                    </span>
+                                  )}
+                                  {/* OpenID：无 users:sensitive:read 时由服务端脱敏，明文仅见于敏感权限 */}
+                                  <code
+                                    className="max-w-[12rem] truncate font-mono text-[11px] text-brand-charcoal/65"
+                                    title={`OpenID: ${identity.subjectId}`}
+                                  >
+                                    {identity.subjectId}
+                                  </code>
+                                  <span className="ml-auto text-xs text-brand-charcoal/65">
+                                    {formatDate(identity.createdAt)}
+                                  </span>
+                                  {canWriteUsers && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setIdentityUnbindTarget({
+                                          id: identity.id,
+                                          label:
+                                            providerLabelMap[identity.provider] ||
+                                            identity.provider,
+                                        })
+                                      }
+                                      className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                                    >
+                                      解绑
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : detailUser.wechatOpenId ? (
+                          // 双写过渡期兜底：迁移前历史数据可能仅有旧列
+                          <Badge variant="success" className="px-1.5 py-0 text-[11px]">
+                            微信已绑定（历史数据）
+                          </Badge>
+                        ) : (
+                          <span className="text-brand-charcoal/65">未绑定</span>
+                        )}
+                      </DetailRow>
+                    </dl>
+                  </DetailSection>
+                )}
+
+                {/* 测肤档案 */}
+                {activeDetailTab === "advisor" && canReadAdvisorProfile && (
+                  <UserAdvisorPanel
+                    key={detailUser.id}
+                    userId={detailUser.id}
+                    mainStatus={detailUser.status}
+                  />
+                )}
+
+                {/* 积分与兑换 */}
+                {activeDetailTab === "points" && (
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-3 rounded-xl border border-brand-charcoal/10 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs text-brand-charcoal/65">可用积分</p>
+                        <p className="mt-1 font-mono text-3xl font-semibold tabular-nums text-brand-charcoal">
+                          {detailPoints ? detailPoints.available.toLocaleString() : "—"}
+                        </p>
+                        {detailPoints && detailPoints.redemptionTotal > 0 && (
+                          <p className="mt-1 text-xs text-brand-charcoal/65">
+                            累计兑换 {detailPoints.redemptionTotal} 次
+                          </p>
+                        )}
+                      </div>
+                      {canAdjustPoints && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          leftIcon={<Wallet className="h-4 w-4" />}
+                          onClick={() => {
+                            adjustRequestIdRef.current = createClientRequestId();
+                            setAdjustOpen(true);
+                          }}
+                        >
+                          调整积分
+                        </Button>
+                      )}
+                    </div>
+
+                    <DetailSection title="积分流水" bodyClassName="p-0">
+                      {ledgerLoading ? (
+                        <div className="space-y-2 p-4">
+                          {Array.from({ length: 3 }).map((_, index) => (
+                            <div
+                              key={index}
+                              className="h-10 animate-pulse rounded-lg bg-brand-charcoal/[0.04]"
+                            />
+                          ))}
+                        </div>
+                      ) : ledgerItems.length === 0 ? (
+                        <Empty title="暂无积分流水" className="py-8" />
+                      ) : (
+                        <div className="divide-y divide-brand-charcoal/10">
+                          {ledgerItems.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center justify-between gap-3 px-4 py-3"
+                            >
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="shrink-0 text-xs text-brand-charcoal/70">
+                                  {POINT_TYPE_LABELS[item.type] || item.type}
+                                </span>
+                                {item.note && (
+                                  <span className="truncate text-xs text-brand-charcoal/65">
+                                    {item.note}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex shrink-0 items-center gap-3">
+                                <span
+                                  className={cn(
+                                    "font-mono text-sm font-medium tabular-nums",
+                                    item.amount > 0 ? "text-emerald-600" : "text-red-500"
+                                  )}
+                                >
+                                  {item.amount > 0 ? `+${item.amount}` : item.amount}
+                                </span>
+                                <span className="text-xs text-brand-charcoal/65">
+                                  {formatDate(item.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {ledgerTotalPages > 1 && (
+                        <div className="flex items-center justify-end gap-2 border-t border-brand-charcoal/10 px-4 py-2">
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-auto px-1.5 py-0.5 text-xs"
-                            onClick={() => {
-                              setBirthdayInput(
-                                detailUser.birthday
-                                  ? new Date(detailUser.birthday).toISOString().slice(0, 10)
-                                  : ""
-                              );
-                              setBirthdayEditOpen(true);
-                            }}
+                            disabled={ledgerPage <= 1 || ledgerLoading}
+                            onClick={() => detailUser && fetchLedger(detailUser.id, ledgerPage - 1)}
                           >
-                            修改
+                            上一页
                           </Button>
-                        )}
-                      </div>
-                    </DetailRow>
-                    <DetailRow label="最后更新">{formatDate(detailUser.updatedAt)}</DetailRow>
-                    <DetailRow label="微信 UnionID">
-                      {detailUser.wechatUnionId ? (
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <code
-                            className="min-w-0 truncate font-mono text-xs text-brand-charcoal/70"
-                            title={detailUser.wechatUnionId}
+                          <span className="text-xs tabular-nums text-brand-charcoal/65">
+                            {ledgerPage}/{ledgerTotalPages}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={ledgerPage >= ledgerTotalPages || ledgerLoading}
+                            onClick={() => detailUser && fetchLedger(detailUser.id, ledgerPage + 1)}
                           >
-                            {detailUser.wechatUnionId}
-                          </code>
-                          <Tooltip content="复制 UnionID" side="top">
-                            <button
-                              type="button"
-                              aria-label="复制微信 UnionID"
-                              onClick={() =>
-                                void copyText(detailUser.wechatUnionId ?? "", "微信 UnionID")
-                              }
-                              className="inline-flex shrink-0 rounded p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </button>
-                          </Tooltip>
+                            下一页
+                          </Button>
                         </div>
-                      ) : (
-                        <span className="text-brand-charcoal/65">未绑定</span>
                       )}
-                    </DetailRow>
-                    <DetailRow label="第三方平台绑定" className="sm:col-span-2">
-                      {detailUser.externalIdentities && detailUser.externalIdentities.length > 0 ? (
-                        <div className="divide-y divide-brand-charcoal/[0.06] overflow-hidden rounded-lg border border-brand-charcoal/10">
-                          {detailUser.externalIdentities.map((identity) => {
-                            // 小程序渠道无昵称快照：优先显示来源小程序名称（新数据），
-                            // 其次平台昵称快照（网页扫码绑定）
-                            const identityLabel =
-                              identity.clientName || getIdentityNickname(identity.metadata);
-                            return (
-                              <div
-                                key={identity.id}
-                                className="flex flex-wrap items-center gap-2 px-3 py-2"
-                              >
-                                <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
-                                  {providerLabelMap[identity.provider] || identity.provider}
-                                </Badge>
-                                {identityLabel && (
-                                  <span className="max-w-[12rem] truncate text-brand-charcoal/70">
-                                    {identityLabel}
+                    </DetailSection>
+
+                    <DetailSection
+                      title={
+                        <span>
+                          积分兑换记录
+                          {detailPoints && detailPoints.redemptionTotal > 0 && (
+                            <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
+                              共 {detailPoints.redemptionTotal} 条，展示最近{" "}
+                              {detailPoints.redemptions.length} 条
+                            </span>
+                          )}
+                        </span>
+                      }
+                      bodyClassName="p-0"
+                    >
+                      {!detailPoints || detailPoints.redemptions.length === 0 ? (
+                        <Empty title="暂无兑换记录" className="py-8" />
+                      ) : (
+                        <div className="divide-y divide-brand-charcoal/10">
+                          {detailPoints.redemptions.map((r) => (
+                            <div key={r.id} className="px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <p className="truncate text-sm font-medium text-brand-charcoal">
+                                    {r.productName}
+                                  </p>
+                                  <span className="shrink-0 text-xs text-brand-charcoal/65">
+                                    {r.points.toLocaleString()} 分
+                                  </span>
+                                </div>
+                                <span
+                                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                                    REDEMPTION_STATUS_BADGES[r.status]
+                                  }`}
+                                >
+                                  {REDEMPTION_STATUS_LABELS[r.status]}
+                                </span>
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/65">
+                                <span>{formatDate(r.createdAt)}</span>
+                                <span>参考价 ¥{r.priceYuan.toLocaleString()}</span>
+                                {r.waybillNo && (
+                                  <span>
+                                    {r.carrier === "SF" ? "顺丰" : "快递"} · {r.waybillNo}
                                   </span>
                                 )}
-                                {/* OpenID：无 users:sensitive:read 时由服务端脱敏，明文仅见于敏感权限 */}
-                                <code
-                                  className="max-w-[12rem] truncate font-mono text-[11px] text-brand-charcoal/65"
-                                  title={`OpenID: ${identity.subjectId}`}
-                                >
-                                  {identity.subjectId}
-                                </code>
-                                <span className="ml-auto text-xs text-brand-charcoal/65">
-                                  {formatDate(identity.createdAt)}
-                                </span>
-                                {canWriteUsers && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setIdentityUnbindTarget({
-                                        id: identity.id,
-                                        label:
-                                          providerLabelMap[identity.provider] || identity.provider,
-                                      })
-                                    }
-                                    className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
-                                  >
-                                    解绑
-                                  </button>
-                                )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      ) : detailUser.wechatOpenId ? (
-                        // 双写过渡期兜底：迁移前历史数据可能仅有旧列
-                        <Badge variant="success" className="px-1.5 py-0 text-[11px]">
-                          微信已绑定（历史数据）
-                        </Badge>
-                      ) : (
-                        <span className="text-brand-charcoal/65">未绑定</span>
-                      )}
-                    </DetailRow>
-                  </dl>
-                </DetailSection>
-              )}
-
-              {/* 测肤档案 */}
-              {activeDetailTab === "advisor" && canReadAdvisorProfile && (
-                <UserAdvisorPanel
-                  key={detailUser.id}
-                  userId={detailUser.id}
-                  mainStatus={detailUser.status}
-                />
-              )}
-
-              {/* 积分与兑换 */}
-              {activeDetailTab === "points" && (
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-3 rounded-xl border border-brand-charcoal/10 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs text-brand-charcoal/65">可用积分</p>
-                      <p className="mt-1 font-mono text-3xl font-semibold tabular-nums text-brand-charcoal">
-                        {detailPoints ? detailPoints.available.toLocaleString() : "—"}
-                      </p>
-                      {detailPoints && detailPoints.redemptionTotal > 0 && (
-                        <p className="mt-1 text-xs text-brand-charcoal/65">
-                          累计兑换 {detailPoints.redemptionTotal} 次
-                        </p>
-                      )}
-                    </div>
-                    {canAdjustPoints && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        leftIcon={<Wallet className="h-4 w-4" />}
-                        onClick={() => {
-                          adjustRequestIdRef.current = createClientRequestId();
-                          setAdjustOpen(true);
-                        }}
-                      >
-                        调整积分
-                      </Button>
-                    )}
-                  </div>
-
-                  <DetailSection title="积分流水" bodyClassName="p-0">
-                    {ledgerLoading ? (
-                      <div className="space-y-2 p-4">
-                        {Array.from({ length: 3 }).map((_, index) => (
-                          <div
-                            key={index}
-                            className="h-10 animate-pulse rounded-lg bg-brand-charcoal/[0.04]"
-                          />
-                        ))}
-                      </div>
-                    ) : ledgerItems.length === 0 ? (
-                      <Empty title="暂无积分流水" className="py-8" />
-                    ) : (
-                      <div className="divide-y divide-brand-charcoal/10">
-                        {ledgerItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center justify-between gap-3 px-4 py-3"
-                          >
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="shrink-0 text-xs text-brand-charcoal/70">
-                                {POINT_TYPE_LABELS[item.type] || item.type}
-                              </span>
-                              {item.note && (
-                                <span className="truncate text-xs text-brand-charcoal/65">
-                                  {item.note}
-                                </span>
+                              {r.address && (
+                                <p className="mt-1 text-xs text-brand-charcoal/65">
+                                  快照收货：{r.recipient} {r.phone} {r.address}
+                                </p>
                               )}
                             </div>
-                            <div className="flex shrink-0 items-center gap-3">
-                              <span
-                                className={cn(
-                                  "font-mono text-sm font-medium tabular-nums",
-                                  item.amount > 0 ? "text-emerald-600" : "text-red-500"
-                                )}
-                              >
-                                {item.amount > 0 ? `+${item.amount}` : item.amount}
-                              </span>
-                              <span className="text-xs text-brand-charcoal/65">
-                                {formatDate(item.createdAt)}
-                              </span>
+                          ))}
+                        </div>
+                      )}
+                    </DetailSection>
+                  </div>
+                )}
+
+                {/* 收货地址 */}
+                {activeDetailTab === "address" && (
+                  <DetailSection title="收货地址" bodyClassName="p-0">
+                    {detailAddresses.length === 0 ? (
+                      <Empty title="暂无收货地址" className="py-8" />
+                    ) : (
+                      <div className="divide-y divide-brand-charcoal/10">
+                        {detailAddresses.map((a) => (
+                          <div key={a.id} className="px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-medium text-brand-charcoal">
+                                {a.recipient}
+                              </p>
+                              <span className="text-xs text-brand-charcoal/65">{a.phone}</span>
+                              {a.isDefault && (
+                                <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
+                                  默认
+                                </Badge>
+                              )}
                             </div>
+                            <p className="mt-1 text-xs text-brand-charcoal/70">
+                              {a.region} {a.detail}
+                            </p>
                           </div>
                         ))}
                       </div>
                     )}
-                    {ledgerTotalPages > 1 && (
-                      <div className="flex items-center justify-end gap-2 border-t border-brand-charcoal/10 px-4 py-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={ledgerPage <= 1 || ledgerLoading}
-                          onClick={() => detailUser && fetchLedger(detailUser.id, ledgerPage - 1)}
-                        >
-                          上一页
-                        </Button>
-                        <span className="text-xs tabular-nums text-brand-charcoal/65">
-                          {ledgerPage}/{ledgerTotalPages}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={ledgerPage >= ledgerTotalPages || ledgerLoading}
-                          onClick={() => detailUser && fetchLedger(detailUser.id, ledgerPage + 1)}
-                        >
-                          下一页
-                        </Button>
-                      </div>
-                    )}
                   </DetailSection>
+                )}
 
+                {/* 消费记录 */}
+                {activeDetailTab === "spent" && (
                   <DetailSection
                     title={
                       <span>
-                        积分兑换记录
-                        {detailPoints && detailPoints.redemptionTotal > 0 && (
+                        消费补录记录
+                        {detailAdjustmentTotal > 0 && (
                           <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
-                            共 {detailPoints.redemptionTotal} 条，展示最近{" "}
-                            {detailPoints.redemptions.length} 条
+                            共 {detailAdjustmentTotal} 条，展示最近 {detailAdjustments.length} 条
                           </span>
                         )}
                       </span>
                     }
                     bodyClassName="p-0"
                   >
-                    {!detailPoints || detailPoints.redemptions.length === 0 ? (
-                      <Empty title="暂无兑换记录" className="py-8" />
+                    {detailAdjustments.length === 0 ? (
+                      <Empty title="暂无消费记录" className="py-8" />
                     ) : (
                       <div className="divide-y divide-brand-charcoal/10">
-                        {detailPoints.redemptions.map((r) => (
-                          <div key={r.id} className="px-4 py-3">
+                        {detailAdjustments.map((a) => (
+                          <div key={a.id} className="px-4 py-3">
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex min-w-0 items-center gap-2">
-                                <p className="truncate text-sm font-medium text-brand-charcoal">
-                                  {r.productName}
+                                <p className="truncate font-mono text-sm text-brand-charcoal">
+                                  {a.orderNo}
                                 </p>
                                 <span className="shrink-0 text-xs text-brand-charcoal/65">
-                                  {r.points.toLocaleString()} 分
+                                  {SPENT_CHANNEL_LABELS[
+                                    a.channel as keyof typeof SPENT_CHANNEL_LABELS
+                                  ] ?? a.channel}
                                 </span>
                               </div>
                               <span
                                 className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                                  REDEMPTION_STATUS_BADGES[r.status]
+                                  ADJUSTMENT_STATUS_BADGES[a.status]
                                 }`}
                               >
-                                {REDEMPTION_STATUS_LABELS[r.status]}
+                                {SPENT_STATUS_LABELS[a.status]}
                               </span>
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/65">
-                              <span>{formatDate(r.createdAt)}</span>
-                              <span>参考价 ¥{r.priceYuan.toLocaleString()}</span>
-                              {r.waybillNo && (
-                                <span>
-                                  {r.carrier === "SF" ? "顺丰" : "快递"} · {r.waybillNo}
+                              <span>{formatDate(a.createdAt)}</span>
+                              {a.amountClaimed != null && (
+                                <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
+                              )}
+                              {a.reviewAmount != null && (
+                                <span className="text-emerald-700">
+                                  入账 ¥{a.reviewAmount.toLocaleString()}
                                 </span>
                               )}
                             </div>
-                            {r.address && (
-                              <p className="mt-1 text-xs text-brand-charcoal/65">
-                                快照收货：{r.recipient} {r.phone} {r.address}
-                              </p>
+                            {a.status === "REJECTED" && a.reviewNote && (
+                              <p className="mt-1 text-xs text-red-600">驳回原因：{a.reviewNote}</p>
                             )}
                           </div>
                         ))}
                       </div>
                     )}
                   </DetailSection>
-                </div>
-              )}
+                )}
 
-              {/* 收货地址 */}
-              {activeDetailTab === "address" && (
-                <DetailSection title="收货地址" bodyClassName="p-0">
-                  {detailAddresses.length === 0 ? (
-                    <Empty title="暂无收货地址" className="py-8" />
-                  ) : (
-                    <div className="divide-y divide-brand-charcoal/10">
-                      {detailAddresses.map((a) => (
-                        <div key={a.id} className="px-4 py-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-medium text-brand-charcoal">{a.recipient}</p>
-                            <span className="text-xs text-brand-charcoal/65">{a.phone}</span>
-                            {a.isDefault && (
-                              <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
-                                默认
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="mt-1 text-xs text-brand-charcoal/70">
-                            {a.region} {a.detail}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </DetailSection>
-              )}
-
-              {/* 消费记录 */}
-              {activeDetailTab === "spent" && (
-                <DetailSection
-                  title={
-                    <span>
-                      消费补录记录
-                      {detailAdjustmentTotal > 0 && (
-                        <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
-                          共 {detailAdjustmentTotal} 条，展示最近 {detailAdjustments.length} 条
-                        </span>
-                      )}
-                    </span>
-                  }
-                  bodyClassName="p-0"
-                >
-                  {detailAdjustments.length === 0 ? (
-                    <Empty title="暂无消费记录" className="py-8" />
-                  ) : (
-                    <div className="divide-y divide-brand-charcoal/10">
-                      {detailAdjustments.map((a) => (
-                        <div key={a.id} className="px-4 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <p className="truncate font-mono text-sm text-brand-charcoal">
-                                {a.orderNo}
-                              </p>
-                              <span className="shrink-0 text-xs text-brand-charcoal/65">
-                                {SPENT_CHANNEL_LABELS[
-                                  a.channel as keyof typeof SPENT_CHANNEL_LABELS
-                                ] ?? a.channel}
-                              </span>
-                            </div>
-                            <span
-                              className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                                ADJUSTMENT_STATUS_BADGES[a.status]
-                              }`}
-                            >
-                              {SPENT_STATUS_LABELS[a.status]}
-                            </span>
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/65">
-                            <span>{formatDate(a.createdAt)}</span>
-                            {a.amountClaimed != null && (
-                              <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
-                            )}
-                            {a.reviewAmount != null && (
-                              <span className="text-emerald-700">
-                                入账 ¥{a.reviewAmount.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-                          {a.status === "REJECTED" && a.reviewNote && (
-                            <p className="mt-1 text-xs text-red-600">驳回原因：{a.reviewNote}</p>
+                {/* 等级成长 */}
+                {activeDetailTab === "growth" && (
+                  <div className="space-y-4">
+                    <DetailSection title="等级概览">
+                      <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                        <DetailField label="会员等级">
+                          {detailUser.membershipLevel &&
+                          membershipLevelMap[detailUser.membershipLevel] ? (
+                            <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
+                              {membershipLevelMap[detailUser.membershipLevel].label}
+                            </Badge>
+                          ) : (
+                            <span className="text-brand-charcoal/65">未设置</span>
                           )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </DetailSection>
-              )}
+                        </DetailField>
+                        <DetailField label="累计消费">
+                          <span className="font-mono font-medium tabular-nums">
+                            {detailUser.totalSpent != null
+                              ? `¥${detailUser.totalSpent.toLocaleString()}`
+                              : "¥0"}
+                          </span>
+                        </DetailField>
+                        <DetailField label="银卡激活时间">
+                          {detailUser.silverActivatedAt
+                            ? formatDate(detailUser.silverActivatedAt)
+                            : "—"}
+                        </DetailField>
+                        <DetailField label="金卡激活时间">
+                          {detailUser.goldActivatedAt
+                            ? formatDate(detailUser.goldActivatedAt)
+                            : "—"}
+                        </DetailField>
+                        <DetailField label="钻石卡激活时间">
+                          {detailUser.diamondActivatedAt
+                            ? formatDate(detailUser.diamondActivatedAt)
+                            : "—"}
+                        </DetailField>
+                      </dl>
+                      <p className="mt-4 border-t border-brand-charcoal/10 pt-3 text-xs text-brand-charcoal/65">
+                        激活时间为首次达到该等级的时间（等级按累计消费实时判定，可升可降）
+                      </p>
+                    </DetailSection>
 
-              {/* 等级成长 */}
-              {activeDetailTab === "growth" && (
-                <div className="space-y-4">
-                  <DetailSection title="等级概览">
-                    <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-                      <DetailField label="会员等级">
-                        {detailUser.membershipLevel &&
-                        membershipLevelMap[detailUser.membershipLevel] ? (
-                          <Badge variant={membershipLevelMap[detailUser.membershipLevel].variant}>
-                            {membershipLevelMap[detailUser.membershipLevel].label}
-                          </Badge>
-                        ) : (
-                          <span className="text-brand-charcoal/65">未设置</span>
-                        )}
-                      </DetailField>
-                      <DetailField label="累计消费">
-                        <span className="font-mono font-medium tabular-nums">
-                          {detailUser.totalSpent != null
-                            ? `¥${detailUser.totalSpent.toLocaleString()}`
-                            : "¥0"}
-                        </span>
-                      </DetailField>
-                      <DetailField label="银卡激活时间">
-                        {detailUser.silverActivatedAt
-                          ? formatDate(detailUser.silverActivatedAt)
-                          : "—"}
-                      </DetailField>
-                      <DetailField label="金卡激活时间">
-                        {detailUser.goldActivatedAt ? formatDate(detailUser.goldActivatedAt) : "—"}
-                      </DetailField>
-                      <DetailField label="钻石卡激活时间">
-                        {detailUser.diamondActivatedAt
-                          ? formatDate(detailUser.diamondActivatedAt)
-                          : "—"}
-                      </DetailField>
-                    </dl>
-                    <p className="mt-4 border-t border-brand-charcoal/10 pt-3 text-xs text-brand-charcoal/65">
-                      激活时间为首次达到该等级的时间（等级按累计消费实时判定，可升可降）
-                    </p>
-                  </DetailSection>
-
-                  <DetailSection title="等级变更轨迹" bodyClassName="p-0">
-                    {detailLevelChanges.length === 0 ? (
-                      <Empty
-                        title="暂无等级变更记录"
-                        description="注册即为当前等级"
-                        className="py-8"
-                      />
-                    ) : (
-                      <div className="divide-y divide-brand-charcoal/10">
-                        {detailLevelChanges.map((c) => (
-                          <div
-                            key={c.id}
-                            className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
-                          >
-                            <div className="flex flex-wrap items-center gap-2 text-sm">
-                              <Badge
-                                variant={membershipLevelMap[c.fromLevel]?.variant ?? "secondary"}
-                              >
-                                {membershipLevelMap[c.fromLevel]?.label ?? c.fromLevel}
-                              </Badge>
-                              <span className="text-brand-charcoal/65">→</span>
-                              <Badge
-                                variant={membershipLevelMap[c.toLevel]?.variant ?? "secondary"}
-                              >
-                                {membershipLevelMap[c.toLevel]?.label ?? c.toLevel}
-                              </Badge>
-                              {c.note && (
-                                <span
-                                  className="max-w-[16rem] truncate text-xs text-brand-charcoal/65"
-                                  title={c.note}
-                                >
-                                  {c.note}
-                                </span>
-                              )}
-                            </div>
-                            <span className="shrink-0 text-xs text-brand-charcoal/65">
-                              {formatDate(c.createdAt)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </DetailSection>
-                </div>
-              )}
-
-              {/* 登录历史 */}
-              {activeDetailTab === "login" && (
-                <DetailSection
-                  title={
-                    <span>
-                      登录历史
-                      {detailLoginAttempts.length > 0 && (
-                        <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
-                          最近 {detailLoginAttempts.length} 条
-                        </span>
-                      )}
-                    </span>
-                  }
-                  action={
-                    detailLoginAttempts.length > 0 ? (
-                      <Switch
-                        label="仅看失败"
-                        checked={loginFailedOnly}
-                        onChange={setLoginFailedOnly}
-                      />
-                    ) : undefined
-                  }
-                  bodyClassName="p-0"
-                >
-                  {detailLoginAttempts.length === 0 ? (
-                    <Empty title="暂无登录记录" className="py-8" />
-                  ) : (
-                    (() => {
-                      const visibleAttempts = loginFailedOnly
-                        ? detailLoginAttempts.filter((a) => !a.success)
-                        : detailLoginAttempts;
-                      return visibleAttempts.length === 0 ? (
-                        <Empty title="最近记录中没有失败登录" className="py-8" />
+                    <DetailSection title="等级变更轨迹" bodyClassName="p-0">
+                      {detailLevelChanges.length === 0 ? (
+                        <Empty
+                          title="暂无等级变更记录"
+                          description="注册即为当前等级"
+                          className="py-8"
+                        />
                       ) : (
                         <div className="divide-y divide-brand-charcoal/10">
-                          {visibleAttempts.map((a) => (
-                            <div key={a.id} className="px-4 py-3">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <span
-                                    className={`inline-flex h-2 w-2 flex-shrink-0 rounded-full ${
-                                      a.success ? "bg-emerald-500" : "bg-red-500"
-                                    }`}
-                                  />
-                                  <span className="text-sm text-brand-charcoal/80">
-                                    {LOGIN_TYPE_LABELS[a.type] || a.type}
-                                  </span>
-                                  {!a.success && (
-                                    <Badge variant="danger" className="px-1.5 py-0 text-[11px]">
-                                      {a.reason || "失败"}
-                                    </Badge>
-                                  )}
-                                  {a.clientId && (
-                                    <span className="truncate text-xs text-brand-charcoal/65">
-                                      {a.clientId}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-3 text-xs text-brand-charcoal/65">
-                                  {a.ipAddress && <span className="font-mono">{a.ipAddress}</span>}
-                                  <span>{formatDate(a.createdAt)}</span>
-                                </div>
-                              </div>
-                              {a.userAgent && (
-                                <p
-                                  className="mt-1 w-full truncate text-xs text-brand-charcoal/65"
-                                  title={a.userAgent}
+                          {detailLevelChanges.map((c) => (
+                            <div
+                              key={c.id}
+                              className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+                            >
+                              <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <Badge
+                                  variant={membershipLevelMap[c.fromLevel]?.variant ?? "secondary"}
                                 >
-                                  {a.userAgent}
-                                </p>
-                              )}
+                                  {membershipLevelMap[c.fromLevel]?.label ?? c.fromLevel}
+                                </Badge>
+                                <span className="text-brand-charcoal/65">→</span>
+                                <Badge
+                                  variant={membershipLevelMap[c.toLevel]?.variant ?? "secondary"}
+                                >
+                                  {membershipLevelMap[c.toLevel]?.label ?? c.toLevel}
+                                </Badge>
+                                {c.note && (
+                                  <span
+                                    className="max-w-[16rem] truncate text-xs text-brand-charcoal/65"
+                                    title={c.note}
+                                  >
+                                    {c.note}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="shrink-0 text-xs text-brand-charcoal/65">
+                                {formatDate(c.createdAt)}
+                              </span>
                             </div>
                           ))}
                         </div>
-                      );
-                    })()
-                  )}
-                </DetailSection>
-              )}
-            </div>
+                      )}
+                    </DetailSection>
+                  </div>
+                )}
+
+                {/* 登录历史 */}
+                {activeDetailTab === "login" && (
+                  <DetailSection
+                    title={
+                      <span>
+                        登录历史
+                        {detailLoginAttempts.length > 0 && (
+                          <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
+                            最近 {detailLoginAttempts.length} 条
+                          </span>
+                        )}
+                      </span>
+                    }
+                    action={
+                      detailLoginAttempts.length > 0 ? (
+                        <Switch
+                          label="仅看失败"
+                          checked={loginFailedOnly}
+                          onChange={setLoginFailedOnly}
+                        />
+                      ) : undefined
+                    }
+                    bodyClassName="p-0"
+                  >
+                    {detailLoginAttempts.length === 0 ? (
+                      <Empty title="暂无登录记录" className="py-8" />
+                    ) : (
+                      (() => {
+                        const visibleAttempts = loginFailedOnly
+                          ? detailLoginAttempts.filter((a) => !a.success)
+                          : detailLoginAttempts;
+                        return visibleAttempts.length === 0 ? (
+                          <Empty title="最近记录中没有失败登录" className="py-8" />
+                        ) : (
+                          <div className="divide-y divide-brand-charcoal/10">
+                            {visibleAttempts.map((a) => (
+                              <div key={a.id} className="px-4 py-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span
+                                      className={`inline-flex h-2 w-2 flex-shrink-0 rounded-full ${
+                                        a.success ? "bg-emerald-500" : "bg-red-500"
+                                      }`}
+                                    />
+                                    <span className="text-sm text-brand-charcoal/80">
+                                      {LOGIN_TYPE_LABELS[a.type] || a.type}
+                                    </span>
+                                    {!a.success && (
+                                      <Badge variant="danger" className="px-1.5 py-0 text-[11px]">
+                                        {a.reason || "失败"}
+                                      </Badge>
+                                    )}
+                                    {a.clientId && (
+                                      <span className="truncate text-xs text-brand-charcoal/65">
+                                        {a.clientId}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-brand-charcoal/65">
+                                    {a.ipAddress && (
+                                      <span className="font-mono">{a.ipAddress}</span>
+                                    )}
+                                    <span>{formatDate(a.createdAt)}</span>
+                                  </div>
+                                </div>
+                                {a.userAgent && (
+                                  <p
+                                    className="mt-1 w-full truncate text-xs text-brand-charcoal/65"
+                                    title={a.userAgent}
+                                  >
+                                    {a.userAgent}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()
+                    )}
+                  </DetailSection>
+                )}
+              </div>
             </div>
           </div>
         )}

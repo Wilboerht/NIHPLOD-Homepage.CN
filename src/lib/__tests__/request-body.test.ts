@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  BodyTooLargeError,
-  readJsonBody,
-  readJsonBodyOrDefault,
-} from "../request-body";
+import { BodyTooLargeError, readJsonBody, readJsonBodyOrDefault } from "../request-body";
 
 function chunkedRequest(chunks: string[]): Request {
   const encoder = new TextEncoder();
@@ -54,8 +50,8 @@ describe("request-body", () => {
       body: "not-json",
       headers: { "content-length": "2048" },
     });
-    await expect(
-      readJsonBodyOrDefault(huge, 1024, { fallback: true })
-    ).rejects.toBeInstanceOf(BodyTooLargeError);
+    await expect(readJsonBodyOrDefault(huge, 1024, { fallback: true })).rejects.toBeInstanceOf(
+      BodyTooLargeError
+    );
   });
 });

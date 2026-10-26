@@ -38,16 +38,13 @@ export default defineConfig({
         "src/generated/**",
         "**/*.d.ts",
       ],
-      // 全局阈值目标：60%（中长期目标）。当前覆盖率约 35% statements/lines，
-      // 因大量非 SSO 业务模块（上传、OSS、微信等）尚无测试，短期无法直接达标。
-      // 新增 SSO 核心模块测试后，functions/branches 已接近/超过 60%。
-      // 后续应优先为 ali-oss.ts、api-client.ts、upload.ts、wechat*.ts、wecom.ts 等补充测试。
+      // 当前覆盖率约 63% statements/lines，阈值先守住已验证水平，后续优先补
+      // 审批执行、审计导出/保留、上传、OSS、微信与企业微信通知的故障路径。
       thresholds: {
-        statements: 35,
-        branches: 60,
-        functions: 60,
-        lines: 35,
-        // 60% 是下一里程碑；statements/lines 因大量非 SSO 业务模块暂无测试暂保持 35%。
+        statements: 60,
+        branches: 70,
+        functions: 70,
+        lines: 60,
       },
     },
   },

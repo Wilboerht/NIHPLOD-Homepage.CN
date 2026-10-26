@@ -15,22 +15,11 @@ const MUTATING_EXPORT = /export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/;
 const ALLOWLIST = new Map<string, string>([
   // 审批路由的审计在 src/lib/admin-approval.ts 内统一写入，静态扫描看不到
   ["src/app/api/admin/approvals/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
-  [
-    "src/app/api/admin/approvals/[id]/approve/route.ts",
-    "审计在 src/lib/admin-approval.ts 内完成",
-  ],
-  [
-    "src/app/api/admin/approvals/[id]/cancel/route.ts",
-    "审计在 src/lib/admin-approval.ts 内完成",
-  ],
-  [
-    "src/app/api/admin/approvals/[id]/execute/route.ts",
-    "审计在 src/lib/admin-approval.ts 内完成",
-  ],
-  [
-    "src/app/api/admin/approvals/[id]/reject/route.ts",
-    "审计在 src/lib/admin-approval.ts 内完成",
-  ],
+  ["src/app/api/admin/approvals/[id]/approve/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
+  ["src/app/api/admin/approvals/[id]/cancel/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
+  ["src/app/api/admin/approvals/[id]/execute/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
+  ["src/app/api/admin/approvals/[id]/reject/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
+  ["src/app/api/admin/approvals/[id]/retry/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
 ]);
 
 function walk(dir: string): string[] {

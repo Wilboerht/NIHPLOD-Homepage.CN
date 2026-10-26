@@ -10,10 +10,7 @@ import { PendingQueue, type PendingQueueItem } from "@/components/admin/PendingQ
 import { SecurityMonitor } from "@/components/admin/SecurityMonitor";
 import { StatStrip } from "@/components/admin/StatStrip";
 import { SystemAlertIndicator } from "@/components/admin/SystemAlertIndicator";
-import type {
-  OwnerGovernanceData,
-  SecurityMonitorData,
-} from "@/lib/admin-dashboard-governance";
+import type { OwnerGovernanceData, SecurityMonitorData } from "@/lib/admin-dashboard-governance";
 
 const EMPTY_OWNER_DATA: OwnerGovernanceData = {
   approvals: { pending: 0, approvedAwaiting: 0, recent: [], latestPending: [] },
@@ -174,7 +171,7 @@ describe("治理与监控面板折叠策略", () => {
     expect(screen.getByText("安全与资金监控").closest("details")).not.toHaveAttribute("open");
   });
 
-  it("有待审批或高风险时自动展开", () => {
+  it("有待审批或高风险时仍默认收起，仅通过摘要提示", () => {
     const owner = render(
       <OwnerGovernanceCard
         data={{
@@ -183,7 +180,8 @@ describe("治理与监控面板折叠策略", () => {
         }}
       />
     );
-    expect(screen.getByText("Owner 治理").closest("details")).toHaveAttribute("open");
+    expect(screen.getByText("Owner 治理").closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText(/待审批 1/)).toBeInTheDocument();
     owner.unmount();
 
     render(
@@ -194,6 +192,7 @@ describe("治理与监控面板折叠策略", () => {
         }}
       />
     );
-    expect(screen.getByText("安全与资金监控").closest("details")).toHaveAttribute("open");
+    expect(screen.getByText("安全与资金监控").closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText(/高危 1/)).toBeInTheDocument();
   });
 });

@@ -58,8 +58,7 @@ export async function listSecurityAuthorizations(
 }
 
 export type RevokeAuthorizationResult =
-  | { ok: true }
-  | { ok: false; status: number; code: string; message: string };
+  { ok: true } | { ok: false; status: number; code: string; message: string };
 
 /**
  * 撤销用户对指定 client 的授权：
@@ -120,10 +119,8 @@ export async function revokeSecurityAuthorization(params: {
     ip,
   });
 
-  // 触发 Backchannel Logout（sid 取撤销前查出的最新活跃会话）
-  await sendBackchannelLogout(userId, [clientId], {
-    sids: { [clientId]: activeSessions[0].sessionId },
-  });
+  // user+client 全量撤销只带 sub，通知 RP 清除该用户的全部本地会话。
+  await sendBackchannelLogout(userId, [clientId]);
 
   return { ok: true };
 }

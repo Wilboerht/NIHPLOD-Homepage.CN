@@ -62,8 +62,7 @@ export async function listSecurityIdentities(userId: string): Promise<SecurityId
 }
 
 export type UnbindIdentityResult =
-  | { ok: true }
-  | { ok: false; status: number; code: string; message: string };
+  { ok: true } | { ok: false; status: number; code: string; message: string };
 
 export async function unbindSecurityIdentity(params: {
   userId: string;

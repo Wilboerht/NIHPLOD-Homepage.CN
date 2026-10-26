@@ -520,10 +520,15 @@ function advisorAccountsEntry(
       "错误说明",
     ],
     rows: (async function* () {
+      const errorsByUser = new Map<string, typeof context.errors>();
+      for (const item of context.errors) {
+        if (item.stage === "overview") continue;
+        const items = errorsByUser.get(item.userId) ?? [];
+        items.push(item);
+        errorsByUser.set(item.userId, items);
+      }
       for (const meta of context.meta.values()) {
-        const userErrors = context.errors.filter(
-          (item) => item.userId === meta.userId && item.stage !== "overview"
-        );
+        const userErrors = errorsByUser.get(meta.userId) ?? [];
         const overviewFailed = meta.status === "FAILED";
         const historyFailed = userErrors.length > 0;
         let statusLabel = "成功";

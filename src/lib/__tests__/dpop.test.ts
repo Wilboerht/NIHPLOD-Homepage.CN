@@ -102,9 +102,7 @@ describe("DPoP 错误信息", () => {
     const [header, payload, signature] = proof.split(".");
     const mid = Math.floor(signature.length / 2);
     const tamperedSignature =
-      signature.slice(0, mid) +
-      (signature[mid] === "A" ? "B" : "A") +
-      signature.slice(mid + 1);
+      signature.slice(0, mid) + (signature[mid] === "A" ? "B" : "A") + signature.slice(mid + 1);
     const tampered = `${header}.${payload}.${tamperedSignature}`;
     const result = await validateDPoPProof(tampered, "POST", TEST_HTU);
     expect(result.valid).toBe(false);

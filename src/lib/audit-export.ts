@@ -5,23 +5,18 @@
  * 生成 sha256，完成后写 `audit_log_export` 审计记录。
  */
 import { createHash } from "crypto";
-import { createWriteStream } from "fs";
-import { mkdir, readFile, unlink } from "fs/promises";
+import { createReadStream, createWriteStream } from "fs";
+import { mkdir, rename, unlink } from "fs/promises";
 import { join } from "path";
 import { once } from "events";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
 import { apiConsole } from "./logger";
-import {
-  buildAuditWhere,
-  createAuditLogStrict,
-  type AuditLogQueryOptions,
-} from "./audit";
+import { buildAuditWhere, createAuditLogStrict, type AuditLogQueryOptions } from "./audit";
 import { AUDIT_ACTION_LABELS, AUDIT_TARGET_TYPE_LABELS } from "./audit-labels";
 import { maskAuditDetail, maskAuditText, redactSensitiveAuditDetail } from "./audit-sanitize";
 import { maskIdentifier, maskIp } from "./mask-phone";
 import { escapeCSV } from "./csv";
-
 
 export type ExportFormat = "csv" | "jsonl";
 export type ExportStream = "audit" | "sso";
@@ -100,7 +95,9 @@ function buildCsvHeader(): string[] {
 }
 
 function csvRow(values: unknown[]): string {
-  return values.map((value) => escapeCSV(value === null || value === undefined ? "" : String(value))).join(",");
+  return values
+    .map((value) => escapeCSV(value === null || value === undefined ? "" : String(value)))
+    .join(",");
 }
 
 function sanitizeAuditRow(
@@ -143,9 +140,7 @@ function toAuditQuery(filters: AuditExportFilters): AuditLogQueryOptions {
   return {
     ...filters,
     legalHold:
-      rawLegalHold === undefined
-        ? undefined
-        : rawLegalHold === true || rawLegalHold === "true",
+      rawLegalHold === undefined ? undefined : rawLegalHold === true || rawLegalHold === "true",
     startDate: filters.startDate ? new Date(filters.startDate) : undefined,
     endDate: filters.endDate ? new Date(filters.endDate) : undefined,
     canViewSensitive: undefined,
@@ -352,27 +347,25 @@ async function writeSsoFile(
 
 async function sha256File(filePath: string): Promise<string> {
   const hash = createHash("sha256");
-  const content = await readFile(filePath);
-  hash.update(content);
+  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
   return hash.digest("hex");
 }
 
 async function processOneJob(jobId: string): Promise<void> {
   const claimed = await prisma.auditExportJob.updateMany({
     where: { id: jobId, status: "QUEUED" },
-    data: { status: "RUNNING", startedAt: new Date() },
+    data: { status: "RUNNING", startedAt: new Date(), heartbeatAt: new Date() },
   });
   if (claimed.count === 0) return;
 
   const job = await prisma.auditExportJob.findUnique({ where: { id: jobId } });
   if (!job) return;
   const filters = job.filters as unknown as AuditExportFilters | SsoExportFilters;
-  const canViewSensitive = Boolean(
-    (filters as AuditExportFilters).canViewSensitive === true
-  );
+  const canViewSensitive = Boolean((filters as AuditExportFilters).canViewSensitive === true);
   const format = (job.format === "jsonl" ? "jsonl" : "csv") as ExportFormat;
   const root = getExportRoot();
   const filePath = join(root, `${job.id}.${format}`);
+  const temporaryPath = `${filePath}.tmp`;
   assertExportPath(filePath);
 
   try {
@@ -380,13 +373,13 @@ async function processOneJob(jobId: string): Promise<void> {
     const onProgress = async (processed: number, total: number) => {
       await prisma.auditExportJob.update({
         where: { id: job.id },
-        data: { processedRows: processed, totalRows: total },
+        data: { processedRows: processed, totalRows: total, heartbeatAt: new Date() },
       });
     };
     const result =
       job.stream === "sso"
         ? await writeSsoFile(
-            filePath,
+            temporaryPath,
             format,
             filters as SsoExportFilters,
             canViewSensitive,
@@ -394,18 +387,19 @@ async function processOneJob(jobId: string): Promise<void> {
           )
         : format === "jsonl"
           ? await writeAuditJsonl(
-              filePath,
+              temporaryPath,
               filters as AuditExportFilters,
               canViewSensitive,
               onProgress
             )
           : await writeAuditCsv(
-              filePath,
+              temporaryPath,
               filters as AuditExportFilters,
               canViewSensitive,
               onProgress
             );
-    const sha256 = await sha256File(filePath);
+    const sha256 = await sha256File(temporaryPath);
+    await rename(temporaryPath, filePath);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await createAuditLogStrict({
@@ -428,8 +422,8 @@ async function processOneJob(jobId: string): Promise<void> {
       },
     });
 
-    await prisma.auditExportJob.update({
-      where: { id: job.id },
+    await prisma.auditExportJob.updateMany({
+      where: { id: job.id, status: "RUNNING" },
       data: {
         status: "SUCCEEDED",
         filePath,
@@ -442,23 +436,40 @@ async function processOneJob(jobId: string): Promise<void> {
     });
   } catch (error) {
     apiConsole.error("[AuditExport] 导出失败:", error);
-    await prisma.auditExportJob.update({
-      where: { id: job.id },
+    await prisma.auditExportJob.updateMany({
+      where: { id: job.id, status: "RUNNING" },
       data: {
         status: "FAILED",
         error: error instanceof Error ? error.message.slice(0, 1000) : "UNKNOWN",
         finishedAt: new Date(),
       },
     });
-    try {
-      await unlink(filePath);
-    } catch {
-      // ignore
-    }
+    await unlink(temporaryPath).catch(() => {});
   }
 }
 
 export async function processAuditExportJobs(limit = 3): Promise<number> {
+  const staleBefore = new Date(Date.now() - 30 * 60 * 1000);
+  const stale = await prisma.auditExportJob.findMany({
+    where: {
+      status: "RUNNING",
+      OR: [
+        { heartbeatAt: { lt: staleBefore } },
+        { heartbeatAt: null, startedAt: { lt: staleBefore } },
+      ],
+    },
+    take: limit,
+    select: { id: true, format: true },
+  });
+  for (const job of stale) {
+    const format = job.format === "jsonl" ? "jsonl" : "csv";
+    await unlink(join(getExportRoot(), `${job.id}.${format}.tmp`)).catch(() => {});
+    await prisma.auditExportJob.updateMany({
+      where: { id: job.id, status: "RUNNING" },
+      data: { status: "QUEUED", startedAt: null, heartbeatAt: null, error: null },
+    });
+  }
+
   const jobs = await prisma.auditExportJob.findMany({
     where: { status: "QUEUED" },
     orderBy: { createdAt: "asc" },
@@ -498,5 +509,3 @@ export function getAuditExportFilePath(filePath: string): string {
   assertExportPath(filePath);
   return filePath;
 }
-
-

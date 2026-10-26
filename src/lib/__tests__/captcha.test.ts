@@ -101,9 +101,7 @@ describe("verifyCaptchaToken", () => {
     mockFindUnique.mockResolvedValueOnce(null);
     expect(await verifyCaptchaToken("x.1")).toEqual({ ok: false, reason: "invalid" });
 
-    mockFindUnique.mockResolvedValueOnce(
-      makeChallenge({ expiresAt: new Date(Date.now() - 1000) })
-    );
+    mockFindUnique.mockResolvedValueOnce(makeChallenge({ expiresAt: new Date(Date.now() - 1000) }));
     expect(await verifyCaptchaToken("challenge-1.1")).toEqual({ ok: false, reason: "invalid" });
 
     mockFindUnique.mockResolvedValueOnce(makeChallenge({ usedAt: new Date() }));

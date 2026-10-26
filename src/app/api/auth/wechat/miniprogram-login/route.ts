@@ -44,11 +44,7 @@ import { checkUserStatus } from "@/lib/auth";
 import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
 
@@ -197,7 +193,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: { code: "PHONE_CODE_FAILED", message: "获取微信手机号失败，请重试或使用验证码绑定" },
+            error: {
+              code: "PHONE_CODE_FAILED",
+              message: "获取微信手机号失败，请重试或使用验证码绑定",
+            },
           },
           { status: 400 }
         );

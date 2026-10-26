@@ -8,10 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, ApiError } from "@/lib/api-client";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
-import {
-  buildNeedsAttentionCsv,
-  type SpentImportRowResult,
-} from "@/lib/spent-import-rows";
+import { buildNeedsAttentionCsv, type SpentImportRowResult } from "@/lib/spent-import-rows";
 
 type RowStatus = "PENDING" | "SUCCESS" | "DUPLICATE" | "ERROR";
 type StatusFilter = "ALL" | Exclude<RowStatus, "PENDING">;
@@ -170,19 +167,14 @@ export function ImportBatchDetailModal({
           phone: row.phone,
           amount: row.amount,
           status: row.status === "DUPLICATE" ? "DUPLICATE" : "ERROR",
-          error:
-            row.error ??
-            (row.status === "PENDING" ? "批次处理中断，未完成入账" : null),
+          error: row.error ?? (row.status === "PENDING" ? "批次处理中断，未完成入账" : null),
           reference: null,
         }));
       if (rows.length === 0) {
         showError("该批次没有需要修正的行");
         return;
       }
-      downloadCsv(
-        `导入批次-${data.batch.fileName}-需修正行.csv`,
-        buildNeedsAttentionCsv(rows)
-      );
+      downloadCsv(`导入批次-${data.batch.fileName}-需修正行.csv`, buildNeedsAttentionCsv(rows));
     } catch (err) {
       showError(err instanceof ApiError ? err.message : "导出失败，请稍后重试");
     } finally {
@@ -339,7 +331,10 @@ export function ImportBatchDetailModal({
                       <td className="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-brand-charcoal/70">
                         {row.appliedDelta == null ? "—" : `¥${row.appliedDelta.toLocaleString()}`}
                       </td>
-                      <td className="max-w-[220px] truncate px-3 py-2 text-brand-charcoal/60" title={row.error ?? row.note ?? ""}>
+                      <td
+                        className="max-w-[220px] truncate px-3 py-2 text-brand-charcoal/60"
+                        title={row.error ?? row.note ?? ""}
+                      >
                         {row.error || row.note || "—"}
                       </td>
                     </tr>

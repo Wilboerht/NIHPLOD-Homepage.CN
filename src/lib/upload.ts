@@ -481,7 +481,7 @@ export async function deleteUploadedFile(url: string): Promise<boolean> {
     return false;
   } catch (error) {
     apiConsole.error("删除文件失败:", error);
-    return false;
+    throw error;
   }
 }
 

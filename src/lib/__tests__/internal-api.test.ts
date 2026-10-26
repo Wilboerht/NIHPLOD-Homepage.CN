@@ -157,9 +157,18 @@ describe("internal-api", () => {
       );
 
       expect(
-        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
-          query,
-        })
+        verifyInternalApiSignature(
+          "advisor-key",
+          signature,
+          "GET",
+          PATH,
+          timestamp,
+          nonce,
+          bodyHash,
+          {
+            query,
+          }
+        )
       ).not.toBeNull();
     });
 
@@ -178,9 +187,18 @@ describe("internal-api", () => {
       );
 
       expect(
-        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
-          query: canonicalizeQuery("?phone=13900000000"),
-        })
+        verifyInternalApiSignature(
+          "advisor-key",
+          signature,
+          "GET",
+          PATH,
+          timestamp,
+          nonce,
+          bodyHash,
+          {
+            query: canonicalizeQuery("?phone=13900000000"),
+          }
+        )
       ).toBeNull();
     });
 
@@ -199,16 +217,34 @@ describe("internal-api", () => {
 
       // 安全默认：旧格式不绑定 query，默认拒绝
       expect(
-        verifyInternalApiSignature("advisor-key", legacySignature, "GET", PATH, timestamp, nonce, bodyHash, {
-          query: "",
-        })
+        verifyInternalApiSignature(
+          "advisor-key",
+          legacySignature,
+          "GET",
+          PATH,
+          timestamp,
+          nonce,
+          bodyHash,
+          {
+            query: "",
+          }
+        )
       ).toBeNull();
 
       process.env.INTERNAL_API_ALLOW_LEGACY_SIGNATURE = "true";
       expect(
-        verifyInternalApiSignature("advisor-key", legacySignature, "GET", PATH, timestamp, nonce, bodyHash, {
-          query: "",
-        })
+        verifyInternalApiSignature(
+          "advisor-key",
+          legacySignature,
+          "GET",
+          PATH,
+          timestamp,
+          nonce,
+          bodyHash,
+          {
+            query: "",
+          }
+        )
       ).not.toBeNull();
     });
 
@@ -259,7 +295,14 @@ describe("internal-api", () => {
       ).toBe("advisor");
 
       // 签名应与「未绑定 query 的旧格式」不同（证明确实走了新格式而非碰巧匹配）
-      const legacy = generateInternalApiSignature(VALID_SECRET, "POST", PATH, timestamp, nonce, bodyHash);
+      const legacy = generateInternalApiSignature(
+        VALID_SECRET,
+        "POST",
+        PATH,
+        timestamp,
+        nonce,
+        bodyHash
+      );
       expect(headers!["X-Internal-API-Signature"]).not.toBe(legacy);
     });
   });
@@ -314,7 +357,12 @@ describe("internal-api", () => {
 
     beforeEach(() => {
       process.env.INTERNAL_API_KEYS = JSON.stringify([
-        { project: "advisor", key: "advisor-key", secret: VALID_SECRET, previousSecrets: [OLD_SECRET] },
+        {
+          project: "advisor",
+          key: "advisor-key",
+          secret: VALID_SECRET,
+          previousSecrets: [OLD_SECRET],
+        },
       ]);
     });
 
@@ -361,9 +409,18 @@ describe("internal-api", () => {
       );
 
       expect(
-        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
-          query,
-        })
+        verifyInternalApiSignature(
+          "advisor-key",
+          signature,
+          "GET",
+          PATH,
+          timestamp,
+          nonce,
+          bodyHash,
+          {
+            query,
+          }
+        )
       ).not.toBeNull();
     });
 
@@ -381,9 +438,18 @@ describe("internal-api", () => {
       );
 
       expect(
-        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
-          query: "",
-        })
+        verifyInternalApiSignature(
+          "advisor-key",
+          signature,
+          "GET",
+          PATH,
+          timestamp,
+          nonce,
+          bodyHash,
+          {
+            query: "",
+          }
+        )
       ).toBeNull();
     });
 
@@ -394,7 +460,11 @@ describe("internal-api", () => {
           project: "advisor",
           key: "advisor-key",
           secret: VALID_SECRET,
-          previousSecrets: [SHORT_PREV, "example-secret-replace-with-32-byte-random-value-from-script", 123],
+          previousSecrets: [
+            SHORT_PREV,
+            "example-secret-replace-with-32-byte-random-value-from-script",
+            123,
+          ],
         },
       ]);
 
@@ -411,9 +481,18 @@ describe("internal-api", () => {
       );
 
       expect(
-        verifyInternalApiSignature("advisor-key", signature, "GET", PATH, timestamp, nonce, bodyHash, {
-          query: "",
-        })
+        verifyInternalApiSignature(
+          "advisor-key",
+          signature,
+          "GET",
+          PATH,
+          timestamp,
+          nonce,
+          bodyHash,
+          {
+            query: "",
+          }
+        )
       ).toBeNull();
       // 条目本身仍正常加载
       expect(getInternalApiKeys().keys.get("advisor-key")?.secret).toBe(VALID_SECRET);
@@ -421,7 +500,12 @@ describe("internal-api", () => {
 
     it("previousSecrets 非数组时忽略该字段，条目正常加载", () => {
       process.env.INTERNAL_API_KEYS = JSON.stringify([
-        { project: "advisor", key: "advisor-key", secret: VALID_SECRET, previousSecrets: "not-an-array" },
+        {
+          project: "advisor",
+          key: "advisor-key",
+          secret: VALID_SECRET,
+          previousSecrets: "not-an-array",
+        },
       ]);
       const config = getInternalApiKeys().keys.get("advisor-key");
       expect(config?.secret).toBe(VALID_SECRET);

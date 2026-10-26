@@ -156,15 +156,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-      const rateLimitResponse = await checkAdminRateLimit(request);
-      if (rateLimitResponse) return rateLimitResponse;
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const body = await request.json();
-      const auditId = await beginAuditLog({
-        action: "oauth_client_create",
+    const body = await request.json();
+    const auditId = await beginAuditLog({
+      action: "oauth_client_create",
       targetType: "oauth_client",
       actorType: "ADMIN",
       actorEmail: admin.email,

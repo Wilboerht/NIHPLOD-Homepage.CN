@@ -175,9 +175,7 @@ describe("POST /api/auth/send-code type=bind", () => {
     mockValidateCSRF.mockReturnValue(true);
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
 
-    const res = await POST(
-      createRequest(bindBody, { Origin: "http://localhost:3000" })
-    );
+    const res = await POST(createRequest(bindBody, { Origin: "http://localhost:3000" }));
     const data = await res.json();
 
     expect(mockValidateCSRF).toHaveBeenCalled();
@@ -226,7 +224,12 @@ describe("POST /api/auth/send-code type=bind", () => {
 
     expect(res.status).toBe(200);
     expect(mockSendLoginCode).not.toHaveBeenCalled();
-    expect(mockRecordFakeSmsThrottleEntry).toHaveBeenCalledWith(bindBody.phone, "bind", "127.0.0.1", 5);
+    expect(mockRecordFakeSmsThrottleEntry).toHaveBeenCalledWith(
+      bindBody.phone,
+      "bind",
+      "127.0.0.1",
+      5
+    );
   });
 
   it("type=bind 未注册手机号 + Bearer 本人号码：真实发码（小程序关联账户）", async () => {
@@ -235,9 +238,7 @@ describe("POST /api/auth/send-code type=bind", () => {
       .mockResolvedValueOnce(null); // 待绑定手机号未注册
     mockVerifyUserToken.mockResolvedValue({ id: "u1" });
 
-    const res = await POST(
-      createRequest(bindBody, { Authorization: "Bearer access-token" })
-    );
+    const res = await POST(createRequest(bindBody, { Authorization: "Bearer access-token" }));
 
     expect(res.status).toBe(200);
     expect(mockSendLoginCode).toHaveBeenCalledWith(bindBody.phone, "123456");
@@ -249,9 +250,7 @@ describe("POST /api/auth/send-code type=bind", () => {
       .mockResolvedValueOnce(null); // 目标号码未注册
     mockVerifyUserToken.mockResolvedValue({ id: "u1" });
 
-    const res = await POST(
-      createRequest(bindBody, { Authorization: "Bearer access-token" })
-    );
+    const res = await POST(createRequest(bindBody, { Authorization: "Bearer access-token" }));
 
     expect(res.status).toBe(200);
     expect(mockSendLoginCode).not.toHaveBeenCalled();
@@ -321,10 +320,7 @@ describe("POST /api/auth/send-code type=bind", () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
 
     const res = await POST(
-      createRequest(
-        { phone: "13800138000", type: "register" },
-        { Origin: "http://localhost:3000" }
-      )
+      createRequest({ phone: "13800138000", type: "register" }, { Origin: "http://localhost:3000" })
     );
     const data = await res.json();
 
@@ -479,9 +475,8 @@ describe("POST /api/auth/send-code 防枚举限流一致性回归", () => {
   });
 
   it("已注册与未注册号码两次快速请求的状态码完全一致（第二次均为 429 TOO_FREQUENT）", async () => {
-    mockPrisma.user.findUnique.mockImplementation(
-      async (args: { where: { phone: string } }) =>
-        args.where.phone === "13800138000" ? { id: "user-1" } : null
+    mockPrisma.user.findUnique.mockImplementation(async (args: { where: { phone: string } }) =>
+      args.where.phone === "13800138000" ? { id: "user-1" } : null
     );
     // 假发送同样写入占位记录：第二次请求两者都命中 60 秒冷却
     mockPrisma.smsCode.findFirst
@@ -547,9 +542,7 @@ describe("POST /api/auth/send-code 防枚举限流一致性回归", () => {
     mockGetSubsiteProxiedClientIP.mockReturnValue(null);
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
 
-    const res = await POST(
-      createRequest(bindBody, { "x-forwarded-for": "203.0.113.5" })
-    );
+    const res = await POST(createRequest(bindBody, { "x-forwarded-for": "203.0.113.5" }));
 
     expect(res.status).toBe(200);
     expect(mockRateLimit).toHaveBeenCalledWith("127.0.0.1", "form");

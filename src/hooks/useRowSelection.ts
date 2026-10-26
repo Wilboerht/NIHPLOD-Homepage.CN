@@ -19,10 +19,7 @@ export interface RowSelection<T> {
  * - `queryKey` 变化（翻页/筛选/搜索）时自动清空，避免批量操作作用在不可见的行上
  * - 全选按当前列表内容判断（而非仅比较数量），并支持 indeterminate
  */
-export function useRowSelection<T>(
-  getId: (item: T) => string,
-  queryKey: string
-): RowSelection<T> {
+export function useRowSelection<T>(getId: (item: T) => string, queryKey: string): RowSelection<T> {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [prevQueryKey, setPrevQueryKey] = useState(queryKey);
 
@@ -34,10 +31,7 @@ export function useRowSelection<T>(
     }
   }
 
-  const isSelected = useCallback(
-    (item: T) => selectedIds.has(getId(item)),
-    [selectedIds, getId]
-  );
+  const isSelected = useCallback((item: T) => selectedIds.has(getId(item)), [selectedIds, getId]);
 
   const isAllSelected = useCallback(
     (items: T[]) => items.length > 0 && items.every((item) => selectedIds.has(getId(item))),

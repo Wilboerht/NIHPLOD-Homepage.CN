@@ -51,7 +51,7 @@ vi.mock("@/lib/jwt", () => ({
 }));
 
 vi.mock("@/lib/sms", () => ({
-  verifyCode: vi.fn().mockReturnValue(true),
+  verifySmsCodeWithLimit: vi.fn().mockReturnValue(true),
   recordSmsCodeFailure: vi.fn().mockResolvedValue(undefined),
   SMS_CODE_MAX_ATTEMPTS: 5,
 }));

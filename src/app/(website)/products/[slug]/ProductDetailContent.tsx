@@ -109,6 +109,13 @@ export function ProductDetailContent({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [prevProductId, setPrevProductId] = useState(product.id);
+  if (prevProductId !== product.id) {
+    setPrevProductId(product.id);
+    setCurrentImageIndex(0);
+    setActiveTab("description");
+    setLightboxOpen(false);
+  }
 
   useEffect(() => {
     const el = containerRef.current;

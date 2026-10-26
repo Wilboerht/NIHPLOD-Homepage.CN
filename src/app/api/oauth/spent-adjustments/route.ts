@@ -57,7 +57,10 @@ export async function GET(request: NextRequest) {
 
     const guard = await guardOAuthUserActive(payload.id);
     if (!guard.ok) {
-      return resJson({ error: guard.error, error_description: guard.errorDescription }, guard.status);
+      return resJson(
+        { error: guard.error, error_description: guard.errorDescription },
+        guard.status
+      );
     }
 
     const applications = await listSpentApplications(payload.id);
@@ -103,7 +106,10 @@ export async function POST(request: NextRequest) {
 
     const guard = await guardOAuthUserActive(payload.id);
     if (!guard.ok) {
-      return resJson({ error: guard.error, error_description: guard.errorDescription }, guard.status);
+      return resJson(
+        { error: guard.error, error_description: guard.errorDescription },
+        guard.status
+      );
     }
 
     // 用户级提交限流（与主站会话路由同口径，防批量刷单）

@@ -12,8 +12,7 @@ import { NextRequest } from "next/server";
 const mockVerifyUserAuth = vi.fn();
 vi.mock("@/lib/auth", () => ({
   withUserAuth:
-    (handler: (req: NextRequest, payload: { id: string }) => unknown) =>
-    (req: NextRequest) =>
+    (handler: (req: NextRequest, payload: { id: string }) => unknown) => (req: NextRequest) =>
       handler(req, { id: "user-1" }),
   verifyUserAuth: (...args: unknown[]) => mockVerifyUserAuth(...args),
 }));
@@ -40,7 +39,10 @@ import { GET as imageGET } from "../image/route";
 function uploadRequest(withFile = true): NextRequest {
   const form = new FormData();
   if (withFile) {
-    form.append("file", new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" }));
+    form.append(
+      "file",
+      new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" })
+    );
   }
   return new NextRequest(new URL("http://localhost/api/user/spent-adjustments/upload"), {
     method: "POST",

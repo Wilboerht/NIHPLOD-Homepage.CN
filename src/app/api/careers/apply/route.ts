@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import {
-  deleteResumeFile,
-  sanitizeResumeFileName,
-  uploadResumeFile,
-} from "@/lib/resume-files";
+import { deleteResumeFile, sanitizeResumeFileName, uploadResumeFile } from "@/lib/resume-files";
 import { sendWecomNotification, formatJobApplicationToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readFormDataBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readFormDataBody } from "@/lib/request-body";
 import { fileTypeFromBuffer } from "file-type";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -21,7 +13,10 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 const ApplyFormSchema = z.object({
   jobId: z.string().min(1, "职位ID不能为空"),
   name: z.string().trim().min(2, "姓名至少2个字符").max(50, "姓名最多50个字符"),
-  phone: z.string().trim().regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^1[3-9]\d{9}$/, "请输入有效的手机号"),
   // 蜜罐字段 - 有值说明是机器人
   website: z.string().max(200).optional(),
   // 隐私政策同意（FormData 中是字符串）
@@ -71,7 +66,10 @@ export async function POST(request: NextRequest) {
       const contentLength = Number(contentLengthHeader);
       if (Number.isFinite(contentLength) && contentLength > MAX_RESUME_MULTIPART_BYTES) {
         return NextResponse.json(
-          { success: false, error: { code: "FILE_TOO_LARGE", message: "简历文件大小不能超过 10MB" } },
+          {
+            success: false,
+            error: { code: "FILE_TOO_LARGE", message: "简历文件大小不能超过 10MB" },
+          },
           { status: 413 }
         );
       }
@@ -114,8 +112,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { jobId: validatedJobId, name: validatedName, phone: validatedPhone, website: honeypot } =
-      result.data;
+    const {
+      jobId: validatedJobId,
+      name: validatedName,
+      phone: validatedPhone,
+      website: honeypot,
+    } = result.data;
 
     // 蜜罐命中：不写库、不发通知，直接返回成功，避免机器人探测
     if (honeypot) {

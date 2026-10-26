@@ -7,7 +7,7 @@ import { PrivacyArticle } from "@/components/ui/PrivacyArticle";
  * 位于 (website) 路由组之外，与 /account/embed 同理，天然无全局 chrome
  * （无 StandaloneNav/目录/页脚）；正文与 /privacy 页面共用 PrivacyArticle，
  * 内容与样式保持完全一致。内容由父窗口模态框内部滚动，无需 postMessage 高度上报。
- * CSP frame-ancestors 白名单见 src/middleware.ts（EMBED_ALLOWED_ORIGINS）。
+ * CSP frame-ancestors 白名单见 src/proxy.ts（EMBED_ALLOWED_ORIGINS）。
  */
 
 // ISR: 与 /privacy 页面保持一致，每天重新验证一次

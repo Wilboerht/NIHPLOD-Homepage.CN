@@ -68,7 +68,12 @@ export async function uploadSpentProofFile(
   // 验证文件（大小 + 声明类型）
   const validation = validateUploadServer(file.type, file.size);
   if (!validation.valid) {
-    return { ok: false, status: 400, code: "INVALID_FILE", message: validation.error || "文件不合法" };
+    return {
+      ok: false,
+      status: 400,
+      code: "INVALID_FILE",
+      message: validation.error || "文件不合法",
+    };
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -134,8 +139,7 @@ export async function uploadSpentProofFile(
 }
 
 export type SpentProofImageResult =
-  | { ok: true; signedUrl: string }
-  | { ok: false; status: number; code: string; message: string };
+  { ok: true; signedUrl: string } | { ok: false; status: number; code: string; message: string };
 
 /** 私有对象签名 URL 有效期：15 分钟（短时效 capability，降低泄漏窗口） */
 const PRIVATE_URL_TTL_SECONDS = 15 * 60;

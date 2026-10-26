@@ -55,6 +55,7 @@ vi.mock("@/lib/prisma", () => ({
       update: (...args: unknown[]) => mockRequestUpdate(...args),
     },
     user: { findUnique: (...args: unknown[]) => mockUserFindUnique(...args) },
+    spentAdjustmentApplication: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
 }));
@@ -65,6 +66,11 @@ vi.mock("@/lib/advisor-internal", () => ({
 
 vi.mock("@/lib/ali-oss", () => ({
   deleteOSSFiles: (...args: unknown[]) => mockDeleteOSSFiles(...args),
+  deletePrivateOSSObject: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/upload", () => ({
+  deleteUploadedFile: (...args: unknown[]) => mockDeleteOSSFiles(...args),
 }));
 
 vi.mock("@/lib/user-status", () => ({
@@ -142,6 +148,9 @@ function mockTxSuccess() {
       },
       pointLedger: { create: mockTxPointLedgerCreate },
       spentImportRow: { updateMany: mockTxSpentImportRowUpdateMany },
+      spentAdjustmentApplication: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      product: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "user-1" }]),
       user: { update: mockTxUserUpdate },
     })
   );
@@ -316,17 +325,16 @@ describe("executeAccountDeletion", () => {
     });
   });
 
-  it("M4：头像为站内相对路径时去前导斜杠后删除 OSS 对象", async () => {
+  it("M4：头像为站内相对路径时使用本地存储删除", async () => {
     mockUserFindUnique.mockResolvedValue({ ...activeUser, avatar: "/uploads/2026-01-01/abc.png" });
 
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    expect(mockDeleteOSSFiles).toHaveBeenCalledWith(["uploads/2026-01-01/abc.png"]);
-    // 删除发生在匿名化事务之前（purge-first 策略同口径）
-    const ossOrder = mockDeleteOSSFiles.mock.invocationCallOrder[0];
+    expect(mockDeleteOSSFiles).toHaveBeenCalledWith("/uploads/2026-01-01/abc.png");
+    const deleteOrder = mockDeleteOSSFiles.mock.invocationCallOrder[0];
     const txOrder = mockTransaction.mock.invocationCallOrder[0];
-    expect(ossOrder).toBeLessThan(txOrder);
+    expect(deleteOrder).toBeLessThan(txOrder);
   });
 
   it("M4：头像为完整 URL 时原样传给 deleteOSSFiles", async () => {
@@ -348,7 +356,7 @@ describe("executeAccountDeletion", () => {
 
     expect(result).toBe("completed");
     expect(mockWarn).toHaveBeenCalledWith(
-      expect.stringContaining("头像 OSS 删除失败"),
+      expect.stringContaining("头像删除失败"),
       expect.anything()
     );
     const auditDetail = mockCreateAuditLog.mock.calls[0][0].detail;

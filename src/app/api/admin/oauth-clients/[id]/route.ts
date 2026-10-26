@@ -129,28 +129,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-      const rateLimitResponse = await checkAdminRateLimit(request);
-      if (rateLimitResponse) return rateLimitResponse;
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const { id } = await context.params;
-      if (!validateCUID(id)) {
-        return invalidIdResponse();
-      }
+    const { id } = await context.params;
+    if (!validateCUID(id)) {
+      return invalidIdResponse();
+    }
 
-      const body = await request.json();
+    const body = await request.json();
 
-      const previousClient = await getOAuthClientById(id);
-      if (!previousClient) {
-        return NextResponse.json(
-          { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
-          { status: 404 }
-        );
-      }
+    const previousClient = await getOAuthClientById(id);
+    if (!previousClient) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
+        { status: 404 }
+      );
+    }
 
-      const auditId = await beginAuditLog({
+    const auditId = await beginAuditLog({
       action: "oauth_client_update",
       targetType: "oauth_client",
       targetId: id,

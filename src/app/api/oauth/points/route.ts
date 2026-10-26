@@ -22,7 +22,10 @@ export async function GET(request: NextRequest) {
     });
     if (!auth.ok) return auth.response;
     // 共享核心返回裸 JSON 响应：补 CORS 白名单头与 no-store（响应含积分/流水）
-    return decorateOAuthResponse(await getPointsOverviewResponse(auth.payload.id), auth.corsHeaders);
+    return decorateOAuthResponse(
+      await getPointsOverviewResponse(auth.payload.id),
+      auth.corsHeaders
+    );
   } catch (error) {
     apiConsole.error("[OAuth Points] 异常:", error);
     return NextResponse.json(

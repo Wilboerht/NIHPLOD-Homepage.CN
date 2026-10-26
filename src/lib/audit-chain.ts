@@ -4,7 +4,7 @@
  * entryHash 覆盖「不可变信封」，不覆盖 outcome/detail/targetId/finalizedAt
  * （这些字段允许 PENDING → 终态时更新）；完整记录由每日锚点覆盖。
  */
-import { createHmac } from "crypto";
+import { createHash, createHmac } from "crypto";
 import type { Prisma } from "@/generated/prisma/client";
 
 export const AUDIT_CHAIN_VERSION = 1;
@@ -50,6 +50,11 @@ export function stableStringify(value: unknown): string {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
     .join(",")}}`;
+}
+
+export function computeAuditDigest(rows: Array<Record<string, unknown>>): string {
+  const payload = rows.map((row) => stableStringify(row)).join("\n");
+  return createHash("sha256").update(payload).digest("hex");
 }
 
 export interface AuditChainEnvelope {

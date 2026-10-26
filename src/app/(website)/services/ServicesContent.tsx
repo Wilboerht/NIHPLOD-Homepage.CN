@@ -4,7 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
-import { Crown, ShieldCheck, Users, ScanFace, Smartphone, Home, Menu, X, ChevronDown } from "lucide-react";
+import {
+  Crown,
+  ShieldCheck,
+  Users,
+  ScanFace,
+  Smartphone,
+  Home,
+  Menu,
+  X,
+  ChevronDown,
+} from "lucide-react";
 import type { ServicesPageContent, ServiceDetail, ServiceLink } from "@/types/page-content";
 
 interface ServicesContentProps {
@@ -129,7 +139,8 @@ export function ServicesContent({ content }: ServicesContentProps) {
     label: "素颜测肤",
     title: "AI 素颜测肤智能平台",
     nameEn: "AI Skin Advisor",
-    description: "注册即享 10 次 AI 测肤，通过 AI 技术分析面部肌肤状况，获取个性化护肤建议及产品推荐。",
+    description:
+      "注册即享 10 次 AI 测肤，通过 AI 技术分析面部肌肤状况，获取个性化护肤建议及产品推荐。",
     links: [
       { label: "立即体验", url: "https://smart.nihplod.cn", isAdmin: false, description: "" },
     ],
@@ -140,11 +151,7 @@ export function ServicesContent({ content }: ServicesContentProps) {
   const authIdx = cmsServices.findIndex((s) => s.id === "auth");
   const mobileServices =
     authIdx >= 0
-      ? [
-          ...cmsServices.slice(0, authIdx),
-          advisorService,
-          ...cmsServices.slice(authIdx),
-        ]
+      ? [...cmsServices.slice(0, authIdx), advisorService, ...cmsServices.slice(authIdx)]
       : services;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);

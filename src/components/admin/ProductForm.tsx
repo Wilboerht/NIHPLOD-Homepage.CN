@@ -16,7 +16,8 @@ import { FormActions } from "@/components/admin/FormActions";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { apiPost, apiPut } from "@/lib/api-client";
+import { apiPost, apiPut, ApiError } from "@/lib/api-client";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { ProductSchema } from "@/schemas/product";
 import { cn, generateSlug } from "@/lib/utils";
 import { focusFirstInvalid } from "@/lib/form";
@@ -49,6 +50,7 @@ interface ImageItem {
   id?: string;
   url: string;
   alt?: string | null;
+  derivedUrls?: string[];
   order: number;
   file?: File;
 }
@@ -166,6 +168,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   // 只允许回到产品列表，避免开放重定向
   const returnTo = returnToParam.startsWith("/admin/products") ? returnToParam : "/admin/products";
   const { success, error: showError } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const [formData, setFormData] = useState<FormData>(() => {
     if (initialData) {
       return {
@@ -460,10 +463,14 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         uploadFormData.append("file", img.file);
         uploadFormData.append("folder", "products");
 
-        const data = await apiPost<{ url: string }>("/api/upload", uploadFormData);
+        const data = await apiPost<{ url: string; thumbnailUrl?: string }>(
+          "/api/upload",
+          uploadFormData
+        );
 
         uploaded.push({
           url: data.url,
+          derivedUrls: data.thumbnailUrl ? [data.thumbnailUrl] : [],
           alt: img.alt,
           order: img.order,
         });
@@ -522,10 +529,18 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         published: publish,
       };
 
-      if (mode === "create") {
-        await apiPost("/api/admin/products", payload);
-      } else {
-        await apiPut(`/api/admin/products/${initialData?.id}`, payload);
+      const submitProduct = () =>
+        mode === "create"
+          ? apiPost("/api/admin/products", payload)
+          : apiPut(`/api/admin/products/${initialData?.id}`, payload);
+
+      try {
+        await submitProduct();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        await submitProduct();
       }
 
       success(publish ? "产品已发布" : "产品已保存为草稿");
@@ -1083,6 +1098,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           </div>
         </div>
       </Modal>
+      {totpModal}
     </form>
   );
 }

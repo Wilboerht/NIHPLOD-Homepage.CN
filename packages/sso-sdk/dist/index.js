@@ -655,11 +655,7 @@ function assertValidTokenResponse(data, requireRefreshToken) {
     );
   }
 }
-var SILENT_PROBE_ERRORS = /* @__PURE__ */ new Set([
-  "login_required",
-  "consent_required",
-  "interaction_required"
-]);
+var SILENT_PROBE_ERRORS = /* @__PURE__ */ new Set(["login_required", "consent_required", "interaction_required"]);
 var _SsoClient = class _SsoClient {
   constructor(config) {
     this._discovery = null;
@@ -750,16 +746,11 @@ var _SsoClient = class _SsoClient {
     const url = `${this._serverBase}/api/oauth/.well-known/openid-configuration`;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller.abort(),
-        _SsoClient.DISCOVERY_TIMEOUT_MS
-      );
+      const timeoutId = setTimeout(() => controller.abort(), _SsoClient.DISCOVERY_TIMEOUT_MS);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok) {
-        console.warn(
-          `[SSO SDK] OIDC Discovery \u8BF7\u6C42\u5931\u8D25: HTTP ${res.status}, \u56DE\u9000\u5230\u9ED8\u8BA4\u7AEF\u70B9`
-        );
+        console.warn(`[SSO SDK] OIDC Discovery \u8BF7\u6C42\u5931\u8D25: HTTP ${res.status}, \u56DE\u9000\u5230\u9ED8\u8BA4\u7AEF\u70B9`);
         return null;
       }
       const doc = await res.json();
@@ -974,10 +965,7 @@ var _SsoClient = class _SsoClient {
       removeOAuthState(this.config.clientId);
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(`${this.config.clientId}_popup_nonce`);
-      throw new SsoError(
-        "popup_blocked",
-        "\u5F39\u7A97\u88AB\u6D4F\u89C8\u5668\u62E6\u622A\uFF0C\u8BF7\u5141\u8BB8\u5F39\u7A97\u540E\u91CD\u8BD5"
-      );
+      throw new SsoError("popup_blocked", "\u5F39\u7A97\u88AB\u6D4F\u89C8\u5668\u62E6\u622A\uFF0C\u8BF7\u5141\u8BB8\u5F39\u7A97\u540E\u91CD\u8BD5");
     }
     const redirectUriOrigin = new URL(this.config.redirectUri).origin;
     try {
@@ -1006,9 +994,7 @@ var _SsoClient = class _SsoClient {
           }
           this.handleCallback(event.data.callbackUrl).then((tokenData) => {
             if (tokenData === null) {
-              reject(
-                new SsoError("not_authenticated", "SSO \u4F1A\u8BDD\u4E0D\u5B58\u5728\uFF08\u9759\u9ED8\u63A2\u6D4B\u65E0\u4F1A\u8BDD\uFF09")
-              );
+              reject(new SsoError("not_authenticated", "SSO \u4F1A\u8BDD\u4E0D\u5B58\u5728\uFF08\u9759\u9ED8\u63A2\u6D4B\u65E0\u4F1A\u8BDD\uFF09"));
               return;
             }
             resolve(tokenData);
@@ -1019,12 +1005,7 @@ var _SsoClient = class _SsoClient {
             if (!completed) {
               completed = true;
               cleanup();
-              reject(
-                new SsoError(
-                  "popup_closed",
-                  "\u767B\u5F55\u7A97\u53E3\u5DF2\u5173\u95ED"
-                )
-              );
+              reject(new SsoError("popup_closed", "\u767B\u5F55\u7A97\u53E3\u5DF2\u5173\u95ED"));
             }
           }
         }, 500);
@@ -1091,18 +1072,12 @@ var _SsoClient = class _SsoClient {
       removeOAuthNonce(this.config.clientId);
       removePkceVerifier(this.config.clientId);
       removeSilentProbe(this.config.clientId);
-      throw new SsoError(
-        "state_mismatch",
-        "State \u53C2\u6570\u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 CSRF \u653B\u51FB"
-      );
+      throw new SsoError("state_mismatch", "State \u53C2\u6570\u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 CSRF \u653B\u51FB");
     }
     const expectedNonce = getOAuthNonce(this.config.clientId) ?? void 0;
     const verifier = getPkceVerifier(this.config.clientId);
     if (!verifier) {
-      throw new SsoError(
-        "pkce_required",
-        "code_verifier \u4E0D\u5B58\u5728\uFF08\u53EF\u80FD\u5DF2\u8FC7\u671F\u6216\u6765\u81EA\u5176\u4ED6\u6807\u7B7E\u9875\uFF09"
-      );
+      throw new SsoError("pkce_required", "code_verifier \u4E0D\u5B58\u5728\uFF08\u53EF\u80FD\u5DF2\u8FC7\u671F\u6216\u6765\u81EA\u5176\u4ED6\u6807\u7B7E\u9875\uFF09");
     }
     const tokenEndpoint = await this._getTokenEndpoint();
     const body = new URLSearchParams();
@@ -1149,10 +1124,7 @@ var _SsoClient = class _SsoClient {
       removePkceVerifier(this.config.clientId);
       removeSilentProbe(this.config.clientId);
       removeTokenData(this.config.clientId);
-      throw new SsoError(
-        "id_token_invalid",
-        "Token \u54CD\u5E94\u7F3A\u5C11 id_token\uFF08scope \u542B openid \u65F6\u5FC5\u9700\uFF09"
-      );
+      throw new SsoError("id_token_invalid", "Token \u54CD\u5E94\u7F3A\u5C11 id_token\uFF08scope \u542B openid \u65F6\u5FC5\u9700\uFF09");
     }
     if (data.id_token) {
       try {
@@ -1217,19 +1189,14 @@ var _SsoClient = class _SsoClient {
     }
     let res = null;
     let lastErr;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        res = await fetchWithTimeout(tokenEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: body.toString()
-        });
-        lastErr = null;
-        break;
-      } catch (err) {
-        lastErr = err;
-        if (attempt < 1) await new Promise((r) => setTimeout(r, 1e3));
-      }
+    try {
+      res = await fetchWithTimeout(tokenEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString()
+      });
+    } catch (err) {
+      lastErr = err;
     }
     if (lastErr || !res) {
       throw new SsoError("network_error", "\u5237\u65B0 Token \u7F51\u7EDC\u8BF7\u6C42\u5931\u8D25", lastErr);
@@ -1311,10 +1278,7 @@ var _SsoClient = class _SsoClient {
         removeTokenData(this.config.clientId);
         throw new SsoError("not_authenticated", "Token \u5DF2\u5931\u6548");
       }
-      throw new SsoError(
-        "userinfo_failed",
-        `\u83B7\u53D6\u7528\u6237\u4FE1\u606F\u5931\u8D25: HTTP ${res.status}`
-      );
+      throw new SsoError("userinfo_failed", `\u83B7\u53D6\u7528\u6237\u4FE1\u606F\u5931\u8D25: HTTP ${res.status}`);
     }
     return await res.json();
   }
@@ -1393,10 +1357,7 @@ var _SsoClient = class _SsoClient {
       logoutUrl.searchParams.set("client_id", this.config.clientId);
       const postLogoutUri = this.config.postLogoutRedirectUri || this.config.redirectUri;
       if (postLogoutUri) {
-        logoutUrl.searchParams.set(
-          "post_logout_redirect_uri",
-          postLogoutUri
-        );
+        logoutUrl.searchParams.set("post_logout_redirect_uri", postLogoutUri);
       }
       if (idTokenHint) {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);

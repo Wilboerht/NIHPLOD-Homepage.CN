@@ -10,11 +10,7 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/ratelimit";
-import {
-  generateVerifyCode,
-  hashVerifyCode,
-  sendLoginCode,
-} from "@/lib/sms";
+import { generateVerifyCode, hashVerifyCode, sendLoginCode } from "@/lib/sms";
 import { maskPhone } from "@/lib/mask-phone";
 import { apiConsole } from "@/lib/logger";
 

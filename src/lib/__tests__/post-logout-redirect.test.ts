@@ -51,7 +51,9 @@ describe("isTrustedPostLogoutRedirectUri", () => {
     mockFindFirst.mockResolvedValue({
       postLogoutRedirectUris: ["https://a.com/logout-done"],
     });
-    expect(await isTrustedPostLogoutRedirectUri("https://a.com/logout-done", "client-1")).toBe(true);
+    expect(await isTrustedPostLogoutRedirectUri("https://a.com/logout-done", "client-1")).toBe(
+      true
+    );
     expect(mockFindFirst).toHaveBeenCalledWith({
       where: { clientId: "client-1", isActive: true },
       select: { postLogoutRedirectUris: true },

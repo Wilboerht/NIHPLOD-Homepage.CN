@@ -72,7 +72,8 @@ export function buildAuditDetail(input: {
   if (input.before) detail.before = normalize(input.before) as Record<string, unknown>;
   if (input.after) detail.after = normalize(input.after) as Record<string, unknown>;
   const changes =
-    input.changes ?? (input.before || input.after ? buildAuditChanges(input.before, input.after) : []);
+    input.changes ??
+    (input.before || input.after ? buildAuditChanges(input.before, input.after) : []);
   if (changes.length > 0) detail.changes = changes;
   if (input.meta) detail.meta = normalize(input.meta) as Record<string, unknown>;
   if (input.reason) detail.reason = input.reason;

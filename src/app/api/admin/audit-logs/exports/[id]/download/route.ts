@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "fs/promises";
+import { createReadStream } from "fs";
+import { stat } from "fs/promises";
+import { Readable } from "stream";
 import { verifyAuth } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
@@ -10,10 +12,7 @@ import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -39,6 +38,13 @@ export async function GET(
         { status: 404 }
       );
     }
+    const filters = job.filters as { canViewSensitive?: boolean };
+    if (filters.canViewSensitive && !hasAdminPermission(admin, "audit:sensitive:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "敏感导出权限已撤销" } },
+        { status: 403 }
+      );
+    }
     if (job.status !== "SUCCEEDED" || !job.filePath) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_READY", message: "导出文件尚未生成" } },
@@ -53,7 +59,7 @@ export async function GET(
     }
 
     const filePath = getAuditExportFilePath(job.filePath);
-    const content = await readFile(filePath);
+    const fileStat = await stat(filePath);
 
     // 下载本身必须留痕；写入失败则拒绝下载。
     await createAuditLogStrict({
@@ -73,7 +79,7 @@ export async function GET(
         phase: "downloaded",
         jobId: job.id,
         sha256: job.sha256,
-        size: content.length,
+        size: fileStat.size,
         format: job.format,
         stream: job.stream,
       },
@@ -82,8 +88,10 @@ export async function GET(
     });
 
     const ext = job.format === "jsonl" ? "jsonl" : "csv";
-    return new NextResponse(content, {
+    const stream = Readable.toWeb(createReadStream(filePath)) as ReadableStream;
+    return new NextResponse(stream, {
       headers: {
+        "Content-Length": String(fileStat.size),
         "Content-Type":
           ext === "csv" ? "text/csv; charset=utf-8" : "application/x-ndjson; charset=utf-8",
         "Content-Disposition": `attachment; filename="audit-export-${job.id}.${ext}"`,

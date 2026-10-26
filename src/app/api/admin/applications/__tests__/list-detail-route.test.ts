@@ -126,7 +126,9 @@ describe("管理端简历列表/详情/更新", () => {
     void _notes;
     mocks.findMany.mockResolvedValue([listApplication]);
 
-    const response = await listGET(listRequest("tz4a98xxat96iws9zmbrgj3a", "tz4a98xxat96iws9zmbrgj3a"));
+    const response = await listGET(
+      listRequest("tz4a98xxat96iws9zmbrgj3a", "tz4a98xxat96iws9zmbrgj3a")
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Cache-Control")).toContain("no-store");
@@ -176,11 +178,7 @@ describe("管理端简历列表/详情/更新", () => {
     const body = await response.json();
     expect(body.error.code).toBe("STATUS_CONFLICT");
     expect(body.error.details.currentStatus).toBe("hired");
-    expect(mocks.finishAuditLog).toHaveBeenCalledWith(
-      "audit-1",
-      "FAILURE",
-      expect.any(Object)
-    );
+    expect(mocks.finishAuditLog).toHaveBeenCalledWith("audit-1", "FAILURE", expect.any(Object));
   });
 
   it("备注保存带 expectedUpdatedAt，冲突返回 STALE_APPLICATION", async () => {
@@ -223,10 +221,6 @@ describe("管理端简历列表/详情/更新", () => {
     const body = await response.json();
     expect(body.data.status).toBe("reviewed");
     expect(body.data.updatedAt).toBe("2026-10-03T00:00:00.000Z");
-    expect(mocks.finishAuditLog).toHaveBeenCalledWith(
-      "audit-1",
-      "SUCCESS",
-      expect.any(Object)
-    );
+    expect(mocks.finishAuditLog).toHaveBeenCalledWith("audit-1", "SUCCESS", expect.any(Object));
   });
 });

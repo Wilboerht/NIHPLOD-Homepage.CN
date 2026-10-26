@@ -5,6 +5,7 @@
  * 带重试机制（3 次，指数退避 1s/4s/16s），失败记录到审计日志。
  */
 import { createHmac } from "crypto";
+import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { isSafeBackchannelUrl } from "@/lib/backchannel-logout";
@@ -94,7 +95,8 @@ async function sendWebhook(
   const secret = resolveWebhookSecret(target);
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (secret) {
-    headers["X-Webhook-Signature"] = `t=${timestamp},v1=${signWebhookPayload(secret, timestamp, body)}`;
+    headers["X-Webhook-Signature"] =
+      `t=${timestamp},v1=${signWebhookPayload(secret, timestamp, body)}`;
   } else if (process.env.NODE_ENV === "production") {
     // 生产环境拒绝无签名发送：接收方无法校验来源，明文通知可能被伪造利用
     apiConsole.error(
@@ -102,7 +104,9 @@ async function sendWebhook(
     );
     return false;
   } else {
-    apiConsole.warn(`[Webhook] 未配置签名密钥（SSO_WEBHOOK_SECRET），通知将不带签名 (${target.clientId})`);
+    apiConsole.warn(
+      `[Webhook] 未配置签名密钥（SSO_WEBHOOK_SECRET），通知将不带签名 (${target.clientId})`
+    );
   }
 
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -185,6 +189,17 @@ export async function dispatchStatusChangeWebhook(
         },
       });
 
+      await prisma.webhookDeliveryFailure
+        .create({
+          data: {
+            userId: change.userId,
+            clientId: target.clientId,
+            payload,
+            nextRetryAt: new Date(Date.now() + 60_000),
+          },
+        })
+        .catch((error: unknown) => apiConsole.error("[Webhook] 状态通知补偿记录写入失败:", error));
+
       apiConsole.error(`[Webhook] 通知失败 (${target.clientId}, userId=${change.userId})`);
     } else {
       recordSsoEvent({
@@ -200,4 +215,58 @@ export async function dispatchStatusChangeWebhook(
       });
     }
   }
+}
+
+export async function retryFailedStatusWebhooks(limit = 50): Promise<number> {
+  const failures = await prisma.webhookDeliveryFailure.findMany({
+    where: {
+      nextRetryAt: { lte: new Date() },
+      attempts: { lt: 8 },
+      payload: { path: ["event"], equals: "account_status_change" },
+    },
+    orderBy: { nextRetryAt: "asc" },
+    take: limit,
+  });
+  let delivered = 0;
+  for (const failure of failures) {
+    const claimed = await prisma.webhookDeliveryFailure.updateMany({
+      where: { id: failure.id, nextRetryAt: failure.nextRetryAt },
+      data: { nextRetryAt: new Date(Date.now() + 60_000) },
+    });
+    if (claimed.count === 0) continue;
+
+    const client = await prisma.oAuthClient.findUnique({
+      where: { clientId: failure.clientId },
+      select: { clientId: true, name: true, webhookUri: true },
+    });
+    if (!client?.webhookUri) {
+      await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
+      continue;
+    }
+    const payload = failure.payload as Record<string, unknown>;
+    const success = await sendWebhook(
+      { clientId: client.clientId, clientName: client.name, url: client.webhookUri },
+      payload,
+      0
+    );
+    if (success) {
+      delivered += 1;
+      await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
+      continue;
+    }
+
+    const attempts = failure.attempts + 1;
+    if (attempts >= 8) {
+      await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
+    } else {
+      await prisma.webhookDeliveryFailure.update({
+        where: { id: failure.id },
+        data: {
+          attempts,
+          nextRetryAt: new Date(Date.now() + Math.min(60_000 * 2 ** attempts, 60 * 60 * 1000)),
+        },
+      });
+    }
+  }
+  return delivered;
 }

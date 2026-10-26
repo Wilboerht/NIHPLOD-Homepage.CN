@@ -67,7 +67,7 @@ async function getJobs(): Promise<Job[]> {
     return jobs;
   } catch (error) {
     console.error("获取职位列表失败:", error);
-    return [];
+    throw error;
   }
 }
 

@@ -23,10 +23,7 @@ const createSchema = z
     expiresAt: z.string().datetime().optional(),
   })
   .refine(
-    (value) =>
-      Boolean(
-        (value.targetType && value.targetId) || value.userId || value.adminId
-      ),
+    (value) => Boolean((value.targetType && value.targetId) || value.userId || value.adminId),
     { message: "至少需要 targetType+targetId、userId 或 adminId 之一" }
   )
   .refine((value) => Boolean(value.targetType) === Boolean(value.targetId), {

@@ -6,10 +6,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { createAuditLogStrict } from "@/lib/audit";
-import {
-  contentDispositionAttachment,
-  resolveResumeDownload,
-} from "@/lib/resume-files";
+import { contentDispositionAttachment, resolveResumeDownload } from "@/lib/resume-files";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { apiConsole } from "@/lib/logger";
 

@@ -200,9 +200,7 @@ function buildErrorResponse(
     const handled = custom({ error, errorDescription, status, request });
     if (handled instanceof Promise) {
       return handled.then((res) =>
-        res
-          ? toNextResponse(res)
-          : defaultErrorResponse(request, status, error, errorDescription)
+        res ? toNextResponse(res) : defaultErrorResponse(request, status, error, errorDescription)
       );
     }
     if (handled) return toNextResponse(handled);
@@ -262,9 +260,15 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
   // insecureLocalDev：与 middleware 一致地去前缀 + 关 Secure，否则读不到 state/verifier
   const secureCookies = !insecureLocalDev;
   const pickName = (explicit: string | undefined, fallback: string) =>
-    insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
-  const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
-  const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
+    insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : (explicit ?? fallback);
+  const accessTokenCookieName = pickName(
+    config.accessTokenCookieName,
+    DEFAULT_ACCESS_TOKEN_COOKIE_NAME
+  );
+  const refreshTokenCookieName = pickName(
+    config.refreshTokenCookieName,
+    DEFAULT_REFRESH_TOKEN_COOKIE_NAME
+  );
   const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
   const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
   const nonceCookieName = pickName(config.nonceCookieName, DEFAULT_NONCE_COOKIE_NAME);
@@ -306,13 +310,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     const error = searchParams.get("error");
     if (error) {
       const desc = searchParams.get("error_description") || error;
-      return buildErrorResponse(
-        request,
-        400,
-        "authorization_failed",
-        desc,
-        config.renderErrorPage
-      );
+      return buildErrorResponse(request, 400, "authorization_failed", desc, config.renderErrorPage);
     }
 
     const code = searchParams.get("code");
@@ -343,8 +341,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     const attemptSuffix = `_${returnedState}`;
     // 瞬态 cookie 按 state 隔离读取；旧固定名称仅作滚动升级过渡期回退
     const readTransientCookie = (name: string): string | undefined =>
-      request.cookies.get(`${name}${attemptSuffix}`)?.value ??
-      request.cookies.get(name)?.value;
+      request.cookies.get(`${name}${attemptSuffix}`)?.value ?? request.cookies.get(name)?.value;
 
     const savedState = readTransientCookie(stateCookieName);
     if (!savedState) {
@@ -413,42 +410,20 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       body.set("client_secret", clientSecret);
     }
 
-    // 带重试的 token 交换（1 次重试 + 指数退避）
     let res: Response | null = null;
     let lastError: unknown;
-    const maxRetries = 1;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      if (attempt > 0) {
-        // 指数退避：1s * 2^attempt
-        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
-      }
-      try {
-        // 10s 超时：token 端点挂起时 abort 抛错落入 catch，走重试 + 502，
-        // 而不是让回调请求无限挂起
-        res = await fetchWithTimeout(
-          tokenEndpoint,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: body.toString(),
-          },
-          10_000
-        );
-        lastError = null;
-        break;
-      } catch (err) {
-        lastError = err;
-        if (attempt >= maxRetries) {
-          return buildErrorResponse(
-            request,
-            502,
-            "server_error",
-            "登录服务暂时不可用（Token 请求失败），请稍后重试",
-            config.renderErrorPage
-          );
-        }
-      }
+    try {
+      res = await fetchWithTimeout(
+        tokenEndpoint,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString(),
+        },
+        10_000
+      );
+    } catch (err) {
+      lastError = err;
     }
 
     if (lastError || !res) {
@@ -465,12 +440,15 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
       let errData: Record<string, unknown> = {};
       try {
         errData = await res.json();
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       return buildErrorResponse(
         request,
         502,
         "token_request_failed",
-        (errData.error_description as string) || `登录失败（Token 请求失败: HTTP ${res.status}），请稍后重试`,
+        (errData.error_description as string) ||
+          `登录失败（Token 请求失败: HTTP ${res.status}），请稍后重试`,
         config.renderErrorPage
       );
     }
@@ -545,9 +523,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     // 监听地址（如 http://0.0.0.0:3002），反代场景会把用户重定向到不可达地址。
     const callbackOrigin = new URL(redirectUri).origin;
     const rawReturnUrl = readTransientCookie(returnUrlCookieName) || defaultReturnPath;
-    const returnUrl = isTrustedReturnUrl(rawReturnUrl, callbackOrigin)
-      ? rawReturnUrl
-      : "/";
+    const returnUrl = isTrustedReturnUrl(rawReturnUrl, callbackOrigin) ? rawReturnUrl : "/";
 
     // 重定向并设置 cookie
     const response = NextResponse.redirect(new URL(returnUrl, callbackOrigin));
@@ -562,7 +538,7 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
     // 回退到 30 天默认值
     const refreshMaxAge =
       (tokenData as Record<string, unknown>).refresh_expires_in != null
-        ? (tokenData as Record<string, unknown>).refresh_expires_in as number
+        ? ((tokenData as Record<string, unknown>).refresh_expires_in as number)
         : 30 * 24 * 60 * 60;
 
     response.cookies.set(refreshTokenCookieName, tokenData.refresh_token, {

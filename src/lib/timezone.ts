@@ -30,9 +30,7 @@ export function getUtc8WeekStartMonday(now: Date = new Date()): Date {
 /** 本月 1 日 UTC+8 零点 */
 export function getUtc8MonthStart(now: Date = new Date()): Date {
   const local = new Date(now.getTime() + UTC8_OFFSET_MS);
-  return new Date(
-    Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) - UTC8_OFFSET_MS
-  );
+  return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) - UTC8_OFFSET_MS);
 }
 
 /** UTC+8 日期键：YYYY-MM-DD */

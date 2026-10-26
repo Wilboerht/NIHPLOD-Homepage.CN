@@ -27,8 +27,7 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/auth", () => ({
   withUserAuth:
-    (handler: (req: NextRequest, payload: { id: string }) => unknown) =>
-    (req: NextRequest) =>
+    (handler: (req: NextRequest, payload: { id: string }) => unknown) => (req: NextRequest) =>
       handler(req, { id: "user-1" }),
 }));
 

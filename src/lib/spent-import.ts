@@ -167,9 +167,12 @@ export function signImportPreviewToken(params: {
     cipher.final(),
   ]);
   const tag = cipher.getAuthTag();
-  return ["v1", iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(
-    "."
-  );
+  return [
+    "v1",
+    iv.toString("base64url"),
+    tag.toString("base64url"),
+    ciphertext.toString("base64url"),
+  ].join(".");
 }
 
 export function verifyImportPreviewToken(
@@ -195,10 +198,9 @@ export function verifyImportPreviewToken(
     const decipher = createDecipheriv("aes-256-gcm", getImportPreviewTokenKey(), iv);
     decipher.setAAD(Buffer.from("spent-import-preview:v1", "utf8"));
     decipher.setAuthTag(tag);
-    const plaintext = Buffer.concat([
-      decipher.update(ciphertext),
-      decipher.final(),
-    ]).toString("utf8");
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString(
+      "utf8"
+    );
     const payload = JSON.parse(plaintext) as ImportPreviewTokenPayload;
 
     if (
@@ -1034,6 +1036,8 @@ export async function executeImportBatch(params: {
         version,
         status: "PROCESSING",
         startedAt: now,
+        leaseToken: randomUUID(),
+        heartbeatAt: now,
         totalRows: parsed.length,
         successRows: 0,
         duplicateRows: 0,
@@ -1176,79 +1180,62 @@ export async function executeImportBatch(params: {
         if (activeDuplicate) return markDuplicate();
 
         try {
-          const result = await applyExternalSpentSync({
-            userId,
-            spentDelta: row.amount,
-            // 批内唯一 reference：撤销后可重新导入；跨批次去重由 syncReference 预检负责
-            reference: batchReference,
-            orderNo: row.orderNo,
-            source: "SPENT_IMPORT",
-            note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
-              row.orderNo ? ` ${row.orderNo}` : ""
-            }`,
-          });
-          if (!result) return markError("用户不存在");
+          return await prisma.$transaction<ExecuteRowResult>(async (tx) => {
+            const currentBatch = await tx.spentImportBatch.findUnique({
+              where: { id: batch.id },
+              select: { status: true, undoneAt: true, leaseToken: true },
+            });
+            if (
+              currentBatch?.status !== "PROCESSING" ||
+              currentBatch.undoneAt ||
+              currentBatch.leaseToken !== batch.leaseToken
+            ) {
+              throw new Error("IMPORT_BATCH_STALE");
+            }
+            await tx.spentImportBatch.update({
+              where: { id: batch.id },
+              data: { heartbeatAt: new Date() },
+            });
+            const result = await applyExternalSpentSync(
+              {
+                userId,
+                spentDelta: row.amount!,
+                reference: batchReference,
+                orderNo: row.orderNo,
+                source: "SPENT_IMPORT",
+                note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
+                  row.orderNo ? ` ${row.orderNo}` : ""
+                }`,
+              },
+              tx
+            );
+            if (!result) throw new Error("SPENT_IMPORT_USER_MISSING");
 
-          const appliedDelta = result.duplicated ? 0 : result.appliedDelta;
-          const status = result.duplicated ? "DUPLICATE" : "SUCCESS";
-          const error = result.duplicated ? "该记录已入账过（幂等跳过）" : null;
-
-          try {
-            await prisma.spentImportRow.update({
+            const appliedDelta = result.duplicated ? 0 : result.appliedDelta;
+            const status = result.duplicated ? "DUPLICATE" : "SUCCESS";
+            const error = result.duplicated ? "该记录已入账过（幂等跳过）" : null;
+            await tx.spentImportRow.update({
               where: { id: persisted.id },
               data: { status, error, appliedDelta, userId },
             });
-          } catch (updateError) {
-            // 成功行状态写入失败时，必须先冲正已入账金额，避免“钱已加、行状态没落”。
-            // P2002 通常是并发同订单号命中数据库唯一索引；冲正后按重复处理。
-            if (appliedDelta !== 0) {
-              try {
-                await applyExternalSpentSync({
-                  userId,
-                  spentDelta: -appliedDelta,
-                  reference: `import-compensate:${batchReference}`,
-                  note: "导入行状态写入失败自动冲正",
-                });
-                await releaseSpentOrderClaim(prisma, {
-                  userId,
-                  orderNoKey: row.orderNoKey,
-                  source: "SPENT_IMPORT",
-                  reference: batchReference,
-                });
-              } catch (compensateError) {
-                apiConsole.error(
-                  `[SpentImport] 第 ${row.rowIndex} 行冲正失败，需人工核对:`,
-                  compensateError
-                );
-                throw new Error("IMPORT_COMPENSATION_FAILED");
-              }
-            }
 
-            if ((updateError as { code?: string }).code === "P2002") {
-              return markDuplicate();
-            }
-            apiConsole.error(`[SpentImport] 行 ${row.rowIndex} 状态写入失败:`, updateError);
-            return markError("行状态写入失败，已自动冲正，请重试");
-          }
-
-          return {
-            rowIndex: row.rowIndex,
-            phone: row.phone,
-            amount: row.amount,
-            appliedDelta,
-            status,
-            error,
-            reference: syncReference,
-          };
+            return {
+              rowIndex: row.rowIndex,
+              phone: row.phone!,
+              amount: row.amount!,
+              appliedDelta,
+              status,
+              error,
+              reference: syncReference,
+            };
+          });
         } catch (error) {
           apiConsole.error(`[SpentImport] 行 ${row.rowIndex} 入账失败:`, error);
-          if (error instanceof Error && error.message === "IMPORT_COMPENSATION_FAILED") {
+          if (error instanceof Error && error.message === "IMPORT_BATCH_STALE") {
             throw error;
           }
           if (error instanceof SpentOrderConflictError) {
-            return markError(
-              `订单号已在其他来源入账（${error.source}），请先撤销原入账再导入`
-            );
+            return markError(`订单号已在其他来源入账（${error.source}），请先撤销原入账再导入`);
           }
           return markError("入账失败，请重试");
         }
@@ -1277,14 +1264,17 @@ export async function executeImportBatch(params: {
     .reduce((sum, r) => sum + (r.appliedDelta ?? 0), 0);
 
   const noSuccess = successRows === 0;
-  await prisma.spentImportBatch.update({
-    where: { id: batch.id },
+  const finalized = await prisma.spentImportBatch.updateMany({
+    where: {
+      id: batch.id,
+      status: "PROCESSING",
+      leaseToken: batch.leaseToken,
+      undoneAt: null,
+    },
     data: {
       // 零成功批次不占用文件哈希，允许修正后重新上传同一文件
       status: noSuccess ? "FAILED" : "COMPLETED",
-      lastError: noSuccess
-        ? "没有成功入账的行：请检查重复/账号状态/订单号后重新导入"
-        : null,
+      lastError: noSuccess ? "没有成功入账的行：请检查重复/账号状态/订单号后重新导入" : null,
       processedRows: rowResults.length,
       successRows,
       duplicateRows,
@@ -1293,6 +1283,7 @@ export async function executeImportBatch(params: {
       finishedAt: new Date(),
     },
   });
+  if (finalized.count === 0) throw new Error("IMPORT_BATCH_STALE");
 
   return {
     batchId: batch.id,
@@ -1309,12 +1300,7 @@ export type UndoResult =
   | { ok: true; revertedRows: number; totalAmount: number }
   | {
       ok: false;
-      code:
-        | "NOT_FOUND"
-        | "ALREADY_UNDONE"
-        | "NOTHING_TO_UNDO"
-        | "NOT_COMPLETED"
-        | "INTERNAL_ERROR";
+      code: "NOT_FOUND" | "ALREADY_UNDONE" | "NOTHING_TO_UNDO" | "NOT_COMPLETED" | "INTERNAL_ERROR";
       message: string;
     };
 
@@ -1326,9 +1312,13 @@ export type UndoResult =
 export async function failStaleImportBatches(maxAgeMinutes = 30): Promise<number> {
   const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000);
   const result = await prisma.spentImportBatch.updateMany({
-    where: { status: "PROCESSING", startedAt: { lt: cutoff } },
+    where: {
+      status: "PROCESSING",
+      OR: [{ heartbeatAt: { lt: cutoff } }, { heartbeatAt: null, startedAt: { lt: cutoff } }],
+    },
     data: {
       status: "FAILED",
+      leaseToken: null,
       lastError: "处理超时或进程中断：请撤销已成功行后重新导入",
       finishedAt: new Date(),
     },
@@ -1414,6 +1404,16 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
     };
   }
   if (rows.length === 0) {
+    const historicalSuccessCount = await prisma.spentImportRow.count({
+      where: { batchId, status: "SUCCESS" },
+    });
+    if (historicalSuccessCount > 0) {
+      await prisma.spentImportBatch.update({
+        where: { id: batch.id },
+        data: { undoneAt: new Date() },
+      });
+      return { ok: true, revertedRows: 0, totalAmount: 0 };
+    }
     return { ok: false, code: "NOTHING_TO_UNDO", message: "该批次没有可撤销的入账记录" };
   }
 

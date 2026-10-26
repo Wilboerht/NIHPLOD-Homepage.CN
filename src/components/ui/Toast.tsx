@@ -157,9 +157,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   // 组件卸载时清理所有定时器（防止内存泄漏 + setState on unmounted 警告）
   useEffect(() => {
+    const timers = timersRef.current;
     return () => {
-      timersRef.current.forEach((timer) => clearTimeout(timer));
-      timersRef.current.clear();
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
     };
   }, []);
 

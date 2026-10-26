@@ -14,6 +14,9 @@ const txMock = {
     findUnique: vi.fn(),
     updateMany: vi.fn(),
   },
+  product: {
+    updateMany: vi.fn(),
+  },
 };
 
 vi.mock("@/lib/prisma", () => {
@@ -42,6 +45,8 @@ const PENDING = {
   points: 200,
   status: "PENDING",
   productName: "面膜礼盒",
+  productId: "product-1",
+  stockDeducted: false,
 };
 
 describe("cancelRedemption 取消兑换退分", () => {
@@ -103,5 +108,17 @@ describe("cancelRedemption 取消兑换退分", () => {
         note: "缺货取消",
       })
     );
+    expect(txMock.product.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("仅在本单实际扣过库存时回补", async () => {
+    txMock.pointRedemption.findUnique.mockResolvedValue({ ...PENDING, stockDeducted: true });
+
+    await cancelRedemption({ redemptionId: "rd-1" });
+
+    expect(txMock.product.updateMany).toHaveBeenCalledWith({
+      where: { id: "product-1", redeemStock: { not: null } },
+      data: { redeemStock: { increment: 1 } },
+    });
   });
 });

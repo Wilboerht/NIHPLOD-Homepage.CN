@@ -178,9 +178,7 @@ export async function buildRetentionPreview(options?: {
     const rows = await loadEligibleRows(entry.stream, cutoff);
     const days = dayBucketsFromRows(entry.stream, rows);
     const heldByDay =
-      entry.stream === "audit"
-        ? await heldAuditRowsByDay(cutoff)
-        : await heldSsoRowsByDay(cutoff);
+      entry.stream === "audit" ? await heldAuditRowsByDay(cutoff) : await heldSsoRowsByDay(cutoff);
 
     for (const item of days) {
       const status = await getArchiveStatus(entry.stream, item.day);
@@ -197,7 +195,8 @@ export async function buildRetentionPreview(options?: {
       });
       if (!status.archived) warnings.push(`${entry.stream}/${item.day} 尚未归档`);
       else if (!status.verified) warnings.push(`${entry.stream}/${item.day} 归档校验失败`);
-      else if (!status.backupVerified) warnings.push(`${entry.stream}/${item.day} 备份副本校验失败`);
+      else if (!status.backupVerified)
+        warnings.push(`${entry.stream}/${item.day} 备份副本校验失败`);
     }
   }
 

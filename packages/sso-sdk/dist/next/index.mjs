@@ -648,8 +648,14 @@ function createCallbackRouteHandler(config) {
   const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
   const secureCookies = !insecureLocalDev;
   const pickName = (explicit, fallback) => insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
-  const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
-  const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
+  const accessTokenCookieName = pickName(
+    config.accessTokenCookieName,
+    DEFAULT_ACCESS_TOKEN_COOKIE_NAME
+  );
+  const refreshTokenCookieName = pickName(
+    config.refreshTokenCookieName,
+    DEFAULT_REFRESH_TOKEN_COOKIE_NAME
+  );
   const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
   const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
   const nonceCookieName = pickName(config.nonceCookieName, DEFAULT_NONCE_COOKIE_NAME);
@@ -683,13 +689,7 @@ function createCallbackRouteHandler(config) {
     const error = searchParams.get("error");
     if (error) {
       const desc = searchParams.get("error_description") || error;
-      return buildErrorResponse(
-        request,
-        400,
-        "authorization_failed",
-        desc,
-        config.renderErrorPage
-      );
+      return buildErrorResponse(request, 400, "authorization_failed", desc, config.renderErrorPage);
     }
     const code = searchParams.get("code");
     const returnedState = searchParams.get("state");
@@ -766,35 +766,18 @@ function createCallbackRouteHandler(config) {
     }
     let res = null;
     let lastError;
-    const maxRetries = 1;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      if (attempt > 0) {
-        await new Promise((r) => setTimeout(r, 1e3 * Math.pow(2, attempt - 1)));
-      }
-      try {
-        res = await fetchWithTimeout(
-          tokenEndpoint,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: body.toString()
-          },
-          1e4
-        );
-        lastError = null;
-        break;
-      } catch (err) {
-        lastError = err;
-        if (attempt >= maxRetries) {
-          return buildErrorResponse(
-            request,
-            502,
-            "server_error",
-            "\u767B\u5F55\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528\uFF08Token \u8BF7\u6C42\u5931\u8D25\uFF09\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5",
-            config.renderErrorPage
-          );
-        }
-      }
+    try {
+      res = await fetchWithTimeout(
+        tokenEndpoint,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString()
+        },
+        1e4
+      );
+    } catch (err) {
+      lastError = err;
     }
     if (lastError || !res) {
       return buildErrorResponse(

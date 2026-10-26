@@ -23,16 +23,12 @@ import {
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { getClientIP } from "@/lib/client-ip";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { z } from "zod";
 import { hashPassword, passwordSchema, getPasswordExpiryDate } from "@/lib/password";
-import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
+import { verifySmsCodeWithLimit, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -147,8 +143,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!verifyCode(phone, code, "register", smsCode.codeHash)) {
-      await recordSmsCodeFailure(smsCode.id);
+    if (!(await verifySmsCodeWithLimit(phone, code, "register", smsCode.id))) {
       return NextResponse.json(
         {
           success: false,

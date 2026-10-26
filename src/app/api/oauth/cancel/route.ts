@@ -17,10 +17,7 @@ import { apiConsole } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 /** JSON 响应统一禁止缓存（含授权上下文） */
-function noStoreJson(
-  body: unknown,
-  init?: { status?: number }
-): NextResponse {
+function noStoreJson(body: unknown, init?: { status?: number }): NextResponse {
   return NextResponse.json(body, {
     ...init,
     headers: { "Cache-Control": "no-store" },

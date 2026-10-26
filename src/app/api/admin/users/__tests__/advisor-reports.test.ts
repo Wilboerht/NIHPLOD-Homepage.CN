@@ -55,7 +55,11 @@ const reportData = {
   expired: false,
   personaLabel: "沙漠派",
   summary: { overallScore: 82 },
-  result: { reportVersion: 2, skinProfile: { type: "combination_dry", typeLabel: "混合偏干", concerns: [] }, analysis: { summary: "", details: [] } },
+  result: {
+    reportVersion: 2,
+    skinProfile: { type: "combination_dry", typeLabel: "混合偏干", concerns: [] },
+    analysis: { summary: "", details: [] },
+  },
   faceAnalysis: null,
 };
 
@@ -94,10 +98,9 @@ describe("admin advisor report BFF", () => {
 
   it("finance 无完整报告权限返回 403", async () => {
     vi.mocked(verifyAuth).mockResolvedValue(FINANCE as never);
-    const res = await listReports(
-      request(`/api/admin/users/${USER_ID}/advisor/reports`),
-      { params: Promise.resolve({ id: USER_ID }) }
-    );
+    const res = await listReports(request(`/api/admin/users/${USER_ID}/advisor/reports`), {
+      params: Promise.resolve({ id: USER_ID }),
+    });
     expect(res.status).toBe(403);
     expect(mocks.advisorRequest).not.toHaveBeenCalled();
   });
@@ -131,10 +134,9 @@ describe("admin advisor report BFF", () => {
   });
 
   it("非法 sessionId 返回 400", async () => {
-    const res = await getReport(
-      request(`/api/admin/users/${USER_ID}/advisor/reports/bad`),
-      { params: Promise.resolve({ id: USER_ID, sessionId: "bad" }) }
-    );
+    const res = await getReport(request(`/api/admin/users/${USER_ID}/advisor/reports/bad`), {
+      params: Promise.resolve({ id: USER_ID, sessionId: "bad" }),
+    });
     expect(res.status).toBe(400);
   });
 

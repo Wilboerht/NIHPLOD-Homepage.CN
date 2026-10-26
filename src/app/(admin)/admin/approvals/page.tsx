@@ -157,7 +157,6 @@ function ApprovalsContent() {
     deferInEffect(fetchItems);
   }, [fetchItems]);
 
-
   const updateParams = (next: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(next).forEach(([key, value]) => {
@@ -204,6 +203,7 @@ function ApprovalsContent() {
         totpCode: code,
         note: note.trim() || undefined,
       });
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       if (data.execution && !data.execution.ok) {
         toast.error(data.execution.error || "审批已通过，但执行失败");
       } else {
@@ -228,6 +228,7 @@ function ApprovalsContent() {
     setActionLoading("cancel");
     try {
       await apiPost(`/api/admin/approvals/${selected.id}/cancel`);
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       toast.success("申请已撤回");
       setSelected(null);
       await fetchItems();
@@ -249,6 +250,7 @@ function ApprovalsContent() {
         secret: string | null;
         execution: { ok: boolean; status: string; error?: string };
       }>(`/api/admin/approvals/${selected.id}/execute`, { totpCode: code });
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       if (data.secret) {
         setSecret(data.secret);
         setSecretSaved(false);
@@ -278,6 +280,7 @@ function ApprovalsContent() {
         secret: string | null;
         execution: { ok: boolean; status: string; error?: string };
       }>(`/api/admin/approvals/${selected.id}/retry`, { totpCode: code });
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       if (data.secret) {
         setSecret(data.secret);
         setSecretSaved(false);

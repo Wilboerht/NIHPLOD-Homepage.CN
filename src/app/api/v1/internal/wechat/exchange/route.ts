@@ -295,10 +295,17 @@ async function finalizeLogin(
         avatar: user.avatar || wechatInfo.avatar || null,
       },
     });
-    await upsertIdentity(user.id, "wechat_open", wechatInfo.openid, wechatInfo.unionid, {
-      nickname: wechatInfo.nickname ?? null,
-      avatar: wechatInfo.avatar ?? null,
-    }, tx);
+    await upsertIdentity(
+      user.id,
+      "wechat_open",
+      wechatInfo.openid,
+      wechatInfo.unionid,
+      {
+        nickname: wechatInfo.nickname ?? null,
+        avatar: wechatInfo.avatar ?? null,
+      },
+      tx
+    );
   });
 
   // 签发双 Token

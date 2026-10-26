@@ -513,6 +513,7 @@ describe("retryFailedWebhookDeliveries", () => {
         where: {
           nextRetryAt: { lte: expect.any(Date) },
           attempts: { lt: 10 },
+          payload: { path: ["event"], equals: "profile_update" },
         },
       })
     );

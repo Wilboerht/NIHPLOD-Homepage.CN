@@ -212,7 +212,14 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
     // 以及生日锁定判定
     const previous = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { nickname: true, avatar: true, birthday: true, birthdayLocked: true, status: true, gender: true },
+      select: {
+        nickname: true,
+        avatar: true,
+        birthday: true,
+        birthdayLocked: true,
+        status: true,
+        gender: true,
+      },
     });
 
     if (!isActiveAccount(previous)) {

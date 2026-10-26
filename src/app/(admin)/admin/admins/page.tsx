@@ -576,17 +576,15 @@ export default function AdminAdminsPage() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
-                      {admin.id !== currentAdminId &&
-                        !isOwnerActor &&
-                        canRequestApproval && (
-                          <ApprovalRequestAction
-                            policyKey="admin.delete"
-                            initialValues={{ adminId: admin.id }}
-                            label="申请删除管理员"
-                            variant="ghost"
-                            size="sm"
-                          />
-                        )}
+                      {admin.id !== currentAdminId && !isOwnerActor && canRequestApproval && (
+                        <ApprovalRequestAction
+                          policyKey="admin.delete"
+                          initialValues={{ adminId: admin.id }}
+                          label="申请删除管理员"
+                          variant="ghost"
+                          size="sm"
+                        />
+                      )}
                     </div>
                   ) : (
                     <span className="text-xs text-brand-charcoal/65">只读</span>
@@ -744,17 +742,15 @@ export default function AdminAdminsPage() {
                                 size="sm"
                               />
                             )}
-                          {admin.id !== currentAdminId &&
-                            !isOwnerActor &&
-                            canRequestApproval && (
-                              <ApprovalRequestAction
-                                policyKey="admin.delete"
-                                initialValues={{ adminId: admin.id }}
-                                label="申请删除管理员"
-                                variant="ghost"
-                                size="sm"
-                              />
-                            )}
+                          {admin.id !== currentAdminId && !isOwnerActor && canRequestApproval && (
+                            <ApprovalRequestAction
+                              policyKey="admin.delete"
+                              initialValues={{ adminId: admin.id }}
+                              label="申请删除管理员"
+                              variant="ghost"
+                              size="sm"
+                            />
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-brand-charcoal/65">只读</span>

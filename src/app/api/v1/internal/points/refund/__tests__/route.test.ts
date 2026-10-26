@@ -8,6 +8,7 @@ import { NextRequest } from "next/server";
 const { txClient } = vi.hoisted(() => ({
   txClient: {
     pointLedger: { findUnique: vi.fn() },
+    pointRedemption: { findUnique: vi.fn().mockResolvedValue(null) },
   },
 }));
 
@@ -60,7 +61,15 @@ function createSignedRequest(
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = `test-refund-nonce-${++nonceCounter}`;
   const bodyHash = hashRequestBody(bodyText);
-  let signature = generateInternalApiSignature(SECRET, "POST", PATH, timestamp, nonce, bodyHash, "");
+  let signature = generateInternalApiSignature(
+    SECRET,
+    "POST",
+    PATH,
+    timestamp,
+    nonce,
+    bodyHash,
+    ""
+  );
   if (options?.badSignature) {
     signature = signature.replace(/.$/, signature.endsWith("0") ? "1" : "0");
   }
@@ -98,6 +107,7 @@ describe("POST /api/v1/internal/points/refund（兑换撤销退分）", () => {
     (getClientIP as ReturnType<typeof vi.fn>).mockReturnValue("127.0.0.1");
     mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
     txClient.pointLedger.findUnique.mockResolvedValue(ORIGINAL_REDEEM);
+    txClient.pointRedemption.findUnique.mockResolvedValue(null);
     mockRefund.mockResolvedValue({ duplicated: false, amount: 300 });
     mockBalance.mockResolvedValue({ available: 700, frozen: 0, nextReleaseAt: null });
   });
@@ -140,6 +150,14 @@ describe("POST /api/v1/internal/points/refund（兑换撤销退分）", () => {
 
   it("原兑换流水不存在返回 404", async () => {
     txClient.pointLedger.findUnique.mockResolvedValue(null);
+    const res = await POST(createSignedRequest(VALID_BODY));
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("REDEMPTION_NOT_FOUND");
+    expect(mockRefund).not.toHaveBeenCalled();
+  });
+
+  it("官网兑换流水禁止通过商城接口退分", async () => {
+    txClient.pointRedemption.findUnique.mockResolvedValue({ id: "website-redemption-1" });
     const res = await POST(createSignedRequest(VALID_BODY));
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe("REDEMPTION_NOT_FOUND");

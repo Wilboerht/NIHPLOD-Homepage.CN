@@ -240,6 +240,7 @@ export async function POST(request: NextRequest) {
         images: {
           create: sanitized.images.map((img, index) => ({
             url: img.url,
+            derivedUrls: img.derivedUrls ?? [],
             alt: img.alt,
             order: img.order ?? index,
           })),

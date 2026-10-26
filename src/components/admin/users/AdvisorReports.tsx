@@ -397,9 +397,7 @@ export function AdvisorReportDetailView({
                       <td className="px-3 py-2 text-brand-charcoal/65">
                         {item.grade ? GRADE_LABELS[item.grade] || item.grade : "—"}
                       </td>
-                      <td className="px-3 py-2 text-brand-charcoal/65">
-                        {item.details || "—"}
-                      </td>
+                      <td className="px-3 py-2 text-brand-charcoal/65">{item.details || "—"}</td>
                     </tr>
                   );
                 })}
@@ -415,11 +413,7 @@ export function AdvisorReportDetailView({
             <dl className="grid gap-x-6 sm:grid-cols-2">
               <Field
                 label="面部评分"
-                value={
-                  faceAnalysis.overallScore != null
-                    ? `${faceAnalysis.overallScore} 分`
-                    : "—"
-                }
+                value={faceAnalysis.overallScore != null ? `${faceAnalysis.overallScore} 分` : "—"}
               />
               <Field
                 label="肌肤年龄"
@@ -473,9 +467,7 @@ export function AdvisorReportDetailView({
                         )}
                       </div>
                       {condition.description && (
-                        <p className="mt-0.5 text-brand-charcoal/65">
-                          {condition.description}
-                        </p>
+                        <p className="mt-0.5 text-brand-charcoal/65">{condition.description}</p>
                       )}
                     </div>
                   ))}
@@ -489,9 +481,7 @@ export function AdvisorReportDetailView({
                 <div className="grid gap-2 sm:grid-cols-2">
                   {Object.entries(ZONE_LABELS).map(([key, label]) => {
                     const zone =
-                      faceAnalysis.zoneAnalysis?.[
-                        key as keyof typeof faceAnalysis.zoneAnalysis
-                      ];
+                      faceAnalysis.zoneAnalysis?.[key as keyof typeof faceAnalysis.zoneAnalysis];
                     if (!zone || (!zone.condition && !zone.advice)) return null;
                     return (
                       <div
@@ -614,18 +604,14 @@ export function AdvisorReports({ userId }: { userId: string }) {
       setDetail(null);
       setDetailLoading(true);
       setDetailError("");
-      apiGet<AdvisorReportDetail>(
-        `/api/admin/users/${userId}/advisor/reports/${sessionId}`
-      )
+      apiGet<AdvisorReportDetail>(`/api/admin/users/${userId}/advisor/reports/${sessionId}`)
         .then((data) => {
           if (!isLatest()) return;
           setDetail(data);
         })
         .catch((err) => {
           if (!isLatest()) return;
-          setDetailError(
-            err instanceof ApiError ? err.message : "加载报告失败，请稍后重试"
-          );
+          setDetailError(err instanceof ApiError ? err.message : "加载报告失败，请稍后重试");
         })
         .finally(() => {
           if (isLatest()) setDetailLoading(false);
@@ -691,9 +677,7 @@ export function AdvisorReports({ userId }: { userId: string }) {
           </Button>
         </div>
       ) : !payload || payload.reports.length === 0 ? (
-        <p className="px-4 py-6 text-center text-xs text-brand-charcoal/55">
-          暂无已完成测肤报告。
-        </p>
+        <p className="px-4 py-6 text-center text-xs text-brand-charcoal/55">暂无已完成测肤报告。</p>
       ) : (
         <>
           <div className="overflow-x-auto">

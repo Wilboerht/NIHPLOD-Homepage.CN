@@ -16,11 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyIdToken, verifyUserToken } from "@/lib/jwt";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 import { USER_COOKIE_NAME } from "@/types/auth";
 

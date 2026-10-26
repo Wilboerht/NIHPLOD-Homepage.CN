@@ -99,10 +99,7 @@ async function doRefresh(): Promise<RefreshResult> {
           error?: { code?: string; message?: string };
         };
         errorCode = data?.error?.code;
-        if (
-          errorCode === "DEVICE_LIMIT_EXCEEDED" &&
-          typeof data.error?.message === "string"
-        ) {
+        if (errorCode === "DEVICE_LIMIT_EXCEEDED" && typeof data.error?.message === "string") {
           // 带时间戳：登录页只展示 10 分钟内的原因，避免历史提示误报
           sessionStorage.setItem(
             SESSION_EXPIRED_HINT_KEY,

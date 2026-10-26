@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  getAdminSsoConfig,
-  isAdminSsoEnabled,
-  safeSecretEqual,
-} from "@/lib/admin-sso";
+import { getAdminSsoConfig, isAdminSsoEnabled, safeSecretEqual } from "@/lib/admin-sso";
 import { resolveAdvisorRole, resolveAdminPermissions } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
@@ -61,10 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { client_id, client_secret, adminIds } = parsed.data;
-  if (
-    client_id !== config.clientId ||
-    !safeSecretEqual(client_secret, config.clientSecret)
-  ) {
+  if (client_id !== config.clientId || !safeSecretEqual(client_secret, config.clientSecret)) {
     return jsonError("INVALID_CLIENT", "客户端认证失败", 401);
   }
 

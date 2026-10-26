@@ -35,6 +35,7 @@ export async function submitToIndexNow(paths: string[]): Promise<boolean> {
         keyLocation: `${SITE_URL}/${key}.txt`,
         urlList,
       }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     return response.ok;

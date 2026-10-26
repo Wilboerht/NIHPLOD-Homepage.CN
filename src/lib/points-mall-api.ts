@@ -166,10 +166,7 @@ export async function getPointsOverviewResponse(userId: string): Promise<NextRes
       };
     });
 
-    return NextResponse.json(
-      { success: true, data },
-      { headers: NO_STORE_HEADERS }
-    );
+    return NextResponse.json({ success: true, data }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     apiConsole.error("[UserPoints] 查询失败:", error);
     return internalError();
@@ -319,10 +316,7 @@ export async function getPointGiftsResponse(
       };
     });
 
-    return NextResponse.json(
-      { success: true, data },
-      { headers: NO_STORE_HEADERS }
-    );
+    return NextResponse.json({ success: true, data }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     apiConsole.error("[UserPointGifts] 查询失败:", error);
     return internalError();
@@ -600,7 +594,10 @@ export async function createAddressResponse(
     const result = await prisma.$transaction(async (tx) => {
       // 锁定用户行：序列化同用户的地址写入，消除"上限计数"与"默认地址切换"的竞态
       // （并发下曾可超出 MAX_ADDRESSES 或产生多条默认地址）
-      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+      const lockedUsers = await tx.$queryRaw<
+        { status: string }[]
+      >`SELECT status FROM "User" WHERE id = ${userId} FOR UPDATE`;
+      if (lockedUsers[0]?.status !== "ACTIVE") return { kind: "disabled" as const };
 
       const count = await tx.userAddress.count({ where: { userId } });
       if (count >= MAX_ADDRESSES) {
@@ -620,13 +617,17 @@ export async function createAddressResponse(
       return { kind: "ok" as const, address: created };
     });
 
-    if (result.kind === "limit") {
+    if (result.kind === "limit" || result.kind === "disabled") {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "ADDRESS_LIMIT", message: `最多保存 ${MAX_ADDRESSES} 个收货地址` },
+          error: {
+            code: result.kind === "limit" ? "ADDRESS_LIMIT" : "ACCOUNT_DISABLED",
+            message:
+              result.kind === "limit" ? `最多保存 ${MAX_ADDRESSES} 个收货地址` : "账户不可用",
+          },
         },
-        { status: 400 }
+        { status: result.kind === "limit" ? 400 : 403 }
       );
     }
 

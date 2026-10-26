@@ -40,10 +40,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    if (
-      admin.role !== "owner" ||
-      !hasAdminPermission(admin, "audit:retention:execute")
-    ) {
+    if (admin.role !== "owner" || !hasAdminPermission(admin, "audit:retention:execute")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "仅 owner 可执行审计清理" } },
         { status: 403 }

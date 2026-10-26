@@ -217,8 +217,7 @@ export async function submitDeletionRequest(params: {
 }
 
 export type CancelDeletionResult =
-  | { ok: true }
-  | { ok: false; status: number; code: string; message: string };
+  { ok: true } | { ok: false; status: number; code: string; message: string };
 
 /** 撤回注销申请（仅 PENDING 可撤回，条件更新防竞态；调用方须已完成身份验证） */
 export async function cancelDeletionRequest(params: {

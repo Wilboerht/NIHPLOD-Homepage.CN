@@ -149,18 +149,18 @@ export async function POST(request: NextRequest) {
       return csrfForbiddenResponse();
     }
 
-      const rateLimitResponse = await checkAdminRateLimit(request);
-      if (rateLimitResponse) return rateLimitResponse;
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const body = await request.json();
-      const parsed = z
-        .object({
-          ids: z.array(z.string().min(1)).min(1).max(200),
-          status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"]),
-        })
+    const body = await request.json();
+    const parsed = z
+      .object({
+        ids: z.array(z.string().min(1)).min(1).max(200),
+        status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"]),
+      })
       .safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

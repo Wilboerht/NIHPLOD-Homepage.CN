@@ -486,7 +486,9 @@ describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底
     vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
     mockRefreshUserSession.mockResolvedValueOnce({ success: false, reason: "revoked" });
     const req = new NextRequest(buildAuthorizeUrl(), {
-      headers: { Cookie: "__Host-user_token=expired-token; __Host-nihplod_user_refresh=revoked-rt" },
+      headers: {
+        Cookie: "__Host-user_token=expired-token; __Host-nihplod_user_refresh=revoked-rt",
+      },
     });
     const res = await GET(req);
     expect(res.status).toBe(302);
@@ -501,7 +503,9 @@ describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底
     vi.mocked(verifyUserToken).mockResolvedValueOnce(null);
     mockRefreshUserSession.mockResolvedValueOnce({ success: false, reason: "revoked" });
     const req = new NextRequest(buildAuthorizeUrl({ prompt: "none" }), {
-      headers: { Cookie: "__Host-user_token=expired-token; __Host-nihplod_user_refresh=revoked-rt" },
+      headers: {
+        Cookie: "__Host-user_token=expired-token; __Host-nihplod_user_refresh=revoked-rt",
+      },
     });
     const res = await GET(req);
     expect(res.status).toBe(302);

@@ -325,10 +325,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     await finishAuditLog(auditId, "SUCCESS", auditDetail);
 
-    return NextResponse.json(
-      { success: true, data: application },
-      { headers: NO_STORE_HEADERS }
-    );
+    return NextResponse.json({ success: true, data: application }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     // 记录不存在（含并发删除）映射为 404，而非 500
     if ((error as { code?: string }).code === "P2025") {

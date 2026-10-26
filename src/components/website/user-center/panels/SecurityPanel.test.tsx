@@ -110,9 +110,7 @@ describe("SecurityPanel", () => {
   it("首次设置密码：发送验证码 + POST /api/user/password/set", async () => {
     // 第一次提交触发 PASSWORD_NOT_SET，之后 send-code / password/set 均成功
     mockFetchWithAuth
-      .mockResolvedValueOnce(
-        jsonResponse({ success: false, error: { code: "PASSWORD_NOT_SET" } })
-      )
+      .mockResolvedValueOnce(jsonResponse({ success: false, error: { code: "PASSWORD_NOT_SET" } }))
       .mockResolvedValue(jsonResponse({ success: true }));
 
     render(<SecurityPanel />);

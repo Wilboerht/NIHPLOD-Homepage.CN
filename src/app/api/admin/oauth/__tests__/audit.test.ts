@@ -59,6 +59,10 @@ vi.mock("@/lib/logger", () => ({
   logError: vi.fn(),
 }));
 
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@/lib/audit", () => ({
   createAuditLog: (...args: unknown[]) => mockCreateAuditLog(...args),
   createAuditLogStrict: (...args: unknown[]) => mockCreateAuditLog(...args),
@@ -138,8 +142,9 @@ describe("GET /api/admin/oauth/audit", () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    const where = (prismaMock.ssoAuditEvent.findMany.mock.calls[0][0] as { where: Record<string, unknown> })
-      .where;
+    const where = (
+      prismaMock.ssoAuditEvent.findMany.mock.calls[0][0] as { where: Record<string, unknown> }
+    ).where;
     expect(where.event).toBe("token");
     expect(where.success).toBe(true);
     expect(data.data.pagination.total).toBe(1);
@@ -161,9 +166,11 @@ describe("GET /api/admin/oauth/audit", () => {
     );
     expect(res.status).toBe(200);
 
-    const where = (prismaMock.ssoAuditEvent.findMany.mock.calls[0][0] as {
-      where: { createdAt: { gte: Date; lt: Date } };
-    }).where;
+    const where = (
+      prismaMock.ssoAuditEvent.findMany.mock.calls[0][0] as {
+        where: { createdAt: { gte: Date; lt: Date } };
+      }
+    ).where;
     // UTC+8 当天 00:00 = 前一日 UTC 16:00
     expect(where.createdAt.gte).toEqual(new Date("2026-07-31T16:00:00.000Z"));
     // UTC+8 08-10 当日结束 = 08-10 UTC 16:00（= 08-11 00:00 UTC+8）
@@ -177,9 +184,7 @@ describe("GET /api/admin/oauth/audit", () => {
       makeAuditItem({ id: "evt-3", userId: "deleted-user" }),
     ]);
     prismaMock.ssoAuditEvent.count.mockResolvedValue(3);
-    prismaMock.user.findMany.mockResolvedValue([
-      { id: "user-1", phone: "13812341234" },
-    ]);
+    prismaMock.user.findMany.mockResolvedValue([{ id: "user-1", phone: "13812341234" }]);
 
     const { GET } = await import("@/app/api/admin/oauth/audit/route");
     const res = await GET(createRequest("/api/admin/oauth/audit"));
@@ -199,7 +204,7 @@ describe("GET /api/admin/oauth/audit", () => {
 
   it("CSV 导出：响应头正确，且以 = 开头含逗号的单元格被加 ' 前缀（公式注入防护）", async () => {
     prismaMock.ssoAuditEvent.findMany.mockResolvedValue([
-      makeAuditItem({ clientName: "=HYPERLINK(\"https://evil.com\"),x" }),
+      makeAuditItem({ clientName: '=HYPERLINK("https://evil.com"),x' }),
     ]);
 
     const { GET } = await import("@/app/api/admin/oauth/audit/route");
@@ -207,7 +212,9 @@ describe("GET /api/admin/oauth/audit", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/csv");
-    expect(res.headers.get("Content-Disposition")).toMatch(/attachment; filename="sso-audit-\d{4}-\d{2}-\d{2}\.csv"/);
+    expect(res.headers.get("Content-Disposition")).toMatch(
+      /attachment; filename="sso-audit-\d{4}-\d{2}-\d{2}\.csv"/
+    );
 
     // BOM 防 Excel 中文乱码（res.text() 的 UTF-8 解码会剥离 BOM，改按字节校验）
     const buf = new Uint8Array(await res.arrayBuffer());

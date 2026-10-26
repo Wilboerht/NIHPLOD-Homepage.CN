@@ -59,7 +59,14 @@ async function getProducts() {
         },
         purchaseLinks: {
           orderBy: { order: "asc" },
-          select: { id: true, platform: true, platformKey: true, url: true },
+          select: {
+            id: true,
+            platform: true,
+            platformKey: true,
+            url: true,
+            miniProgramShortLink: true,
+            miniProgramPath: true,
+          },
         },
       },
     });
@@ -78,7 +85,7 @@ async function getProducts() {
     }));
   } catch (error) {
     console.error("获取产品列表失败:", error);
-    return [];
+    throw error;
   }
 }
 

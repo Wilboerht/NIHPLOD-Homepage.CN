@@ -43,7 +43,9 @@ export function StatsCard({
           {loading ? (
             <div className="mt-1 h-8 w-20 animate-pulse rounded bg-brand-charcoal/10" />
           ) : (
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-brand-charcoal">{value}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-brand-charcoal">
+              {value}
+            </p>
           )}
           {description && <p className="mt-1 text-xs text-brand-charcoal/65">{description}</p>}
           {trend && !loading && (

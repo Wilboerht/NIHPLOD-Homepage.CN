@@ -117,7 +117,11 @@ describe("external-identity 辅助模块", () => {
 
       expect(mockExternalIdentity.upsert).toHaveBeenCalledWith({
         where: { provider_subjectId: { provider: "wechat_mp", subjectId: "openid-1" } },
-        update: { userId: "user-1", unionId: "union-1", metadata: { nickname: "测试", avatar: null } },
+        update: {
+          userId: "user-1",
+          unionId: "union-1",
+          metadata: { nickname: "测试", avatar: null },
+        },
         create: {
           userId: "user-1",
           provider: "wechat_mp",

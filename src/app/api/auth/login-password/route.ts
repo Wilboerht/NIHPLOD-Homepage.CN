@@ -27,11 +27,7 @@ import {
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCaptchaToken } from "@/lib/captcha";
@@ -135,10 +131,7 @@ export async function POST(request: NextRequest) {
 
     // 本次失败后剩余可尝试次数（>0 时随错误详情返回，前端提示"还可尝试 X 次"；
     // 0 表示下一次失败将触发锁定，不返回数字避免泄露精确计数）
-    const remainingAttempts = Math.max(
-      0,
-      lockStatus.maxAttempts - lockStatus.failedAttempts - 1
-    );
+    const remainingAttempts = Math.max(0, lockStatus.maxAttempts - lockStatus.failedAttempts - 1);
     const loginFailedError = (): {
       code: string;
       message: string;

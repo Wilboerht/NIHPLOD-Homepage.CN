@@ -45,7 +45,11 @@ function postToParent(message: Record<string, unknown>): void {
   // ancestorOrigins[0] 是直接父框架 origin，比 document.referrer 更可靠
   // （referrer 受 Referrer-Policy 与页面内部跳转影响，可能为空或变成自身 URL）
   const ancestorOrigin = window.location.ancestorOrigins?.[0] || "";
-  const targetOrigin = getParentTargetOrigin(document.referrer, EMBED_ALLOWED_ORIGINS, ancestorOrigin);
+  const targetOrigin = getParentTargetOrigin(
+    document.referrer,
+    EMBED_ALLOWED_ORIGINS,
+    ancestorOrigin
+  );
   if (!targetOrigin) {
     console.warn("[SSO Embed] 父窗口 origin 无法推导或未通过白名单校验，跳过 postMessage", {
       referrer: document.referrer,
@@ -269,9 +273,7 @@ function EmbedAccountContent() {
           </div>
           <div>
             <label className="mb-1 block text-xs text-gray-500">会员等级</label>
-            <p className="text-sm text-gray-900">
-              {levelDisplay(user.membershipLevel)}
-            </p>
+            <p className="text-sm text-gray-900">{levelDisplay(user.membershipLevel)}</p>
           </div>
           <button
             onClick={handleLogout}

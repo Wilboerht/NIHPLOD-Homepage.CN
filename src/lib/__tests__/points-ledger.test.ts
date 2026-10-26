@@ -330,7 +330,7 @@ describe("expirePoints 过期扣减", () => {
     tx = createTx();
   });
 
-  it("已释放流水过期：可用余额扣减（仅正数部分），流水清零，写 EXPIRE 流水", async () => {
+  it("已释放流水过期：按全部过期量扣减并清零流水，写 EXPIRE 流水", async () => {
     tx.pointLedger.findMany.mockResolvedValue([
       { id: "r1", remaining: 200, releasedAt: NOW },
       { id: "r2", remaining: 100, releasedAt: null },
@@ -342,7 +342,7 @@ describe("expirePoints 过期扣减", () => {
     expect(total).toBe(300);
     expect(tx.pointBalance.upsert).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      create: { userId: "user-1" },
+      create: { userId: "user-1", available: -200 },
       update: { available: { decrement: 200 }, frozen: { decrement: 100 } },
     });
     expect(tx.pointLedger.create).toHaveBeenCalledWith({
@@ -355,18 +355,21 @@ describe("expirePoints 过期扣减", () => {
     });
   });
 
-  it("负余额（超兑债务）不因过期减免", async () => {
-    tx.pointLedger.findMany.mockResolvedValue([
-      { id: "r1", remaining: 200, releasedAt: NOW },
-    ]);
-    tx.pointBalance.findUnique.mockResolvedValue({ available: -100, frozen: 0 });
+  it("超兑后新积分到期仍完整扣减，不豁免原有债务", async () => {
+    tx.pointLedger.findMany.mockResolvedValue([{ id: "r1", remaining: 200, releasedAt: NOW }]);
+    tx.pointBalance.findUnique.mockResolvedValue({ available: 100, frozen: 0 });
 
     await expirePoints(asTx(tx), "user-1", NOW);
 
-    // 可用余额为负时不做余额扣减（债务不减免），也不写金额为 -200 的假扣减流水；
-    // 仅锁余额行 + 清零发放流水 remaining
-    expect(tx.pointBalance.upsert).toHaveBeenCalledTimes(1); // 仅 lockPointBalance
-    expect(tx.pointLedger.create).not.toHaveBeenCalled();
+    expect(tx.pointBalance.upsert).toHaveBeenCalledTimes(2);
+    expect(tx.pointBalance.upsert).toHaveBeenLastCalledWith({
+      where: { userId: "user-1" },
+      create: { userId: "user-1", available: -200 },
+      update: { available: { decrement: 200 } },
+    });
+    expect(tx.pointLedger.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: "EXPIRE", amount: -200 }),
+    });
   });
 
   it("无过期流水：不写 EXPIRE 流水", async () => {
@@ -379,9 +382,7 @@ describe("expirePoints 过期扣减", () => {
   });
 
   it("并发抢占失败（行已被其他事务清零）：不重复计入过期金额", async () => {
-    tx.pointLedger.findMany.mockResolvedValue([
-      { id: "r1", remaining: 200, releasedAt: NOW },
-    ]);
+    tx.pointLedger.findMany.mockResolvedValue([{ id: "r1", remaining: 200, releasedAt: NOW }]);
     tx.pointLedger.updateMany.mockResolvedValue({ count: 0 });
     tx.pointBalance.findUnique.mockResolvedValue({ available: 500, frozen: 0 });
 

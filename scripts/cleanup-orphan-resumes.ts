@@ -20,13 +20,22 @@ import { prisma } from "@/lib/prisma";
 import {
   deletePrivateOSSObject,
   isPrivateBucketConfigured,
-  listPrivateOSSObjectNames,
+  listPrivateOSSObjects,
 } from "@/lib/ali-oss";
 import { getPrivateResumeRoot, getResumeObjectName } from "@/lib/resume-files";
 
 const APPLY = process.argv.includes("--apply");
 const OBJECT_PREFIX = "resumes/";
 const UUID_PDF = /^[0-9a-f-]{36}\.pdf$/i;
+const MIN_OBJECT_AGE_MS = 10 * 60 * 1000;
+
+async function isReferencedNow(objectName: string): Promise<boolean> {
+  const application = await prisma.jobApplication.findFirst({
+    where: { resumePath: { endsWith: objectName } },
+    select: { id: true },
+  });
+  return Boolean(application);
+}
 
 async function main() {
   const applications = await prisma.jobApplication.findMany({
@@ -56,10 +65,13 @@ async function main() {
     if (!UUID_PDF.test(file)) continue;
     const objectName = `${OBJECT_PREFIX}${file}`;
     if (referenced.has(objectName)) continue;
+    const fileStat = await fs.stat(join(localRoot, file));
+    if (Date.now() - fileStat.mtimeMs < MIN_OBJECT_AGE_MS) continue;
     orphans += 1;
     console.log(`[resume-orphan] 本地孤儿: ${objectName}`);
     if (!APPLY) continue;
     try {
+      if (await isReferencedNow(objectName)) continue;
       await fs.unlink(join(localRoot, file));
       deleted += 1;
     } catch (error) {
@@ -70,15 +82,19 @@ async function main() {
 
   // 私有 OSS
   if (isPrivateBucketConfigured()) {
-    const objects = await listPrivateOSSObjectNames(OBJECT_PREFIX);
-    for (const objectName of objects) {
+    const objects = await listPrivateOSSObjects(OBJECT_PREFIX);
+    for (const object of objects) {
+      const objectName = object.name;
       const file = objectName.slice(OBJECT_PREFIX.length);
       if (!UUID_PDF.test(file)) continue;
       if (referenced.has(objectName)) continue;
+      if (!object.lastModified || Date.now() - Date.parse(object.lastModified) < MIN_OBJECT_AGE_MS)
+        continue;
       orphans += 1;
       console.log(`[resume-orphan] OSS 孤儿: ${objectName}`);
       if (!APPLY) continue;
       try {
+        if (await isReferencedNow(objectName)) continue;
         await deletePrivateOSSObject(objectName);
         deleted += 1;
       } catch (error) {

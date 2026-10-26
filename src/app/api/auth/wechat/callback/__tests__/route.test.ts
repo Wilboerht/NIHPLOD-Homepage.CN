@@ -77,9 +77,9 @@ const NONCE = "nonce-1";
 const SUBSITE = "https://sub.example.com";
 
 function createRequest(callback: string = SUBSITE): NextRequest {
-  const state = Buffer.from(
-    JSON.stringify({ nonce: NONCE, type: "open", callback })
-  ).toString("base64url");
+  const state = Buffer.from(JSON.stringify({ nonce: NONCE, type: "open", callback })).toString(
+    "base64url"
+  );
   const url = new URL("/api/auth/wechat/callback", "http://localhost:3000");
   url.searchParams.set("code", "wx-code");
   url.searchParams.set("state", state);

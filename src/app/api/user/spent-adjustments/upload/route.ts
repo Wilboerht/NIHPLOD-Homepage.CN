@@ -14,11 +14,7 @@ import { apiConsole } from "@/lib/logger";
 import { rateLimit } from "@/lib/ratelimit";
 import { uploadSpentProofFile, isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readFormDataBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readFormDataBody } from "@/lib/request-body";
 
 export const dynamic = "force-dynamic";
 

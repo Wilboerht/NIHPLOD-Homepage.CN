@@ -49,49 +49,10 @@ function reviewReference(applicationId: string): string {
 }
 
 /**
- * 补偿回滚：将申请从目标状态恢复为 PENDING（清空审核字段）。
- * 尽力而为，自身失败只记日志——极端情况下申请可能停留在已审核状态，
- * 此时可借助撤销审核功能人工修复。
- */
-async function compensateClaim(
-  applicationId: string,
-  fromStatus: SpentAdjustmentStatus,
-  restoreFields?: {
-    status?: SpentAdjustmentStatus;
-    reviewAmount: number | null;
-    reviewNote: string | null;
-    reviewedById: string | null;
-    reviewedAt: Date | null;
-  }
-): Promise<void> {
-  try {
-    await prisma.spentAdjustmentApplication.updateMany({
-      where: { id: applicationId, status: fromStatus },
-      data: restoreFields ?? {
-        status: "PENDING",
-        reviewAmount: null,
-        reviewNote: null,
-        reviewedById: null,
-        reviewedAt: null,
-      },
-    });
-  } catch (error) {
-    apiConsole.error(
-      `[SpentAdjustment] 补偿回滚失败（applicationId=${applicationId}），请人工介入或使用撤销审核修复:`,
-      error
-    );
-  }
-}
-
-/**
  * 审核消费补录申请（管理员）
  *
- * 并发安全：
- * - 先读快照做前置校验，再用 CAS（status=PENDING 条件更新）抢占审核权，
- *   只有一个管理员能抢到；抢占失败按已处理返回。
- * - 通过时入账复用 applyExternalSpentSync（reference 周期唯一、幂等），
- *   入账异常则补偿回滚申请状态为 PENDING，允许重试。
- * - 抢占成功后的任何未知异常同样触发补偿，避免申请卡在已审核但未入账的状态。
+ * 状态更新、订单占用、消费额、等级和积分流水在同一事务提交。
+ * 提交结果未知时重试会读取已处理状态，不会重新生成入账周期。
  */
 export async function reviewApplication(params: {
   applicationId: string;
@@ -151,20 +112,44 @@ export async function reviewApplication(params: {
     };
   }
 
-  // 1. CAS 抢占：仅 PENDING 状态可被审核
   try {
-    const claim = await prisma.spentAdjustmentApplication.updateMany({
-      where: { id: applicationId, status: "PENDING" },
-      data: {
-        status: approved ? "APPROVED" : "REJECTED",
-        reviewAmount: approved ? reviewAmount : null,
-        reviewNote: reviewNote || null,
-        reviewedById: adminId,
-        reviewedAt: now,
-      },
+    const claimed = await prisma.$transaction(async (tx) => {
+      const claim = await tx.spentAdjustmentApplication.updateMany({
+        where: { id: applicationId, status: "PENDING" },
+        data: {
+          status: approved ? "APPROVED" : "REJECTED",
+          reviewAmount: approved ? reviewAmount : null,
+          reviewNote: reviewNote || null,
+          reviewedById: adminId,
+          reviewedAt: now,
+        },
+      });
+      if (claim.count === 0) return false;
+
+      if (approved) {
+        const user = await tx.user.findUnique({
+          where: { id: application.userId },
+          select: { status: true },
+        });
+        if (!user || user.status === "DELETED")
+          throw new Error("SPENT_ADJUSTMENT_USER_UNAVAILABLE");
+        const result = await applyExternalSpentSync(
+          {
+            userId: application.userId,
+            spentDelta: reviewAmount as number,
+            reference: reviewReference(applicationId),
+            orderNo: application.orderNo,
+            source: "SPENT_ADJUSTMENT",
+            note: `消费补录：${SPENT_CHANNEL_LABELS[application.channel]} ${application.orderNo}`,
+          },
+          tx
+        );
+        if (!result) throw new Error("SPENT_ADJUSTMENT_USER_MISSING");
+      }
+      return true;
     });
 
-    if (claim.count === 0) {
+    if (!claimed) {
       return {
         ok: false,
         code: "ALREADY_REVIEWED",
@@ -172,43 +157,6 @@ export async function reviewApplication(params: {
       };
     }
 
-    // 2. 通过：入账（幂等），失败则补偿回滚
-    if (approved) {
-      try {
-        const result = await applyExternalSpentSync({
-          userId: application.userId,
-          spentDelta: reviewAmount as number,
-          reference: reviewReference(applicationId),
-          orderNo: application.orderNo,
-          source: "SPENT_ADJUSTMENT",
-          note: `消费补录：${SPENT_CHANNEL_LABELS[application.channel]} ${application.orderNo}`,
-        });
-        if (!result) throw new Error("SPENT_ADJUSTMENT_USER_MISSING");
-      } catch (error) {
-        try {
-          await releaseSpentOrderClaim(prisma, {
-            userId: application.userId,
-            orderNoKey: application.orderNo ? normalizeOrderNo(application.orderNo) : null,
-            source: "SPENT_ADJUSTMENT",
-            referencePrefix: `manual:${applicationId}:`,
-          });
-        } catch (releaseError) {
-          apiConsole.error("[SpentAdjustment] 入账失败后释放订单占用失败:", releaseError);
-        }
-        await compensateClaim(applicationId, "APPROVED");
-        if (error instanceof SpentOrderConflictError) {
-          return {
-            ok: false,
-            code: "ORDER_CONFLICT",
-            message: "该订单号已在商城同步或 Excel 导入中入账，请勿重复审核",
-          };
-        }
-        apiConsole.error("[SpentAdjustment] 入账失败，回滚申请状态:", error);
-        return { ok: false, code: "INTERNAL_ERROR", message: "入账失败，请稍后重试" };
-      }
-    }
-
-    // 3. 通知（fire-and-forget，不阻断审核主流程）
     notifyReviewResult({
       userId: application.userId,
       phone: application.user.phone,
@@ -220,9 +168,14 @@ export async function reviewApplication(params: {
 
     return { ok: true, status: approved ? "APPROVED" : "REJECTED" };
   } catch (error) {
-    // 抢占成功后的未知异常：补偿回滚，避免卡在已审核但未入账的状态
-    apiConsole.error("[SpentAdjustment] 审核异常:", error);
-    await compensateClaim(applicationId, approved ? "APPROVED" : "REJECTED");
+    if (error instanceof SpentOrderConflictError) {
+      return {
+        ok: false,
+        code: "ORDER_CONFLICT",
+        message: "该订单号已在商城同步或 Excel 导入中入账，请勿重复审核",
+      };
+    }
+    apiConsole.error("[SpentAdjustment] 审核异常，事务已回滚:", error);
     return { ok: false, code: "INTERNAL_ERROR", message: "服务器错误" };
   }
 }
@@ -232,7 +185,7 @@ export async function reviewApplication(params: {
  *
  * - CAS（status=APPROVED 条件更新）将申请恢复为 PENDING（清空审核字段）；
  * - 按原核实金额反向冲正（spentDelta 为负），reference 周期唯一且幂等；
- * - 冲正失败则补偿恢复为 APPROVED（保留原审核字段）。
+ * - 状态、冲正和订单占用释放同事务，失败整体回滚。
  * - 撤销后重新审核会生成新 reference，不命中旧幂等记录。
  */
 export async function undoApplication(params: {
@@ -267,61 +220,45 @@ export async function undoApplication(params: {
       };
     }
 
-    const original = {
-      reviewAmount: application.reviewAmount,
-      reviewNote: application.reviewNote,
-      reviewedById: application.reviewedById,
-      reviewedAt: application.reviewedAt,
-    };
-
-    // 1. CAS 抢占：仅 APPROVED 可撤销
-    const claim = await prisma.spentAdjustmentApplication.updateMany({
-      where: { id: applicationId, status: "APPROVED" },
-      data: {
-        status: "PENDING",
-        reviewAmount: null,
-        reviewNote: null,
-        reviewedById: null,
-        reviewedAt: null,
-      },
-    });
-
-    if (claim.count === 0) {
-      return {
-        ok: false,
-        code: "ALREADY_REVIEWED",
-        message: "该申请已被其他管理员处理，请刷新列表",
-      };
-    }
-
-    // 2. 反向冲正（幂等）
-    try {
-      const result = await applyExternalSpentSync({
-        userId: application.userId,
-        spentDelta: -(application.reviewAmount ?? 0),
-        reference: `manual-undo:${applicationId}:${Date.now()}`,
-        note: `撤销消费补录审核：${applicationId}（管理员 ${adminId}）`,
+    const claimed = await prisma.$transaction(async (tx) => {
+      const claim = await tx.spentAdjustmentApplication.updateMany({
+        where: { id: applicationId, status: "APPROVED" },
+        data: {
+          status: "PENDING",
+          reviewAmount: null,
+          reviewNote: null,
+          reviewedById: null,
+          reviewedAt: null,
+        },
       });
+      if (claim.count === 0) return false;
+
+      const result = await applyExternalSpentSync(
+        {
+          userId: application.userId,
+          spentDelta: -(application.reviewAmount ?? 0),
+          reference: `manual-undo:${applicationId}:${Date.now()}`,
+          note: `撤销消费补录审核：${applicationId}（管理员 ${adminId}）`,
+        },
+        tx
+      );
       if (!result) throw new Error("SPENT_ADJUSTMENT_USER_MISSING");
-    } catch (error) {
-      apiConsole.error("[SpentAdjustment] 撤销冲正失败，恢复审核状态:", error);
-      await compensateClaim(applicationId, "PENDING", {
-        status: "APPROVED",
-        ...original,
-      });
-      return { ok: false, code: "INTERNAL_ERROR", message: "撤销失败，请稍后重试" };
-    }
 
-    try {
-      await releaseSpentOrderClaim(prisma, {
+      await releaseSpentOrderClaim(tx, {
         userId: application.userId,
         orderNoKey: application.orderNo ? normalizeOrderNo(application.orderNo) : null,
         source: "SPENT_ADJUSTMENT",
         referencePrefix: `manual:${applicationId}:`,
       });
-    } catch (error) {
-      // 消费额已安全冲正；占用清理失败只保留告警，避免把用户卡在不可重试状态。
-      apiConsole.error("[SpentAdjustment] 撤销后释放订单占用失败，需人工清理:", error);
+      return true;
+    });
+
+    if (!claimed) {
+      return {
+        ok: false,
+        code: "ALREADY_REVIEWED",
+        message: "该申请已被其他管理员处理，请刷新列表",
+      };
     }
 
     apiConsole.info(`[SpentAdjustment] 撤销审核完成：applicationId=${applicationId}`);

@@ -182,11 +182,6 @@ export function SecurityMonitor({
   }
   if (!data) return null;
 
-  const needsAttention =
-    data.sensitive.highRisk > 0 ||
-    data.sensitive.authFailures > 0 ||
-    data.funds.failures > 0;
-
   return (
     <CollapsiblePanel
       title={
@@ -196,7 +191,6 @@ export function SecurityMonitor({
         </span>
       }
       summary={`敏感操作 ${data.sensitive.total} · 高危 ${data.sensitive.highRisk} · 认证失败 ${data.sensitive.authFailures} · 资金失败 ${data.funds.failures}`}
-      defaultOpen={needsAttention}
     >
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MonitorCard

@@ -84,6 +84,7 @@ vi.mock("@/lib/prisma", () => {
   };
   prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
   prisma.$executeRaw = vi.fn().mockResolvedValue([]);
+  prisma.$queryRaw = vi.fn().mockResolvedValue([]);
   return { prisma, default: prisma };
 });
 
@@ -179,6 +180,12 @@ vi.mock("@/lib/admin-totp", () => ({
 }));
 
 // Mock validation
+vi.mock("next/cache", () => ({ revalidateTag: vi.fn() }));
+vi.mock("@/lib/profile-webhook", () => ({
+  sendProfileUpdateWebhook: vi.fn().mockResolvedValue(undefined),
+  normalizeGender: (value: string | null) => value,
+}));
+
 vi.mock("@/lib/validation", () => ({
   validateCUID: (id: string) => typeof id === "string" && id.length > 0,
   invalidIdResponse: () => {

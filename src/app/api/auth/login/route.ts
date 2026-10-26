@@ -25,12 +25,8 @@ import {
 } from "@/lib/auth-security";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
-import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
+import { verifySmsCodeWithLimit, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -142,9 +138,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. 验证码校验
-    if (!verifyCode(phone, code, "login", smsCode.codeHash)) {
-      // 单码失败计数：达到上限自动作废该验证码（防爆破，与账户锁定叠加）
-      await recordSmsCodeFailure(smsCode.id);
+    if (!(await verifySmsCodeWithLimit(phone, code, "login", smsCode.id))) {
       // 验证码类失败不写入 LoginAttempt（不计入账户锁定池，与 register 口径一致）：
       // 防止攻击者无需验证码即可通过连发错误验证码锁定受害者账号（锁号 DoS）
 

@@ -72,7 +72,9 @@ const mockUpsert = upsertIdentity as ReturnType<typeof vi.fn>;
 const mockCheckStatus = checkUserStatus as ReturnType<typeof vi.fn>;
 
 const NONCE = "nonce-123";
-const VALID_STATE = Buffer.from(JSON.stringify({ redirect: "/", nonce: NONCE })).toString("base64url");
+const VALID_STATE = Buffer.from(JSON.stringify({ redirect: "/", nonce: NONCE })).toString(
+  "base64url"
+);
 
 function createRequest(query: string, nonce?: string): NextRequest {
   return new NextRequest(new URL(`/api/auth/douyin/callback?${query}`, "http://localhost:3000"), {
@@ -122,7 +124,11 @@ describe("GET /api/auth/douyin/callback", () => {
 
   it("全新用户应重定向 binding_required 并设置绑定 Cookie", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "at", openId: "dy-openid", expiresIn: 7200 });
-    mockGetUserInfo.mockResolvedValue({ openid: "dy-openid", unionid: "dy-union", nickname: "抖友" });
+    mockGetUserInfo.mockResolvedValue({
+      openid: "dy-openid",
+      unionid: "dy-union",
+      nickname: "抖友",
+    });
     mockFindByIdentity.mockResolvedValue(null);
     (signWechatBindToken as ReturnType<typeof vi.fn>).mockResolvedValue("bind-token-dy");
 
@@ -137,7 +143,9 @@ describe("GET /api/auth/douyin/callback", () => {
     );
     // 绑定 Cookie 已设置
     const setCookie = res.headers.getSetCookie?.() ?? [];
-    expect(setCookie.some((c) => c.includes("wechat_bind_token") && c.includes("bind-token-dy"))).toBe(true);
+    expect(
+      setCookie.some((c) => c.includes("wechat_bind_token") && c.includes("bind-token-dy"))
+    ).toBe(true);
   });
 
   it("state redirect 为协议相对 URL 时应回落站内路径（防开放重定向）", async () => {
@@ -173,7 +181,11 @@ describe("GET /api/auth/douyin/callback", () => {
 
   it("已绑定真实账户应直接登录并双写 ExternalIdentity", async () => {
     mockGetToken.mockResolvedValue({ accessToken: "at", openId: "dy-openid", expiresIn: 7200 });
-    mockGetUserInfo.mockResolvedValue({ openid: "dy-openid", unionid: "dy-union", nickname: "抖友" });
+    mockGetUserInfo.mockResolvedValue({
+      openid: "dy-openid",
+      unionid: "dy-union",
+      nickname: "抖友",
+    });
     mockFindByIdentity.mockResolvedValue({
       id: "user-1",
       phone: "13800138000",

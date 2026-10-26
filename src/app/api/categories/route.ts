@@ -14,7 +14,7 @@ export async function GET() {
       take: 50,
       include: {
         _count: {
-          select: { products: true },
+          select: { products: { where: { published: true } } },
         },
       },
     });

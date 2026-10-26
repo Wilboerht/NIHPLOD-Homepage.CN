@@ -8,7 +8,8 @@
 import { apiConsole } from "@/lib/logger";
 import { SITE_URL } from "@/lib/site-url";
 
-const BAIDU_PUSH_API = "http://data.zz.baidu.com/urls";
+const BAIDU_PUSH_API = "https://data.zz.baidu.com/urls";
+const PUSH_TIMEOUT_MS = 10_000;
 
 export interface BaiduPushResult {
   pushed: number;
@@ -37,6 +38,7 @@ export async function pushUrlsToBaidu(paths: string[]): Promise<BaiduPushResult 
       method: "POST",
       headers: { "Content-Type": "text/plain" },
       body: urls.join("\n"),
+      signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
     });
 
     const result = await response.json();

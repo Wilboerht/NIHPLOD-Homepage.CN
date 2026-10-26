@@ -198,7 +198,12 @@ export async function checkAccountLockout(
   } catch (error) {
     apiConsole.error("[CheckAccountLockout] 检查错误:", error);
     // fail-closed：数据库异常时默认锁定 15 分钟，防止攻击者利用故障绕过防爆破
-    return { locked: true, remainingMinutes: 15, failedAttempts: config.maxAttempts, maxAttempts: config.maxAttempts };
+    return {
+      locked: true,
+      remainingMinutes: 15,
+      failedAttempts: config.maxAttempts,
+      maxAttempts: config.maxAttempts,
+    };
   }
 }
 
@@ -337,7 +342,8 @@ export async function saveRefreshToken(
   token: string,
   expiresAt: Date,
   deviceInfo?: DeviceInfo,
-  clientId?: string
+  clientId?: string,
+  oauthSessionId?: string
 ): Promise<void> {
   try {
     const tokenHash = hashToken(token);
@@ -370,6 +376,7 @@ export async function saveRefreshToken(
             token: tokenHash,
             expiresAt,
             clientId: clientId ?? sameDeviceToken.clientId,
+            oauthSessionId: oauthSessionId ?? sameDeviceToken.oauthSessionId,
             deviceName: deviceInfo?.deviceName ?? sameDeviceToken.deviceName,
             deviceInfo: deviceInfo?.deviceInfo ?? sameDeviceToken.deviceInfo,
             ipAddress: deviceInfo?.ipAddress ?? sameDeviceToken.ipAddress,
@@ -396,12 +403,40 @@ export async function saveRefreshToken(
           if (clientId && tokensToRevoke.length > 0) {
             const cutoff = tokensToRevoke[tokensToRevoke.length - 1].createdAt;
             const sessions = await tx.oAuthSession.findMany({
-              where: { userId, clientId, revokedAt: null, createdAt: { lte: cutoff } },
+              where: {
+                userId,
+                clientId,
+                revokedAt: null,
+                OR: [
+                  {
+                    sessionId: {
+                      in: tokensToRevoke.flatMap((t) => t.oauthSessionId ?? []),
+                    },
+                  },
+                  ...(tokensToRevoke.some((t) => !t.oauthSessionId)
+                    ? [{ createdAt: { lte: cutoff } }]
+                    : []),
+                ],
+              },
               select: { sessionId: true },
             });
             if (sessions.length > 0) {
               await tx.oAuthSession.updateMany({
-                where: { userId, clientId, revokedAt: null, createdAt: { lte: cutoff } },
+                where: {
+                  userId,
+                  clientId,
+                  revokedAt: null,
+                  OR: [
+                    {
+                      sessionId: {
+                        in: tokensToRevoke.flatMap((t) => t.oauthSessionId ?? []),
+                      },
+                    },
+                    ...(tokensToRevoke.some((t) => !t.oauthSessionId)
+                      ? [{ createdAt: { lte: cutoff } }]
+                      : []),
+                  ],
+                },
                 data: { revokedAt: new Date() },
               });
               evictedSessions = sessions.map((s) => ({ clientId, sessionId: s.sessionId }));
@@ -414,6 +449,7 @@ export async function saveRefreshToken(
           data: {
             userId,
             clientId,
+            oauthSessionId,
             token: tokenHash,
             expiresAt,
             deviceName: deviceInfo?.deviceName,
@@ -561,10 +597,7 @@ export async function atomicallyRotateRefreshToken(
         // 其他非泄漏类撤销（登出/改密/换绑/强制下线/管理端或用户主动撤销）：
         // 重放多为原设备 Cookie 未清理干净的正常行为，仅拒绝本次请求；
         // 若按泄漏处理会反向吊销操作端/当前设备（家族全量撤销）
-        if (
-          existing.revokedReason &&
-          NON_LEAK_REVOKED_REASONS.has(existing.revokedReason)
-        ) {
+        if (existing.revokedReason && NON_LEAK_REVOKED_REASONS.has(existing.revokedReason)) {
           return {
             valid: false as const,
             reason: "session_revoked" as const,
@@ -636,7 +669,10 @@ export async function atomicallyRotateRefreshToken(
           where: { id: existing.id },
           select: { revokedAt: true },
         });
-        if (reread?.revokedAt && isBenignConcurrentRotation(reread.revokedAt, existing, fingerprint)) {
+        if (
+          reread?.revokedAt &&
+          isBenignConcurrentRotation(reread.revokedAt, existing, fingerprint)
+        ) {
           return {
             valid: false as const,
             reason: "concurrent_rotation" as const,
@@ -681,6 +717,7 @@ export async function atomicallyRotateRefreshToken(
             token: newTokenHash,
             expiresAt,
             clientId: clientId ?? sameDeviceToken.clientId,
+            oauthSessionId: sameDeviceToken.oauthSessionId,
             deviceName: deviceInfo?.deviceName ?? sameDeviceToken.deviceName,
             deviceInfo: deviceInfo?.deviceInfo ?? sameDeviceToken.deviceInfo,
             ipAddress: deviceInfo?.ipAddress ?? sameDeviceToken.ipAddress,
@@ -705,12 +742,40 @@ export async function atomicallyRotateRefreshToken(
           if (clientId && tokensToRevoke.length > 0) {
             const cutoff = tokensToRevoke[tokensToRevoke.length - 1].createdAt;
             const sessions = await tx.oAuthSession.findMany({
-              where: { userId, clientId, revokedAt: null, createdAt: { lte: cutoff } },
+              where: {
+                userId,
+                clientId,
+                revokedAt: null,
+                OR: [
+                  {
+                    sessionId: {
+                      in: tokensToRevoke.flatMap((t) => t.oauthSessionId ?? []),
+                    },
+                  },
+                  ...(tokensToRevoke.some((t) => !t.oauthSessionId)
+                    ? [{ createdAt: { lte: cutoff } }]
+                    : []),
+                ],
+              },
               select: { sessionId: true },
             });
             if (sessions.length > 0) {
               await tx.oAuthSession.updateMany({
-                where: { userId, clientId, revokedAt: null, createdAt: { lte: cutoff } },
+                where: {
+                  userId,
+                  clientId,
+                  revokedAt: null,
+                  OR: [
+                    {
+                      sessionId: {
+                        in: tokensToRevoke.flatMap((t) => t.oauthSessionId ?? []),
+                      },
+                    },
+                    ...(tokensToRevoke.some((t) => !t.oauthSessionId)
+                      ? [{ createdAt: { lte: cutoff } }]
+                      : []),
+                  ],
+                },
                 data: { revokedAt: new Date() },
               });
               evictedSessions = sessions.map((s) => ({ clientId, sessionId: s.sessionId }));
@@ -722,6 +787,7 @@ export async function atomicallyRotateRefreshToken(
           data: {
             userId,
             clientId,
+            oauthSessionId: existing.oauthSessionId,
             token: newTokenHash,
             expiresAt,
             deviceName: deviceInfo?.deviceName,
@@ -769,7 +835,9 @@ export async function atomicallyRotateRefreshToken(
             includeInactive: true,
           })
         )
-        .catch((err) => apiConsole.warn("[AtomicallyRotateRefreshToken] backchannel 通知失败:", err));
+        .catch((err) =>
+          apiConsole.warn("[AtomicallyRotateRefreshToken] backchannel 通知失败:", err)
+        );
     }
 
     return result;
@@ -796,8 +864,7 @@ export async function revokeRefreshToken(
 ): Promise<number> {
   try {
     // 显式 null → 仅内部 token；undefined → 全部；字符串 → 指定 client
-    const clientFilter =
-      clientId === undefined ? {} : { clientId };
+    const clientFilter = clientId === undefined ? {} : { clientId };
     const data = {
       revokedAt: new Date(),
       ...(reason ? { revokedReason: reason } : {}),

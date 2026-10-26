@@ -6,7 +6,18 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Camera, Loader2, ChevronRight, ChevronDown, Lock, MapPin, Pencil, Plus, Trash2, LogOut } from "lucide-react";
+import {
+  Camera,
+  Loader2,
+  ChevronRight,
+  ChevronDown,
+  Lock,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+  LogOut,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
 import { apiPut, apiPost, apiGet, apiPatch, apiDelete } from "@/lib/api-client";
@@ -44,6 +55,7 @@ export function ProfilePanel() {
   }
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(true);
+  const [addressesError, setAddressesError] = useState(false);
   const [showAddressSection, setShowAddressSection] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -93,8 +105,7 @@ export function ProfilePanel() {
     setSaving(true);
     try {
       // 昵称允许清空：服务端约定空字符串即清除（PUT /api/user/profile 中 "" → null）
-      const payload =
-        field === "nickname" ? { nickname: nickname.trim() } : { birthday };
+      const payload = field === "nickname" ? { nickname: nickname.trim() } : { birthday };
       await apiPut("/api/user/profile", payload);
       await refreshUser();
       setEditingField(null);
@@ -149,11 +160,12 @@ export function ProfilePanel() {
 
   /** 加载收货地址列表 */
   const loadAddresses = useCallback(async () => {
+    setAddressesError(false);
     try {
       const data = await apiGet<{ addresses: AddressItem[] }>("/api/user/addresses");
       setAddresses(data.addresses);
     } catch {
-      // 加载失败静默（区块显示失败态）
+      setAddressesError(true);
     } finally {
       setAddressesLoading(false);
     }
@@ -297,9 +309,7 @@ export function ProfilePanel() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          isPlaceholderPhone
-            ? { newPhone, newCode }
-            : { newPhone, currentCode, newCode }
+          isPlaceholderPhone ? { newPhone, newCode } : { newPhone, currentCode, newCode }
         ),
       });
       const data = await res.json();
@@ -709,7 +719,9 @@ export function ProfilePanel() {
                         disabled={phoneCountdowns.current > 0 || phoneSending === "current"}
                         className="shrink-0 rounded-xl border border-stone-200 px-4 py-2.5 text-sm text-stone-600 transition-colors hover:bg-white/60 active:opacity-70 disabled:opacity-50"
                       >
-                        {phoneCountdowns.current > 0 ? `${phoneCountdowns.current}s 后重发` : "发送验证码"}
+                        {phoneCountdowns.current > 0
+                          ? `${phoneCountdowns.current}s 后重发`
+                          : "发送验证码"}
                       </button>
                     </div>
                   </div>
@@ -820,9 +832,11 @@ export function ProfilePanel() {
                   <p className="text-[15px] font-medium text-stone-800 md:text-sm">
                     {addressesLoading
                       ? "加载中..."
-                      : addresses.length > 0
-                        ? "已设置"
-                        : "未设置"}
+                      : addressesError
+                        ? "加载失败"
+                        : addresses.length > 0
+                          ? "已设置"
+                          : "未设置"}
                   </p>
                 </div>
               </div>
@@ -840,10 +854,19 @@ export function ProfilePanel() {
                   <div className="flex items-center gap-1.5 text-xs text-stone-400">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> 地址加载中...
                   </div>
+                ) : addressesError ? (
+                  <div className="text-sm text-stone-500">
+                    地址加载失败，请稍后重试。
+                    <button
+                      type="button"
+                      onClick={() => void loadAddresses()}
+                      className="ml-2 text-brand-primary underline"
+                    >
+                      重新加载
+                    </button>
+                  </div>
                 ) : addresses.length === 0 ? (
-                  <p className="text-sm text-stone-400">
-                    暂无收货地址，积分兑礼寄送前请先添加
-                  </p>
+                  <p className="text-sm text-stone-400">暂无收货地址，积分兑礼寄送前请先添加</p>
                 ) : (
                   <div className="space-y-3">
                     {addresses.map((a) => (

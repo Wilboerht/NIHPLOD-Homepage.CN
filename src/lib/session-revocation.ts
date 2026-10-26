@@ -52,10 +52,6 @@ export async function revokeOtherSessionsAfterCredentialChange(params: {
   });
   if (activeSessions.length > 0) {
     const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-    const sids: Record<string, string> = {};
-    for (const s of activeSessions) {
-      if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
-    }
-    await sendBackchannelLogout(userId, clientIds, { sids });
+    await sendBackchannelLogout(userId, clientIds);
   }
 }

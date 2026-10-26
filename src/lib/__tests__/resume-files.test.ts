@@ -13,6 +13,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/upload", () => ({ validateFileBuffer: mocks.validateFileBuffer }));
+vi.mock("@/lib/pdf-safety", () => ({
+  inspectPdfSafety: vi.fn().mockResolvedValue({ safe: true }),
+}));
 vi.mock("@/lib/ali-oss", () => ({
   isPrivateBucketConfigured: mocks.isPrivateBucketConfigured,
   uploadToPrivateOSS: mocks.uploadToPrivateOSS,

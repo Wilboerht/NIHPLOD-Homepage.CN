@@ -221,17 +221,17 @@ export async function DELETE(
       );
     }
 
-      if (!hasAdminPermission(admin, "jobs:delete")) {
-        return NextResponse.json(
-          { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位删除" } },
-          { status: 403 }
-        );
-      }
+    if (!hasAdminPermission(admin, "jobs:delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位删除" } },
+        { status: 403 }
+      );
+    }
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const { id } = await params;
+    const { id } = await params;
 
     if (!validateCUID(id)) {
       return invalidIdResponse();
@@ -285,6 +285,15 @@ export async function DELETE(
       data: { message: "职位已删除" },
     });
   } catch (error) {
+    if ((error as { code?: string }).code === "P2003") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "HAS_APPLICATIONS", message: "职位已有新申请，无法删除" },
+        },
+        { status: 409 }
+      );
+    }
     apiConsole.error("删除职位失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "删除职位失败" } },

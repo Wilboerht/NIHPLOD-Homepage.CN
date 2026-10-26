@@ -686,31 +686,31 @@ function AdminSpentAdjustmentsContent() {
                 撤销审核
               </Button>
             </div>
-            ) : detail &&
-              canRequestApproval &&
-              detail.status === "PENDING" &&
-              (detail.amountClaimed ?? 0) >= APPROVAL_THRESHOLDS.spentReviewApprove ? (
-              <div className="flex justify-end">
-                <ApprovalRequestAction
-                  policyKey="spent.review.approve"
-                  initialValues={{
-                    applicationId: detail.id,
-                    reviewAmount: detail.amountClaimed ?? undefined,
-                  }}
-                  label="申请通过审批"
-                />
-              </div>
-            ) : detail && canRequestApproval && detail.status === "APPROVED" ? (
-              <div className="flex justify-end">
-                <ApprovalRequestAction
-                  policyKey="spent.review.undo"
-                  initialValues={{ applicationId: detail.id }}
-                  label="申请撤销审核"
-                />
-              </div>
-            ) : undefined
-          }
-        >
+          ) : detail &&
+            canRequestApproval &&
+            detail.status === "PENDING" &&
+            (detail.amountClaimed ?? 0) >= APPROVAL_THRESHOLDS.spentReviewApprove ? (
+            <div className="flex justify-end">
+              <ApprovalRequestAction
+                policyKey="spent.review.approve"
+                initialValues={{
+                  applicationId: detail.id,
+                  reviewAmount: detail.amountClaimed ?? undefined,
+                }}
+                label="申请通过审批"
+              />
+            </div>
+          ) : detail && canRequestApproval && detail.status === "APPROVED" ? (
+            <div className="flex justify-end">
+              <ApprovalRequestAction
+                policyKey="spent.review.undo"
+                initialValues={{ applicationId: detail.id }}
+                label="申请撤销审核"
+              />
+            </div>
+          ) : undefined
+        }
+      >
         {detail && (
           <div className="space-y-4">
             {/* 申请信息 */}

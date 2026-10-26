@@ -71,10 +71,7 @@ export async function isAccessTokenRevoked(jti: string): Promise<boolean> {
  *
  * @param expiresAtMs - 记录过期时间（毫秒时间戳），省略时回退默认 2h
  */
-export async function consumeAccessTokenOnce(
-  jti: string,
-  expiresAtMs?: number
-): Promise<boolean> {
+export async function consumeAccessTokenOnce(jti: string, expiresAtMs?: number): Promise<boolean> {
   return tokenBlacklistStore.consumeAccessTokenOnce(jti, expiresAtMs);
 }
 

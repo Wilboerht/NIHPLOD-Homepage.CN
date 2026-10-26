@@ -13,6 +13,7 @@ import { apiGet, apiPatch, ApiError } from "@/lib/api-client";
 import { buildAdvisorAdminLink } from "@/lib/advisor-admin-link";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -197,9 +198,7 @@ function OverviewContent({
             ? `管理员已自定义每日测肤上限为 ${account.dailyTestLimit} 次（该设置会解除终身次数限制）`
             : `每日上限与会员等级默认配额一致（${dailyLimitText}），未做单独自定义`}
         </div>
-        {actions && (
-          <div className="mt-4 border-t border-brand-charcoal/10 pt-4">{actions}</div>
-        )}
+        {actions && <div className="mt-4 border-t border-brand-charcoal/10 pt-4">{actions}</div>}
       </PanelCard>
 
       {canReadReport ? (
@@ -273,15 +272,10 @@ function OverviewContent({
   );
 }
 
-export function UserAdvisorPanel({
-  userId,
-  mainStatus,
-}: {
-  userId: string;
-  mainStatus: string;
-}) {
+export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainStatus: string }) {
   const { can } = useAdminPermissions();
   const toast = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
   const takeLatest = useLatestRequest();
   const [payload, setPayload] = useState<AdvisorOverviewPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -350,7 +344,16 @@ export function UserAdvisorPanel({
     }
     setSavingLimit(true);
     try {
-      await apiPatch(`/api/admin/users/${userId}/advisor`, { dailyTestLimit: limitInput });
+      const submit = () =>
+        apiPatch(`/api/admin/users/${userId}/advisor`, { dailyTestLimit: limitInput });
+      try {
+        await submit();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
       toast.success("每日测肤上限已更新");
       setLimitEditing(false);
       reload();
@@ -359,16 +362,25 @@ export function UserAdvisorPanel({
     } finally {
       setSavingLimit(false);
     }
-  }, [limitInput, reload, toast, userId]);
+  }, [limitInput, reload, requireTotp, toast, userId]);
 
   const confirmRoleChange = useCallback(async () => {
     if (!roleTarget) return;
     setRoleSaving(true);
     try {
-      await apiPatch(`/api/admin/users/${userId}/advisor`, { role: roleTarget });
-      toast.success(
-        roleTarget === "disabled" ? "已禁用测肤子站账号" : "已启用测肤子站账号"
-      );
+      const submit = () => apiPatch(`/api/admin/users/${userId}/advisor`, { role: roleTarget });
+      try {
+        await submit();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) {
+          setRoleTarget(null);
+          return;
+        }
+        await submit();
+      }
+      toast.success(roleTarget === "disabled" ? "已禁用测肤子站账号" : "已启用测肤子站账号");
       setRoleTarget(null);
       reload();
     } catch (err) {
@@ -376,7 +388,7 @@ export function UserAdvisorPanel({
     } finally {
       setRoleSaving(false);
     }
-  }, [reload, roleTarget, toast, userId]);
+  }, [reload, requireTotp, roleTarget, toast, userId]);
 
   if (loading) return <PanelSkeleton />;
 
@@ -506,11 +518,7 @@ export function UserAdvisorPanel({
             </p>
           </div>
           {account.role === "disabled" ? (
-            <Button
-              size="sm"
-              onClick={() => setRoleTarget("user")}
-              disabled={!mainActive}
-            >
+            <Button size="sm" onClick={() => setRoleTarget("user")} disabled={!mainActive}>
               启用子站账号
             </Button>
           ) : (
@@ -527,7 +535,8 @@ export function UserAdvisorPanel({
 
         {!mainActive && (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            主站账号当前状态为「{MAIN_STATUS_LABELS[mainStatus] || mainStatus}」，主站状态变化会同步禁用子站账号；主站恢复正常后才能手动启用。
+            主站账号当前状态为「{MAIN_STATUS_LABELS[mainStatus] || mainStatus}
+            」，主站状态变化会同步禁用子站账号；主站恢复正常后才能手动启用。
           </p>
         )}
       </div>
@@ -566,6 +575,7 @@ export function UserAdvisorPanel({
         confirmText={roleTarget === "disabled" ? "确认禁用" : "确认启用"}
         loading={roleSaving}
       />
+      {totpModal}
     </div>
   );
 }

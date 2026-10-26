@@ -1,48 +1,54 @@
 /** @type {import('next').NextConfig} */
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
 
 // 安全头配置
 const securityHeaders = [
   {
-    key: 'X-DNS-Prefetch-Control',
-    value: 'on',
+    key: "X-DNS-Prefetch-Control",
+    value: "on",
   },
   {
-    key: 'X-Frame-Options',
-    value: 'SAMEORIGIN',
+    key: "X-Frame-Options",
+    value: "SAMEORIGIN",
   },
   {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff',
+    key: "X-Content-Type-Options",
+    value: "nosniff",
   },
   {
-    key: 'Referrer-Policy',
-    value: 'origin-when-cross-origin',
+    key: "Referrer-Policy",
+    value: "origin-when-cross-origin",
   },
-  // Content-Security-Policy 已迁移到 src/middleware.ts，使用 per-request nonce
+  // Content-Security-Policy 已迁移到 src/proxy.ts，使用 per-request nonce
   // 为内联脚本（Google Analytics / 百度统计 / JSON-LD）放行，同时移除 script-src 'unsafe-inline'。
   // style-src 'unsafe-inline' 仍作为已知债务保留。
   {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload',
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
   },
-    {
-      key: 'Cross-Origin-Opener-Policy',
-      value: 'same-origin-allow-popups',
-    },
-    {
-      key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+  {
+    key: "Cross-Origin-Opener-Policy",
+    value: "same-origin-allow-popups",
+  },
+  {
+    key: "Permissions-Policy",
+    value:
+      "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
   },
 ];
 
 const nextConfig = {
   poweredByHeader: false,
+  ...(process.env.REDIS_URL
+    ? {
+        cacheHandler: require.resolve("./src/lib/next-cache-handler.ts"),
+        cacheMaxMemorySize: 0,
+      }
+    : {}),
 
   webpack: (config) => {
-    config.ignoreWarnings = [
-      ...(config.ignoreWarnings || []),
-      { module: /file-type/ },
-    ];
+    config.ignoreWarnings = [...(config.ignoreWarnings || []), { module: /file-type/ }];
     return config;
   },
 
@@ -52,21 +58,16 @@ const nextConfig = {
   // 追踪：待 Tailwind 升级到 v4 后可移除 webpack 配置并改用 Turbopack。
 
   // 将大型服务端依赖外部化，避免打包进每个路由 bundle
-  serverExternalPackages: [
-    'sharp',
-    '@prisma/client',
-    'prisma',
-    'tencentcloud-sdk-nodejs',
-  ],
+  serverExternalPackages: ["sharp", "@prisma/client", "prisma", "tencentcloud-sdk-nodejs"],
 
   // 优化: 减小包体积
   experimental: {
     optimizePackageImports: [
-      'lucide-react',
-      'framer-motion',
-      '@tiptap/react',
-      '@tiptap/starter-kit',
-      '@tiptap/pm',
+      "lucide-react",
+      "framer-motion",
+      "@tiptap/react",
+      "@tiptap/starter-kit",
+      "@tiptap/pm",
     ],
   },
 
@@ -75,37 +76,37 @@ const nextConfig = {
     // 允许本地图片使用 query string （版本化缓存破坏）
     localPatterns: [
       {
-        pathname: '/images/**',
+        pathname: "/images/**",
       },
       {
-        pathname: '/uploads/**',
+        pathname: "/uploads/**",
       },
     ],
     // 允许的图片域名
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '**.nihplod.cn',
+        protocol: "https",
+        hostname: "**.nihplod.cn",
       },
       {
-        protocol: 'https',
-        hostname: 'nihplod.cn',
+        protocol: "https",
+        hostname: "nihplod.cn",
       },
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       {
-        protocol: 'https',
-        hostname: 'wp-cdn.4ce.cn',
+        protocol: "https",
+        hostname: "wp-cdn.4ce.cn",
       },
       {
-        protocol: 'https',
-        hostname: '**.aliyuncs.com',
+        protocol: "https",
+        hostname: "**.aliyuncs.com",
       },
     ],
     // 启用的图片格式 (自托管服务器不使用 AVIF，避免实时编码开销)
-    formats: ['image/webp'],
+    formats: ["image/webp"],
     // 响应式图片断点
     deviceSizes: [375, 390, 414, 640, 750, 828, 1080, 1200, 1440, 1920, 2048],
     // 固定尺寸图片断点
@@ -117,14 +118,14 @@ const nextConfig = {
   },
 
   async headers() {
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = process.env.NODE_ENV === "development";
 
     // 开发环境跳过安全头，避免 CSP 拦截 webpack HMR / eval
     const productionHeaders = isDev
       ? []
       : [
           {
-            source: '/(.*)',
+            source: "/(.*)",
             headers: securityHeaders,
           },
         ];
@@ -135,64 +136,64 @@ const nextConfig = {
       // 置空 X-Frame-Options，避免不支持 frame-ancestors 的旧 UA 被全局
       // X-Frame-Options: SAMEORIGIN 拦截（现代浏览器以 CSP 为准）。
       {
-        source: '/account/embed/:path*',
-        headers: [{ key: 'X-Frame-Options', value: '' }],
+        source: "/account/embed/:path*",
+        headers: [{ key: "X-Frame-Options", value: "" }],
       },
       {
-        source: '/privacy/embed/:path*',
-        headers: [{ key: 'X-Frame-Options', value: '' }],
+        source: "/privacy/embed/:path*",
+        headers: [{ key: "X-Frame-Options", value: "" }],
       },
       {
-        source: '/terms/embed/:path*',
-        headers: [{ key: 'X-Frame-Options', value: '' }],
+        source: "/terms/embed/:path*",
+        headers: [{ key: "X-Frame-Options", value: "" }],
       },
       {
-        source: '/account/embed',
-        headers: [{ key: 'X-Frame-Options', value: '' }],
+        source: "/account/embed",
+        headers: [{ key: "X-Frame-Options", value: "" }],
       },
       {
-        source: '/privacy/embed',
-        headers: [{ key: 'X-Frame-Options', value: '' }],
+        source: "/privacy/embed",
+        headers: [{ key: "X-Frame-Options", value: "" }],
       },
       {
-        source: '/terms/embed',
-        headers: [{ key: 'X-Frame-Options', value: '' }],
+        source: "/terms/embed",
+        headers: [{ key: "X-Frame-Options", value: "" }],
       },
       // 静态资源缓存
       {
-        source: '/uploads/:path*',
+        source: "/uploads/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       {
-        source: '/images/:path*',
+        source: "/images/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       // AI/GEO 文档：低频变化，允许 CDN 与爬虫缓存，避免每次回源
       {
-        source: '/llms.txt',
+        source: "/llms.txt",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=3600, stale-while-revalidate=86400',
+            key: "Cache-Control",
+            value: "public, max-age=3600, stale-while-revalidate=86400",
           },
         ],
       },
       {
-        source: '/llms-full.txt',
+        source: "/llms-full.txt",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=3600, stale-while-revalidate=86400',
+            key: "Cache-Control",
+            value: "public, max-age=3600, stale-while-revalidate=86400",
           },
         ],
       },
@@ -202,79 +203,79 @@ const nextConfig = {
     return [
       // 品牌名常见拼写错误重定向（帮助搜索引擎和用户找到正确页面）
       {
-        source: '/niphlod',
-        destination: '/',
+        source: "/niphlod",
+        destination: "/",
         permanent: true,
       },
       {
-        source: '/niphold',
-        destination: '/',
+        source: "/niphold",
+        destination: "/",
         permanent: true,
       },
       {
-        source: '/nihplad',
-        destination: '/',
+        source: "/nihplad",
+        destination: "/",
         permanent: true,
       },
       {
-        source: '/nihplood',
-        destination: '/',
+        source: "/nihplood",
+        destination: "/",
         permanent: true,
       },
       {
-        source: '/nibai',
-        destination: '/',
+        source: "/nibai",
+        destination: "/",
         permanent: true,
       },
       {
-        source: '/nibo',
-        destination: '/',
+        source: "/nibo",
+        destination: "/",
         permanent: true,
       },
       // 产品昵称重定向（帮助用户通过昵称找到产品页）
       {
-        source: '/童颜精华',
-        destination: '/products',
+        source: "/童颜精华",
+        destination: "/products",
         permanent: false,
       },
       {
-        source: '/白魔法面霜',
-        destination: '/products',
+        source: "/白魔法面霜",
+        destination: "/products",
         permanent: false,
       },
       {
-        source: '/绿魔法护理油',
-        destination: '/products',
+        source: "/绿魔法护理油",
+        destination: "/products",
         permanent: false,
       },
       {
-        source: '/守护面膜',
-        destination: '/products',
+        source: "/守护面膜",
+        destination: "/products",
         permanent: false,
       },
       {
-        source: '/聚宝瓶身体乳',
-        destination: '/products',
+        source: "/聚宝瓶身体乳",
+        destination: "/products",
         permanent: false,
       },
       {
-        source: '/蛋定防晒',
-        destination: '/products',
+        source: "/蛋定防晒",
+        destination: "/products",
         permanent: false,
       },
       {
-        source: '/黑曜磨砂膏',
-        destination: '/products',
+        source: "/黑曜磨砂膏",
+        destination: "/products",
         permanent: false,
       },
       {
-        source: '/云朵洁面',
-        destination: '/products',
+        source: "/云朵洁面",
+        destination: "/products",
         permanent: false,
       },
       {
-        source: '/随身笔护手霜',
-        destination: '/products',
+        source: "/随身笔护手霜",
+        destination: "/products",
         permanent: false,
       },
     ];

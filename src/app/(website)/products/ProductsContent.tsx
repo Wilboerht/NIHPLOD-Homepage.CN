@@ -72,7 +72,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products.length]);
   const [mobileView, setMobileView] = useState<"products" | "categories" | string>("products");
-  const [activeTab] = useState<"featured" | "all">("featured");
+  const [activeTab, setActiveTab] = useState<"featured" | "all">("featured");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const fadeMaskRef = useRef<HTMLDivElement>(null);
   const bottomFadeMaskRef = useRef<HTMLDivElement>(null);
@@ -81,6 +82,23 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
   // 挑选主推的3个产品 (这里默认取前三个，实际可根据后台标记筛选)
   const featuredProducts = products.slice(0, 3);
+  const visibleProducts = activeCategory
+    ? products.filter((product) => product.categoryId === activeCategory)
+    : activeTab === "featured"
+      ? featuredProducts
+      : products;
+
+  const showAllProducts = () => {
+    setActiveTab("all");
+    setActiveCategory(null);
+    setMobileView("products");
+  };
+
+  const showCategory = (categoryId: string) => {
+    setActiveTab("all");
+    setActiveCategory(categoryId);
+    setMobileView("products");
+  };
 
   // 打开产品详情
   const handleProductClick = (product: Product) => {
@@ -278,7 +296,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
                 {/* Product Cards */}
                 <div className="flex flex-col gap-5">
-                  {(activeTab === "featured" ? featuredProducts : products).map((product, idx) => (
+                  {visibleProducts.map((product, idx) => (
                     <m.div
                       key={product.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -359,15 +377,20 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
                 {/* Category List - 与 FAQ 问题列表一致 */}
                 <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={showAllProducts}
+                    className="px-3 py-4 text-left text-brand-primary"
+                  >
+                    全部产品
+                  </button>
                   {categories.map((cat) => {
                     const categoryProduct = products.find((p) => p.categoryId === cat.id);
                     return (
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => {
-                          if (categoryProduct) handleProductClick(categoryProduct);
-                        }}
+                        onClick={() => showCategory(cat.id)}
                         disabled={!categoryProduct}
                         className={cn(
                           "flex items-center gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-200",
@@ -492,14 +515,18 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
               {/* 导航链接 */}
               <div className="flex items-center justify-center gap-3 whitespace-nowrap xl:gap-6">
+                <button
+                  type="button"
+                  onClick={showAllProducts}
+                  className="py-1 text-[13px] font-light tracking-[0.08em] text-brand-charcoal xl:text-[15px]"
+                >
+                  全部产品
+                </button>
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => {
-                      const product = products.find((p) => p.categoryId === cat.id);
-                      if (product) handleProductClick(product);
-                    }}
+                    onClick={() => showCategory(cat.id)}
                     className="group relative py-1 text-[13px] font-light tracking-[0.08em] text-brand-charcoal transition-all hover:opacity-80 xl:text-[15px] xl:tracking-[0.15em]"
                   >
                     {cat.name}
@@ -523,12 +550,16 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     className="flex-shrink-0"
                   >
                     <h1 className="mb-6 text-2xl font-light tracking-[0.15em] text-brand-charcoal [@media(max-height:700px)]:mb-3">
-                      当季热卖
+                      {activeCategory
+                        ? "分类产品"
+                        : activeTab === "featured"
+                          ? "当季热卖"
+                          : "全部产品"}
                     </h1>
                   </m.header>
 
-                  <section className="grid min-h-0 grid-cols-3 gap-8">
-                    {products.slice(0, 3).map((product, index) => (
+                  <section className="grid min-h-0 grid-cols-3 gap-8 overflow-y-auto">
+                    {visibleProducts.map((product, index) => (
                       <Link
                         key={product.id}
                         href={`/products/${product.slug}`}

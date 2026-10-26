@@ -236,18 +236,18 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request, "admin-oauth-sessions");
     if (rateLimitResponse) return rateLimitResponse;
-      if (!hasAdminPermission(admin, "sso:write")) {
-        return NextResponse.json(
-          { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 会话操作" } },
-          { status: 403 }
-        );
-      }
+    if (!hasAdminPermission(admin, "sso:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 会话操作" } },
+        { status: 403 }
+      );
+    }
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const body = await request.json();
-      const parsed = terminateSchema.safeParse(body);
+    const body = await request.json();
+    const parsed = terminateSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },

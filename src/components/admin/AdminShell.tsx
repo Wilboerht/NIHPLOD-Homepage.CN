@@ -4,8 +4,13 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode, Suspense } from "react";
-import { ChevronLeft, ChevronRight, Globe, Loader2, LogOut, Menu, X } from "lucide-react";
-import { adminNavItems, getBreadcrumbs, type NavItem } from "@/config/admin-nav";
+import { ChevronLeft, ChevronRight, Globe, KeyRound, Loader2, LogOut, Menu, X } from "lucide-react";
+import {
+  getBreadcrumbs,
+  getVisibleNavGroups,
+  isNavItemActive,
+  type AdminNavCountKey,
+} from "@/config/admin-nav";
 import { ROLE_LABELS, type AdminRoleValue } from "@/lib/admin-permissions";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
@@ -19,14 +24,7 @@ import { IconButton } from "./IconButton";
 /** 管理端内容区统一最大宽度（与消费记录审核页对齐） */
 const CONTENT_MAX_WIDTH_CLASS = "max-w-7xl";
 
-interface NavCounts {
-  messages: number;
-  accountDeletions: number;
-  spentAdjustments: number;
-  pointRedemptions: number;
-  applications: number;
-  approvals: number;
-}
+type NavCounts = Record<AdminNavCountKey, number>;
 
 const EMPTY_NAV_COUNTS: NavCounts = {
   messages: 0,
@@ -283,11 +281,6 @@ function SidebarLinkPending({ className }: { className?: string }) {
   );
 }
 
-function isActive(item: NavItem, pathname: string): boolean {
-  if (item.href === "/admin") return pathname === "/admin";
-  return pathname.startsWith(item.href);
-}
-
 function SidebarContent({
   pathname,
   permissions,
@@ -307,6 +300,7 @@ function SidebarContent({
     itemCls,
     "text-brand-charcoal/70 hover:text-brand-charcoal hover:bg-brand-charcoal/[0.04]"
   );
+  const visibleGroups = permissions ? getVisibleNavGroups(permissions) : [];
 
   return (
     <div className="flex h-full flex-col">
@@ -356,86 +350,64 @@ function SidebarContent({
             ))}
           </div>
         ) : (
-          (() => {
-            const filtered = adminNavItems.filter((item) => {
-              if (item.permissionsAny) {
-                return item.permissionsAny.some((permission) => permissions.includes(permission));
-              }
-              return !item.permission || permissions.includes(item.permission);
-            });
-            const groups: { label: string | null; items: typeof filtered }[] = [];
-            for (const item of filtered) {
-              const label = item.group ?? null;
-              const last = groups[groups.length - 1];
-              if (last && last.label === label) last.items.push(item);
-              else groups.push({ label, items: [item] });
-            }
+          visibleGroups.map((group, groupIndex) => (
+            <div
+              key={group.label ?? "root"}
+              className={cn(
+                "flex flex-col gap-0.5",
+                collapsed && groupIndex > 0 && "mt-2 border-t border-brand-charcoal/10 pt-2"
+              )}
+            >
+              {group.label && !collapsed && (
+                <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-brand-charcoal/65">
+                  {group.label}
+                </p>
+              )}
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = isNavItemActive(item, pathname);
+                // 仅对有权限的待办模块显示红点；0 时不显示
+                const count = item.countKey ? navCounts[item.countKey] : item.badge;
+                const hasPending = typeof count === "number" && count > 0;
+                const pendingTitle =
+                  typeof count === "number" ? `${item.title}（${count} 条待处理）` : item.title;
 
-            return groups.map((group, gi) => (
-              <div key={group.label || `group-${gi}`} className="flex flex-col gap-0.5">
-                {group.label && !collapsed && (
-                  <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-brand-charcoal/65">
-                    {group.label}
-                  </p>
-                )}
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = isActive(item, pathname);
-                  // 仅对有权限的待办模块显示红点；0 时不显示
-                  const count =
-                    item.href === "/admin/messages"
-                      ? navCounts.messages
-                      : item.href === "/admin/account-deletions"
-                        ? navCounts.accountDeletions
-                        : item.href === "/admin/spent-adjustments"
-                          ? navCounts.spentAdjustments
-                          : item.href === "/admin/point-gifts"
-                            ? navCounts.pointRedemptions
-                            : item.href === "/admin/applications"
-                              ? navCounts.applications
-                              : item.href === "/admin/approvals"
-                                ? navCounts.approvals
-                                : item.badge;
-                  const hasPending = typeof count === "number" && count > 0;
-                  const pendingTitle =
-                    typeof count === "number" ? `${item.title}（${count} 条待处理）` : item.title;
-
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={onNavigate}
-                      aria-current={active ? "page" : undefined}
-                      title={collapsed ? pendingTitle : undefined}
-                      className={cn(
-                        "relative",
-                        active ? activeCls : inactiveCls,
-                        collapsed && "justify-center px-2"
-                      )}
-                    >
-                      <Icon className="h-4 w-4 flex-shrink-0" />
-                      {!collapsed && <span className="truncate">{item.title}</span>}
-                      {!collapsed && hasPending && (
-                        <span
-                          className="ml-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-red-500"
-                          title={`${count} 条待处理`}
-                          aria-label={`${count} 条待处理`}
-                        />
-                      )}
-                      {!collapsed && <SidebarLinkPending className="ml-auto" />}
-                      {collapsed && hasPending && (
-                        <span
-                          className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500"
-                          title={`${count} 条待处理`}
-                          aria-label={`${count} 条待处理`}
-                        />
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            ));
-          })()
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
+                    aria-label={collapsed ? pendingTitle : undefined}
+                    title={collapsed ? pendingTitle : undefined}
+                    className={cn(
+                      "relative",
+                      active ? activeCls : inactiveCls,
+                      collapsed && "justify-center px-2"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    {!collapsed && <span className="truncate">{item.title}</span>}
+                    {!collapsed && hasPending && (
+                      <span
+                        className="ml-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-red-500"
+                        title={`${count} 条待处理`}
+                        aria-label={`${count} 条待处理`}
+                      />
+                    )}
+                    {!collapsed && <SidebarLinkPending className="ml-auto" />}
+                    {collapsed && hasPending && (
+                      <span
+                        className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500"
+                        title={`${count} 条待处理`}
+                        aria-label={`${count} 条待处理`}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))
         )}
       </nav>
 
@@ -451,6 +423,20 @@ function SidebarContent({
             </p>
           </div>
         )}
+        <Link
+          href="/admin/settings/totp"
+          onClick={onNavigate}
+          aria-current={pathname === "/admin/settings/totp" ? "page" : undefined}
+          aria-label={collapsed ? "安全设置" : undefined}
+          className={cn(
+            pathname === "/admin/settings/totp" ? activeCls : inactiveCls,
+            collapsed && "justify-center px-2"
+          )}
+          title={collapsed ? "安全设置" : undefined}
+        >
+          <KeyRound className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span>安全设置</span>}
+        </Link>
         <Link
           href="/"
           onClick={onNavigate}

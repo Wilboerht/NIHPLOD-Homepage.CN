@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AUDIT_ACTIONS, AUDIT_TARGET_TYPES } from "@/lib/audit";
-import {
-  AUDIT_ACTION_LABELS,
-  AUDIT_TARGET_TYPE_LABELS,
-} from "@/lib/audit-labels";
+import { AUDIT_ACTION_LABELS, AUDIT_TARGET_TYPE_LABELS } from "@/lib/audit-labels";
 import { getAuditActionMeta } from "@/lib/audit-registry";
 
 describe("audit action/target registry", () => {
@@ -15,10 +12,7 @@ describe("audit action/target registry", () => {
 
   it("every audit target type has a Chinese label", () => {
     for (const targetType of AUDIT_TARGET_TYPES) {
-      expect(
-        AUDIT_TARGET_TYPE_LABELS[targetType],
-        `missing label for ${targetType}`
-      ).toBeTruthy();
+      expect(AUDIT_TARGET_TYPE_LABELS[targetType], `missing label for ${targetType}`).toBeTruthy();
     }
   });
 

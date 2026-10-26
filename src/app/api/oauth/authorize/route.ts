@@ -15,11 +15,7 @@ import { refreshUserSession, type RefreshUserSessionResult } from "@/lib/session
 import { extractDeviceInfo } from "@/lib/auth-security";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES, getIssuer } from "@/lib/oauth-constants";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
@@ -520,8 +516,7 @@ export async function GET(request: NextRequest) {
           codeChallenge: code_challenge,
           codeChallengeMethod: code_challenge_method,
           nonce: nonce || undefined,
-          authTime:
-            userPayload!.auth_time ?? userPayload!.iat ?? Math.floor(Date.now() / 1000),
+          authTime: userPayload!.auth_time ?? userPayload!.iat ?? Math.floor(Date.now() / 1000),
           ttlMs: client.codeTtlSeconds * 1000,
         });
       } catch (codeErr) {
@@ -607,10 +602,7 @@ export async function POST(request: NextRequest) {
     // 验证用户登录
     const userToken = request.cookies.get(USER_COOKIE_NAME)?.value;
     if (!userToken) {
-      return noStoreJson(
-        { error: "unauthorized", error_description: "请先登录" },
-        { status: 401 }
-      );
+      return noStoreJson({ error: "unauthorized", error_description: "请先登录" }, { status: 401 });
     }
 
     const userPayload = await verifyUserToken(userToken);

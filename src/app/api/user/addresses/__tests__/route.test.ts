@@ -30,7 +30,7 @@ vi.mock("@/lib/prisma", () => ({
         fn: (t: { userAddress: typeof tx; $queryRaw: ReturnType<typeof vi.fn> }) => Promise<unknown>
       ) =>
         // $queryRaw：地址写事务开头的 SELECT ... FOR UPDATE 用户行锁
-        fn({ userAddress: tx, $queryRaw: vi.fn().mockResolvedValue([]) })
+        fn({ userAddress: tx, $queryRaw: vi.fn().mockResolvedValue([{ status: "ACTIVE" }]) })
     ),
   },
 }));
@@ -105,7 +105,9 @@ describe("POST /api/user/addresses", () => {
   });
 
   it("参数校验失败应返回 400 INVALID_PARAMS", async () => {
-    const res = await POST(request("POST", "/api/user/addresses", { ...VALID_FIELDS, phone: "123" }));
+    const res = await POST(
+      request("POST", "/api/user/addresses", { ...VALID_FIELDS, phone: "123" })
+    );
     const data = await res.json();
 
     expect(res.status).toBe(400);
@@ -132,7 +134,9 @@ describe("POST /api/user/addresses", () => {
     mockTx.count.mockResolvedValue(2);
     mockTx.create.mockResolvedValue({ ...ADDRESS_VIEW, isDefault: true });
 
-    const res = await POST(request("POST", "/api/user/addresses", { ...VALID_FIELDS, isDefault: true }));
+    const res = await POST(
+      request("POST", "/api/user/addresses", { ...VALID_FIELDS, isDefault: true })
+    );
 
     expect(res.status).toBe(200);
     expect(mockTx.updateMany).toHaveBeenCalled();
@@ -219,10 +223,9 @@ describe("PATCH /api/user/addresses/[id]", () => {
   it("地址不存在或不属于当前用户：404", async () => {
     mockTx.findUnique.mockResolvedValue({ userId: "other-user", isDefault: false });
 
-    const res = await PATCH(
-      request("PATCH", `/api/user/addresses/${ADDR_ID}`, VALID_FIELDS),
-      { params: Promise.resolve({ id: ADDR_ID }) }
-    );
+    const res = await PATCH(request("PATCH", `/api/user/addresses/${ADDR_ID}`, VALID_FIELDS), {
+      params: Promise.resolve({ id: ADDR_ID }),
+    });
     const data = await res.json();
 
     expect(res.status).toBe(404);

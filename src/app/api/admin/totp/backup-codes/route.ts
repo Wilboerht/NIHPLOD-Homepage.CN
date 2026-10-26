@@ -10,12 +10,7 @@ import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
-import {
-  verifyTOTP,
-  decryptTOTPSecret,
-  generateBackupCodes,
-  hashBackupCode,
-} from "@/lib/totp";
+import { verifyTOTP, decryptTOTPSecret, generateBackupCodes, hashBackupCode } from "@/lib/totp";
 import { consumeAdminBackupCode } from "@/lib/admin-backup-code";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { rateLimit } from "@/lib/ratelimit";

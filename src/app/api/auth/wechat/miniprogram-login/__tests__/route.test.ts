@@ -137,14 +137,14 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
     const res = await POST(createRequest({ code: "wx-code" }));
 
     expect(res.status).toBe(429);
-    expect(((await res.json()).error.code as string)).toBe("TOO_MANY_REQUESTS");
+    expect((await res.json()).error.code as string).toBe("TOO_MANY_REQUESTS");
   });
 
   it("缺少 code 应返回 400", async () => {
     const res = await POST(createRequest({}));
 
     expect(res.status).toBe(400);
-    expect(((await res.json()).error.code as string)).toBe("INVALID_PARAMS");
+    expect((await res.json()).error.code as string).toBe("INVALID_PARAMS");
   });
 
   it("code2session 失败应返回 401 WECHAT_AUTH_FAILED", async () => {
@@ -153,11 +153,15 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
     const res = await POST(createRequest({ code: "bad-code" }));
 
     expect(res.status).toBe(401);
-    expect(((await res.json()).error.code as string)).toBe("WECHAT_AUTH_FAILED");
+    expect((await res.json()).error.code as string).toBe("WECHAT_AUTH_FAILED");
   });
 
   it("全新用户应返回 needBinding 与 bindToken", async () => {
-    mockCode2session.mockResolvedValue({ openid: "openid-new", unionid: undefined, sessionKey: "sk" });
+    mockCode2session.mockResolvedValue({
+      openid: "openid-new",
+      unionid: undefined,
+      sessionKey: "sk",
+    });
     mockFindByIdentity.mockResolvedValue(null);
     mockUserFindFirst.mockResolvedValue(null);
     (signWechatBindToken as ReturnType<typeof vi.fn>).mockResolvedValue("bind-token-1");
@@ -177,7 +181,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
   });
 
   it("占位账户应返回 needBinding", async () => {
-    mockCode2session.mockResolvedValue({ openid: "openid-p", unionid: undefined, sessionKey: "sk" });
+    mockCode2session.mockResolvedValue({
+      openid: "openid-p",
+      unionid: undefined,
+      sessionKey: "sk",
+    });
     mockFindByIdentity.mockResolvedValue({ id: "user-p", phone: "wx_placeholder_abc" });
 
     const res = await POST(createRequest({ code: "wx-code" }));
@@ -187,7 +195,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
   });
 
   it("封禁账户应返回 403 ACCOUNT_DISABLED", async () => {
-    mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: undefined, sessionKey: "sk" });
+    mockCode2session.mockResolvedValue({
+      openid: "openid-1",
+      unionid: undefined,
+      sessionKey: "sk",
+    });
     mockFindByIdentity.mockResolvedValue({ id: "user-1", phone: "13800138000" });
     mockCheckStatus.mockResolvedValue({ valid: false, reason: "账号已被封禁" });
 
@@ -199,7 +211,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
   });
 
   it("已绑定真实账户应直接登录并双写 ExternalIdentity", async () => {
-    mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: "union-1", sessionKey: "sk" });
+    mockCode2session.mockResolvedValue({
+      openid: "openid-1",
+      unionid: "union-1",
+      sessionKey: "sk",
+    });
     mockFindByIdentity.mockResolvedValue({
       id: "user-1",
       phone: "13800138000",
@@ -241,7 +257,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
   });
 
   it("UnionID 聚合应跨 provider 匹配已有账户", async () => {
-    mockCode2session.mockResolvedValue({ openid: "openid-mp", unionid: "union-9", sessionKey: "sk" });
+    mockCode2session.mockResolvedValue({
+      openid: "openid-mp",
+      unionid: "union-9",
+      sessionKey: "sk",
+    });
     mockFindByIdentity.mockResolvedValue(null);
     mockFindByUnionId.mockResolvedValue({
       id: "user-9",
@@ -272,7 +292,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
 
   describe("phoneCode 一键登录", () => {
     it("带 phoneCode 应调用 resolveWechatBinding 并签发 OAuth 双 Token", async () => {
-      mockCode2session.mockResolvedValue({ openid: "openid-ot", unionid: "union-ot", sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-ot",
+        unionid: "union-ot",
+        sessionKey: "sk",
+      });
       mockGetPhone.mockResolvedValue("13812340001");
       mockResolveBinding.mockResolvedValue({
         success: true,
@@ -318,7 +342,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
     });
 
     it("getMiniprogramPhone 失败应返回 400 PHONE_CODE_FAILED", async () => {
-      mockCode2session.mockResolvedValue({ openid: "openid-f", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-f",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockGetPhone.mockRejectedValue(new Error("getuserphonenumber failed: [40029] invalid code"));
 
       const res = await POST(createRequest({ code: "wx-code", phoneCode: "bad-phone-code" }));
@@ -330,7 +358,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
     });
 
     it("微信手机号格式异常应返回 400 PHONE_INVALID", async () => {
-      mockCode2session.mockResolvedValue({ openid: "openid-i", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-i",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockGetPhone.mockResolvedValue("00852-12345678");
 
       const res = await POST(createRequest({ code: "wx-code", phoneCode: "phone-code-2" }));
@@ -342,7 +374,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
     });
 
     it("resolveWechatBinding 返回封禁应透传 403", async () => {
-      mockCode2session.mockResolvedValue({ openid: "openid-b", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-b",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockGetPhone.mockResolvedValue("13812340002");
       mockResolveBinding.mockResolvedValue({
         success: false,
@@ -361,7 +397,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
   describe("OAuth Client 配置缺失", () => {
     it("普通登录：client 不存在应返回 500 OAUTH_CLIENT_MISSING", async () => {
       mockGetOAuthClient.mockResolvedValue(null);
-      mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-1",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockFindByIdentity.mockResolvedValue({
         id: "user-1",
         phone: "13800138000",
@@ -381,7 +421,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
 
     it("phoneCode 一键登录：client 停用应返回 500 且不进入绑定流程", async () => {
       mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, isActive: false });
-      mockCode2session.mockResolvedValue({ openid: "openid-c", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-c",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockGetPhone.mockResolvedValue("13812340003");
 
       const res = await POST(createRequest({ code: "wx-code", phoneCode: "phone-code-4" }));
@@ -394,7 +438,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
 
     it("client 不是 public 应返回 500（confidential client 的 refresh grant 会 401）", async () => {
       mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, isPublic: false });
-      mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-1",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockFindByIdentity.mockResolvedValue({
         id: "user-1",
         phone: "13800138000",
@@ -414,7 +462,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
 
     it("client scopes 仅覆盖部分时应收窄签发 scope（MP_OAUTH_SCOPE ∩ client.scopes）", async () => {
       mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, scopes: ["openid", "profile"] });
-      mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-1",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockFindByIdentity.mockResolvedValue({
         id: "user-1",
         phone: "13800138000",
@@ -438,7 +490,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
 
     it("client scopes 与所需 scope 无交集应返回 500 且不签发", async () => {
       mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, scopes: ["email"] });
-      mockCode2session.mockResolvedValue({ openid: "openid-1", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-1",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockFindByIdentity.mockResolvedValue({
         id: "user-1",
         phone: "13800138000",
@@ -458,7 +514,11 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
 
     it("phoneCode 一键登录：scope 交集为空应返回 500 且不进入绑定流程", async () => {
       mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, scopes: [] });
-      mockCode2session.mockResolvedValue({ openid: "openid-c", unionid: undefined, sessionKey: "sk" });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-c",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
       mockGetPhone.mockResolvedValue("13812340004");
 
       const res = await POST(createRequest({ code: "wx-code", phoneCode: "phone-code-5" }));

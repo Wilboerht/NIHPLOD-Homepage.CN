@@ -9,11 +9,7 @@ import { Prisma } from "@/generated/prisma/client";
 import type { AuditActorType, AuditOutcome } from "@/generated/prisma/client";
 import { apiConsole } from "@/lib/logger";
 import { getAuditActionMeta, type AuditCategory, type AuditRiskLevel } from "./audit-registry";
-import {
-  AUDIT_CHAIN_VERSION,
-  getAuditIntegrityKeyVersion,
-  prepareAuditChain,
-} from "./audit-chain";
+import { AUDIT_CHAIN_VERSION, getAuditIntegrityKeyVersion, prepareAuditChain } from "./audit-chain";
 
 function sanitizeUserAgent(ua: string | null): string | null {
   if (!ua) return null;
@@ -447,8 +443,7 @@ type AuditEnvelopeData = Omit<
 
 function buildAuditEnvelope(input: AuditLogInput): AuditEnvelopeData {
   const meta = getAuditActionMeta(input.action);
-  const actorType =
-    input.actorType ?? (input.userId ? "USER" : input.adminId ? "ADMIN" : "SYSTEM");
+  const actorType = input.actorType ?? (input.userId ? "USER" : input.adminId ? "ADMIN" : "SYSTEM");
   return {
     id: randomUUID(),
     createdAt: new Date(),

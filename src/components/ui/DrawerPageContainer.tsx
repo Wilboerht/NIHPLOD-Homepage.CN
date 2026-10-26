@@ -106,13 +106,7 @@ export function DrawerPageContainer({
       if (raf2) cancelAnimationFrame(raf2);
       setDrawerAnimating(false);
     };
-  }, [
-    defaultExpanded,
-    prefersReducedMotion,
-    returnCollapsed,
-    setDrawerOpen,
-    setDrawerAnimating,
-  ]);
+  }, [defaultExpanded, prefersReducedMotion, returnCollapsed, setDrawerOpen, setDrawerAnimating]);
 
   const handleToggle = () => {
     const newState = !isDrawerOpen;

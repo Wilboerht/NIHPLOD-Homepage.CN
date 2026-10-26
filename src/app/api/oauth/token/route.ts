@@ -19,7 +19,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { getClientCredentials } from "@/lib/oauth-client-auth";
 import { verifyOAuthClientSecret } from "@/lib/oauth-client";
-import { consumeAuthorizationCode, findUsedAuthorizationCode, hashCode, verifyPKCE } from "@/lib/oauth-code";
+import {
+  consumeAuthorizationCode,
+  findUsedAuthorizationCode,
+  hashCode,
+  verifyPKCE,
+} from "@/lib/oauth-code";
 import {
   signOAuthAccessToken,
   signIdToken,
@@ -106,10 +111,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
-      return resJson(
-        { error: "invalid_request", error_description: "请求体格式错误" },
-        400
-      );
+      return resJson({ error: "invalid_request", error_description: "请求体格式错误" }, 400);
     }
 
     const grant_type = body.grant_type;
@@ -286,7 +288,10 @@ export async function POST(request: NextRequest) {
             success: false,
             detail: { grant_type, reason: "pkce_failed" },
           });
-          return resJson({ error: "invalid_grant", error_description: "Invalid code_verifier" }, 400);
+          return resJson(
+            { error: "invalid_grant", error_description: "Invalid code_verifier" },
+            400
+          );
         }
 
         // 凭证校验全部通过 → 原子化消费（并发下失败说明刚被消费，落入下方重放检测）
@@ -376,7 +381,11 @@ export async function POST(request: NextRequest) {
           // 旧 code 可被反复重放，持续踢掉用户在该 client 下的所有会话（持久 DoS，
           // 且波及后续新登录的会话）。
           await prisma.oAuthSession.updateMany({
-            where: { authorizationCodeId: usedCode.id, revokedAt: null },
+            where: {
+              authorizationCodeId: usedCode.id,
+              clientId: client_id,
+              revokedAt: null,
+            },
             data: { revokedAt: new Date() },
           });
           scheduleSsoEvent({
@@ -596,7 +605,14 @@ export async function POST(request: NextRequest) {
 
       // 保存 Refresh Token（复用现有设备管理）
       const deviceInfo = extractDeviceInfo(request);
-      await saveRefreshToken(user.id, refreshToken, refreshExpiresAt, deviceInfo, client_id);
+      await saveRefreshToken(
+        user.id,
+        refreshToken,
+        refreshExpiresAt,
+        deviceInfo,
+        client_id,
+        sessionId
+      );
 
       // 签发 ID Token（含 at_hash / sid / auth_time）
       const idTokenClaims: IdTokenClaims = {
@@ -878,7 +894,10 @@ export async function POST(request: NextRequest) {
         }
         dpopJkt = boundJkt;
         // 服务端签发的可验证 nonce（HMAC 签名，后续 validateDPoPProof 会校验）
-        Object.assign(dpopExtraHeaders, dpopNonceHeader(getDpopNonce(`${client_id}:${refreshPayload.id}`)));
+        Object.assign(
+          dpopExtraHeaders,
+          dpopNonceHeader(getDpopNonce(`${client_id}:${refreshPayload.id}`))
+        );
       }
 
       // 查询用户信息：refresh token 已不再携带明文手机号 claim，

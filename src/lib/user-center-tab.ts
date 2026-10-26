@@ -39,9 +39,7 @@ export type SecuritySection = (typeof SECURITY_SECTIONS)[number];
 
 /** 旧的安全类 tab 标识 → 安全中心分段映射 */
 export function toSecuritySection(view: string): SecuritySection | null {
-  return (SECURITY_SECTIONS as readonly string[]).includes(view)
-    ? (view as SecuritySection)
-    : null;
+  return (SECURITY_SECTIONS as readonly string[]).includes(view) ? (view as SecuritySection) : null;
 }
 
 /** 校验字符串是否为合法的用户中心 tab */

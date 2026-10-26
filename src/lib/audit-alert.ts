@@ -68,9 +68,11 @@ export async function scanAuditAlerts(now = new Date()): Promise<void> {
     if (await claimAlert("auth-failure-burst", count, now)) {
       await notify("审计告警：管理员认证连续失败", [
         `10 分钟内失败 ${count} 次，涉及 ${failing.length} 个账号/IP：`,
-        ...failing.slice(0, 10).map(
-          (row) => `- ${row.actorEmail ?? "-"} / ${row.ipAddress ?? "-"}：${row._count._all} 次`
-        ),
+        ...failing
+          .slice(0, 10)
+          .map(
+            (row) => `- ${row.actorEmail ?? "-"} / ${row.ipAddress ?? "-"}：${row._count._all} 次`
+          ),
       ]);
     }
   }
@@ -95,12 +97,14 @@ export async function scanAuditAlerts(now = new Date()): Promise<void> {
     if (await claimAlert(ruleKey, highRisk.length, now)) {
       await notify("审计告警：高危操作", [
         `10 分钟内 ${highRisk.length} 条高危操作：`,
-        ...highRisk.slice(0, 10).map(
-          (row) =>
-            `- ${AUDIT_ACTION_LABELS[row.action] ?? row.action} · ${
-              row.actorName || row.actorEmail || "-"
-            } · ${row.targetLabel ?? "-"} · ${row.createdAt.toISOString()}`
-        ),
+        ...highRisk
+          .slice(0, 10)
+          .map(
+            (row) =>
+              `- ${AUDIT_ACTION_LABELS[row.action] ?? row.action} · ${
+                row.actorName || row.actorEmail || "-"
+              } · ${row.targetLabel ?? "-"} · ${row.createdAt.toISOString()}`
+          ),
       ]);
     }
   }
@@ -152,8 +156,7 @@ export async function sendAuditDailyDigest(now = new Date()): Promise<void> {
     "",
     "Top actions：",
     ...topActions.map(
-      (row) =>
-        `- ${AUDIT_ACTION_LABELS[row.action] ?? row.action}：${row._count._all}`
+      (row) => `- ${AUDIT_ACTION_LABELS[row.action] ?? row.action}：${row._count._all}`
     ),
   ]);
 }

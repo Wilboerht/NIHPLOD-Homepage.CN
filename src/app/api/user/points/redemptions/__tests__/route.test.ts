@@ -7,8 +7,7 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/auth", () => ({
   withUserAuth:
-    (handler: (req: NextRequest, payload: { id: string }) => unknown) =>
-    (req: NextRequest) =>
+    (handler: (req: NextRequest, payload: { id: string }) => unknown) => (req: NextRequest) =>
       handler(req, { id: "user-1" }),
 }));
 
@@ -29,7 +28,9 @@ import { GET } from "@/app/api/user/points/redemptions/route";
 
 function createRequest(offset?: string): NextRequest {
   const url = new URL(
-    offset === undefined ? "/api/user/points/redemptions" : `/api/user/points/redemptions?offset=${offset}`,
+    offset === undefined
+      ? "/api/user/points/redemptions"
+      : `/api/user/points/redemptions?offset=${offset}`,
     "http://localhost:3000"
   );
   return new NextRequest(url, { method: "GET" } as never);
@@ -94,9 +95,7 @@ describe("GET /api/user/points/redemptions", () => {
     const res = await GET(createRequest("10"));
 
     expect(res.status).toBe(200);
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ skip: 10, take: 11 })
-    );
+    expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 10, take: 11 }));
   });
 
   it("非法 offset 应返回 400 INVALID_PARAMS", async () => {

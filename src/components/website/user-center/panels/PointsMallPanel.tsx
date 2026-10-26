@@ -170,7 +170,10 @@ function formatDateTime(iso: string | null): string {
 
 /** 产品描述由富文本编辑器存为 HTML（如 <p>...</p>），卡片展示时剥离标签取纯文本 */
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function PointsMallPanel() {
@@ -259,10 +262,11 @@ export function PointsMallPanel() {
     setRedemptionsLoading(true);
     setRedemptionsError(false);
     try {
-      const data = await apiGet<{ redemptions: RedemptionRecord[]; hasMore: boolean; total: number }>(
-        "/api/user/points/redemptions",
-        { offset: "0" }
-      );
+      const data = await apiGet<{
+        redemptions: RedemptionRecord[];
+        hasMore: boolean;
+        total: number;
+      }>("/api/user/points/redemptions", { offset: "0" });
       setRedemptions(data.redemptions);
       setHasMoreRedemptions(data.hasMore);
       setRedemptionTotal(data.total);
@@ -575,258 +579,268 @@ export function PointsMallPanel() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-        {/* 兑换成功提示（面板内，可手动关闭，5 秒自动消失） */}
-        {redeemSuccess && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-brand-primary/20 bg-brand-primary/5 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-primary" />
-              <p className="text-xs text-stone-700">
-                兑换成功，礼品将尽快为您寄出，可在「我的兑换记录」中查看发货进度
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setRedeemSuccess(false)}
-              aria-label="关闭提示"
-              className="shrink-0 text-stone-400 transition-colors hover:text-stone-700"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* 积分余额概览：右下角渐隐水印（Sparkles，向卡片内部淡出，纯装饰） */}
-        <div className="relative overflow-hidden rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <Sparkles
-            aria-hidden
-            strokeWidth={1}
-            className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 text-brand-primary/[0.05] [-webkit-mask-image:linear-gradient(to_top_left,black,transparent_75%)] [mask-image:linear-gradient(to_top_left,black,transparent_75%)]"
-          />
-          <div className="relative flex items-center justify-between">
-            <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
-            <button
-              type="button"
-              onClick={toggleLedger}
-              aria-expanded={showLedger}
-              className="flex items-center gap-0.5 rounded-full border border-stone-200 px-3 py-1.5 text-xs font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
-            >
-              明细
-              <ChevronRight
-                className={`h-3 w-3 transition-transform duration-200 ${showLedger ? "rotate-90" : ""}`}
-              />
-            </button>
-          </div>
-          <div className="relative mt-4 flex items-baseline gap-1.5">
-            <p className="text-3xl font-light text-stone-800">
-              {giftsData ? giftsData.available.toLocaleString() : "—"}
-            </p>
-            <span className="text-xs text-stone-400">积分</span>
-          </div>
-
-          {/* 即将过期提醒（常显，不依赖明细展开） */}
-          {expiringSoon && (
-            <p className="relative mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              <Clock className="h-3.5 w-3.5 shrink-0" />
-              {expiringSoon.points.toLocaleString()} 积分将于{" "}
-              {formatDate(new Date(expiringSoon.date).toISOString())} 过期，请尽快使用
-            </p>
-          )}
-
-          {/* 积分明细（可折叠，高度过渡动画） */}
-          <AnimatePresence initial={false}>
-            {showLedger && (
-              <m.div
-                key="ledger"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-                className="relative overflow-hidden"
-              >
-            <div className="relative mt-4 border-t border-stone-200/60 pt-3">
-              {pointsError ? (
-                <div className="flex items-center justify-center gap-2 py-4 text-xs text-stone-400">
-                  明细加载失败
+              {/* 兑换成功提示（面板内，可手动关闭，5 秒自动消失） */}
+              {redeemSuccess && (
+                <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-brand-primary/20 bg-brand-primary/5 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-primary" />
+                    <p className="text-xs text-stone-700">
+                      兑换成功，礼品将尽快为您寄出，可在「我的兑换记录」中查看发货进度
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => void loadPointsData()}
-                    className="text-brand-primary transition-opacity hover:opacity-70"
+                    onClick={() => setRedeemSuccess(false)}
+                    aria-label="关闭提示"
+                    className="shrink-0 text-stone-400 transition-colors hover:text-stone-700"
                   >
-                    重试
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
-              ) : !pointsData ? (
-                <div className="flex items-center justify-center gap-1.5 py-4 text-xs text-stone-400">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> 明细加载中...
-                </div>
-              ) : pointsData.recent.length === 0 ? (
-                <p className="py-4 text-center text-xs text-stone-400">暂无积分明细</p>
-              ) : (
-                <div className="space-y-2">
-                  {pointsData.recent.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
-                      <span className="min-w-0 truncate text-stone-500">
-                        {POINT_TYPE_LABELS[r.type] ?? r.type}
-                        {r.note && (r.type === "CONSUME" || r.type === "CHECKIN" || r.type === "ADJUST")
-                          ? `（${r.note.slice(0, 20)}）`
-                          : ""}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-3">
-                        <span className="text-stone-400">{formatDate(r.createdAt)}</span>
-                        <span
-                          className={`font-medium ${r.amount >= 0 ? "text-stone-700" : "text-stone-400"}`}
-                        >
-                          {r.amount >= 0 ? "+" : ""}
-                          {r.amount.toLocaleString()}
-                        </span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
               )}
-            </div>
-              </m.div>
-            )}
-          </AnimatePresence>
-        </div>
 
-        {/* 兑换好礼 */}
-        <div className="mt-6 rounded-xl border border-stone-200/60 bg-white/40 p-5">
-          <div className="flex items-center justify-between">
-            <h4 className="flex items-center gap-1.5 text-sm font-medium text-stone-700">
-              <Gift className="h-4 w-4" />
-              兑换好礼
-            </h4>
-            {giftsData && giftsData.redeemRate !== null && (
-              <p className="text-xs text-stone-400">按当前会员等级折算所需积分</p>
-            )}
-          </div>
+              {/* 积分余额概览：右下角渐隐水印（Sparkles，向卡片内部淡出，纯装饰） */}
+              <div className="relative overflow-hidden rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                <Sparkles
+                  aria-hidden
+                  strokeWidth={1}
+                  className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 text-brand-primary/[0.05] [-webkit-mask-image:linear-gradient(to_top_left,black,transparent_75%)] [mask-image:linear-gradient(to_top_left,black,transparent_75%)]"
+                />
+                <div className="relative flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-stone-700">积分余额</h4>
+                  <button
+                    type="button"
+                    onClick={toggleLedger}
+                    aria-expanded={showLedger}
+                    className="flex items-center gap-0.5 rounded-full border border-stone-200 px-3 py-1.5 text-xs font-light text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
+                  >
+                    明细
+                    <ChevronRight
+                      className={`h-3 w-3 transition-transform duration-200 ${showLedger ? "rotate-90" : ""}`}
+                    />
+                  </button>
+                </div>
+                <div className="relative mt-4 flex items-baseline gap-1.5">
+                  <p className="text-3xl font-light text-stone-800">
+                    {giftsData ? giftsData.available.toLocaleString() : "—"}
+                  </p>
+                  <span className="text-xs text-stone-400">积分</span>
+                </div>
 
-          {giftsLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
-            </div>
-          ) : !giftsData ? (
-            <p className="py-6 text-center text-xs text-stone-400">礼品加载失败，请稍后重试</p>
-          ) : giftsData.redeemRate === null ? (
-            <div className="flex items-center justify-center gap-1.5 py-6 text-xs text-stone-400">
-              <Lock className="h-3.5 w-3.5" />
-              升级银卡会员解锁积分兑换
-            </div>
-          ) : giftsData.gifts.length === 0 ? (
-            <p className="py-6 text-center text-xs text-stone-400">暂无上架礼品</p>
-          ) : (
-            <>
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {visibleGifts.map((g) => (
-                <div
-                  key={g.id}
-                  className="flex flex-col justify-between rounded-xl border border-stone-200/60 bg-white/60 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setDetailGift(g)}
-                      aria-label={`查看「${g.name}」详情`}
-                      className="group flex min-w-0 items-center gap-3 text-left"
+                {/* 即将过期提醒（常显，不依赖明细展开） */}
+                {expiringSoon && (
+                  <p className="relative mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    {expiringSoon.points.toLocaleString()} 积分将于{" "}
+                    {formatDate(new Date(expiringSoon.date).toISOString())} 过期，请尽快使用
+                  </p>
+                )}
+
+                {/* 积分明细（可折叠，高度过渡动画） */}
+                <AnimatePresence initial={false}>
+                  {showLedger && (
+                    <m.div
+                      key="ledger"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: "easeOut" }}
+                      className="relative overflow-hidden"
                     >
-                      {g.image && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={g.image}
-                          alt=""
-                          className="h-12 w-12 shrink-0 rounded-lg border border-stone-200/60 object-cover"
-                        />
-                      )}
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-stone-800 transition-colors group-hover:text-brand-primary">
-                          {g.name}
-                        </p>
-                        {g.description && (
-                          <p className="mt-1 line-clamp-2 text-xs text-stone-400">
-                            {stripHtml(g.description)}
-                          </p>
+                      <div className="relative mt-4 border-t border-stone-200/60 pt-3">
+                        {pointsError ? (
+                          <div className="flex items-center justify-center gap-2 py-4 text-xs text-stone-400">
+                            明细加载失败
+                            <button
+                              type="button"
+                              onClick={() => void loadPointsData()}
+                              className="text-brand-primary transition-opacity hover:opacity-70"
+                            >
+                              重试
+                            </button>
+                          </div>
+                        ) : !pointsData ? (
+                          <div className="flex items-center justify-center gap-1.5 py-4 text-xs text-stone-400">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> 明细加载中...
+                          </div>
+                        ) : pointsData.recent.length === 0 ? (
+                          <p className="py-4 text-center text-xs text-stone-400">暂无积分明细</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {pointsData.recent.map((r) => (
+                              <div
+                                key={r.id}
+                                className="flex items-center justify-between gap-3 text-xs"
+                              >
+                                <span className="min-w-0 truncate text-stone-500">
+                                  {POINT_TYPE_LABELS[r.type] ?? r.type}
+                                  {r.note &&
+                                  (r.type === "CONSUME" ||
+                                    r.type === "CHECKIN" ||
+                                    r.type === "ADJUST")
+                                    ? `（${r.note.slice(0, 20)}）`
+                                    : ""}
+                                </span>
+                                <span className="flex shrink-0 items-center gap-3">
+                                  <span className="text-stone-400">{formatDate(r.createdAt)}</span>
+                                  <span
+                                    className={`font-medium ${r.amount >= 0 ? "text-stone-700" : "text-stone-400"}`}
+                                  >
+                                    {r.amount >= 0 ? "+" : ""}
+                                    {r.amount.toLocaleString()}
+                                  </span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
-                    </button>
-                    <span className="shrink-0 text-xs text-stone-400">
-                      价格 ¥{g.priceYuan.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-sm font-medium text-stone-700">
-                      {g.cost?.toLocaleString()} 积分
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!g.affordable || g.stock === 0}
-                      onClick={() => openRedeem(g)}
-                      className="rounded-full bg-brand-primary px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
-                    >
-                      {g.stock === 0 ? "已兑完" : g.affordable ? "兑换" : "积分不足"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {giftsData.gifts.length > GIFTS_PREVIEW_COUNT && (
-              <button
-                type="button"
-                onClick={toggleGiftsExpanded}
-                aria-expanded={giftsExpanded}
-                className="mx-auto mt-3 flex items-center gap-1 rounded-full border border-stone-200 px-4 py-1.5 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
-              >
-                {giftsExpanded ? "收起" : `展开更多（还有 ${hiddenGiftsCount} 件）`}
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform duration-200 ${giftsExpanded ? "rotate-180" : ""}`}
-                />
-              </button>
-            )}
-            </>
-          )}
+                    </m.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
-          {/* 我的兑换记录：主视图仅预览最近 N 条，更多记录进「查看全部」 */}
-          <div className="mt-4 border-t border-stone-200/60 pt-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-medium text-stone-500">
-                我的兑换记录
-                {redemptionTotal > 0 && (
-                  <span className="ml-1 font-normal text-stone-400">（{redemptionTotal}）</span>
+              {/* 兑换好礼 */}
+              <div className="mt-6 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                <div className="flex items-center justify-between">
+                  <h4 className="flex items-center gap-1.5 text-sm font-medium text-stone-700">
+                    <Gift className="h-4 w-4" />
+                    兑换好礼
+                  </h4>
+                  {giftsData && giftsData.redeemRate !== null && (
+                    <p className="text-xs text-stone-400">按当前会员等级折算所需积分</p>
+                  )}
+                </div>
+
+                {giftsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
+                  </div>
+                ) : !giftsData ? (
+                  <p className="py-6 text-center text-xs text-stone-400">
+                    礼品加载失败，请稍后重试
+                  </p>
+                ) : giftsData.redeemRate === null ? (
+                  <div className="flex items-center justify-center gap-1.5 py-6 text-xs text-stone-400">
+                    <Lock className="h-3.5 w-3.5" />
+                    升级银卡会员解锁积分兑换
+                  </div>
+                ) : giftsData.gifts.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-stone-400">暂无上架礼品</p>
+                ) : (
+                  <>
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {visibleGifts.map((g) => (
+                        <div
+                          key={g.id}
+                          className="flex flex-col justify-between rounded-xl border border-stone-200/60 bg-white/60 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setDetailGift(g)}
+                              aria-label={`查看「${g.name}」详情`}
+                              className="group flex min-w-0 items-center gap-3 text-left"
+                            >
+                              {g.image && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={g.image}
+                                  alt=""
+                                  className="h-12 w-12 shrink-0 rounded-lg border border-stone-200/60 object-cover"
+                                />
+                              )}
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-stone-800 transition-colors group-hover:text-brand-primary">
+                                  {g.name}
+                                </p>
+                                {g.description && (
+                                  <p className="mt-1 line-clamp-2 text-xs text-stone-400">
+                                    {stripHtml(g.description)}
+                                  </p>
+                                )}
+                              </div>
+                            </button>
+                            <span className="shrink-0 text-xs text-stone-400">
+                              价格 ¥{g.priceYuan.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-sm font-medium text-stone-700">
+                              {g.cost?.toLocaleString()} 积分
+                            </span>
+                            <button
+                              type="button"
+                              disabled={!g.affordable || g.stock === 0}
+                              onClick={() => openRedeem(g)}
+                              className="rounded-full bg-brand-primary px-4 py-2 text-xs text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
+                            >
+                              {g.stock === 0 ? "已兑完" : g.affordable ? "兑换" : "积分不足"}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {giftsData.gifts.length > GIFTS_PREVIEW_COUNT && (
+                      <button
+                        type="button"
+                        onClick={toggleGiftsExpanded}
+                        aria-expanded={giftsExpanded}
+                        className="mx-auto mt-3 flex items-center gap-1 rounded-full border border-stone-200 px-4 py-1.5 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
+                      >
+                        {giftsExpanded ? "收起" : `展开更多（还有 ${hiddenGiftsCount} 件）`}
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 transition-transform duration-200 ${giftsExpanded ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    )}
+                  </>
                 )}
-              </p>
-              {redemptionTotal > RECORDS_PREVIEW_COUNT && (
-                <button
-                  type="button"
-                  onClick={() => setView("records")}
-                  className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800 active:opacity-70"
-                >
-                  查看全部
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-            {redemptionsLoading && redemptions.length === 0 ? (
-              <div className="flex items-center gap-1.5 py-3 text-xs text-stone-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> 记录加载中...
+
+                {/* 我的兑换记录：主视图仅预览最近 N 条，更多记录进「查看全部」 */}
+                <div className="mt-4 border-t border-stone-200/60 pt-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-stone-500">
+                      我的兑换记录
+                      {redemptionTotal > 0 && (
+                        <span className="ml-1 font-normal text-stone-400">
+                          （{redemptionTotal}）
+                        </span>
+                      )}
+                    </p>
+                    {redemptionTotal > RECORDS_PREVIEW_COUNT && (
+                      <button
+                        type="button"
+                        onClick={() => setView("records")}
+                        className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800 active:opacity-70"
+                      >
+                        查看全部
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                  {redemptionsLoading && redemptions.length === 0 ? (
+                    <div className="flex items-center gap-1.5 py-3 text-xs text-stone-400">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> 记录加载中...
+                    </div>
+                  ) : redemptionsError && redemptions.length === 0 ? (
+                    <div className="flex items-center gap-2 py-3 text-xs text-stone-400">
+                      记录加载失败
+                      <button
+                        type="button"
+                        onClick={() => void loadRedemptions()}
+                        className="text-brand-primary transition-opacity hover:opacity-70"
+                      >
+                        重试
+                      </button>
+                    </div>
+                  ) : redemptions.length === 0 ? (
+                    <p className="py-2 text-xs text-stone-400">暂无兑换记录</p>
+                  ) : (
+                    renderRedemptionList(previewRedemptions, "main")
+                  )}
+                </div>
               </div>
-            ) : redemptionsError && redemptions.length === 0 ? (
-              <div className="flex items-center gap-2 py-3 text-xs text-stone-400">
-                记录加载失败
-                <button
-                  type="button"
-                  onClick={() => void loadRedemptions()}
-                  className="text-brand-primary transition-opacity hover:opacity-70"
-                >
-                  重试
-                </button>
-              </div>
-            ) : redemptions.length === 0 ? (
-              <p className="py-2 text-xs text-stone-400">暂无兑换记录</p>
-            ) : (
-              renderRedemptionList(previewRedemptions, "main")
-            )}
-          </div>
-        </div>
             </m.div>
           ) : view === "detail" ? (
             selectedRedemption && (
@@ -882,7 +896,9 @@ export function PointsMallPanel() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-stone-400">兑换时间</span>
-                      <span className="text-stone-700">{formatDate(selectedRedemption.createdAt)}</span>
+                      <span className="text-stone-700">
+                        {formatDate(selectedRedemption.createdAt)}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-stone-400">发货状态</span>
@@ -941,7 +957,10 @@ export function PointsMallPanel() {
                           <div className="flex items-center gap-1.5 py-3 text-xs text-stone-400">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" /> 轨迹查询中...
                           </div>
-                        ) : tracking && tracking.supported && tracking.routes && tracking.routes.length > 0 ? (
+                        ) : tracking &&
+                          tracking.supported &&
+                          tracking.routes &&
+                          tracking.routes.length > 0 ? (
                           <div>
                             {[...tracking.routes].reverse().map((r, i) => (
                               <div key={i} className="relative flex gap-3 pb-4 last:pb-0">
@@ -1111,9 +1130,7 @@ export function PointsMallPanel() {
                   <p className="flex items-center gap-1.5 text-xs font-medium text-stone-600">
                     <MapPin className="h-3.5 w-3.5 text-brand-primary" />
                     收货地址
-                    <span className="font-normal text-stone-400">
-                      （礼品将寄送至所选地址）
-                    </span>
+                    <span className="font-normal text-stone-400">（礼品将寄送至所选地址）</span>
                   </p>
 
                   {addressesLoading ? (
@@ -1143,9 +1160,7 @@ export function PointsMallPanel() {
                             <div className="min-w-0">
                               <p className="text-xs font-medium text-stone-800">
                                 {a.recipient}
-                                <span className="ml-2 font-normal text-stone-400">
-                                  {a.phone}
-                                </span>
+                                <span className="ml-2 font-normal text-stone-400">{a.phone}</span>
                                 {a.isDefault && (
                                   <span className="ml-2 rounded-full bg-brand-primary/10 px-1.5 py-0.5 text-[10px] text-brand-primary">
                                     默认
@@ -1236,9 +1251,7 @@ export function PointsMallPanel() {
                     type="button"
                     onClick={handleRedeem}
                     disabled={
-                      redeeming ||
-                      creatingAddress ||
-                      (!showNewAddress && !selectedAddressId)
+                      redeeming || creatingAddress || (!showNewAddress && !selectedAddressId)
                     }
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-primary px-8 py-2.5 text-sm text-white transition-colors hover:bg-[#0d3b5c] active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
                   >

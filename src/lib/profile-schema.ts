@@ -29,14 +29,11 @@ export const updateProfileSchema = z.object({
     (v) => (v === null ? "" : v),
     z
       .union([
-        z
-          .coerce.date()
+        z.coerce
+          .date()
           .refine((d) => !Number.isNaN(d.getTime()), "无效的生日日期")
           .refine((d) => d.getTime() <= Date.now(), "生日不能晚于今天")
-          .refine(
-            (d) => d.getFullYear() >= new Date().getFullYear() - 100,
-            "生日日期超出合理范围"
-          ),
+          .refine((d) => d.getFullYear() >= new Date().getFullYear() - 100, "生日日期超出合理范围"),
         z.literal(""),
       ])
       .optional()

@@ -35,11 +35,8 @@ export async function revokeOAuthClientSessions(
   // 同步撤销该 client 的全部 Refresh Token，防止旧 refresh_token 继续换发 access_token
   await revokeRefreshToken(userId, undefined, clientId, options?.reason);
 
-  // Backchannel Logout 广播（sid 取撤销前查出的最新活跃会话）
   if (activeSessions.length > 0) {
-    await sendBackchannelLogout(userId, [clientId], {
-      sids: { [clientId]: activeSessions[0].sessionId },
-    });
+    await sendBackchannelLogout(userId, [clientId]);
   }
 
   return { sessionCount: activeSessions.length, latestSid: activeSessions[0]?.sessionId ?? null };

@@ -25,8 +25,7 @@ vi.mock("@/lib/prisma", () => {
 
 vi.mock("@/lib/auth", () => ({
   withUserAuth:
-    (handler: (req: NextRequest, payload: { id: string }) => unknown) =>
-    (req: NextRequest) =>
+    (handler: (req: NextRequest, payload: { id: string }) => unknown) => (req: NextRequest) =>
       handler(req, PAYLOAD),
 }));
 
@@ -45,7 +44,7 @@ vi.mock("@/lib/client-ip", () => ({
 }));
 
 vi.mock("@/lib/sms", () => ({
-  verifyCode: vi.fn(),
+  verifySmsCodeWithLimit: vi.fn(),
   recordSmsCodeFailure: vi.fn().mockResolvedValue(undefined),
   sendLoginCode: vi.fn().mockResolvedValue({ success: true }),
   sendPhoneChangedNotification: vi.fn().mockResolvedValue(undefined),
@@ -70,7 +69,12 @@ vi.mock("@/lib/logger", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/ratelimit";
-import { verifyCode, recordSmsCodeFailure, sendLoginCode, sendPhoneChangedNotification, recordFakeSmsThrottleEntry } from "@/lib/sms";
+import {
+  verifySmsCodeWithLimit,
+  sendLoginCode,
+  sendPhoneChangedNotification,
+  recordFakeSmsThrottleEntry,
+} from "@/lib/sms";
 import { invalidateProfileCache } from "@/lib/points";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { PUT } from "@/app/api/user/phone/route";
@@ -87,7 +91,7 @@ const mockSmsFindFirst = prisma.smsCode.findFirst as ReturnType<typeof vi.fn>;
 const mockSmsUpdateMany = prisma.smsCode.updateMany as ReturnType<typeof vi.fn>;
 const mockSmsCreate = prisma.smsCode.create as ReturnType<typeof vi.fn>;
 const mockSmsCount = prisma.smsCode.count as ReturnType<typeof vi.fn>;
-const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
+const mockVerifyCode = verifySmsCodeWithLimit as ReturnType<typeof vi.fn>;
 const mockSendLoginCode = sendLoginCode as ReturnType<typeof vi.fn>;
 
 function createRequest(url: string, body: unknown, method = "POST"): NextRequest {
@@ -103,9 +107,8 @@ describe("换绑手机号", () => {
     vi.clearAllMocks();
     vi.stubEnv("NODE_ENV", "test");
     // 默认：按 id 查当前用户成功；按 phone 查（新号码占用检查）默认未注册
-    mockUserFindUnique.mockImplementation(
-      async (args: { where: Record<string, unknown> }) =>
-        "id" in args.where ? { id: "user-1", phone: "13800138000" } : null
+    mockUserFindUnique.mockImplementation(async (args: { where: Record<string, unknown> }) =>
+      "id" in args.where ? { id: "user-1", phone: "13800138000" } : null
     );
     mockSmsFindFirst.mockResolvedValue(null);
     mockVerifyCode.mockReturnValue(true);
@@ -199,7 +202,12 @@ describe("换绑手机号", () => {
       );
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("CODE_INVALID");
-      expect(recordSmsCodeFailure).toHaveBeenCalledWith("code-1");
+      expect(verifySmsCodeWithLimit).toHaveBeenCalledWith(
+        "13800138000",
+        "000000",
+        "rebind-current",
+        "code-1"
+      );
       expect(mockUserUpdate).not.toHaveBeenCalled();
     });
 
@@ -215,7 +223,12 @@ describe("换绑手机号", () => {
       );
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("CODE_INVALID");
-      expect(recordSmsCodeFailure).toHaveBeenCalled();
+      expect(verifySmsCodeWithLimit).toHaveBeenCalledWith(
+        "13900139000",
+        "000000",
+        "rebind-new",
+        "code-1"
+      );
       expect(mockUserUpdate).not.toHaveBeenCalled();
     });
 
@@ -241,7 +254,7 @@ describe("换绑手机号", () => {
       });
       expect(mockUserUpdate).toHaveBeenCalledWith({
         where: { id: "user-1" },
-        data: { phone: "13900139000" },
+        data: { phone: "13900139000", sessionsInvalidatedAt: expect.any(Date) },
       });
       expect(invalidateProfileCache).toHaveBeenCalled();
     });
@@ -285,11 +298,7 @@ describe("换绑手机号", () => {
       mockSmsFindFirst.mockResolvedValue(CODE_RECORD);
 
       const res = await PUT(
-        createRequest(
-          "/api/user/phone",
-          { newPhone: "13900139000", newCode: "654321" },
-          "PUT"
-        )
+        createRequest("/api/user/phone", { newPhone: "13900139000", newCode: "654321" }, "PUT")
       );
       const data = await res.json();
 
@@ -299,7 +308,7 @@ describe("换绑手机号", () => {
       expect(mockSmsUpdateMany).toHaveBeenCalledTimes(1);
       expect(mockUserUpdate).toHaveBeenCalledWith({
         where: { id: "user-1" },
-        data: { phone: "13900139000" },
+        data: { phone: "13900139000", sessionsInvalidatedAt: expect.any(Date) },
       });
     });
 

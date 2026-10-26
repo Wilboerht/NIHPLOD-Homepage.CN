@@ -21,7 +21,7 @@ import {
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
-import { verifyCode, recordSmsCodeFailure, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
+import { verifySmsCodeWithLimit, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { resolveMiniprogramCredentials } from "@/lib/miniprogram-clients";
@@ -114,9 +114,7 @@ async function verifyAndConsumeSmsCode(phone: string, code: string, ip: string) 
     return { valid: false as const, error: "验证环境异常，请重新获取验证码" };
   }
 
-  if (!verifyCode(phone, code, smsCode.type, smsCode.codeHash)) {
-    // 单码失败计数：达到上限自动作废该验证码（防爆破）
-    await recordSmsCodeFailure(smsCode.id);
+  if (!(await verifySmsCodeWithLimit(phone, code, smsCode.type, smsCode.id))) {
     return { valid: false as const, error: "验证码错误或已过期" };
   }
 
@@ -193,7 +191,14 @@ export async function issueOAuthTokens(
     sid: sessionId,
   });
   const refreshToken = await signRefreshToken({ id: user.id, clientId, scope, sid: sessionId });
-  await saveRefreshToken(user.id, refreshToken, refreshExpiresAt, extractDeviceInfo(request), clientId);
+  await saveRefreshToken(
+    user.id,
+    refreshToken,
+    refreshExpiresAt,
+    extractDeviceInfo(request),
+    clientId,
+    sessionId
+  );
 
   return { accessToken, refreshToken, expiresIn: accessTokenTtlSeconds };
 }
@@ -292,9 +297,7 @@ export async function resolveWechatBinding(
   // 外部身份元数据：昵称/头像快照 + 来源小程序标识（存量数据无后者，仅供管理端展示来源；
   // appId 从环境配置解析，解析不到时为 null）
   const mpClientId = wechatInfo.type === "wechat_bind" ? wechatInfo.mpClientId : undefined;
-  const mpAppId = mpClientId
-    ? (resolveMiniprogramCredentials(mpClientId)?.appId ?? null)
-    : null;
+  const mpAppId = mpClientId ? (resolveMiniprogramCredentials(mpClientId)?.appId ?? null) : null;
   const identityMetadata = {
     nickname: wechatInfo.nickname ?? null,
     avatar: wechatInfo.avatar ?? null,
@@ -407,10 +410,7 @@ export async function resolveWechatBinding(
           where: { id: existingIdentity.userId },
           select: { phone: true },
         });
-        if (
-          previousOwner &&
-          !previousOwner.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)
-        ) {
+        if (previousOwner && !previousOwner.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
           throw new Error("WECHAT_ALREADY_BOUND");
         }
       }
@@ -468,7 +468,12 @@ export async function resolveWechatBinding(
     accessToken = await signUserToken({ id: user.id });
     refreshToken = await signRefreshToken({ id: user.id });
     const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
+    await saveRefreshToken(
+      user.id,
+      refreshToken,
+      refreshTokenExpiresAt,
+      extractDeviceInfo(request)
+    );
   }
 
   logAuthEvent("wechat_bind", {

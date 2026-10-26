@@ -36,10 +36,7 @@ export const createSpentApplicationSchema = z
     images: z
       .array(
         // 允许三种引用：公开 URL / 站内路径 / 私有 bucket objectName（spent-adjustments/ 前缀）
-        z
-          .string()
-          .max(500, "图片地址过长")
-          .refine(isValidSpentProofImageRef, "图片地址格式不正确")
+        z.string().max(500, "图片地址过长").refine(isValidSpentProofImageRef, "图片地址格式不正确")
       )
       .max(MAX_IMAGES, `最多上传 ${MAX_IMAGES} 张凭证截图`)
       .optional(),

@@ -14,6 +14,7 @@ import { escapeCSV } from "@/lib/sso-audit";
 import { maskIdentifier, maskIp, maskPhone } from "@/lib/mask-phone";
 import { maskAuditDetail, redactSensitiveAuditDetail } from "@/lib/audit-sanitize";
 import { apiConsole } from "@/lib/logger";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, private",
@@ -141,7 +142,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (isExport) {
-      // CSV 导出
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+
       const items = await prisma.ssoAuditEvent.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -210,9 +213,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // 联表 User 取手机号并脱敏，供管理端列表展示（userId 为空或用户已删除时为 null）
-    const userIds = [
-      ...new Set(items.map((i) => i.userId).filter((id): id is string => !!id)),
-    ];
+    const userIds = [...new Set(items.map((i) => i.userId).filter((id): id is string => !!id))];
     const users =
       userIds.length > 0
         ? await prisma.user.findMany({
@@ -253,23 +254,26 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        items: items.map((item) => ({
-          ...item,
-          userId: canViewSensitive ? item.userId : maskIdentifier(item.userId),
-          ip: canViewSensitive ? item.ip : item.ip ? maskIp(item.ip) : null,
-          userAgent: canViewSensitive ? item.userAgent : null,
-          detail: canViewSensitive
-            ? (redactSensitiveAuditDetail(item.detail) as typeof item.detail)
-            : (maskAuditDetail(item.detail) as typeof item.detail),
-          userPhone: (item.userId && phoneMap.get(item.userId)) || null,
-          createdAt: item.createdAt.toISOString(),
-        })),
-        pagination: { page, pageSize, total },
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          items: items.map((item) => ({
+            ...item,
+            userId: canViewSensitive ? item.userId : maskIdentifier(item.userId),
+            ip: canViewSensitive ? item.ip : item.ip ? maskIp(item.ip) : null,
+            userAgent: canViewSensitive ? item.userAgent : null,
+            detail: canViewSensitive
+              ? (redactSensitiveAuditDetail(item.detail) as typeof item.detail)
+              : (maskAuditDetail(item.detail) as typeof item.detail),
+            userPhone: (item.userId && phoneMap.get(item.userId)) || null,
+            createdAt: item.createdAt.toISOString(),
+          })),
+          pagination: { page, pageSize, total },
+        },
       },
-    }, { headers: NO_STORE_HEADERS });
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     apiConsole.error("[AdminOAuthAudit] 异常:", error);
     return NextResponse.json(

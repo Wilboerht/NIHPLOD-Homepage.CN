@@ -105,7 +105,14 @@ export async function advisorRequest<T>(
   const bodyText = options.body !== undefined ? JSON.stringify(options.body) : "";
   const { search, canonical } = buildQuery(options.query);
   const project = options.project ?? "advisor";
-  const headers = buildHeaders(method, path, bodyText, canonical, project, options.signQuery ?? false);
+  const headers = buildHeaders(
+    method,
+    path,
+    bodyText,
+    canonical,
+    project,
+    options.signQuery ?? false
+  );
   if (!headers) {
     return { ok: false, status: 0, code: "NOT_CONFIGURED", message: "未配置子站内部 API 密钥" };
   }
@@ -120,12 +127,10 @@ export async function advisorRequest<T>(
       signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       cache: "no-store",
     });
-    const payload = (await res.json().catch(() => null)) as
-      | {
-          error?: string | { code?: string; message?: string };
-          message?: string;
-        }
-      | null;
+    const payload = (await res.json().catch(() => null)) as {
+      error?: string | { code?: string; message?: string };
+      message?: string;
+    } | null;
 
     if (!res.ok) {
       apiConsole.warn("[advisor-internal] 子站响应异常", { path, status: res.status });
@@ -169,11 +174,11 @@ export async function advisorJson<T>(
  * - 429（限流）：保留 429，错误码 RATE_LIMITED（前端可提示"操作过于频繁"）
  * - 其余（401 密钥/5xx/网络）：统一 502 UPSTREAM_ERROR 语义（code 沿用子站分类）
  */
-export function mapAdvisorError(result: {
+export function mapAdvisorError(result: { status: number; code: string; message: string }): {
   status: number;
   code: string;
   message: string;
-}): { status: number; code: string; message: string } {
+} {
   if (result.status === 403 && result.code === "ACCOUNT_DISABLED") {
     return { status: 403, code: "ACCOUNT_DISABLED", message: result.message };
   }
@@ -222,34 +227,48 @@ export function getSubsitePurgeTargets(): SubsitePurgeTarget[] {
     if (!Array.isArray(parsed)) throw new Error("必须是 JSON 数组");
     const targets: SubsitePurgeTarget[] = [];
     for (const item of parsed as Record<string, unknown>[]) {
-      if (!item || typeof item.name !== "string" || typeof item.baseUrl !== "string" || !item.name || !item.baseUrl) {
-        apiConsole.warn("[advisor-internal] SUBSITE_PURGE_TARGETS 条目缺少 name/baseUrl，已跳过:", item);
+      if (
+        !item ||
+        typeof item.name !== "string" ||
+        typeof item.baseUrl !== "string" ||
+        !item.name ||
+        !item.baseUrl
+      ) {
+        apiConsole.warn(
+          "[advisor-internal] SUBSITE_PURGE_TARGETS 条目缺少 name/baseUrl，已跳过:",
+          item
+        );
         continue;
       }
       targets.push({
         name: item.name,
         baseUrl: item.baseUrl,
-        purgePath: typeof item.purgePath === "string" && item.purgePath ? item.purgePath : DEFAULT_PURGE_PATH,
+        purgePath:
+          typeof item.purgePath === "string" && item.purgePath
+            ? item.purgePath
+            : DEFAULT_PURGE_PATH,
         project: typeof item.project === "string" && item.project ? item.project : undefined,
       });
     }
     return targets;
   } catch (error) {
-    apiConsole.error("[advisor-internal] 解析 SUBSITE_PURGE_TARGETS 失败，回退 advisor 默认目标:", error);
+    apiConsole.error(
+      "[advisor-internal] 解析 SUBSITE_PURGE_TARGETS 失败，回退 advisor 默认目标:",
+      error
+    );
     return defaultPurgeTargets();
   }
 }
 
 export type SubsitePurgeResult =
-  | { ok: true }
-  | { ok: false; target: string; code: string; message: string };
+  { ok: true } | { ok: false; target: string; code: string; message: string };
 
 /**
  * 账号注销：通知全部已配置子站清除该用户数据
  *
  * - purge 请求始终绑定 query 签名（userId 防篡改），独立于 INTERNAL_API_SIGN_QUERY；
- * - 目标未配置内部 API 密钥（NOT_CONFIGURED）：warn 级跳过，不阻断注销（配置缺失
- *   不等于数据存在，注销权履行不得被配置项卡死）；
+ * - 已注册清除目标未配置内部 API 密钥（NOT_CONFIGURED）：按失败处理并等待重试，
+ *   不允许在子站数据未清除时把注销标记为完成；
  * - 已配置目标不可达/报错：立即返回失败（含目标名，供人工队列定位），
  *   由调用方置 FAILED 等下次 cron 重试——数据合规口径不放松。
  */
@@ -263,10 +282,6 @@ export async function purgeUserFromSubsites(userId: string): Promise<SubsitePurg
       signQuery: true,
     });
     if (result.ok) continue;
-    if (result.code === "NOT_CONFIGURED") {
-      apiConsole.warn(`[advisor-internal] 子站 ${target.name} 未配置内部 API 密钥，跳过数据清除`, { userId });
-      continue;
-    }
     apiConsole.warn(`[advisor-internal] 子站 ${target.name} 数据清除失败`, {
       userId,
       code: result.code,

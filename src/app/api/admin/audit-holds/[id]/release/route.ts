@@ -16,10 +16,7 @@ const schema = z.object({
   totpCode: z.string().min(6).max(16),
 });
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await verifyAuth(request);
   if (!admin) {
     return NextResponse.json(

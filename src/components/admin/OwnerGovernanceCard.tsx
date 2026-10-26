@@ -41,11 +41,6 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
 
   const pending = data.approvals.latestPending;
   const ownerOnly = data.ownerOnly.events;
-  const needsAttention =
-    data.approvals.pending > 0 ||
-    data.approvals.approvedAwaiting > 0 ||
-    data.ownerOnly.nonOwner > 0 ||
-    data.holders.some((holder) => !holder.totpEnabled);
 
   return (
     <CollapsiblePanel
@@ -56,7 +51,6 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
         </span>
       }
       summary={`待审批 ${data.approvals.pending} · 待执行 ${data.approvals.approvedAwaiting} · 非 owner 操作 ${data.ownerOnly.nonOwner}`}
-      defaultOpen={needsAttention}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-brand-charcoal/65">审批、owner 级权限与高风险操作概览</p>

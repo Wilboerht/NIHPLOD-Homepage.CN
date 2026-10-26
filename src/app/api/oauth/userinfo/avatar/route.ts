@@ -18,11 +18,7 @@ import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-reso
 import { guardOAuthUserActive } from "@/lib/oauth-user-guard";
 import { rateLimit } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readFormDataBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readFormDataBody } from "@/lib/request-body";
 import { processAndSaveImage, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
 

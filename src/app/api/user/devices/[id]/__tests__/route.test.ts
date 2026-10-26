@@ -87,6 +87,7 @@ describe("DELETE /api/user/devices/:id", () => {
       id: TARGET_ID,
       token: TARGET_TOKEN_HASH,
       clientId: "oauth-client-1",
+      oauthSessionId: "sid-1",
     });
     mockSessionFindFirst.mockResolvedValue({ sessionId: "sid-1" });
 

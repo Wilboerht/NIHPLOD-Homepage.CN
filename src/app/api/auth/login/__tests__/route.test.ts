@@ -32,7 +32,7 @@ vi.mock("@/lib/ratelimit", () => ({
 }));
 
 vi.mock("@/lib/sms", () => ({
-  verifyCode: vi.fn(),
+  verifySmsCodeWithLimit: vi.fn(),
   recordSmsCodeFailure: vi.fn().mockResolvedValue(undefined),
   SMS_CODE_MAX_ATTEMPTS: 5,
 }));
@@ -47,14 +47,14 @@ vi.mock("@/lib/csrf", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { verifyCode, recordSmsCodeFailure } from "@/lib/sms";
+import { verifySmsCodeWithLimit, recordSmsCodeFailure } from "@/lib/sms";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { POST } from "@/app/api/auth/login/route";
 
 const mockSmsFindFirst = prisma.smsCode.findFirst as ReturnType<typeof vi.fn>;
 const mockSmsUpdateMany = prisma.smsCode.updateMany as ReturnType<typeof vi.fn>;
 const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
-const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
+const mockVerifyCode = verifySmsCodeWithLimit as ReturnType<typeof vi.fn>;
 const mockRecordSmsCodeFailure = recordSmsCodeFailure as ReturnType<typeof vi.fn>;
 const mockRecordLoginAttempt = recordLoginAttempt as ReturnType<typeof vi.fn>;
 
@@ -94,7 +94,7 @@ describe("POST /api/auth/login 验证码防爆破", () => {
     expect(res.status).toBe(400);
     expect(data.error.code).toBe("CODE_INVALID");
     // 单码失败计数：交给 sms 模块递增 attempts（达到上限作废）
-    expect(mockRecordSmsCodeFailure).toHaveBeenCalledWith("sms-1");
+    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "login", "sms-1");
     // 验证码类失败不计入账户锁定池（与 register 口径一致）：
     // 否则攻击者无需验证码即可连发错误验证码锁定受害者账号（锁号 DoS）
     expect(mockRecordLoginAttempt).not.toHaveBeenCalled();

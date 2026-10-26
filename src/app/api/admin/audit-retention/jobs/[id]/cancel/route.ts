@@ -9,10 +9,7 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store, private" } as const;
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await verifyAuth(request);
   if (!admin) {
     return NextResponse.json(

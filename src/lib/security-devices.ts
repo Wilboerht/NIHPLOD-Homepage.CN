@@ -58,7 +58,9 @@ export async function listSecurityDevices(
       ? tokens.filter((t) => t.clientId === currentClientId)
       : [];
     const pool = clientTokens.length > 0 ? clientTokens : tokens;
-    fallbackCurrentId = pool.reduce((latest, t) => (t.updatedAt > latest.updatedAt ? t : latest)).id;
+    fallbackCurrentId = pool.reduce((latest, t) =>
+      t.updatedAt > latest.updatedAt ? t : latest
+    ).id;
   }
 
   return tokens.map((t) => ({
@@ -77,8 +79,7 @@ export async function listSecurityDevices(
 }
 
 export type ForceLogoutDeviceResult =
-  | { ok: true }
-  | { ok: false; status: number; code: string; message: string };
+  { ok: true } | { ok: false; status: number; code: string; message: string };
 
 /**
  * 强制下线指定设备（撤销对应 RefreshToken 与关联 OAuthSession，并触发 Backchannel Logout）。
@@ -96,7 +97,7 @@ export async function forceLogoutDevice(params: {
   // 目标会话必须属于当前用户且未撤销（越权查询统一 404，不泄露存在性）
   const target = await prisma.refreshToken.findFirst({
     where: { id: deviceId, userId, revokedAt: null },
-    select: { id: true, token: true, clientId: true },
+    select: { id: true, token: true, clientId: true, oauthSessionId: true },
   });
   if (!target) {
     return { ok: false, status: 404, code: "NOT_FOUND", message: "会话不存在或已下线" };
@@ -109,9 +110,7 @@ export async function forceLogoutDevice(params: {
       where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
       select: { id: true, clientId: true, updatedAt: true },
     });
-    const clientPool = blockClientId
-      ? candidates.filter((t) => t.clientId === blockClientId)
-      : [];
+    const clientPool = blockClientId ? candidates.filter((t) => t.clientId === blockClientId) : [];
     const pool = clientPool.length > 0 ? clientPool : candidates;
     const latest = pool.reduce<(typeof candidates)[number] | null>(
       (l, t) => (l && l.updatedAt >= t.updatedAt ? l : t),
@@ -128,28 +127,21 @@ export async function forceLogoutDevice(params: {
     };
   }
 
-  // 当前小程序自身的其它设备同样不可下线：撤销该 client 的 OAuthSession 会使当前操作端立即登出
-  if (blockClientId && target.clientId === blockClientId) {
+  // 历史 token 没有 sid 关联时只能保守撤销整个 client，禁止从同 client 操作端触发。
+  if (blockClientId && target.clientId === blockClientId && !target.oauthSessionId) {
     return {
       ok: false,
       status: 400,
       code: "CURRENT_CLIENT_DEVICE",
-      message: "不能下线当前小程序的设备，请使用退出登录",
+      message: "该历史设备暂不支持单独下线，请使用退出登录",
     };
   }
 
-  // 撤销前先取关联 OAuthSession 的 sid（撤销后再查 revokedAt:null 恒为空）
-  let sidByClient: Record<string, string> | undefined;
-  if (target.clientId) {
-    const oauthSession = await prisma.oAuthSession.findFirst({
-      where: { userId, clientId: target.clientId, revokedAt: null },
-      select: { sessionId: true },
-      orderBy: { createdAt: "desc" },
-    });
-    if (oauthSession) sidByClient = { [target.clientId]: oauthSession.sessionId };
-  }
+  const sidByClient =
+    target.clientId && target.oauthSessionId
+      ? { [target.clientId]: target.oauthSessionId }
+      : undefined;
 
-  // 撤销 refresh token；OAuth client 会话同步撤销（事务内保证一致）
   await prisma.$transaction(async (tx) => {
     await tx.refreshToken.update({
       where: { id: target.id },
@@ -157,7 +149,9 @@ export async function forceLogoutDevice(params: {
     });
     if (target.clientId) {
       await tx.oAuthSession.updateMany({
-        where: { userId, clientId: target.clientId, revokedAt: null },
+        where: target.oauthSessionId
+          ? { sessionId: target.oauthSessionId, revokedAt: null }
+          : { userId, clientId: target.clientId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
     }

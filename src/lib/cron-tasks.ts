@@ -16,6 +16,8 @@ import { cleanupExpiredAdminSsoCodes } from "./admin-sso";
 import { cleanupInternalApiNonces } from "./internal-api";
 import { retryFailedBackchannelLogouts } from "./backchannel-logout";
 import { retryFailedWebhookDeliveries } from "./profile-webhook";
+import { retryFailedStatusWebhooks } from "./webhook";
+import { processMediaDeletionTasks } from "./media-deletion";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { grantBirthdayRewards } from "./points-ledger";
 import { expirePendingRedemptions } from "./point-gifts";
@@ -39,7 +41,7 @@ import {
 } from "./audit-alert";
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
-import { acquireCronLock, releaseCronLock } from "./cron-lock";
+import { acquireCronLock, releaseCronLock, startCronLockHeartbeat } from "./cron-lock";
 
 interface ScheduledTask {
   name: string;
@@ -385,6 +387,10 @@ const tasks: ScheduledTask[] = [
         apiConsole.info(
           `[Cron] 资料变更 Webhook 重投完成: 成功 ${result.delivered} 条, 待下次重试 ${result.failed} 条, 丢弃 ${result.dropped} 条`
         );
+        const statusDelivered = await retryFailedStatusWebhooks();
+        if (statusDelivered > 0) {
+          apiConsole.info(`[Cron] 账户状态 Webhook 补偿成功 ${statusDelivered} 条`);
+        }
       } catch (error) {
         apiConsole.error("[Cron] 资料变更 Webhook 重投任务失败:", error);
         throw error;
@@ -545,6 +551,14 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
+    name: "Process Media Deletion Tasks",
+    cronExpression: "*/5 * * * *",
+    isCleanup: true,
+    handler: async () => {
+      await processMediaDeletionTasks();
+    },
+  },
+  {
     name: "Expire Pending Admin Approvals",
     cronExpression: "*/10 * * * *",
     handler: async () => {
@@ -603,8 +617,10 @@ export async function runCronTask(
   if (!lockOwner) return { ok: false, error: "任务正在执行中，请稍后重试" };
 
   const startedAt = new Date();
+  const heartbeat = startCronLockHeartbeat(taskName, lockOwner);
   try {
     await task.handler();
+    if (heartbeat.hasLostLock()) throw new Error("任务执行期间锁已丢失，请核查执行结果");
     await prisma.cronTaskRun
       .create({
         data: {
@@ -636,6 +652,7 @@ export async function runCronTask(
       .catch((err) => apiConsole.warn("[Cron] 运行记录写入失败:", err));
     return { ok: false, error: message };
   } finally {
+    await heartbeat.stop();
     await releaseCronLock(taskName, lockOwner);
   }
 }

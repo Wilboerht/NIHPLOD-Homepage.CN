@@ -149,7 +149,11 @@ export async function GET(request: NextRequest) {
     if (user && !user.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
       const statusCheck = await checkUserStatus(user.id);
       if (!statusCheck.valid) {
-        return errorRedirect(baseRedirectUrl, "DOUYIN_AUTH_FAILED", "您的账户暂时无法使用抖音登录，请使用手机号登录或联系客服");
+        return errorRedirect(
+          baseRedirectUrl,
+          "DOUYIN_AUTH_FAILED",
+          "您的账户暂时无法使用抖音登录，请使用手机号登录或联系客服"
+        );
       }
 
       // 更新资料缺省项 + 双写 ExternalIdentity，同事务保证一致性
@@ -185,7 +189,12 @@ export async function GET(request: NextRequest) {
       });
 
       const refreshTokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-      await saveRefreshToken(user.id, refreshToken, refreshTokenExpiresAt, extractDeviceInfo(request));
+      await saveRefreshToken(
+        user.id,
+        refreshToken,
+        refreshTokenExpiresAt,
+        extractDeviceInfo(request)
+      );
 
       const successUrl = new URL(baseRedirectUrl);
       successUrl.searchParams.set("wechat_auth", "success");

@@ -66,14 +66,11 @@ const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
 const mockLogAuthEvent = logAuthEvent as ReturnType<typeof vi.fn>;
 
 function createRequest(body: unknown): NextRequest {
-  return new NextRequest(
-    new URL("/api/auth/wechat/miniprogram-refresh", "http://localhost:3000"),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    } as never
-  );
+  return new NextRequest(new URL("/api/auth/wechat/miniprogram-refresh", "http://localhost:3000"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  } as never);
 }
 
 // 新版 refresh token payload 不再携带明文手机号 claim
@@ -106,7 +103,7 @@ describe("POST /api/auth/wechat/miniprogram-refresh", () => {
     const res = await POST(createRequest({}));
 
     expect(res.status).toBe(400);
-    expect(((await res.json()).error.code as string)).toBe("INVALID_PARAMS");
+    expect((await res.json()).error.code as string).toBe("INVALID_PARAMS");
   });
 
   it("无效令牌应返回 401 INVALID_TOKEN", async () => {

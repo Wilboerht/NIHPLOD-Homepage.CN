@@ -153,7 +153,7 @@ export function Tooltip({ content, children, side = "top", className }: TooltipP
       setVisible(false);
       cleanupScroll();
     };
-  }, []);
+  }, [cleanupScroll]);
 
   if (!content) return <>{children}</>;
 

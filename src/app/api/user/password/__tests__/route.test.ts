@@ -118,13 +118,9 @@ describe("PUT /api/user/password - 改密后 backchannel logout", () => {
 
     expect(res.status).toBe(200);
     expect(mockOAuthSessionUpdateMany).toHaveBeenCalled();
-    // clientId 去重，sid 取各 client 首个活跃会话
+    // 全量撤销只按 sub 通知，RP 清除该用户全部本地会话
     expect(mockSendBackchannelLogout).toHaveBeenCalledTimes(1);
-    expect(mockSendBackchannelLogout).toHaveBeenCalledWith(
-      "user-1",
-      ["advisor", "mall"],
-      { sids: { advisor: "sid-1", mall: "sid-3" } }
-    );
+    expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["advisor", "mall"]);
   });
 
   it("无活跃 OAuth 会话时不发送 backchannel logout", async () => {

@@ -65,9 +65,9 @@ describe("fetch-with-auth 刷新三态", () => {
     const res = await fetchWithAuth("/api/user/profile");
 
     expect(res.status).toBe(200);
-    expect(
-      fetchMock.mock.calls.filter((c) => String(c[0]) === "/api/auth/refresh")
-    ).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter((c) => String(c[0]) === "/api/auth/refresh")).toHaveLength(
+      1
+    );
   });
 
   it("非 401 响应直接返回，不触发刷新", async () => {
@@ -76,9 +76,9 @@ describe("fetch-with-auth 刷新三态", () => {
     const res = await fetchWithAuth("/api/user/profile");
 
     expect(res.status).toBe(200);
-    expect(
-      fetchMock.mock.calls.filter((c) => String(c[0]) === "/api/auth/refresh")
-    ).toHaveLength(0);
+    expect(fetchMock.mock.calls.filter((c) => String(c[0]) === "/api/auth/refresh")).toHaveLength(
+      0
+    );
   });
 
   it("fatal（TOKEN_REVOKED）：抛出 UnauthorizedError 并广播过期事件", async () => {
@@ -96,10 +96,7 @@ describe("fetch-with-auth 刷新三态", () => {
   });
 
   it("retryable（5xx）：抛错但不广播过期事件", async () => {
-    queue = [
-      jsonResponse(401, {}),
-      jsonResponse(500, { error: { code: "INTERNAL_ERROR" } }),
-    ];
+    queue = [jsonResponse(401, {}), jsonResponse(500, { error: { code: "INTERNAL_ERROR" } })];
     const eventSpy = vi.fn();
     window.addEventListener(SESSION_EXPIRED_EVENT, eventSpy);
 

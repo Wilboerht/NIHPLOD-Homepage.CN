@@ -23,7 +23,10 @@ export function parseContentDispositionFilename(header: string | null): string |
       if (!decoded) return null;
     }
   }
-  decoded = decoded.replace(/^["']|["']$/g, "").replace(/[\\/]/g, "_").trim();
+  decoded = decoded
+    .replace(/^["']|["']$/g, "")
+    .replace(/[\\/]/g, "_")
+    .trim();
   return decoded || null;
 }
 

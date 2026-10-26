@@ -4,24 +4,21 @@ import prisma from "@/lib/prisma";
 import { sendWecomNotification, formatContactToWecom } from "@/lib/wecom";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
-  name: z.string().min(2, "姓名至少2个字符").max(50, "姓名最多50个字符"),
+  name: z.string().trim().min(2, "姓名至少2个字符").max(50, "姓名最多50个字符"),
   phone: z.string().regex(/^1[3456789]\d{9}$/, "请输入有效的手机号"),
-  content: z.string().min(10, "留言内容至少10个字符").max(2000, "留言内容最多2000个字符"),
-  // 可选的其他字段
-  type: z.string().optional(),
+  content: z.string().trim().min(10, "留言内容至少10个字符").max(2000, "留言内容最多2000个字符"),
+  type: z
+    .enum(["consultation", "cooperation", "feedback", "complaint", "application", "other"])
+    .optional(),
   location: z.string().max(100, "所在地最多100个字符").optional(),
   // 蜜罐字段 - 如果有值说明是机器人
-  website: z.string().optional(),
+  website: z.string().max(200).optional(),
 });
 
 // POST /api/contact - 提交联系表单

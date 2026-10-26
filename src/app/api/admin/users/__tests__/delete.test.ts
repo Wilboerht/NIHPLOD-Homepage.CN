@@ -13,6 +13,8 @@ vi.mock("@/lib/prisma", () => {
   const prisma = {
     user: { findUnique: vi.fn() },
     accountDeletionRequest: { findUnique: vi.fn(), upsert: vi.fn() },
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
+    $queryRaw: vi.fn().mockResolvedValue([]),
   };
   return { prisma, default: prisma };
 });
@@ -63,6 +65,7 @@ vi.mock("@/lib/account-deletion", () => ({
     COMPLETED: "COMPLETED",
     FAILED: "FAILED",
   },
+  DELETION_LEASE_MS: 15 * 60 * 1000,
 }));
 
 vi.mock("@/lib/logger", () => ({

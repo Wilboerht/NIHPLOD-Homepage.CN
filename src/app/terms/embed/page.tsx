@@ -8,7 +8,7 @@ import { defaultTermsContent } from "@/lib/terms-default-content";
  * 位于 (website) 路由组之外，与 /account/embed 同理，天然无全局 chrome
  * （无 StandaloneNav/目录/页脚）；正文与 /terms 页面共用 TermsArticle
  * 及同一内容来源 defaultTermsContent，保持完全一致。
- * CSP frame-ancestors 白名单见 src/middleware.ts（EMBED_ALLOWED_ORIGINS）。
+ * CSP frame-ancestors 白名单见 src/proxy.ts（EMBED_ALLOWED_ORIGINS）。
  */
 
 // ISR: 与 /terms 页面保持一致，每天重新验证一次

@@ -14,8 +14,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { passwordSchema, verifyPassword } from "@/lib/password";
 import {
-  verifyCode,
-  recordSmsCodeFailure,
+  verifySmsCodeWithLimit,
   SMS_CODE_MAX_ATTEMPTS,
   sendLoginCode,
   sendPasswordChangedNotification,
@@ -27,11 +26,7 @@ import { revokeOtherSessionsAfterCredentialChange } from "@/lib/session-revocati
 import { invalidateProfileCache } from "@/lib/points";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
-import {
-  checkAccountLockout,
-  recordLoginAttempt,
-  clearLoginAttempts,
-} from "@/lib/auth-security";
+import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { apiConsole } from "@/lib/logger";
 
 // 设置密码验证码有效期（分钟）/ 发送间隔（秒）/ 每小时上限（与 /api/auth/send-code 同口径）
@@ -72,9 +67,14 @@ export interface PasswordManageError {
   message: string;
 }
 
-export type PasswordManageResult<T> = { ok: true; data: T } | { ok: false; error: PasswordManageError };
+export type PasswordManageResult<T> =
+  { ok: true; data: T } | { ok: false; error: PasswordManageError };
 
-function fail(status: number, code: string, message: string): { ok: false; error: PasswordManageError } {
+function fail(
+  status: number,
+  code: string,
+  message: string
+): { ok: false; error: PasswordManageError } {
   return { ok: false, error: { status, code, message } };
 }
 
@@ -155,7 +155,13 @@ export async function changePassword(params: {
 
     const isValidOld = await verifyPassword(params.oldPassword, user.password);
     if (!isValidOld) {
-      await recordLoginAttempt(`password:${user.phone}`, false, params.request, "password_incorrect", "password");
+      await recordLoginAttempt(
+        `password:${user.phone}`,
+        false,
+        params.request,
+        "password_incorrect",
+        "password"
+      );
       return fail(400, "PASSWORD_INCORRECT", "旧密码错误");
     }
 
@@ -234,16 +240,12 @@ export async function setPassword(params: {
     if (process.env.SMS_VERIFY_IP_BIND === "true" && smsCode.ipAddress) {
       const verifyIp = getClientIP(params.request);
       if (verifyIp !== smsCode.ipAddress) {
-        apiConsole.warn(
-          `[SetPassword] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}`
-        );
+        apiConsole.warn(`[SetPassword] IP 不匹配: 发送IP=${smsCode.ipAddress}, 校验IP=${verifyIp}`);
         return fail(400, "IP_MISMATCH", "验证环境异常，请重新获取验证码");
       }
     }
 
-    if (!verifyCode(user.phone, params.code, "reset", smsCode.codeHash)) {
-      // 单码失败计数：达到上限自动作废该验证码（防爆破）
-      await recordSmsCodeFailure(smsCode.id);
+    if (!(await verifySmsCodeWithLimit(user.phone, params.code, "reset", smsCode.id))) {
       return fail(400, "CODE_INVALID", "验证码错误或已过期");
     }
 

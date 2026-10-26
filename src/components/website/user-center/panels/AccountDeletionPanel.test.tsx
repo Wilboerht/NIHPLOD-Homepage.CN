@@ -76,14 +76,12 @@ describe("AccountDeletionPanel", () => {
   });
 
   it("勾选确认并填写密码后提交：POST 成功进入冷静期视图并同步全局状态", async () => {
-    mockFetchWithAuth
-      .mockResolvedValueOnce(noRequest)
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          data: { request: pendingRequest, warnings: ["您有 100 积分未使用，注销后积分将作废"] },
-        })
-      );
+    mockFetchWithAuth.mockResolvedValueOnce(noRequest).mockResolvedValueOnce(
+      jsonResponse({
+        success: true,
+        data: { request: pendingRequest, warnings: ["您有 100 积分未使用，注销后积分将作废"] },
+      })
+    );
 
     render(<AccountDeletionPanel embedded />);
     await waitFor(() => screen.getByLabelText(/登录密码/));
@@ -118,14 +116,15 @@ describe("AccountDeletionPanel", () => {
   });
 
   it("服务端返回 PLACEHOLDER_ACCOUNT_UNSUPPORTED 时展示引导文案", async () => {
-    mockFetchWithAuth
-      .mockResolvedValueOnce(noRequest)
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: false,
-          error: { code: "PLACEHOLDER_ACCOUNT_UNSUPPORTED", message: "请联系客服 service@nihplod.cn 办理" },
-        })
-      );
+    mockFetchWithAuth.mockResolvedValueOnce(noRequest).mockResolvedValueOnce(
+      jsonResponse({
+        success: false,
+        error: {
+          code: "PLACEHOLDER_ACCOUNT_UNSUPPORTED",
+          message: "请联系客服 service@nihplod.cn 办理",
+        },
+      })
+    );
 
     render(<AccountDeletionPanel embedded />);
     await waitFor(() => screen.getByLabelText(/登录密码/));

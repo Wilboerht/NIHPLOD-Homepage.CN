@@ -162,19 +162,19 @@ function OAuthWizardContent() {
       return;
     }
 
-      setLoading(true);
-      try {
-        const data = await withStepUp(() =>
-          apiPost<CreateClientWizardResponse>("/api/admin/oauth-clients", {
-            name: appName.trim(),
-            redirectUris: [redirectUri.trim()],
-            scopes: selectedScopes,
-            isPublic,
-          })
-        );
-        if (data === null) return;
+    setLoading(true);
+    try {
+      const data = await withStepUp(() =>
+        apiPost<CreateClientWizardResponse>("/api/admin/oauth-clients", {
+          name: appName.trim(),
+          redirectUris: [redirectUri.trim()],
+          scopes: selectedScopes,
+          isPublic,
+        })
+      );
+      if (data === null) return;
 
-        setResult({
+      setResult({
         clientId: data.client.clientId,
         plainSecret: data.plainSecret,
         client: data.client,

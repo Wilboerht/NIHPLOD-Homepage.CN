@@ -85,10 +85,7 @@ export async function claimSpentOrder(
     where: { orderNoKey: params.orderNoKey },
     select: { source: true },
   });
-  throw new SpentOrderConflictError(
-    params.orderNoKey,
-    existing?.source ?? params.source
-  );
+  throw new SpentOrderConflictError(params.orderNoKey, existing?.source ?? params.source);
 }
 
 export async function releaseSpentOrderClaim(
@@ -108,9 +105,7 @@ export async function releaseSpentOrderClaim(
       orderNoKey: params.orderNoKey,
       ...(params.source ? { source: params.source } : {}),
       ...(params.reference ? { reference: params.reference } : {}),
-      ...(params.referencePrefix
-        ? { reference: { startsWith: params.referencePrefix } }
-        : {}),
+      ...(params.referencePrefix ? { reference: { startsWith: params.referencePrefix } } : {}),
     },
   });
 }

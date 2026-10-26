@@ -26,6 +26,7 @@ export const ProductImageSchema = z.object({
       );
     }, "请输入有效的图片URL（支持相对路径或完整URL）"),
   alt: z.string().max(200, "图片描述最多200个字符").optional().nullable(),
+  derivedUrls: z.array(z.string()).max(10).optional().default([]),
   order: z.number().int().min(0).default(0),
 });
 

@@ -47,10 +47,9 @@ export async function POST(request: NextRequest) {
         adminRole = payload.role;
         adminJti = payload.jti;
         if (payload.jti) {
-          await revokeAccessToken(
-            payload.jti,
-            payload.exp ? payload.exp * 1000 : undefined
-          ).catch((err) => apiConsole.warn("[AdminLogout] token jti 撤销失败:", err));
+          await revokeAccessToken(payload.jti, payload.exp ? payload.exp * 1000 : undefined).catch(
+            (err) => apiConsole.warn("[AdminLogout] token jti 撤销失败:", err)
+          );
         }
         await revokeAdminStepUpGrantsForSession(payload.id, payload.jti ?? null).catch((err) =>
           apiConsole.warn("[AdminLogout] step-up grant 撤销失败:", err)

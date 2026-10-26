@@ -26,6 +26,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { archiveAuditDay, verifyArchiveDay } from "@/lib/audit-archive";
+import { computeAuditDigest } from "@/lib/audit-chain";
 
 const KEY = "y".repeat(32);
 let root = "";
@@ -47,45 +48,42 @@ afterAll(async () => {
 describe("audit archive", () => {
   it("写入 gzip/manifest，可校验，篡改后校验失败", async () => {
     const day = "2026-10-23";
-    const digest = "d".repeat(64);
-    const signature = createHmac("sha256", KEY)
-      .update(`:${digest}:1:audit:${day}`)
-      .digest("hex");
-    mocks.auditFindMany.mockResolvedValue([
-      {
-        id: "log-1",
-        createdAt: new Date("2026-10-23T01:00:00.000Z"),
-        action: "admin_login",
-        targetType: "admin",
-        targetId: "admin-1",
-        targetLabel: "Owner",
-        detail: { ok: true },
-        outcome: "SUCCESS",
-        requestId: "req-1",
-        actorType: "ADMIN",
-        actorEmail: "owner@test.com",
-        actorName: "Owner",
-        actorRole: "owner",
-        authMethod: "totp",
-        sessionJti: "jti-1",
-        legalHold: false,
-        ipAddress: "1.2.3.4",
-        userAgent: "test",
-        adminId: "admin-1",
-        userId: null,
-        category: "auth",
-        riskLevel: "LOW",
-        source: "WEB",
-        reason: null,
-        schemaVersion: 2,
-        chainVersion: 1,
-        integrityKeyVersion: 1,
-        chainSeq: 1,
-        prevHash: null,
-        entryHash: "e".repeat(64),
-        finalizedAt: new Date("2026-10-23T01:00:01.000Z"),
-      },
-    ]);
+    const auditRow = {
+      id: "log-1",
+      createdAt: new Date("2026-10-23T01:00:00.000Z"),
+      action: "admin_login",
+      targetType: "admin",
+      targetId: "admin-1",
+      targetLabel: "Owner",
+      detail: { ok: true },
+      outcome: "SUCCESS",
+      requestId: "req-1",
+      actorType: "ADMIN",
+      actorEmail: "owner@test.com",
+      actorName: "Owner",
+      actorRole: "owner",
+      authMethod: "totp",
+      sessionJti: "jti-1",
+      legalHold: false,
+      ipAddress: "1.2.3.4",
+      userAgent: "test",
+      adminId: "admin-1",
+      userId: null,
+      category: "auth",
+      riskLevel: "LOW",
+      source: "WEB",
+      reason: null,
+      schemaVersion: 2,
+      chainVersion: 1,
+      integrityKeyVersion: 1,
+      chainSeq: 1,
+      prevHash: null,
+      entryHash: "e".repeat(64),
+      finalizedAt: new Date("2026-10-23T01:00:01.000Z"),
+    };
+    const digest = computeAuditDigest([auditRow]);
+    const signature = createHmac("sha256", KEY).update(`:${digest}:1:audit:${day}`).digest("hex");
+    mocks.auditFindMany.mockResolvedValue([auditRow]);
     mocks.anchorFindFirst.mockResolvedValue({
       id: "anchor-1",
       stream: "audit",

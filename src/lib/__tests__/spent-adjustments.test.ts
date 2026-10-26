@@ -12,7 +12,15 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn(),
     },
     spentImportRow: { findFirst: vi.fn() },
+    user: { findUnique: vi.fn().mockResolvedValue({ status: "ACTIVE" }) },
+    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
   },
+}));
+
+vi.mock("@/lib/spent-order", () => ({
+  releaseSpentOrderClaim: vi.fn().mockResolvedValue(undefined),
+  normalizeOrderNo: (value: string) => value,
+  SpentOrderConflictError: class SpentOrderConflictError extends Error {},
 }));
 
 vi.mock("@/lib/points", () => ({
@@ -76,14 +84,17 @@ describe("reviewApplication", () => {
     });
 
     expect(result).toEqual({ ok: true, status: "APPROVED" });
-    expect(mockApplySync).toHaveBeenCalledWith({
-      userId: "user-1",
-      spentDelta: 1280,
-      reference: expect.stringContaining("manual:app-1:"),
-      orderNo: "ORDER123",
-      source: "SPENT_ADJUSTMENT",
-      note: expect.stringContaining("ORDER123"),
-    });
+    expect(mockApplySync).toHaveBeenCalledWith(
+      {
+        userId: "user-1",
+        spentDelta: 1280,
+        reference: expect.stringContaining("manual:app-1:"),
+        orderNo: "ORDER123",
+        source: "SPENT_ADJUSTMENT",
+        note: expect.stringContaining("ORDER123"),
+      },
+      expect.anything()
+    );
     expect(sendSpentReviewNotification).toHaveBeenCalledWith("13800138000", "已通过");
     expect(sendSpentAdjustmentReviewMessage).toHaveBeenCalled();
   });
@@ -137,11 +148,9 @@ describe("reviewApplication", () => {
     });
   });
 
-  it("入账异常：补偿回滚申请状态为 PENDING", async () => {
+  it("入账异常：由同一事务回滚，不做二次状态补偿", async () => {
     mockFindUnique.mockResolvedValue(pendingApp);
-    mockUpdateMany
-      .mockResolvedValueOnce({ count: 1 }) // 抢占
-      .mockResolvedValueOnce({ count: 1 }); // 补偿回滚
+    mockUpdateMany.mockResolvedValue({ count: 1 });
     mockApplySync.mockRejectedValue(new Error("DB down"));
 
     const result = await reviewApplication({
@@ -151,29 +160,14 @@ describe("reviewApplication", () => {
       reviewAmount: 1280,
     });
 
-    expect(result).toEqual({
-      ok: false,
-      code: "INTERNAL_ERROR",
-      message: "入账失败，请稍后重试",
-    });
-    // 补偿回滚：第二次 updateMany 将状态重置为 PENDING
-    expect(mockUpdateMany).toHaveBeenLastCalledWith({
-      where: { id: "app-1", status: "APPROVED" },
-      data: {
-        status: "PENDING",
-        reviewAmount: null,
-        reviewNote: null,
-        reviewedById: null,
-        reviewedAt: null,
-      },
-    });
+    expect(result).toEqual({ ok: false, code: "INTERNAL_ERROR", message: "服务器错误" });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockUpdateMany).toHaveBeenCalledTimes(1);
   });
 
-  it("抢占后未知异常：外层补偿回滚，避免卡在已审核未入账", async () => {
+  it("抢占异常：不进行事务外补偿写入", async () => {
     mockFindUnique.mockResolvedValue(pendingApp);
-    mockUpdateMany
-      .mockRejectedValueOnce(new Error("claim error")) // 抢占本身失败
-      .mockResolvedValueOnce({ count: 1 }); // 补偿
+    mockUpdateMany.mockRejectedValue(new Error("claim error"));
 
     const result = await reviewApplication({
       applicationId: "app-1",
@@ -183,7 +177,7 @@ describe("reviewApplication", () => {
     });
 
     expect(result).toEqual({ ok: false, code: "INTERNAL_ERROR", message: "服务器错误" });
-    expect(mockUpdateMany).toHaveBeenCalledTimes(2);
+    expect(mockUpdateMany).toHaveBeenCalledTimes(1);
   });
 
   it("通过但缺少核实金额：返回 INVALID_PARAMS", async () => {
@@ -226,12 +220,15 @@ describe("undoApplication", () => {
     });
 
     expect(result).toEqual({ ok: true, status: "PENDING" });
-    expect(mockApplySync).toHaveBeenCalledWith({
-      userId: "user-1",
-      spentDelta: -1280,
-      reference: expect.stringContaining("manual-undo:app-1:"),
-      note: expect.stringContaining("撤销"),
-    });
+    expect(mockApplySync).toHaveBeenCalledWith(
+      {
+        userId: "user-1",
+        spentDelta: -1280,
+        reference: expect.stringContaining("manual-undo:app-1:"),
+        note: expect.stringContaining("撤销"),
+      },
+      expect.anything()
+    );
     expect(mockUpdateMany).toHaveBeenCalledWith({
       where: { id: "app-1", status: "APPROVED" },
       data: {
@@ -257,19 +254,16 @@ describe("undoApplication", () => {
     expect(mockApplySync).not.toHaveBeenCalled();
   });
 
-  it("冲正失败：补偿恢复 APPROVED 与原始审核字段", async () => {
-    const original = {
+  it("冲正失败：事务回滚且不恢复写入第二份审核快照", async () => {
+    mockFindUnique.mockResolvedValue({
       status: "APPROVED",
       userId: "user-1",
       reviewAmount: 500,
       reviewNote: "已核实",
       reviewedById: "admin-1",
       reviewedAt: new Date("2026-09-02T10:00:00Z"),
-    };
-    mockFindUnique.mockResolvedValue(original);
-    mockUpdateMany
-      .mockResolvedValueOnce({ count: 1 }) // 撤销抢占
-      .mockResolvedValueOnce({ count: 1 }); // 补偿恢复
+    });
+    mockUpdateMany.mockResolvedValue({ count: 1 });
     mockApplySync.mockRejectedValue(new Error("DB down"));
 
     const result = await undoApplication({
@@ -277,21 +271,9 @@ describe("undoApplication", () => {
       adminId: "admin-2",
     });
 
-    expect(result).toEqual({
-      ok: false,
-      code: "INTERNAL_ERROR",
-      message: "撤销失败，请稍后重试",
-    });
-    expect(mockUpdateMany).toHaveBeenLastCalledWith({
-      where: { id: "app-1", status: "PENDING" },
-      data: {
-        status: "APPROVED",
-        reviewAmount: 500,
-        reviewNote: "已核实",
-        reviewedById: "admin-1",
-        reviewedAt: original.reviewedAt,
-      },
-    });
+    expect(result).toEqual({ ok: false, code: "INTERNAL_ERROR", message: "服务器错误" });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockUpdateMany).toHaveBeenCalledTimes(1);
   });
 
   it("申请不存在：返回 NOT_FOUND", async () => {

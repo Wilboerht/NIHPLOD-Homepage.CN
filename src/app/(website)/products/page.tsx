@@ -68,7 +68,7 @@ async function getCategories() {
     return categories;
   } catch (error) {
     apiConsole.error("获取分类列表失败:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -96,7 +96,14 @@ async function getProducts() {
         },
         purchaseLinks: {
           orderBy: { order: "asc" },
-          select: { id: true, platform: true, url: true },
+          select: {
+            id: true,
+            platform: true,
+            platformKey: true,
+            url: true,
+            miniProgramShortLink: true,
+            miniProgramPath: true,
+          },
         },
       },
     });
@@ -108,7 +115,7 @@ async function getProducts() {
     }));
   } catch (error) {
     apiConsole.error("获取产品列表失败:", error);
-    return [];
+    throw error;
   }
 }
 

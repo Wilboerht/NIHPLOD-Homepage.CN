@@ -263,7 +263,11 @@ export async function retryFailedWebhookDeliveries(
   limit: number = 50
 ): Promise<{ delivered: number; failed: number; dropped: number }> {
   const failures = await prisma.webhookDeliveryFailure.findMany({
-    where: { nextRetryAt: { lte: new Date() }, attempts: { lt: REDELIVERY_MAX_ATTEMPTS } },
+    where: {
+      nextRetryAt: { lte: new Date() },
+      attempts: { lt: REDELIVERY_MAX_ATTEMPTS },
+      payload: { path: ["event"], equals: "profile_update" },
+    },
     orderBy: { nextRetryAt: "asc" },
     take: limit,
   });

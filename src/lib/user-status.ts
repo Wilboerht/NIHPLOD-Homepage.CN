@@ -15,7 +15,11 @@ import type { UserStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { blacklistUserTokens, removeFromBlacklist } from "@/lib/token-blacklist";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
-import { dispatchStatusChangeWebhook, getStatusChangeWebhookTargets, toWebhookStatus } from "@/lib/webhook";
+import {
+  dispatchStatusChangeWebhook,
+  getStatusChangeWebhookTargets,
+  toWebhookStatus,
+} from "@/lib/webhook";
 import { apiConsole } from "@/lib/logger";
 
 /** 请求上下文内用 after()，cron/测试等非请求上下文回退为 fire-and-forget */
@@ -25,14 +29,6 @@ function runAfter(task: () => Promise<void>): void {
   } catch {
     void task().catch((err) => apiConsole.warn("[UserStatus] 后台通知失败:", err));
   }
-}
-
-function buildSids(sessions: { clientId: string; sessionId: string }[]): Record<string, string> {
-  const sids: Record<string, string> = {};
-  for (const session of sessions) {
-    if (!sids[session.clientId]) sids[session.clientId] = session.sessionId;
-  }
-  return sids;
 }
 
 export async function cascadeUserStatusChange(params: {
@@ -67,17 +63,13 @@ export async function cascadeUserStatusChange(params: {
 
       if (activeSessions.length > 0) {
         const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-        const sids: Record<string, string> = {};
-        for (const s of activeSessions) {
-          if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
-        }
         // 撤销所有 OAuth 会话（服务端一次性清除）
         await prisma.oAuthSession.updateMany({
           where: { userId, revokedAt: null },
           data: { revokedAt: new Date() },
         });
         // 通过安全的 backchannel logout 通知子项目（含 URL 校验/SSRF 防护/重试）
-        await sendBackchannelLogout(userId, clientIds, { includeInactive: true, sids });
+        await sendBackchannelLogout(userId, clientIds, { includeInactive: true });
       }
     } catch (err) {
       apiConsole.warn("[UserStatus] 子项目通知失败:", err);
@@ -156,7 +148,7 @@ export async function changeUserStatus(params: {
   const clientIds = [...new Set(outcome.sessions.map((s) => s.clientId))];
   runAfter(async () => {
     if (clientIds.length > 0) {
-      await sendBackchannelLogout(userId, clientIds, { includeInactive: true, sids: buildSids(outcome.sessions) });
+      await sendBackchannelLogout(userId, clientIds, { includeInactive: true });
     }
     await dispatchStatusChangeWebhook(
       {
@@ -206,7 +198,7 @@ export async function quiesceUserSessions(userId: string): Promise<void> {
   const clientIds = [...new Set(sessions.map((s) => s.clientId))];
   if (clientIds.length > 0) {
     runAfter(async () => {
-      await sendBackchannelLogout(userId, clientIds, { includeInactive: true, sids: buildSids(sessions) });
+      await sendBackchannelLogout(userId, clientIds, { includeInactive: true });
     });
   }
 }

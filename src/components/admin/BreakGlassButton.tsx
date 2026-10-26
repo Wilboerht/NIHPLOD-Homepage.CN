@@ -2,16 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import {
-  AlertTriangle,
-  Eye,
-  EyeOff,
-  Copy,
-  Check,
-  RefreshCw,
-  Loader2,
-  QrCode,
-} from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Copy, Check, RefreshCw, Loader2, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
@@ -274,7 +265,9 @@ export function BreakGlassButton() {
                   onClick={() => setShowQr((v) => !v)}
                   disabled={!data.qrCode}
                   aria-expanded={showQr}
-                  leftIcon={showQr ? <EyeOff className="h-4 w-4" /> : <QrCode className="h-4 w-4" />}
+                  leftIcon={
+                    showQr ? <EyeOff className="h-4 w-4" /> : <QrCode className="h-4 w-4" />
+                  }
                 >
                   {showQr ? "隐藏二维码" : "显示二维码"}
                 </Button>
@@ -299,8 +292,8 @@ export function BreakGlassButton() {
               )}
 
               <p className="border-t border-brand-charcoal/10 pt-3 text-[11px] leading-relaxed text-brand-charcoal/65">
-                请勿截图或外传。使用完应急账号后应尽快恢复子站{" "}
-                <code>ADVISOR_BREAK_GLASS_*</code> 配置并关闭应急入口。
+                请勿截图或外传。使用完应急账号后应尽快恢复子站 <code>ADVISOR_BREAK_GLASS_*</code>{" "}
+                配置并关闭应急入口。
               </p>
             </div>
           )}

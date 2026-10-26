@@ -32,14 +32,12 @@ describe("htmlToPlainText", () => {
   });
 
   it("链接保留文字丢弃地址", () => {
-    expect(htmlToPlainText('<p>访问 <a href="https://nihplod.cn">官网</a></p>')).toBe(
-      "访问 官网"
-    );
+    expect(htmlToPlainText('<p>访问 <a href="https://nihplod.cn">官网</a></p>')).toBe("访问 官网");
   });
 
   it("解码常见实体且避免二次解码", () => {
     expect(htmlToPlainText("<p>A &amp; B &lt;C&gt; &quot;D&quot; &#39;E&#39;&nbsp;F</p>")).toBe(
-      'A & B <C> "D" \'E\' F'
+      "A & B <C> \"D\" 'E' F"
     );
   });
 

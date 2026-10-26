@@ -412,7 +412,8 @@ export function SpentAdjustmentPanel({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0">
                 <label htmlFor="spent-amount" className="mb-1 block text-xs text-stone-600">
-                  消费金额 <span className="font-normal text-stone-400">（选填，以人工核实为准）</span>
+                  消费金额{" "}
+                  <span className="font-normal text-stone-400">（选填，以人工核实为准）</span>
                 </label>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-stone-400">
@@ -562,101 +563,96 @@ export function SpentAdjustmentPanel({
             </button>
           </div>
 
-            {/* 历史记录 */}
-            <div className="mt-4 space-y-3">
-              {loading ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
-                </div>
-              ) : applications.length === 0 ? (
-                <p className="py-4 text-center text-xs text-stone-400">暂无录入提交</p>
-              ) : (
-                applications.map((a) => {
-                  const StatusIcon = STATUS_ICONS[a.status];
-                  return (
-                    <div
-                      key={a.id}
-                      className="rounded-xl border border-stone-200/60 bg-white/40 p-4"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span
-                            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATUS_BG[a.status]} ${STATUS_COLORS[a.status]}`}
-                          >
-                            <StatusIcon className="h-3 w-3" />
-                            {SPENT_STATUS_LABELS[a.status]}
-                          </span>
-                          <span className="truncate text-sm text-stone-700">{a.orderNo}</span>
-                        </div>
-                        <span className="shrink-0 text-[11px] text-stone-400">
-                          {formatDate(a.createdAt)}
+          {/* 历史记录 */}
+          <div className="mt-4 space-y-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-stone-300" />
+              </div>
+            ) : applications.length === 0 ? (
+              <p className="py-4 text-center text-xs text-stone-400">暂无录入提交</p>
+            ) : (
+              applications.map((a) => {
+                const StatusIcon = STATUS_ICONS[a.status];
+                return (
+                  <div key={a.id} className="rounded-xl border border-stone-200/60 bg-white/40 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATUS_BG[a.status]} ${STATUS_COLORS[a.status]}`}
+                        >
+                          <StatusIcon className="h-3 w-3" />
+                          {SPENT_STATUS_LABELS[a.status]}
                         </span>
+                        <span className="truncate text-sm text-stone-700">{a.orderNo}</span>
                       </div>
+                      <span className="shrink-0 text-[11px] text-stone-400">
+                        {formatDate(a.createdAt)}
+                      </span>
+                    </div>
 
-                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-400">
-                        <span>
-                          {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
-                            a.channel}
-                        </span>
-                        {a.dealerName && <span>经销商 {a.dealerName}</span>}
-                        {a.amountClaimed != null && (
-                          <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
-                        )}
-                        {a.purchasedAt && <span>消费日期 {formatCalendarDate(a.purchasedAt)}</span>}
-                        {a.images.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setExpandedImages((prev) => (prev === a.id ? null : a.id))
-                            }
-                            aria-expanded={expandedImages === a.id}
-                            className="flex items-center gap-1 transition-colors hover:text-stone-600 active:opacity-60"
-                          >
-                            <Camera className="h-3 w-3" /> {a.images.length} 张凭证
-                            <ChevronDown
-                              className={`h-3 w-3 transition-transform ${
-                                expandedImages === a.id ? "rotate-180" : ""
-                              }`}
-                            />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* 凭证缩略图（点击「N 张凭证」展开，可新窗口查看原图） */}
-                      {expandedImages === a.id && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {a.images.map((url, i) => (
-                            <a
-                              key={url}
-                              href={receiptImageSrc(url, "user")}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="relative block h-16 w-16 overflow-hidden rounded-lg border border-stone-200"
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={receiptImageSrc(url, "user")}
-                                alt={`凭证 ${i + 1}`}
-                                className="h-full w-full object-cover"
-                              />
-                            </a>
-                          ))}
-                        </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-400">
+                      <span>
+                        {SPENT_CHANNEL_LABELS[a.channel as keyof typeof SPENT_CHANNEL_LABELS] ??
+                          a.channel}
+                      </span>
+                      {a.dealerName && <span>经销商 {a.dealerName}</span>}
+                      {a.amountClaimed != null && (
+                        <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
                       )}
-
-                      {a.status === "APPROVED" && a.reviewAmount != null && (
-                        <p className="mt-1.5 text-xs text-brand-primary">
-                          已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
-                        </p>
-                      )}
-                      {a.status === "REJECTED" && a.reviewNote && (
-                        <p className="mt-1.5 text-xs text-red-500">驳回原因：{a.reviewNote}</p>
+                      {a.purchasedAt && <span>消费日期 {formatCalendarDate(a.purchasedAt)}</span>}
+                      {a.images.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedImages((prev) => (prev === a.id ? null : a.id))}
+                          aria-expanded={expandedImages === a.id}
+                          className="flex items-center gap-1 transition-colors hover:text-stone-600 active:opacity-60"
+                        >
+                          <Camera className="h-3 w-3" /> {a.images.length} 张凭证
+                          <ChevronDown
+                            className={`h-3 w-3 transition-transform ${
+                              expandedImages === a.id ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
                       )}
                     </div>
-                  );
-                })
-              )}
-            </div>
+
+                    {/* 凭证缩略图（点击「N 张凭证」展开，可新窗口查看原图） */}
+                    {expandedImages === a.id && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {a.images.map((url, i) => (
+                          <a
+                            key={url}
+                            href={receiptImageSrc(url, "user")}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative block h-16 w-16 overflow-hidden rounded-lg border border-stone-200"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={receiptImageSrc(url, "user")}
+                              alt={`凭证 ${i + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+
+                    {a.status === "APPROVED" && a.reviewAmount != null && (
+                      <p className="mt-1.5 text-xs text-brand-primary">
+                        已入账 ¥{a.reviewAmount.toLocaleString()}，会员等级已更新
+                      </p>
+                    )}
+                    {a.status === "REJECTED" && a.reviewNote && (
+                      <p className="mt-1.5 text-xs text-red-500">驳回原因：{a.reviewNote}</p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
     </div>

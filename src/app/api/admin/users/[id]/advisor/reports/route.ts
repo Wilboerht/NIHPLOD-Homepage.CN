@@ -53,10 +53,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
-    const limit = Math.min(
-      50,
-      Math.max(1, parseInt(searchParams.get("limit") || "10", 10) || 10)
-    );
+    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "10", 10) || 10));
 
     const result = await advisorRequest<{
       success?: boolean;

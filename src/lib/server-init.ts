@@ -136,15 +136,20 @@ function validateProductionRuntimeConfig(): void {
       "[Server] ⚠️ RATE_LIMIT_STORAGE=memory 仅适用于单实例部署；多实例部署请改为 database，否则限流可被绕过。"
     );
   }
+  if (Number(process.env.APP_REPLICAS ?? "1") > 1 && !process.env.REDIS_URL) {
+    throw new Error("[Server] 多实例部署必须配置 REDIS_URL 以共享 ISR 缓存和标签失效状态。");
+  }
 
   if (!process.env.ALI_OSS_PRIVATE_BUCKET && process.env.ALLOW_LOCAL_RESUME_STORAGE !== "true") {
     apiConsole.error(
       "[Server] ❌ 未配置 ALI_OSS_PRIVATE_BUCKET，且 ALLOW_LOCAL_RESUME_STORAGE 未开启：简历上传将返回 503（含 PII 的文件不允许落公开存储）。"
     );
   } else if (process.env.ALI_OSS_PRIVATE_BUCKET) {
-    const missingOssConfig = ["ALI_OSS_REGION", "ALI_OSS_ACCESS_KEY_ID", "ALI_OSS_ACCESS_KEY_SECRET"].filter(
-      (name) => !process.env[name]
-    );
+    const missingOssConfig = [
+      "ALI_OSS_REGION",
+      "ALI_OSS_ACCESS_KEY_ID",
+      "ALI_OSS_ACCESS_KEY_SECRET",
+    ].filter((name) => !process.env[name]);
     if (missingOssConfig.length > 0) {
       apiConsole.error(
         `[Server] ❌ 已配置 ALI_OSS_PRIVATE_BUCKET，但缺少 ${missingOssConfig.join(", ")}：私有 OSS 客户端无法初始化，简历上传将 503。`

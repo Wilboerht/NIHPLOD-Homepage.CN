@@ -59,9 +59,7 @@ describe("AuthContext 跨标签页同步", () => {
   });
 
   it("本页未登录时，其它标签页登录后本页自动拉取登录态", async () => {
-    mockFetchWithAuth.mockResolvedValue(
-      profileResponse({ id: "user-1", nickname: "测试用户" })
-    );
+    mockFetchWithAuth.mockResolvedValue(profileResponse({ id: "user-1", nickname: "测试用户" }));
     render(
       <AuthProvider>
         <Consumer />
@@ -83,9 +81,7 @@ describe("AuthContext 跨标签页同步", () => {
   });
 
   it("本页已登录时，其它标签页登出后本页同步清除登录态", async () => {
-    mockFetchWithAuth.mockResolvedValue(
-      profileResponse({ id: "user-1", nickname: "测试用户" })
-    );
+    mockFetchWithAuth.mockResolvedValue(profileResponse({ id: "user-1", nickname: "测试用户" }));
     localStorage.setItem("auth_hint", "1");
 
     render(
@@ -107,9 +103,7 @@ describe("AuthContext 跨标签页同步", () => {
   });
 
   it("与登录态无关的 storage 事件不应触发任何状态变化", async () => {
-    mockFetchWithAuth.mockResolvedValue(
-      profileResponse({ id: "user-1", nickname: "测试用户" })
-    );
+    mockFetchWithAuth.mockResolvedValue(profileResponse({ id: "user-1", nickname: "测试用户" }));
     render(
       <AuthProvider>
         <Consumer />
@@ -122,9 +116,7 @@ describe("AuthContext 跨标签页同步", () => {
     const callsBefore = mockFetchWithAuth.mock.calls.length;
 
     act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", { key: "other_key", newValue: "whatever" })
-      );
+      window.dispatchEvent(new StorageEvent("storage", { key: "other_key", newValue: "whatever" }));
     });
 
     // 等待一个微任务周期，确认没有触发 profile 请求
@@ -324,7 +316,9 @@ describe("AuthContext 会话终结与登录页竞态", () => {
     // 关键：不整页跳转、return_to 不被套娃（仍为 authorize，而非指向 /login 自身），
     // 仅在原 URL 上补 expired=1 供登录页展示内嵌提示
     expect(window.location.pathname).toBe("/login");
-    expect(window.location.search).toContain("return_to=%2Fapi%2Foauth%2Fauthorize%3Fclient_id%3Dabc");
+    expect(window.location.search).toContain(
+      "return_to=%2Fapi%2Foauth%2Fauthorize%3Fclient_id%3Dabc"
+    );
     expect(window.location.search).toContain("expired=1");
     expect(window.location.search).not.toContain("mode=login");
   });

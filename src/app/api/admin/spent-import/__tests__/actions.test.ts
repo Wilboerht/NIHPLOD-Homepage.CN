@@ -117,9 +117,7 @@ describe("admin spent import actions", () => {
       code: "INVALID_TOKEN",
       message: "invalid",
     });
-    const invalid = await execute(
-      createRequest("/api/admin/spent-import/execute", executeBody)
-    );
+    const invalid = await execute(createRequest("/api/admin/spent-import/execute", executeBody));
     expect(invalid.status).toBe(400);
 
     vi.mocked(verifyImportPreviewToken).mockReturnValueOnce({
@@ -127,9 +125,7 @@ describe("admin spent import actions", () => {
       code: "TOKEN_EXPIRED",
       message: "expired",
     });
-    const expired = await execute(
-      createRequest("/api/admin/spent-import/execute", executeBody)
-    );
+    const expired = await execute(createRequest("/api/admin/spent-import/execute", executeBody));
     expect(expired.status).toBe(410);
     expect(executeImportBatch).not.toHaveBeenCalled();
   });
@@ -147,9 +143,7 @@ describe("admin spent import actions", () => {
         exp: Date.now() + 60_000,
       },
     });
-    const res = await execute(
-      createRequest("/api/admin/spent-import/execute", executeBody)
-    );
+    const res = await execute(createRequest("/api/admin/spent-import/execute", executeBody));
     expect(res.status).toBe(400);
     expect(executeImportBatch).not.toHaveBeenCalled();
   });

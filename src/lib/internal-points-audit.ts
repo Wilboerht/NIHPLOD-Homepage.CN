@@ -1,9 +1,5 @@
 import { createHash } from "crypto";
-import {
-  createAuditLog,
-  type AuditAction,
-  type AuditTargetType,
-} from "@/lib/audit";
+import { createAuditLog, type AuditAction, type AuditTargetType } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 
 export function fingerprintInternalKey(key: string): string {

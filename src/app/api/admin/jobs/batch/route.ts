@@ -39,17 +39,17 @@ export async function POST(request: NextRequest) {
     const { ids, action } = BatchSchema.parse(body);
 
     // 批量删除为高危操作：需要 jobs:batch-delete 权限（默认仅 owner）
-      if (action === "delete" && !hasAdminPermission(admin, "jobs:batch-delete")) {
-        return NextResponse.json(
-          { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位批量删除" } },
-          { status: 403 }
-        );
-      }
-      if (action === "delete") {
-        const stepUpResponse = await requireAdminStepUp(request, admin);
-        if (stepUpResponse) return stepUpResponse;
-      }
-      if (action !== "delete" && !hasAdminPermission(admin, "jobs:write")) {
+    if (action === "delete" && !hasAdminPermission(admin, "jobs:batch-delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位批量删除" } },
+        { status: 403 }
+      );
+    }
+    if (action === "delete") {
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+    }
+    if (action !== "delete" && !hasAdminPermission(admin, "jobs:write")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：职位编辑" } },
         { status: 403 }
@@ -125,6 +125,15 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if ((error as { code?: string }).code === "P2003") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "REFERENCED_JOBS", message: "部分职位存在新申请，无法删除" },
+        },
+        { status: 409 }
+      );
+    }
     apiConsole.error("批量操作失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(

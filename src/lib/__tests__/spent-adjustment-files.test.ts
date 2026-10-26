@@ -102,9 +102,7 @@ describe("uploadSpentProofFile", () => {
     const [processed, objectName, mime] = mocks.uploadToPrivateOSS.mock.calls[0];
     expect(processed).toBeInstanceOf(Buffer);
     // 归属由对象名前缀权威判定
-    expect(String(objectName)).toMatch(
-      /^spent-adjustments\/user-1\/[0-9a-f-]{36}\.webp$/i
-    );
+    expect(String(objectName)).toMatch(/^spent-adjustments\/user-1\/[0-9a-f-]{36}\.webp$/i);
     expect(mime).toBe("image/webp");
   });
 
@@ -204,7 +202,9 @@ describe("resolveSpentProofImage", () => {
 
   it("历史格式归属校验通过返回签名地址（仍查询申请归属）", async () => {
     mocks.findFirst.mockResolvedValue({ id: "app-1" });
-    mocks.signPrivateObjectUrl.mockReturnValue("https://bucket.oss-cn.aliyuncs.com/x.webp?Signature=a");
+    mocks.signPrivateObjectUrl.mockReturnValue(
+      "https://bucket.oss-cn.aliyuncs.com/x.webp?Signature=a"
+    );
 
     const result = await resolveSpentProofImage("user-1", LEGACY_KEY);
     expect(result).toEqual({

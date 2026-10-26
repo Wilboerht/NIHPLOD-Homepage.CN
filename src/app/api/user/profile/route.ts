@@ -170,7 +170,7 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     }
 
     const user = await prisma.user.update({
-      where: { id: payload.id },
+      where: { id: payload.id, status: { not: "DELETED" } },
       data: {
         ...(nickname !== undefined && { nickname: nickname || null }),
         ...(avatar !== undefined && { avatar: avatar || null }),

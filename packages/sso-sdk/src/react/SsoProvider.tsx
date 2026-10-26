@@ -51,7 +51,11 @@ export interface SsoContextValue {
   login: (returnUrl?: string) => Promise<void>;
 
   /** 弹窗模式登录（保持当前页面状态不丢失） */
-  loginPopup: (options?: { returnUrl?: string; width?: number; height?: number }) => Promise<TokenData>;
+  loginPopup: (options?: {
+    returnUrl?: string;
+    width?: number;
+    height?: number;
+  }) => Promise<TokenData>;
 
   /** 登出 */
   logout: (redirectToSso?: boolean) => Promise<void>;
@@ -204,11 +208,11 @@ function releaseRefreshLock(clientId: string): void {
  * 注意：task 必须自行消化内部异常（不得向外抛出），以便
  * navigator.locks.request 的 reject 可安全视为锁 API 故障并回退。
  */
-export async function withRefreshLock(clientId: string, task: () => Promise<void>): Promise<boolean> {
-  if (
-    typeof navigator !== "undefined" &&
-    typeof navigator.locks?.request === "function"
-  ) {
+export async function withRefreshLock(
+  clientId: string,
+  task: () => Promise<void>
+): Promise<boolean> {
+  if (typeof navigator !== "undefined" && typeof navigator.locks?.request === "function") {
     try {
       let ran = false;
       await navigator.locks.request(
@@ -436,16 +440,12 @@ export function SsoProvider({
         refreshTimerRef.current = null;
       }
     };
-  }, [client, loadUser, refreshThreshold, onTokenRefreshed]);
+  }, [client, loadUser, refreshThreshold, onTokenRefreshed, markSessionExpired]);
 
   // 监听 storage 事件实现跨 Tab 同步（仅 persist 存储生效）
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (
-        e.key &&
-        e.key.startsWith("nihplod_sso_") &&
-        !e.key.startsWith(REFRESH_LOCK_PREFIX)
-      ) {
+      if (e.key && e.key.startsWith("nihplod_sso_") && !e.key.startsWith(REFRESH_LOCK_PREFIX)) {
         loadUser();
       }
     };

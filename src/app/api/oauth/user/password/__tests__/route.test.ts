@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   smsUpdateMany: vi.fn(),
   smsCreate: vi.fn(),
   smsCount: vi.fn(),
-  verifyCode: vi.fn(),
+  verifySmsCodeWithLimit: vi.fn(),
   recordSmsCodeFailure: vi.fn(),
   sendLoginCode: vi.fn(),
   sendPasswordChangedNotification: vi.fn(),
@@ -81,7 +81,7 @@ vi.mock("@/lib/auth-security", () => ({
 }));
 
 vi.mock("@/lib/sms", () => ({
-  verifyCode: mocks.verifyCode,
+  verifySmsCodeWithLimit: mocks.verifySmsCodeWithLimit,
   recordSmsCodeFailure: mocks.recordSmsCodeFailure,
   sendLoginCode: mocks.sendLoginCode,
   sendPasswordChangedNotification: mocks.sendPasswordChangedNotification,
@@ -106,10 +106,18 @@ const mockAuthenticate = authenticateOAuthUserRequest as ReturnType<typeof vi.fn
 function authOk() {
   return {
     ok: true as const,
-    payload: { id: "user-1", client_id: "client-1", scope: "openid profile:write", type: "access_token" },
+    payload: {
+      id: "user-1",
+      client_id: "client-1",
+      scope: "openid profile:write",
+      type: "access_token",
+    },
     ip: "127.0.0.1",
     resJson: (body: unknown, status = 200, extraHeaders?: Record<string, string>) =>
-      NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", ...extraHeaders } }),
+      NextResponse.json(body, {
+        status,
+        headers: { "Cache-Control": "no-store", ...extraHeaders },
+      }),
     corsHeaders: {},
   };
 }
@@ -122,7 +130,11 @@ function createRequest(url: string, body: unknown, method = "POST"): NextRequest
   } as never);
 }
 
-const changeBody = { oldPassword: "OldPass123", newPassword: "NewPass456a", confirmPassword: "NewPass456a" };
+const changeBody = {
+  oldPassword: "OldPass123",
+  newPassword: "NewPass456a",
+  confirmPassword: "NewPass456a",
+};
 const setBody = { code: "123456", password: "Abc12345!", confirmPassword: "Abc12345!" };
 const CODE_RECORD = { id: "sms-1", codeHash: "hashed-code", ipAddress: "127.0.0.1" };
 
@@ -141,7 +153,7 @@ describe("OAuth 密码管理", () => {
     mocks.smsUpdateMany.mockResolvedValue({ count: 1 });
     mocks.smsCount.mockResolvedValue(0);
     mocks.smsCreate.mockResolvedValue({});
-    mocks.verifyCode.mockReturnValue(true);
+    mocks.verifySmsCodeWithLimit.mockReturnValue(true);
     mocks.sendLoginCode.mockResolvedValue({ success: true });
     mocks.sendPasswordChangedNotification.mockResolvedValue(undefined);
   });
@@ -168,7 +180,11 @@ describe("OAuth 密码管理", () => {
     });
 
     it("改密成功：更新密码并全撤会话（currentRefreshToken=null）", async () => {
-      mocks.findUnique.mockResolvedValue({ id: "user-1", phone: "13800138000", password: "hashed-old" });
+      mocks.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        password: "hashed-old",
+      });
       const res = await PUT(createRequest("/api/oauth/user/password", changeBody, "PUT"));
       const body = await res.json();
 
@@ -183,7 +199,11 @@ describe("OAuth 密码管理", () => {
     });
 
     it("旧密码错误应返回 400 PASSWORD_INCORRECT，且不撤销会话", async () => {
-      mocks.findUnique.mockResolvedValue({ id: "user-1", phone: "13800138000", password: "hashed-old" });
+      mocks.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        password: "hashed-old",
+      });
       mocks.verifyPassword.mockResolvedValue(false);
       const res = await PUT(createRequest("/api/oauth/user/password", changeBody, "PUT"));
 
@@ -211,17 +231,26 @@ describe("OAuth 密码管理", () => {
 
     it("验证码错误应返回 400 CODE_INVALID 并记录单码失败", async () => {
       mocks.smsFindFirst.mockResolvedValue(CODE_RECORD);
-      mocks.verifyCode.mockReturnValue(false);
+      mocks.verifySmsCodeWithLimit.mockReturnValue(false);
       const res = await SET(createRequest("/api/oauth/user/password/set", setBody));
 
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("CODE_INVALID");
-      expect(mocks.recordSmsCodeFailure).toHaveBeenCalledWith("sms-1");
+      expect(mocks.verifySmsCodeWithLimit).toHaveBeenCalledWith(
+        "13800138000",
+        "123456",
+        "reset",
+        "sms-1"
+      );
       expect(mocks.revokeOtherSessions).not.toHaveBeenCalled();
     });
 
     it("已设置过密码应返回 400 PASSWORD_ALREADY_SET", async () => {
-      mocks.findUnique.mockResolvedValue({ id: "user-1", phone: "13800138000", password: "hashed" });
+      mocks.findUnique.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        password: "hashed",
+      });
       const res = await SET(createRequest("/api/oauth/user/password/set", setBody));
 
       expect(res.status).toBe(400);

@@ -126,14 +126,10 @@ export function AmapLocationPicker({
           aria-expanded={open && suggestions.length > 0}
           aria-controls="amap-suggestion-list"
           aria-autocomplete="list"
-          aria-activedescendant={
-            selectedIndex >= 0 ? `amap-option-${selectedIndex}` : undefined
-          }
+          aria-activedescendant={selectedIndex >= 0 ? `amap-option-${selectedIndex}` : undefined}
           value={value}
           placeholder={
-            unavailable
-              ? "地点搜索暂不可用，可直接填写工作地点"
-              : "搜索工作地点，如：信泰中心广场"
+            unavailable ? "地点搜索暂不可用，可直接填写工作地点" : "搜索工作地点，如：信泰中心广场"
           }
           onFocus={() => {
             if (suggestions.length > 0) setOpen(true);
@@ -171,7 +167,8 @@ export function AmapLocationPicker({
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
       {unavailable && !error && (
         <p className="mt-1 text-xs text-brand-charcoal/65">
-          地点搜索由服务端代理，当前未配置 AMAP_WEB_SERVICE_KEY；可直接填写地点，并手动录入经纬度（选填）。
+          地点搜索由服务端代理，当前未配置
+          AMAP_WEB_SERVICE_KEY；可直接填写地点，并手动录入经纬度（选填）。
         </p>
       )}
 

@@ -50,9 +50,7 @@ describe("checkAdminLockout 锁定窗口", () => {
     expect(countArgs.where.createdAt.gte.getTime()).toBeGreaterThanOrEqual(
       expectedWindowStart - 1000
     );
-    expect(countArgs.where.createdAt.gte.getTime()).toBeLessThanOrEqual(
-      expectedWindowStart + 1000
-    );
+    expect(countArgs.where.createdAt.gte.getTime()).toBeLessThanOrEqual(expectedWindowStart + 1000);
     const findArgs = mockFindFirst.mock.calls[0][0];
     expect(findArgs.where.createdAt.gte.getTime()).toBeGreaterThanOrEqual(
       expectedWindowStart - 1000

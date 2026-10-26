@@ -19,8 +19,7 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/auth", () => ({
   // 直接以固定用户身份执行 handler
   withUserAuth:
-    (handler: (req: NextRequest, payload: { id: string }) => unknown) =>
-    (req: NextRequest) =>
+    (handler: (req: NextRequest, payload: { id: string }) => unknown) => (req: NextRequest) =>
       handler(req, { id: "user-1" }),
   verifyUserAuth: vi.fn(),
 }));
@@ -127,9 +126,7 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
       avatar: "https://nihplod.cn/new.png",
     });
 
-    const res = await PUT(
-      putRequest({ avatar: "https://nihplod.cn/new.png" })
-    );
+    const res = await PUT(putRequest({ avatar: "https://nihplod.cn/new.png" }));
 
     expect(res.status).toBe(200);
     expect(mockSendProfileUpdateWebhook).toHaveBeenCalledWith(
@@ -270,7 +267,10 @@ describe("POST /api/user/profile - 头像上传加固", () => {
 
   function uploadRequest() {
     const form = new FormData();
-    form.append("file", new File([new Uint8Array([1, 2, 3])], "avatar.jpg", { type: "image/jpeg" }));
+    form.append(
+      "file",
+      new File([new Uint8Array([1, 2, 3])], "avatar.jpg", { type: "image/jpeg" })
+    );
     return new NextRequest(new URL("/api/user/profile", "http://localhost:3000"), {
       method: "POST",
       body: form,

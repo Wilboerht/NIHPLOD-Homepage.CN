@@ -184,7 +184,14 @@ async function getProduct(slug: string) {
       },
       purchaseLinks: {
         orderBy: { order: "asc" },
-        select: { id: true, platform: true, platformKey: true, url: true },
+        select: {
+          id: true,
+          platform: true,
+          platformKey: true,
+          url: true,
+          miniProgramShortLink: true,
+          miniProgramPath: true,
+        },
       },
     },
   });

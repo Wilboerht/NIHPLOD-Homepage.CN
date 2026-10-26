@@ -49,7 +49,7 @@ vi.mock("@/lib/auth-security", () => ({
   hashIdentifier: (s: string) => `hmac-${s}`,
 }));
 vi.mock("@/lib/sms", () => ({
-  verifyCode: vi.fn().mockReturnValue(true),
+  verifySmsCodeWithLimit: vi.fn().mockReturnValue(true),
   recordSmsCodeFailure: vi.fn(),
   SMS_CODE_MAX_ATTEMPTS: 5,
 }));

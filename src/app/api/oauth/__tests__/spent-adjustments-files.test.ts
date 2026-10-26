@@ -66,7 +66,10 @@ function authedToken(scope = "openid membership") {
 function uploadRequest(withFile = true, auth = true): NextRequest {
   const form = new FormData();
   if (withFile) {
-    form.append("file", new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" }));
+    form.append(
+      "file",
+      new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" })
+    );
   }
   return new NextRequest(new URL("http://localhost/api/oauth/spent-adjustments/upload"), {
     method: "POST",
@@ -173,10 +176,7 @@ describe("/api/oauth/spent-adjustments/image", () => {
     );
     expect(res.headers.get("access-control-allow-origin")).toBe("https://smart.nihplod.cn");
     expect(res.headers.get("cache-control")).toBe("no-store");
-    expect(mockResolveSpentProofImage).toHaveBeenCalledWith(
-      "user-1",
-      "spent-adjustments/a.webp"
-    );
+    expect(mockResolveSpentProofImage).toHaveBeenCalledWith("user-1", "spent-adjustments/a.webp");
   });
 
   it("图片不存在按错误状态透传", async () => {

@@ -311,7 +311,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
         navigate({ module: moduleId });
       }
     },
-    [navigate]
+    [moduleData, navigate]
   );
 
   // 选择方案（情景）
@@ -328,26 +328,10 @@ export function RitualContent({ products = [] }: RitualContentProps) {
     navigate({ module: nav.module, scheme: nav.scheme.id, sub: subPlan.id, mode: "replace" });
   };
 
-  // 跳过 Level 2 直接到 Level 3 的模块
-  const SKIP_LEVEL2_MODULES: ModuleId[] = ["portable", "professional", "spa"];
-
-  // 返回上一级：使用 navigate + replace，避免 window.history.back() 触发 popstate
-  // 被 Next.js App Router 拦截导致 RSC 重新获取数据造成卡顿
   const goBack = useCallback(() => {
     setCurrentStepIndex(0);
-    if (nav.scheme && nav.module) {
-      if (SKIP_LEVEL2_MODULES.includes(nav.module)) {
-        // portable / professional / spa 直接 Level 3 → Level 1
-        navigate({ mode: "replace" });
-      } else {
-        // daily 等模块 Level 3 → Level 2：保留模块，清除方案
-        navigate({ module: nav.module, mode: "replace" });
-      }
-    } else if (nav.module) {
-      // Level 2 → Level 1：清除全部
-      navigate({ mode: "replace" });
-    }
-  }, [nav.module, nav.scheme, navigate]);
+    window.history.back();
+  }, []);
 
   // 返回 Level 1 模块选择
   const goHome = useCallback(() => {
@@ -547,8 +531,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                 ref={bottomFadeMaskRef}
                 className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-8 transition-opacity duration-300"
                 style={{
-                  background:
-                    "linear-gradient(to top, var(--brand-cream, #FBF8F0), transparent)",
+                  background: "linear-gradient(to top, var(--brand-cream, #FBF8F0), transparent)",
                   opacity: 1,
                 }}
               />
@@ -1610,7 +1593,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                         </div>
 
                                         {/* 文字区域 */}
-                                        <div className="flex flex-1 flex-col items-center min-h-0 overflow-y-auto">
+                                        <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto">
                                           <h3 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal [@media(max-height:700px)]:mb-2 [@media(max-height:700px)]:text-xl">
                                             {step.title}
                                           </h3>
@@ -1684,7 +1667,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                                 </div>
 
                                                 {/* 文字区域 */}
-                                                <div className="flex flex-1 flex-col items-center min-h-0 overflow-y-auto">
+                                                <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto">
                                                   <h3 className="mb-4 whitespace-nowrap text-center font-sans text-2xl font-light tracking-[0.12em] text-brand-charcoal [@media(max-height:700px)]:mb-2 [@media(max-height:700px)]:text-xl">
                                                     {step.title}
                                                   </h3>
@@ -1805,7 +1788,7 @@ function HotelLogoMarquee({ variant }: { variant: "mobile" | "desktop" }) {
       {/* 滚动容器（prefers-reduced-motion 时动画由全局 CSS 禁用） */}
       <div
         className={cn(
-          "flex animate-marquee items-center",
+          "animate-marquee flex items-center",
           isMobile ? "w-max" : "hover:[animation-play-state:paused]"
         )}
       >

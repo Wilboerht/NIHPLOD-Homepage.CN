@@ -3,11 +3,7 @@
  * src/lib/url-safety.ts
  */
 import { describe, it, expect } from "vitest";
-import {
-  hasUnsafeUrlChars,
-  isSafeRelativePath,
-  isSafeSameOriginUrlOrPath,
-} from "@/lib/url-safety";
+import { hasUnsafeUrlChars, isSafeRelativePath, isSafeSameOriginUrlOrPath } from "@/lib/url-safety";
 
 const ORIGIN = "https://nihplod.cn";
 

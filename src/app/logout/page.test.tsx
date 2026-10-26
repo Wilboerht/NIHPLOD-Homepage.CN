@@ -102,9 +102,7 @@ describe("LogoutPage 分层退出", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "确认退出" })).toBeEnabled();
     });
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: /同时退出所有设备和已授权的平台/ })
-    );
+    fireEvent.click(screen.getByRole("checkbox", { name: /同时退出所有设备和已授权的平台/ }));
     fireEvent.click(screen.getByRole("button", { name: "确认退出" }));
 
     await waitFor(() => {
@@ -156,9 +154,9 @@ describe("LogoutPage 分层退出", () => {
     );
     expect(refreshCalled).toBe(true);
     // 未点击确认前不得自动登出
-    expect(
-      fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))
-    ).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))).toBe(
+      false
+    );
   });
 
   it("hint 验签通过且与会话一致时仍展示确认页，不自动调用 /api/auth/logout", async () => {
@@ -189,14 +187,14 @@ describe("LogoutPage 分层退出", () => {
     });
     // verify-hint 已完成（matchesSession=true）后仍停留在确认页，不自动登出
     await waitFor(() => {
-      expect(
-        fetchMock.mock.calls.some(([input]) => String(input).includes("verify-hint"))
-      ).toBe(true);
+      expect(fetchMock.mock.calls.some(([input]) => String(input).includes("verify-hint"))).toBe(
+        true
+      );
     });
     await new Promise((r) => setTimeout(r, 50));
-    expect(
-      fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))
-    ).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))).toBe(
+      false
+    );
     // 不再出现免确认过渡态文案
     expect(screen.queryByText("正在退出登录...")).not.toBeInTheDocument();
   });
@@ -231,8 +229,8 @@ describe("LogoutPage 分层退出", () => {
         fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/refresh"))
       ).toBe(true);
     });
-    expect(
-      fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))
-    ).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/api/auth/logout"))).toBe(
+      false
+    );
   });
 });

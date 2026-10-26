@@ -62,11 +62,16 @@ export function CheckInTrend({ entries, todayStr }: { entries: DiaryEntry[]; tod
   return (
     <div>
       {/* 标题行由父级「打卡」区标题承载（近 30 天打卡计数 + 今日打卡 CTA），此处只留色带与图例 */}
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="近 30 天打卡状态趋势">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="h-auto w-full"
+        role="img"
+        aria-label="近 30 天打卡状态趋势"
+      >
         {days.map(({ dateStr, entry }, i) => {
           const x = PAD_L + i * cellW;
           const meta = entry ? STATE_META[entry.skinState] : null;
-          const level = entry ? STATE_LEVEL[entry.skinState] ?? 3 : 3;
+          const level = entry ? (STATE_LEVEL[entry.skinState] ?? 3) : 3;
           // 色带高度随状态档位变化（1 档最低 → 5 档最高），缺卡为浅色矮条
           const barH = entry ? (plotH * (1 + level)) / 6 : 4;
           const y = PAD_TOP + plotH - barH;
@@ -114,19 +119,19 @@ export function CheckInTrend({ entries, todayStr }: { entries: DiaryEntry[]; tod
       </svg>
 
       {/* 图例：5 色点 + 两端语义词（中间档位由颜色深浅自然表达），未打卡以灰点示意 */}
-      <div className="flex items-center justify-center gap-1.5 mt-2">
-        <span className="text-[11px] text-brand-charcoal/55 font-light mr-0.5">很好</span>
+      <div className="mt-2 flex items-center justify-center gap-1.5">
+        <span className="mr-0.5 text-[11px] font-light text-brand-charcoal/55">很好</span>
         {(["great", "good", "normal", "bad", "terrible"] as const).map((key) => (
           <span
             key={key}
-            className="w-2 h-2 rounded-full"
+            className="h-2 w-2 rounded-full"
             style={{ backgroundColor: STATE_META[key].color }}
           />
         ))}
-        <span className="text-[11px] text-brand-charcoal/55 font-light ml-0.5">很差</span>
-        <span className="w-px h-3 bg-stone-200 mx-1.5" />
-        <span className="w-2 h-2 rounded-full bg-brand-charcoal/10" />
-        <span className="text-[11px] text-brand-charcoal/55 font-light">未打卡</span>
+        <span className="ml-0.5 text-[11px] font-light text-brand-charcoal/55">很差</span>
+        <span className="mx-1.5 h-3 w-px bg-stone-200" />
+        <span className="h-2 w-2 rounded-full bg-brand-charcoal/10" />
+        <span className="text-[11px] font-light text-brand-charcoal/55">未打卡</span>
       </div>
     </div>
   );

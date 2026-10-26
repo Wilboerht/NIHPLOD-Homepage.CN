@@ -6,13 +6,13 @@
  * - 归档 manifest 与锚点互相校验；
  * - 支持缺失日期补锚与单日验证。
  */
-import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import {
   getAuditIntegrityKey,
   getAuditIntegrityKeyVersion,
-  stableStringify,
+  computeAuditDigest,
 } from "./audit-chain";
 import { verifyArchiveBackup, verifyArchiveDay, type AuditStream } from "./audit-archive";
 
@@ -132,8 +132,7 @@ function ssoSelect() {
 }
 
 function computeDigest(rows: Array<Record<string, unknown>>): string {
-  const payload = rows.map((row) => stableStringify(row)).join("\n");
-  return createHash("sha256").update(payload).digest("hex");
+  return computeAuditDigest(rows);
 }
 
 function signaturePayload(input: {
@@ -365,6 +364,23 @@ export async function verifyAuditDay(
       archiveVerified: false,
       backupVerified: false,
       error: "ANCHOR_NOT_FOUND",
+    };
+  }
+
+  if (anchor.archivedAt) {
+    const archiveVerified = await verifyArchiveDay(stream, day);
+    const backupVerified = await verifyArchiveBackup(stream, day);
+    return {
+      stream,
+      day,
+      verified: archiveVerified,
+      count: anchor.count,
+      digest: anchor.digest,
+      signatureVersion: anchor.signatureVersion,
+      keyVersion: anchor.keyVersion,
+      archiveVerified,
+      backupVerified,
+      error: archiveVerified ? undefined : "ARCHIVE_VERIFICATION_FAILED",
     };
   }
 

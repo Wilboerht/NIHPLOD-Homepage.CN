@@ -281,9 +281,7 @@ export function ForgotPasswordForm({
                   }}
                   placeholder="6位验证码"
                   className={
-                    errors?.code || codeStepError
-                      ? mobileInputErrorFlexClass
-                      : mobileInputFlexClass
+                    errors?.code || codeStepError ? mobileInputErrorFlexClass : mobileInputFlexClass
                   }
                 />
               </div>

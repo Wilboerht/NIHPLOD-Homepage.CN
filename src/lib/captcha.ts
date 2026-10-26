@@ -54,9 +54,7 @@ export async function createCaptchaChallenge(): Promise<CaptchaChallengeData> {
   return { id: challenge.id, salt, difficulty, expiresIn: CHALLENGE_TTL_MS / 1000 };
 }
 
-export type CaptchaVerifyResult =
-  | { ok: true }
-  | { ok: false; reason: "missing" | "invalid" };
+export type CaptchaVerifyResult = { ok: true } | { ok: false; reason: "missing" | "invalid" };
 
 /**
  * 校验 PoW token（一次性：通过后原子标记 usedAt，重放/并发复用无效）。

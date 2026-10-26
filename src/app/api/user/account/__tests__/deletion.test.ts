@@ -173,7 +173,11 @@ describe("/api/user/account/deletion", () => {
       expect(JSON.stringify(createArgs.data)).not.toContain('"13800138000"');
 
       expect(mockCreateAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ action: "account_deletion_request", targetType: "user", userId: "user-1" })
+        expect.objectContaining({
+          action: "account_deletion_request",
+          targetType: "user",
+          userId: "user-1",
+        })
       );
       expect(mockLogAuthEvent).toHaveBeenCalledWith(
         "user_account_deletion_request",

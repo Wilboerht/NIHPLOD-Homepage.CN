@@ -129,7 +129,9 @@ describe("/api/oauth/security/*", () => {
   });
 
   it("未认证返回 401", async () => {
-    const res = await devicesGET(makeRequest("GET", "/api/oauth/security/devices", { authorized: false }));
+    const res = await devicesGET(
+      makeRequest("GET", "/api/oauth/security/devices", { authorized: false })
+    );
     expect(res.status).toBe(401);
   });
 
@@ -257,8 +259,16 @@ describe("/api/oauth/security/*", () => {
       clientId: "wechat-mp-points",
     });
     prismaMock.refreshToken.findMany.mockResolvedValue([
-      { id: "d-mp-current", clientId: "wechat-mp-points", updatedAt: new Date("2026-10-17T12:00:00Z") },
-      { id: "d-mp-other", clientId: "wechat-mp-points", updatedAt: new Date("2026-10-10T12:00:00Z") },
+      {
+        id: "d-mp-current",
+        clientId: "wechat-mp-points",
+        updatedAt: new Date("2026-10-17T12:00:00Z"),
+      },
+      {
+        id: "d-mp-other",
+        clientId: "wechat-mp-points",
+        updatedAt: new Date("2026-10-10T12:00:00Z"),
+      },
     ]);
 
     const res = await deviceDELETE(

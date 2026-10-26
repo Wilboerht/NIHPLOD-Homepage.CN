@@ -1,7 +1,7 @@
 /**
  * /api/user/** 路由鉴权守卫（CI 守卫测试）
  *
- * 背景：middleware 将 /api/user/ 整体作为公开前缀放行（src/middleware.ts
+ * 背景：middleware 将 /api/user/ 整体作为公开前缀放行（src/proxy.ts
  * PUBLIC_API_PREFIXES），鉴权完全依赖各 route 文件自身的 withUserAuth（包裹式）
  * 或 verifyUserAuth（手工校验）。新增路由若忘记鉴权将成为公开端点，因此用本测试
  * 在 CI（npm test）中兜底。

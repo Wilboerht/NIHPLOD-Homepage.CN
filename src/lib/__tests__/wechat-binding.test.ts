@@ -31,7 +31,7 @@ vi.mock("@/lib/prisma", () => {
 });
 
 vi.mock("@/lib/sms", () => ({
-  verifyCode: vi.fn().mockReturnValue(true),
+  verifySmsCodeWithLimit: vi.fn().mockReturnValue(true),
   recordSmsCodeFailure: vi.fn().mockResolvedValue(undefined),
   SMS_CODE_MAX_ATTEMPTS: 5,
 }));
@@ -65,7 +65,7 @@ vi.mock("@/lib/client-ip", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { verifyCode, recordSmsCodeFailure } from "@/lib/sms";
+import { verifySmsCodeWithLimit, recordSmsCodeFailure } from "@/lib/sms";
 import { signUserToken, signRefreshToken, signOAuthAccessToken } from "@/lib/jwt";
 import { saveRefreshToken } from "@/lib/auth-security";
 import {
@@ -74,7 +74,7 @@ import {
   type WechatOAuthIssueOptions,
 } from "@/lib/wechat-binding";
 
-const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
+const mockVerifyCode = verifySmsCodeWithLimit as ReturnType<typeof vi.fn>;
 const mockRecordSmsCodeFailure = recordSmsCodeFailure as ReturnType<typeof vi.fn>;
 const mockSignUserToken = signUserToken as ReturnType<typeof vi.fn>;
 const mockSignRefreshToken = signRefreshToken as ReturnType<typeof vi.fn>;
@@ -343,7 +343,7 @@ describe("resolveWechatBinding 短信验证码类型（register/bind 双通道�
       })
     );
     // 哈希含 type，校验必须使用记录自身的 type=bind
-    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "bind", "hash");
+    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "bind", "sms-1");
     // 验证通过：验证码被原子核销，绑定完成
     expect(mockPrisma.smsCode.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ id: "sms-1", used: false }) })
@@ -360,7 +360,7 @@ describe("resolveWechatBinding 短信验证码类型（register/bind 双通道�
     const result = await resolveWechatBinding(buildInput());
 
     expect(result.success).toBe(true);
-    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "register", "hash");
+    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "register", "sms-2");
   });
 
   it("验证码错误应递增单码失败计数且返回 INVALID_CODE（不锁定手机号）", async () => {
@@ -374,7 +374,7 @@ describe("resolveWechatBinding 短信验证码类型（register/bind 双通道�
       expect(result.code).toBe("INVALID_CODE");
     }
     // 单码防爆破：失败计数递增（达到上限由 sms 模块作废该码）
-    expect(mockRecordSmsCodeFailure).toHaveBeenCalledWith("sms-3");
+    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "bind", "sms-3");
     // 核销不应发生
     expect(mockPrisma.smsCode.updateMany).not.toHaveBeenCalled();
   });
@@ -523,7 +523,8 @@ describe("resolveWechatBinding OAuth 签发路径", () => {
       "refresh-token",
       expect.any(Date),
       expect.anything(),
-      "wechat-mp-skin"
+      "wechat-mp-skin",
+      sessionId
     );
     // 返回 OAuth token 与 expiresIn
     expect(result.data.accessToken).toBe("oauth-access-token");

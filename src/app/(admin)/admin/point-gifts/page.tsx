@@ -96,14 +96,13 @@ function AdminPointGiftsContent() {
 
   // 页面按任务拆成两个工作区：默认优先处理兑换履约，礼品配置按需切换
   const viewParam = get("view");
-  const view: "redemptions" | "gifts" =
-    !canRedeemRead
-      ? "gifts"
-      : !canGiftRead
-        ? "redemptions"
-        : viewParam === "gifts"
-          ? "gifts"
-          : "redemptions";
+  const view: "redemptions" | "gifts" = !canRedeemRead
+    ? "gifts"
+    : !canGiftRead
+      ? "redemptions"
+      : viewParam === "gifts"
+        ? "gifts"
+        : "redemptions";
   const showViewTabs = canGiftRead && canRedeemRead;
 
   const [products, setProducts] = useState<RedeemableProductItem[]>([]);
@@ -346,9 +345,18 @@ function AdminPointGiftsContent() {
         }
         success("已标记履约");
       } else {
-        await apiPatch(`/api/admin/point-redemptions/${redemption.id}/waybill`, {
-          waybillNo,
-        });
+        const submitWaybill = () =>
+          apiPatch(`/api/admin/point-redemptions/${redemption.id}/waybill`, {
+            waybillNo,
+          });
+        try {
+          await submitWaybill();
+        } catch (e) {
+          if (!isTotpRequired(e)) throw e;
+          const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+          if (!verified) return;
+          await submitWaybill();
+        }
         success("运单号已更新");
       }
       setFulfillTarget(null);
@@ -905,28 +913,27 @@ function AdminPointGiftsContent() {
                                 标记履约
                               </Button>
                             )}
-                              {!isOwnerActor &&
-                                canRequestApproval &&
-                                r.status === "PENDING" &&
-                                r.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
-                                  <ApprovalRequestAction
-                                    policyKey="redemption.cancel"
-                                    initialValues={{ redemptionId: r.id }}
-                                    label="申请取消退分"
-                                  />
-                                )}
-                              {canCancelRedemption &&
-                                (isOwnerActor ||
-                                  r.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:bg-red-50"
-                                onClick={() => setCancelTarget(r)}
-                              >
-                                取消退分
-                              </Button>
-                            )}
+                            {!isOwnerActor &&
+                              canRequestApproval &&
+                              r.status === "PENDING" &&
+                              r.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
+                                <ApprovalRequestAction
+                                  policyKey="redemption.cancel"
+                                  initialValues={{ redemptionId: r.id }}
+                                  label="申请取消退分"
+                                />
+                              )}
+                            {canCancelRedemption &&
+                              (isOwnerActor || r.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:bg-red-50"
+                                  onClick={() => setCancelTarget(r)}
+                                >
+                                  取消退分
+                                </Button>
+                              )}
                             {!canFulfill && !canCancelRedemption && !canRequestApproval && (
                               <span className="text-xs text-brand-charcoal/65">只读</span>
                             )}
@@ -1053,28 +1060,28 @@ function AdminPointGiftsContent() {
                                   标记履约
                                 </Button>
                               )}
-                            {!isOwnerActor &&
-                              canRequestApproval &&
-                              r.status === "PENDING" &&
-                              r.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
-                                <ApprovalRequestAction
-                                  policyKey="redemption.cancel"
-                                  initialValues={{ redemptionId: r.id }}
-                                  label="申请取消退分"
-                                />
-                              )}
-                            {canCancelRedemption &&
-                              (isOwnerActor ||
-                                r.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:bg-red-50"
-                                  onClick={() => setCancelTarget(r)}
-                                >
-                                  取消退分
-                                </Button>
-                              )}
+                              {!isOwnerActor &&
+                                canRequestApproval &&
+                                r.status === "PENDING" &&
+                                r.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
+                                  <ApprovalRequestAction
+                                    policyKey="redemption.cancel"
+                                    initialValues={{ redemptionId: r.id }}
+                                    label="申请取消退分"
+                                  />
+                                )}
+                              {canCancelRedemption &&
+                                (isOwnerActor ||
+                                  r.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 hover:bg-red-50"
+                                    onClick={() => setCancelTarget(r)}
+                                  >
+                                    取消退分
+                                  </Button>
+                                )}
                               {!canFulfill && !canCancelRedemption && !canRequestApproval && (
                                 <span className="text-xs text-brand-charcoal/65">只读</span>
                               )}

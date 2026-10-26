@@ -26,6 +26,7 @@ vi.mock("tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js", 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     smsCode: { updateMany: vi.fn(), create: vi.fn() },
+    $queryRaw: vi.fn(),
   },
 }));
 
@@ -40,6 +41,7 @@ import {
   generateVerifyCode,
   hashVerifyCode,
   verifyCode,
+  verifySmsCodeWithLimit,
   recordSmsCodeFailure,
   recordFakeSmsThrottleEntry,
   sendSMS,
@@ -145,7 +147,11 @@ describe("mock 通道生产环境 DEBUG 守卫", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("SMS_DEBUG_LOG_CODE", "true");
 
-    const result = await sendSMS({ phone: TEST_PHONE, template: "LOGIN_CODE", params: { code: TEST_CODE } });
+    const result = await sendSMS({
+      phone: TEST_PHONE,
+      template: "LOGIN_CODE",
+      params: { code: TEST_CODE },
+    });
 
     expect(result.success).toBe(true);
     // 所有 warn 输出均不得包含明文验证码
@@ -173,6 +179,31 @@ describe("mock 通道生产环境 DEBUG 守卫", () => {
     for (const call of mockWarn.mock.calls) {
       expect(String(call[0])).not.toContain(TEST_CODE);
     }
+  });
+});
+
+describe("verifySmsCodeWithLimit（原子尝试上限）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("在单条更新中消耗尝试并返回哈希进行校验", async () => {
+    const storedHash = hashVerifyCode(TEST_PHONE, TEST_CODE, TEST_TYPE);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ codeHash: storedHash }] as never);
+
+    await expect(verifySmsCodeWithLimit(TEST_PHONE, TEST_CODE, TEST_TYPE, "sms-1")).resolves.toBe(
+      true
+    );
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.smsCode.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("已超限或已使用的验证码不能继续校验", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never);
+
+    await expect(verifySmsCodeWithLimit(TEST_PHONE, TEST_CODE, TEST_TYPE, "sms-1")).resolves.toBe(
+      false
+    );
   });
 });
 

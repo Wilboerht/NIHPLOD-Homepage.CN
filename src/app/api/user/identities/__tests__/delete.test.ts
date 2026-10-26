@@ -51,10 +51,9 @@ const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
 const IDENTITY_ID = "clidentity1234567890abc";
 
 function createRequest(): NextRequest {
-  return new NextRequest(
-    new URL(`/api/user/identities/${IDENTITY_ID}`, "http://localhost:3000"),
-    { method: "DELETE" } as never
-  );
+  return new NextRequest(new URL(`/api/user/identities/${IDENTITY_ID}`, "http://localhost:3000"), {
+    method: "DELETE",
+  } as never);
 }
 
 const context = { params: Promise.resolve({ id: IDENTITY_ID }) };
@@ -130,9 +129,7 @@ describe("DELETE /api/user/identities/:id", () => {
     mockUserFindUnique
       .mockResolvedValueOnce({ phone: "13800138000" })
       .mockResolvedValueOnce({ wechatOpenId: "openid-1", wechatUnionId: "unionid-1" });
-    mockIdentityFindMany.mockResolvedValue([
-      { subjectId: "openid-2", unionId: "unionid-1" },
-    ]);
+    mockIdentityFindMany.mockResolvedValue([{ subjectId: "openid-2", unionId: "unionid-1" }]);
 
     await DELETE(createRequest(), context);
 

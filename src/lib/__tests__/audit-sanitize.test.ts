@@ -5,11 +5,7 @@
  *       "detail" 键不再被误当作地址脱敏、嵌套对象递归处理
  */
 import { describe, it, expect } from "vitest";
-import {
-  maskAuditDetail,
-  maskAuditText,
-  redactSensitiveAuditDetail,
-} from "@/lib/audit-sanitize";
+import { maskAuditDetail, maskAuditText, redactSensitiveAuditDetail } from "@/lib/audit-sanitize";
 
 describe("maskAuditDetail", () => {
   it("手机号相关键脱敏", () => {
@@ -88,7 +84,11 @@ describe("maskAuditDetail", () => {
       reply: "内部跟进：已回电",
       notes: "候选人姓名张三，期望薪资 30k",
       resumePath: "resumes/2026/张三个人简历.pdf",
-      nested: { messageContent: "嵌套留言内容", resumeFileName: "张三.pdf", fileName: "spent.xlsx" },
+      nested: {
+        messageContent: "嵌套留言内容",
+        resumeFileName: "张三.pdf",
+        fileName: "spent.xlsx",
+      },
     });
     expect(result).toEqual({
       content: "[已脱敏]",

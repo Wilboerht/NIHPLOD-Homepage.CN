@@ -56,7 +56,10 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
     const limitResult = await rateLimit(`user:${payload.id}`, "account-deletion");
     if (!limitResult.success) {
       return NextResponse.json(
-        { success: false, error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" } },
+        {
+          success: false,
+          error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" },
+        },
         { status: 429 }
       );
     }
@@ -80,7 +83,10 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
 
     if (!user || user.status !== "ACTIVE") {
       return NextResponse.json(
-        { success: false, error: { code: "ACCOUNT_NOT_ACTIVE", message: "账号状态异常，无法申请注销" } },
+        {
+          success: false,
+          error: { code: "ACCOUNT_NOT_ACTIVE", message: "账号状态异常，无法申请注销" },
+        },
         { status: 403 }
       );
     }
@@ -165,7 +171,10 @@ export const DELETE = withUserAuth(async (request: NextRequest, payload) => {
     const limitResult = await rateLimit(`user:${payload.id}`, "account-deletion-cancel");
     if (!limitResult.success) {
       return NextResponse.json(
-        { success: false, error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" } },
+        {
+          success: false,
+          error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" },
+        },
         { status: 429 }
       );
     }

@@ -1,5 +1,5 @@
 /**
- * Next.js middleware 测试
+ * Next.js proxy 测试
  *
  * 覆盖：
  * - 未登录访问 /admin/** 必须保留 307 重定向（此前 applyCspNonce 会丢弃 redirect）
@@ -9,11 +9,11 @@
  */
 import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
-import { middleware } from "./middleware";
+import { proxy } from "./proxy";
 
-describe("middleware", () => {
+describe("proxy", () => {
   it("未登录 GET /admin/** 保留 307 重定向到 /admin-login，并附加 CSP", async () => {
-    const res = await middleware(new NextRequest("https://nihplod.cn/admin/users"));
+    const res = await proxy(new NextRequest("https://nihplod.cn/admin/users"));
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/admin-login");
@@ -22,7 +22,7 @@ describe("middleware", () => {
   });
 
   it("未登录访问带 query 的 /admin/** 时保留 query（管理员 SSO authorize 依赖）", async () => {
-    const res = await middleware(
+    const res = await proxy(
       new NextRequest(
         "https://nihplod.cn/admin/sso/authorize?client_id=skin-advisor-admin&state=abc&code_challenge=xyz"
       )
@@ -38,7 +38,7 @@ describe("middleware", () => {
   });
 
   it("普通页面 GET 返回 next 响应并注入 CSP nonce", async () => {
-    const res = await middleware(new NextRequest("https://nihplod.cn/"));
+    const res = await proxy(new NextRequest("https://nihplod.cn/"));
 
     expect(res.headers.get("x-middleware-next")).toBe("1");
     expect(res.headers.get("content-security-policy")).toContain("script-src");
@@ -46,16 +46,14 @@ describe("middleware", () => {
   });
 
   it("POST /api/cron/run 直通（由路由校验 CRON_SECRET）", async () => {
-    const res = await middleware(
-      new NextRequest("https://nihplod.cn/api/cron/run", { method: "POST" })
-    );
+    const res = await proxy(new NextRequest("https://nihplod.cn/api/cron/run", { method: "POST" }));
 
     expect(res.headers.get("x-middleware-next")).toBe("1");
     expect(res.status).not.toBe(401);
   });
 
   it("POST /api/baidu/push 直通", async () => {
-    const res = await middleware(
+    const res = await proxy(
       new NextRequest("https://nihplod.cn/api/baidu/push", { method: "POST" })
     );
 
@@ -64,7 +62,7 @@ describe("middleware", () => {
   });
 
   it("未登录 POST 未知 API 返回 401（Secure by Default）", async () => {
-    const res = await middleware(
+    const res = await proxy(
       new NextRequest("https://nihplod.cn/api/unknown-write", { method: "POST" })
     );
 
@@ -74,7 +72,7 @@ describe("middleware", () => {
   });
 
   it("未登录访问 /api/admin/** 返回 401", async () => {
-    const res = await middleware(
+    const res = await proxy(
       new NextRequest("https://nihplod.cn/api/admin/users", { method: "GET" })
     );
 
@@ -82,9 +80,7 @@ describe("middleware", () => {
   });
 
   it("历史公开简历目录返回 410 且不缓存", async () => {
-    const res = await middleware(
-      new NextRequest("https://nihplod.cn/uploads/resumes/legacy.pdf")
-    );
+    const res = await proxy(new NextRequest("https://nihplod.cn/uploads/resumes/legacy.pdf"));
 
     expect(res.status).toBe(410);
     expect(res.headers.get("cache-control")).toContain("no-store");

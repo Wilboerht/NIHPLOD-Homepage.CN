@@ -178,36 +178,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserCenterViewState(view);
   }, []);
 
-  const refreshUser = useCallback(async (force?: boolean) => {
-    // auth_hint 仅用于 UI 优化（减少不必要的 /api/user/profile 请求），
-    // 不含任何凭据，被篡改/删除不会导致安全问题，仅影响用户体验。
-    if (!force && typeof window !== "undefined" && !localStorage.getItem("auth_hint")) {
-      setIsLoading(false);
-      return;
-    }
+  const refreshUser = useCallback(
+    async (force?: boolean) => {
+      // auth_hint 仅用于 UI 优化（减少不必要的 /api/user/profile 请求），
+      // 不含任何凭据，被篡改/删除不会导致安全问题，仅影响用户体验。
+      if (!force && typeof window !== "undefined" && !localStorage.getItem("auth_hint")) {
+        setIsLoading(false);
+        return;
+      }
 
-    try {
-      const res = await fetchWithAuth("/api/user/profile");
-      const data = await res.json();
-      if (data.success) {
-        setUser(data.data.user);
-        localStorage.setItem("auth_hint", "1");
-        // 登录成功后检查冷静期注销申请（驱动全局撤回横幅）
-        void refreshDeletionRequest();
-      } else {
+      try {
+        const res = await fetchWithAuth("/api/user/profile");
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.data.user);
+          localStorage.setItem("auth_hint", "1");
+          // 登录成功后检查冷静期注销申请（驱动全局撤回横幅）
+          void refreshDeletionRequest();
+        } else {
+          setUser(null);
+          setDeletionRequest(null);
+        }
+      } catch (error) {
+        if (error instanceof UnauthorizedError) {
+          localStorage.removeItem("auth_hint");
+        }
         setUser(null);
         setDeletionRequest(null);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      if (error instanceof UnauthorizedError) {
-        localStorage.removeItem("auth_hint");
-      }
-      setUser(null);
-      setDeletionRequest(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshDeletionRequest]);
+    },
+    [refreshDeletionRequest]
+  );
 
   const logout = useCallback(async (options?: { allDevices?: boolean }) => {
     try {
@@ -220,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("auth_hint");
     } catch (error) {
       console.error("登出失败:", error);
+      throw error;
     }
   }, []);
 

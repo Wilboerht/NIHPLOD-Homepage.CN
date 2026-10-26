@@ -86,6 +86,27 @@ export function verifyCode(
   }
 }
 
+export async function verifySmsCodeWithLimit(
+  phone: string,
+  code: string,
+  type: string,
+  smsCodeId: string
+): Promise<boolean> {
+  const rows = await prisma.$queryRaw<{ codeHash: string }[]>`
+    UPDATE "SmsCode"
+    SET "attempts" = "attempts" + 1,
+        "used" = CASE WHEN "attempts" + 1 >= ${SMS_CODE_MAX_ATTEMPTS} THEN true ELSE "used" END
+    WHERE "id" = ${smsCodeId}
+      AND "used" = false
+      AND "attempts" < ${SMS_CODE_MAX_ATTEMPTS}
+      AND "expiresAt" > NOW()
+    RETURNING "codeHash"
+  `;
+  const storedCodeHash = rows[0]?.codeHash;
+  if (!storedCodeHash) return false;
+  return verifyCode(phone, code, type, storedCodeHash);
+}
+
 /**
  * 模拟真实短信通道耗时（防时序枚举）。
  * 真实通道是外部 HTTP 调用（阿里云/腾讯云），正常耗时约数百 ms；
@@ -132,7 +153,14 @@ import { fetchWithTimeout } from "./fetch-utils";
 import * as tencentcloud from "tencentcloud-sdk-nodejs/tencentcloud/services/sms/v20210111/index.js";
 import { apiConsole } from "@/lib/logger";
 
-export type SMSTemplate = "LOGIN_CODE" | "PASSWORD_RESET" | "SPENT_REVIEW" | "ADMIN_PASSWORD_RESET" | "PHONE_CHANGED" | "ACCOUNT_DELETED" | "ACCOUNT_DELETION_REMINDER";
+export type SMSTemplate =
+  | "LOGIN_CODE"
+  | "PASSWORD_RESET"
+  | "SPENT_REVIEW"
+  | "ADMIN_PASSWORD_RESET"
+  | "PHONE_CHANGED"
+  | "ACCOUNT_DELETED"
+  | "ACCOUNT_DELETION_REMINDER";
 
 export interface SMSParams {
   phone: string;

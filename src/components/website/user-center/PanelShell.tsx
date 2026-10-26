@@ -49,14 +49,9 @@ export function PanelShell({
   children,
 }: PanelShellProps) {
   return (
-    <div
-      className={embedded ? "flex h-full flex-col" : PANEL_ROOT_CLASS}
-      data-testid={testId}
-    >
+    <div className={embedded ? "flex h-full flex-col" : PANEL_ROOT_CLASS} data-testid={testId}>
       {!embedded && !hideTitle && (
-        <div
-          className={`${PANEL_HEADER_CLASS}${headerExtra ? " items-center gap-4" : ""}`}
-        >
+        <div className={`${PANEL_HEADER_CLASS}${headerExtra ? "items-center gap-4" : ""}`}>
           <h2 className={PANEL_TITLE_CLASS}>{title}</h2>
           {headerExtra}
         </div>

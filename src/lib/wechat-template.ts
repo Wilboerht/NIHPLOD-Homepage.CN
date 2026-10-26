@@ -217,10 +217,9 @@ export async function sendSpentAdjustmentReviewMessage(
         : {}),
       remark: {
         // remark 上限 30 字符
-        value: (
-          approved
-            ? "历史消费金额已累加，会员等级已按最新金额更新。"
-            : (reviewNote ?? "凭证未通过审核，如有疑问请联系客服。")
+        value: (approved
+          ? "历史消费金额已累加，会员等级已按最新金额更新。"
+          : (reviewNote ?? "凭证未通过审核，如有疑问请联系客服。")
         ).slice(0, 30),
         color: "#6b7280",
       },

@@ -31,10 +31,9 @@ import {
   checkAndRecordNonce,
   hashRequestBody,
 } from "@/lib/internal-api";
-import { applyExternalSpentSync } from "@/lib/points";
+import { applyExternalSpentSync, SpentDailyLimitError } from "@/lib/points";
 import { SpentOrderConflictError } from "@/lib/spent-order";
 import { auditInternalPoints, auditInternalPointsFailure } from "@/lib/internal-points-audit";
-import { getUtc8DayStart } from "@/lib/timezone";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { readInternalApiBody } from "@/lib/request-body";
@@ -186,29 +185,6 @@ export async function POST(request: NextRequest) {
     }
 
     const dailyLimit = Number(process.env.INTERNAL_POINTS_SYNC_DAILY_LIMIT_YUAN ?? "5000000");
-    if (spentDelta > 0 && Number.isFinite(dailyLimit) && dailyLimit > 0) {
-      const daily = await prisma.spentSyncRecord?.aggregate({
-        where: {
-          userId: user.id,
-          source: "MALL_SYNC",
-          createdAt: { gte: getUtc8DayStart() },
-          spentDelta: { gt: 0 },
-        },
-        _sum: { spentDelta: true },
-      });
-      if ((daily?._sum.spentDelta ?? 0) + spentDelta > dailyLimit) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code: "SYNC_DAILY_LIMIT_EXCEEDED",
-              message: "该用户今日消费同步额度已超限，请人工核对",
-            },
-          },
-          { status: 429 }
-        );
-      }
-    }
 
     const auditDetail = {
       spentDelta,
@@ -221,15 +197,31 @@ export async function POST(request: NextRequest) {
     // 6. 入账（事务内写幂等记录 + 更新消费额 + 重算等级，reference 幂等）
     let result: Awaited<ReturnType<typeof applyExternalSpentSync>>;
     try {
-      result = await applyExternalSpentSync({
-        userId: user.id,
-        spentDelta,
-        reference,
-        note,
-        orderNo,
-        source: "MALL_SYNC",
-      });
+      result = await applyExternalSpentSync(
+        {
+          userId: user.id,
+          spentDelta,
+          reference,
+          note,
+          orderNo,
+          source: "MALL_SYNC",
+        },
+        undefined,
+        Number.isFinite(dailyLimit) ? dailyLimit : undefined
+      );
     } catch (error) {
+      if (error instanceof SpentDailyLimitError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "SYNC_DAILY_LIMIT_EXCEEDED",
+              message: "该用户今日消费同步额度已超限，请人工核对",
+            },
+          },
+          { status: 429 }
+        );
+      }
       await auditInternalPointsFailure({
         action: "points_internal_sync",
         targetType: "spent_sync",

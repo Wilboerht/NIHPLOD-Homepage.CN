@@ -214,19 +214,17 @@ describe("POST /api/user/oauth/revoke", () => {
       data: { revokedAt: expect.any(Date) },
     });
     // 撤销 refresh token，防止旧 refresh_token 继续换发 access_token
-      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
-        "user-1",
-        undefined,
-        "client-abc",
-        "user_revoke"
-      );
+    expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      "user-1",
+      undefined,
+      "client-abc",
+      "user_revoke"
+    );
     // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
     // access token 即时失效由 sid 会话校验承担
     expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-    // Backchannel Logout 通知 RP（sid 取撤销前查出的最新活跃会话）
-    expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
-      sids: { "client-abc": "sess-1" },
-    });
+    // user+client 全量撤销只按 sub 通知 RP 清除全部本地会话
+    expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
     // 审计：SSO 事件 + 用户认证日志
     expect(mockRecordSsoEvent).toHaveBeenCalledWith(
       expect.objectContaining({

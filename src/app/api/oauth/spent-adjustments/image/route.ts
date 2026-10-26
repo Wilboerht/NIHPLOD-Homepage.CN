@@ -48,7 +48,10 @@ export async function GET(request: NextRequest) {
 
     const guard = await guardOAuthUserActive(payload.id);
     if (!guard.ok) {
-      return resJson({ error: guard.error, error_description: guard.errorDescription }, guard.status);
+      return resJson(
+        { error: guard.error, error_description: guard.errorDescription },
+        guard.status
+      );
     }
 
     const key = request.nextUrl.searchParams.get("key") ?? "";

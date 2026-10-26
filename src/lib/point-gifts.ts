@@ -66,6 +66,7 @@ export type RedeemGiftResult =
       code:
         | "PRODUCT_NOT_FOUND"
         | "PRODUCT_NOT_REDEEMABLE"
+        | "ACCOUNT_DISABLED"
         | "NOT_ELIGIBLE"
         | "ADDRESS_NOT_FOUND"
         | "OUT_OF_STOCK"
@@ -116,134 +117,141 @@ export async function redeemGiftForUser(params: {
   const reference = `redeem:${userId}:${requestId}`;
 
   try {
-    return await withPointTxRetry(() => prisma.$transaction(async (tx) => {
-      // 幂等：同一请求单只产生一条兑换记录
-      const existing = await tx.pointRedemption.findUnique({
-        where: { userId_reference: { userId, reference } },
-      });
-      if (existing) {
+    return await withPointTxRetry(() =>
+      prisma.$transaction(async (tx) => {
+        // 幂等：同一请求单只产生一条兑换记录
+        const existing = await tx.pointRedemption.findUnique({
+          where: { userId_reference: { userId, reference } },
+        });
+        if (existing) {
+          const balance = await tx.pointBalance.findUnique({
+            where: { userId },
+            select: { available: true },
+          });
+          return {
+            ok: true,
+            duplicated: true,
+            points: existing.points,
+            available: balance?.available ?? 0,
+            redemptionId: existing.id,
+          };
+        }
+
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+        // 锁定产品行，避免确认价格后管理员并发改价导致按旧价扣分
+        await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${productId} FOR UPDATE`;
+        const product = await tx.product.findUnique({
+          where: { id: productId },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            pointRedeemable: true,
+            published: true,
+            redeemStock: true,
+          },
+        });
+        if (!product) {
+          return { ok: false, code: "PRODUCT_NOT_FOUND", message: "产品不存在" };
+        }
+        if (!product.pointRedeemable || !product.published) {
+          return { ok: false, code: "PRODUCT_NOT_REDEEMABLE", message: "该产品暂不支持积分兑换" };
+        }
+
+        // 等级以事务内读取为准（外部快照可能已过期：消费升级/退款降档的 TOCTOU 窗口）
+        const user = await tx.user.findUnique({
+          where: { id: userId },
+          select: { membershipLevel: true, status: true },
+        });
+        if (user?.status !== "ACTIVE") {
+          return { ok: false, code: "ACCOUNT_DISABLED", message: "账户不可用" };
+        }
+        const level: MembershipLevel = user.membershipLevel;
+
+        const points = giftCostForUser(product.price, level);
+        if (points === null) {
+          return { ok: false, code: "NOT_ELIGIBLE", message: "银卡及以上会员可参与积分兑换" };
+        }
+
+        // 报价一致性：价格/会员等级可能在用户打开确认页后变化。
+        // 不静默按新值扣分，而是让用户重新确认（调用方刷新礼品列表）。
+        if (expectedPoints !== undefined && expectedPoints !== points) {
+          return {
+            ok: false,
+            code: "PRICE_CHANGED",
+            message: `礼品所需积分已变化（当前 ${points} 积分），请刷新后重新确认`,
+            currentPoints: points,
+          };
+        }
+
+        // 收货地址校验（扣分前拦截，地址必须属于当前用户）
+        const address = await tx.userAddress.findUnique({
+          where: { id: addressId },
+          select: { userId: true, recipient: true, phone: true, region: true, detail: true },
+        });
+        if (!address || address.userId !== userId) {
+          return { ok: false, code: "ADDRESS_NOT_FOUND", message: "收货地址不存在，请重新选择" };
+        }
+        const fullAddress = `${address.region} ${address.detail}`;
+
+        // 余额预检（先于库存扣减）：余额不足是常态错误，提前拦截避免白扣限量库存
         const balance = await tx.pointBalance.findUnique({
           where: { userId },
           select: { available: true },
         });
+        if (!balance || balance.available < points) {
+          return { ok: false, code: "INSUFFICIENT", message: "可用积分不足" };
+        }
+
+        // 限量库存：条件扣减（CAS），命中 0 行即库存不足（未发生变更，可直接返回）；null = 不限量
+        if (product.redeemStock !== null) {
+          const deducted = await tx.product.updateMany({
+            where: { id: productId, redeemStock: { gte: 1 } },
+            data: { redeemStock: { decrement: 1 } },
+          });
+          if (deducted.count === 0) {
+            return { ok: false, code: "OUT_OF_STOCK", message: "该礼品已兑完" };
+          }
+        }
+
+        const result = await redeemPoints(tx, {
+          userId,
+          amount: points,
+          reference,
+          note: `兑换产品：${product.name}`,
+        });
+        if (!result.ok) {
+          // 预检通过但扣分 CAS 失败（并发扣光）：必须抛错回滚已扣库存
+          throw new RedeemRollback("INSUFFICIENT", "可用积分不足");
+        }
+
+        const redemption = await tx.pointRedemption.create({
+          data: {
+            userId,
+            productId,
+            productName: product.name,
+            priceYuan: product.price,
+            points,
+            level,
+            redeemRate: POINT_REDEEM_RATES[level],
+            clientId: clientId ?? null,
+            stockDeducted: product.redeemStock !== null,
+            reference,
+            recipient: address.recipient,
+            phone: address.phone,
+            address: fullAddress,
+          },
+        });
+
         return {
           ok: true,
-          duplicated: true,
-          points: existing.points,
-          available: balance?.available ?? 0,
-          redemptionId: existing.id,
-        };
-      }
-
-      // 锁定产品行，避免确认价格后管理员并发改价导致按旧价扣分
-      await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${productId} FOR UPDATE`;
-      const product = await tx.product.findUnique({
-        where: { id: productId },
-        select: {
-          id: true,
-          name: true,
-          price: true,
-          pointRedeemable: true,
-          published: true,
-          redeemStock: true,
-        },
-      });
-      if (!product) {
-        return { ok: false, code: "PRODUCT_NOT_FOUND", message: "产品不存在" };
-      }
-      if (!product.pointRedeemable || !product.published) {
-        return { ok: false, code: "PRODUCT_NOT_REDEEMABLE", message: "该产品暂不支持积分兑换" };
-      }
-
-      // 等级以事务内读取为准（外部快照可能已过期：消费升级/退款降档的 TOCTOU 窗口）
-      const user = await tx.user.findUnique({
-        where: { id: userId },
-        select: { membershipLevel: true },
-      });
-      const level: MembershipLevel = user?.membershipLevel ?? "REGULAR";
-
-      const points = giftCostForUser(product.price, level);
-      if (points === null) {
-        return { ok: false, code: "NOT_ELIGIBLE", message: "银卡及以上会员可参与积分兑换" };
-      }
-
-      // 报价一致性：价格/会员等级可能在用户打开确认页后变化。
-      // 不静默按新值扣分，而是让用户重新确认（调用方刷新礼品列表）。
-      if (expectedPoints !== undefined && expectedPoints !== points) {
-        return {
-          ok: false,
-          code: "PRICE_CHANGED",
-          message: `礼品所需积分已变化（当前 ${points} 积分），请刷新后重新确认`,
-          currentPoints: points,
-        };
-      }
-
-      // 收货地址校验（扣分前拦截，地址必须属于当前用户）
-      const address = await tx.userAddress.findUnique({
-        where: { id: addressId },
-        select: { userId: true, recipient: true, phone: true, region: true, detail: true },
-      });
-      if (!address || address.userId !== userId) {
-        return { ok: false, code: "ADDRESS_NOT_FOUND", message: "收货地址不存在，请重新选择" };
-      }
-      const fullAddress = `${address.region} ${address.detail}`;
-
-      // 余额预检（先于库存扣减）：余额不足是常态错误，提前拦截避免白扣限量库存
-      const balance = await tx.pointBalance.findUnique({
-        where: { userId },
-        select: { available: true },
-      });
-      if (!balance || balance.available < points) {
-        return { ok: false, code: "INSUFFICIENT", message: "可用积分不足" };
-      }
-
-      // 限量库存：条件扣减（CAS），命中 0 行即库存不足（未发生变更，可直接返回）；null = 不限量
-      if (product.redeemStock !== null) {
-        const deducted = await tx.product.updateMany({
-          where: { id: productId, redeemStock: { gte: 1 } },
-          data: { redeemStock: { decrement: 1 } },
-        });
-        if (deducted.count === 0) {
-          return { ok: false, code: "OUT_OF_STOCK", message: "该礼品已兑完" };
-        }
-      }
-
-      const result = await redeemPoints(tx, {
-        userId,
-        amount: points,
-        reference,
-        note: `兑换产品：${product.name}`,
-      });
-      if (!result.ok) {
-        // 预检通过但扣分 CAS 失败（并发扣光）：必须抛错回滚已扣库存
-        throw new RedeemRollback("INSUFFICIENT", "可用积分不足");
-      }
-
-      const redemption = await tx.pointRedemption.create({
-        data: {
-          userId,
-          productId,
-          productName: product.name,
-          priceYuan: product.price,
+          duplicated: false,
           points,
-          level,
-          redeemRate: POINT_REDEEM_RATES[level],
-          clientId: clientId ?? null,
-          reference,
-          recipient: address.recipient,
-          phone: address.phone,
-          address: fullAddress,
-        },
-      });
-
-      return {
-        ok: true,
-        duplicated: false,
-        points,
-        available: result.available,
-        redemptionId: redemption.id,
-      };
-    }));
+          available: result.available,
+          redemptionId: redemption.id,
+        };
+      })
+    );
   } catch (error) {
     if (error instanceof RedeemRollback) {
       return { ok: false, code: error.code, message: error.message };
@@ -291,35 +299,35 @@ export async function fulfillRedemption(params: {
         where: { id: redemptionId },
         select: { id: true, status: true, userId: true },
       });
-    if (!redemption) return { ok: false, code: "NOT_FOUND" as const };
-    if (redemption.status !== "PENDING") {
-      return { ok: false, code: "ALREADY_PROCESSED" as const };
-    }
+      if (!redemption) return { ok: false, code: "NOT_FOUND" as const };
+      if (redemption.status !== "PENDING") {
+        return { ok: false, code: "ALREADY_PROCESSED" as const };
+      }
 
-    // 履约前风控：退款/消费额下降可把用户积分冲成负数（超兑债务）。
-    // 负积分时禁止直接发货，需管理员先人工调整/取消兑换，避免“先发货后追债”。
-    // 锁余额行，避免与并发退款检查后写入形成竞态。
-    await tx.$queryRaw`SELECT "id" FROM "PointBalance" WHERE "userId" = ${redemption.userId} FOR UPDATE`;
-    const balance = await tx.pointBalance.findUnique({
-      where: { userId: redemption.userId },
-      select: { available: true },
-    });
-    if (!balance) {
-      return { ok: false, code: "NEGATIVE_BALANCE" as const, available: 0 };
-    }
-    const available = balance.available;
-    if (available < 0) {
-      return { ok: false, code: "NEGATIVE_BALANCE" as const, available };
-    }
+      // 履约前风控：退款/消费额下降可把用户积分冲成负数（超兑债务）。
+      // 负积分时禁止直接发货，需管理员先人工调整/取消兑换，避免“先发货后追债”。
+      // 锁余额行，避免与并发退款检查后写入形成竞态。
+      await tx.$queryRaw`SELECT "id" FROM "PointBalance" WHERE "userId" = ${redemption.userId} FOR UPDATE`;
+      const balance = await tx.pointBalance.findUnique({
+        where: { userId: redemption.userId },
+        select: { available: true },
+      });
+      if (!balance) {
+        return { ok: false, code: "NEGATIVE_BALANCE" as const, available: 0 };
+      }
+      const available = balance.available;
+      if (available < 0) {
+        return { ok: false, code: "NEGATIVE_BALANCE" as const, available };
+      }
 
-    const claimed = await tx.pointRedemption.updateMany({
-      where: { id: redemptionId, status: "PENDING" },
-      data: {
-        status: "FULFILLED",
-        fulfilledAt: new Date(),
-        ...(waybillNo ? { waybillNo, carrier: "SF" } : {}),
-      },
-    });
+      const claimed = await tx.pointRedemption.updateMany({
+        where: { id: redemptionId, status: "PENDING" },
+        data: {
+          status: "FULFILLED",
+          fulfilledAt: new Date(),
+          ...(waybillNo ? { waybillNo, carrier: "SF" } : {}),
+        },
+      });
       return claimed.count > 0
         ? { ok: true as const }
         : { ok: false, code: "ALREADY_PROCESSED" as const };
@@ -328,14 +336,14 @@ export async function fulfillRedemption(params: {
 }
 
 /**
- * 取消 PENDING 兑换时归还限量库存。
- * 仅当商品仍存在且 redeemStock 非 null（限量）时 +1；不限量商品保持 null。
+ * 仅归还本单实际预留过的库存，商品后续切换库存模式不影响历史订单。
  */
 async function releaseRedemptionStock(
   tx: Prisma.TransactionClient,
-  productId: string | null
+  productId: string | null,
+  stockDeducted: boolean
 ): Promise<void> {
-  if (!productId) return;
+  if (!productId || !stockDeducted) return;
   await tx.product.updateMany({
     where: { id: productId, redeemStock: { not: null } },
     data: { redeemStock: { increment: 1 } },
@@ -365,26 +373,27 @@ export async function cancelRedemption(params: {
           status: true,
           productName: true,
           productId: true,
+          stockDeducted: true,
         },
       });
-    if (!redemption) return { ok: false, code: "NOT_FOUND" };
-    if (redemption.status !== "PENDING") return { ok: false, code: "ALREADY_PROCESSED" };
+      if (!redemption) return { ok: false, code: "NOT_FOUND" };
+      if (redemption.status !== "PENDING") return { ok: false, code: "ALREADY_PROCESSED" };
 
-    const cancelNote = note?.trim() || null;
-    const claimed = await tx.pointRedemption.updateMany({
-      where: { id: redemptionId, status: "PENDING" },
-      data: { status: "CANCELLED", cancelledAt: new Date(), cancelNote },
-    });
-    if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" };
+      const cancelNote = note?.trim() || null;
+      const claimed = await tx.pointRedemption.updateMany({
+        where: { id: redemptionId, status: "PENDING" },
+        data: { status: "CANCELLED", cancelledAt: new Date(), cancelNote },
+      });
+      if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" };
 
-    await releaseRedemptionStock(tx, redemption.productId);
+      await releaseRedemptionStock(tx, redemption.productId, redemption.stockDeducted);
 
-    await adjustPoints(tx, {
-      userId: redemption.userId,
-      amount: redemption.points,
-      reference: `cancel:${redemptionId}`,
-      note: cancelNote || `兑换取消退还：${redemption.productName}`,
-    });
+      await adjustPoints(tx, {
+        userId: redemption.userId,
+        amount: redemption.points,
+        reference: `cancel:${redemptionId}`,
+        note: cancelNote || `兑换取消退还：${redemption.productName}`,
+      });
 
       return { ok: true, points: redemption.points };
     })
@@ -411,7 +420,6 @@ export async function updateRedemptionWaybill(params: {
   });
   return { ok: true };
 }
-
 
 /**
  * Cron���Զ�ȡ����ʱδ��Լ�Ķһ������˻����ֲ��ͷ�������档

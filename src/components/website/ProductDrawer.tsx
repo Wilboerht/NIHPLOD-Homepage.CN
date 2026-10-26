@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, ShoppingBag, Store } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { XiaohongshuLink } from "@/components/website";
 import { getPlatformIcon } from "./PlatformIcons";
+import { buildPurchaseJump } from "@/lib/purchase-jump";
 
 /**
  * 购买链接类型
@@ -126,6 +127,7 @@ export function ProductDrawer({
 }: ProductDrawerProps) {
   const mounted = useMounted();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"description" | "ingredients" | "usage">(
     "description"
@@ -136,6 +138,20 @@ export function ProductDrawer({
   const previousFocusRef = useRef<HTMLElement | null>(null);
   // 无障碍关联 id（桌面/移动同组件渲染，useId 保证唯一）
   const a11yId = useId();
+
+  const handlePurchaseClick = async (event: { preventDefault: () => void }, link: PurchaseLink) => {
+    const jump = link.jump ?? buildPurchaseJump(link);
+    if (jump.type !== "miniprogram") return;
+    event.preventDefault();
+    const text = jump.shortLink || [jump.appId, jump.path].filter(Boolean).join(" ");
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedLinkId(link.id);
+    } catch {
+      window.open(link.url, "_blank", "noopener,noreferrer");
+    }
+  };
 
   // 切换 Tab 时重置滚动位置
   const handleTabChange = (tab: "description" | "ingredients" | "usage") => {
@@ -527,6 +543,7 @@ export function ProductDrawer({
                                   <a
                                     key={link.id}
                                     href={link.url}
+                                    onClick={(event) => void handlePurchaseClick(event, link)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center gap-2 text-[14px] text-brand-charcoal transition-opacity hover:opacity-60"
@@ -535,7 +552,11 @@ export function ProductDrawer({
                                       platform={link.platform}
                                       platformKey={link.platformKey}
                                     />
-                                    <span>{link.platform}</span>
+                                    <span>
+                                      {copiedLinkId === link.id
+                                        ? "已复制小程序跳转信息"
+                                        : link.platform}
+                                    </span>
                                   </a>
                                 ))
                               ) : (
@@ -719,6 +740,7 @@ export function ProductDrawer({
                             <a
                               key={link.id}
                               href={link.url}
+                              onClick={(event) => void handlePurchaseClick(event, link)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-brand-charcoal"
@@ -727,7 +749,9 @@ export function ProductDrawer({
                                 platform={link.platform}
                                 platformKey={link.platformKey}
                               />
-                              <span>{link.platform}</span>
+                              <span>
+                                {copiedLinkId === link.id ? "已复制小程序跳转信息" : link.platform}
+                              </span>
                             </a>
                           ))}
                       </div>

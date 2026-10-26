@@ -9,13 +9,20 @@ import * as XLSX from "xlsx";
 vi.mock("@/lib/prisma", () => {
   const prisma: Record<string, unknown> = {
     user: { findMany: vi.fn() },
-    spentImportBatch: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
-    spentImportRow: { update: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
+    spentImportBatch: {
+      create: vi.fn(),
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    spentImportRow: { update: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     spentAdjustmentApplication: { findMany: vi.fn() },
     spentSyncRecord: { updateMany: vi.fn(), deleteMany: vi.fn() },
   };
   prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
   prisma.$executeRaw = vi.fn().mockResolvedValue([]);
+  prisma.$queryRaw = vi.fn().mockResolvedValue([{ id: "user-1" }]);
   return { prisma, default: prisma };
 });
 
@@ -44,6 +51,7 @@ const mockBatchCreate = prisma.spentImportBatch.create as ReturnType<typeof vi.f
 const mockBatchFindFirst = prisma.spentImportBatch.findFirst as ReturnType<typeof vi.fn>;
 const mockBatchFindUnique = prisma.spentImportBatch.findUnique as ReturnType<typeof vi.fn>;
 const mockBatchUpdate = prisma.spentImportBatch.update as ReturnType<typeof vi.fn>;
+const mockBatchUpdateMany = prisma.spentImportBatch.updateMany as ReturnType<typeof vi.fn>;
 const mockRowUpdate = prisma.spentImportRow.update as ReturnType<typeof vi.fn>;
 const mockRowFindFirst = prisma.spentImportRow.findFirst as ReturnType<typeof vi.fn>;
 const mockRowFindMany = prisma.spentImportRow.findMany as ReturnType<typeof vi.fn>;
@@ -168,8 +176,7 @@ describe("parseImportWorkbook", () => {
   });
 
   it("CSV 文件可解析，并支持 GBK 编码", () => {
-    const text =
-      "手机号,金额（元）,消费日期,订单号/小票号\n13800138000,100,2026-01-15,CSV001\n";
+    const text = "手机号,金额（元）,消费日期,订单号/小票号\n13800138000,100,2026-01-15,CSV001\n";
     const utf8 = parseImportWorkbook(Buffer.from(text, "utf-8"), "import.csv");
     expect(utf8.ok).toBe(true);
     if (!utf8.ok) return;
@@ -258,9 +265,7 @@ describe("parseImportWorkbook", () => {
 describe("previewImportRows", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserFindMany.mockResolvedValue([
-      { id: "user-1", phone: "13800138000", status: "ACTIVE" },
-    ]);
+    mockUserFindMany.mockResolvedValue([{ id: "user-1", phone: "13800138000", status: "ACTIVE" }]);
     (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     mockRowFindMany.mockResolvedValue([]);
   });
@@ -323,9 +328,7 @@ describe("previewImportRows", () => {
     (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       { userId: "user-1", orderNo: "APPROVED-1", status: "APPROVED" },
     ]);
-    mockRowFindMany.mockResolvedValue([
-      { userId: "user-1", orderNo: "IMPORTED-1" },
-    ]);
+    mockRowFindMany.mockResolvedValue([{ userId: "user-1", orderNo: "IMPORTED-1" }]);
 
     const baseRow = {
       rowIndex: 2,
@@ -377,21 +380,26 @@ describe("previewImportRows", () => {
 describe("executeImportBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserFindMany.mockResolvedValue([
-      { id: "user-1", phone: "13800138000", status: "ACTIVE" },
-    ]);
+    mockUserFindMany.mockResolvedValue([{ id: "user-1", phone: "13800138000", status: "ACTIVE" }]);
     (prisma.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     mockRowFindMany.mockResolvedValue([]);
     mockBatchFindFirst.mockResolvedValue(null);
     mockBatchCreate.mockImplementation(
-      (args: { data: { rows: { create: Record<string, unknown>[] } } }) => ({
+      (args: { data: { leaseToken: string; rows: { create: Record<string, unknown>[] } } }) => ({
         id: "batch-1",
+        leaseToken: args.data.leaseToken,
         rows: args.data.rows.create.map((row, index) => ({ ...row, id: `row-${index + 1}` })),
       })
     );
+    mockBatchFindUnique.mockImplementation(() => ({
+      status: "PROCESSING",
+      undoneAt: null,
+      leaseToken: mockBatchCreate.mock.calls[0][0].data.leaseToken,
+    }));
     mockRowUpdate.mockResolvedValue({});
     mockRowFindFirst.mockResolvedValue(null);
     mockBatchUpdate.mockResolvedValue({});
+    mockBatchUpdateMany.mockResolvedValue({ count: 1 });
     mockSyncRecordUpdateMany.mockResolvedValue({ count: 1 });
   });
 
@@ -477,9 +485,9 @@ describe("executeImportBatch", () => {
       }),
       include: { rows: true },
     });
-    expect(mockBatchUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "batch-1" },
+        where: expect.objectContaining({ id: "batch-1" }),
         data: expect.objectContaining({
           status: "COMPLETED",
           successRows: 1,
@@ -553,27 +561,20 @@ describe("executeImportBatch", () => {
     expect(result.successRows).toBe(0);
     expect(result.totalAmount).toBe(0);
     expect(result.rows[0].status).toBe("DUPLICATE");
-    expect(mockBatchUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: "FAILED" }),
       })
     );
   });
 
-  it("并发订单唯一冲突：自动冲正并按重复处理", async () => {
-    mockApplySync
-      .mockResolvedValueOnce({
-        totalSpent: 1000,
-        membershipLevel: "SILVER",
-        appliedDelta: 1000,
-        duplicated: false,
-      })
-      .mockResolvedValueOnce({
-        totalSpent: 0,
-        membershipLevel: "REGULAR",
-        appliedDelta: -1000,
-        duplicated: false,
-      });
+  it("行状态写入冲突：事务整体失败，不做二次冲正", async () => {
+    mockApplySync.mockResolvedValue({
+      totalSpent: 1000,
+      membershipLevel: "SILVER",
+      appliedDelta: 1000,
+      duplicated: false,
+    });
     mockRowUpdate
       .mockRejectedValueOnce(Object.assign(new Error("unique"), { code: "P2002" }))
       .mockResolvedValue({});
@@ -586,11 +587,9 @@ describe("executeImportBatch", () => {
       adminId: "admin-1",
     });
 
-    expect(result.duplicateRows).toBe(1);
-    expect(mockApplySync).toHaveBeenCalledTimes(2);
-    expect(mockApplySync).toHaveBeenLastCalledWith(
-      expect.objectContaining({ userId: "user-1", spentDelta: -1000 })
-    );
+    expect(result.errorRows).toBe(1);
+    expect(result.rows[0].status).toBe("ERROR");
+    expect(mockApplySync).toHaveBeenCalledTimes(1);
   });
 
   it("入账异常：行标记 ERROR，不影响汇总", async () => {

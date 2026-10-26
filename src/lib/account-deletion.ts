@@ -27,7 +27,8 @@ import { quiesceUserSessions } from "@/lib/user-status";
 import { createAuditLog } from "@/lib/audit";
 import { sendAccountDeletedNotification, sendAccountDeletionReminder } from "@/lib/sms";
 import { hashIdentifier } from "@/lib/auth-security";
-import { deleteOSSFiles } from "@/lib/ali-oss";
+import { deleteOSSFiles, deletePrivateOSSObject } from "@/lib/ali-oss";
+import { deleteUploadedFile } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
 import { DELETION_STATUS } from "@/lib/account-deletion-requests";
 
@@ -130,7 +131,10 @@ export async function executeAccountDeletion(
         },
       });
       if (finalized.count === 0) return "skipped";
-      apiConsole.warn("[AccountDeletion] 用户不存在或已注销，申请直接置完成", { requestId, userId });
+      apiConsole.warn("[AccountDeletion] 用户不存在或已注销，申请直接置完成", {
+        requestId,
+        userId,
+      });
       return "completed";
     }
 
@@ -153,20 +157,27 @@ export async function executeAccountDeletion(
     let avatarPurgeFailed = false;
     if (user.avatar) {
       try {
-        // deleteOSSFiles 接受完整 URL 或 objectName；站内相对路径（/uploads/...）去掉前导斜杠
-        const avatarRef = user.avatar.startsWith("http")
-          ? user.avatar
-          : user.avatar.replace(/^\/+/, "");
-        await deleteOSSFiles([avatarRef]);
+        if (user.avatar.startsWith("/uploads/")) await deleteUploadedFile(user.avatar);
+        else await deleteOSSFiles([user.avatar]);
       } catch (ossError) {
         avatarPurgeFailed = true;
-        apiConsole.warn("[AccountDeletion] 头像 OSS 删除失败（不阻断注销）:", ossError);
+        apiConsole.warn("[AccountDeletion] 头像删除失败（不阻断注销）:", ossError);
       }
+    }
+
+    const proofApplications = await prisma.spentAdjustmentApplication.findMany({
+      where: { userId, images: { isEmpty: false } },
+      select: { images: true },
+    });
+    for (const image of proofApplications.flatMap((item) => item.images)) {
+      if (image.startsWith("spent-adjustments/")) await deletePrivateOSSObject(image);
+      else await deleteUploadedFile(image);
     }
 
     // 5. 事务：解绑第三方身份 + 匿名化 User + 清理 PII 衍生数据
     // 注意：User 行只 update 不 delete（财务表 Restrict 外键 + 法定留存）
     await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
       // 第三方身份全量解绑（防止注销后被第三方回调重新定位/激活）
       await tx.externalIdentity.deleteMany({ where: { userId } });
       // PII 衍生数据：密码历史、短信验证码、登录尝试（userId 维度）、收货地址簿、
@@ -189,6 +200,10 @@ export async function executeAccountDeletion(
       await tx.userAddress.deleteMany({ where: { userId } });
       await tx.webhookDeliveryFailure.deleteMany({ where: { userId } });
       await tx.refreshToken.deleteMany({ where: { userId } });
+      await tx.spentAdjustmentApplication.updateMany({
+        where: { userId },
+        data: { images: [], note: null },
+      });
       // SSO 授权同意全量撤销（与管理端删除路径同口径）
       await tx.userConsent.updateMany({
         where: { userId, revokedAt: null },
@@ -200,7 +215,7 @@ export async function executeAccountDeletion(
       // 但循环仍按旧快照归还库存，造成同一单库存归还两次。
       const pendingRedemptions = await tx.pointRedemption.findMany({
         where: { userId, status: "PENDING" },
-        select: { id: true, productId: true },
+        select: { id: true, productId: true, stockDeducted: true },
       });
       for (const redemption of pendingRedemptions) {
         const claimed = await tx.pointRedemption.updateMany({
@@ -212,7 +227,7 @@ export async function executeAccountDeletion(
           },
         });
         if (claimed.count === 0) continue;
-        if (!redemption.productId) continue;
+        if (!redemption.productId || !redemption.stockDeducted) continue;
         await tx.product.updateMany({
           where: { id: redemption.productId, redeemStock: { not: null } },
           data: { redeemStock: { increment: 1 } },
@@ -287,6 +302,7 @@ export async function executeAccountDeletion(
       data: {
         status: DELETION_STATUS.COMPLETED,
         completedAt: new Date(),
+        reason: null,
         lockedAt: null,
         leaseToken: null,
       },

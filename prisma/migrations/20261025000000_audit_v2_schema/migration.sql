@@ -1,4 +1,4 @@
-﻿-- 瀹¤ v2锛氬垎绫?椋庨櫓/鏉ユ簮/鍘熷洜銆佸搱甯岄摼銆佸綊妗ｉ敋鐐广€佸鍑轰换鍔°€佹硶寰嬩繚鐣欍€佸埌鏈熸竻鐞嗕换鍔?
+-- 瀹¤ v2锛氬垎绫?椋庨櫓/鏉ユ簮/鍘熷洜銆佸搱甯岄摼銆佸綊妗ｉ敋鐐广€佸鍑轰换鍔°€佹硶寰嬩繚鐣欍€佸埌鏈熸竻鐞嗕换鍔?
 ALTER TABLE "AuditLog"
   ADD COLUMN IF NOT EXISTS "category" TEXT,
   ADD COLUMN IF NOT EXISTS "riskLevel" TEXT,

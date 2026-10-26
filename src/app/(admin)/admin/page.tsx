@@ -74,8 +74,7 @@ export default async function AdminDashboard() {
   }
 
   const canMonitor =
-    hasAdminPermission(admin, "audit:read") &&
-    hasAdminPermission(admin, "audit:sensitive:read");
+    hasAdminPermission(admin, "audit:read") && hasAdminPermission(admin, "audit:sensitive:read");
 
   const [governanceResult, monitorResult] = await Promise.all([
     admin.role === "owner"
@@ -297,19 +296,18 @@ export default async function AdminDashboard() {
         </>
       )}
 
-      {/* 治理与监控：无待办/无风险时默认收起，有异常自动展开 */}
+      {/* 治理与监控：始终默认收起，仅在摘要中展示关键计数 */}
       {governanceData && <OwnerGovernanceCard data={governanceData} />}
 
       {canMonitor && <SecurityMonitor data={monitorData} error={monitorError} />}
 
-      {/* 最近留言 + SSO 概览：SSO 默认收起，不抢占首屏 */}
+      {/* 最近留言 + SSO 概览：始终默认收起，不抢占首屏 */}
       {(showRecentMessages || ssoStats) && (
         <div className={cn("grid grid-cols-1 gap-4", twoColumnBottom && "lg:grid-cols-3")}>
           {showRecentMessages && (
             <CollapsiblePanel
               title="最近留言"
               summary={`未读 ${stats?.unreadMessages ?? 0} · 最近 ${recentMessages?.length ?? 0} 条`}
-              defaultOpen={(stats?.unreadMessages ?? 0) > 0}
               className={cn(twoColumnBottom && "lg:col-span-2")}
             >
               <div className="mb-2 flex justify-end">

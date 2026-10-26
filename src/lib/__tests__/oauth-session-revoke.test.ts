@@ -55,9 +55,7 @@ describe("revokeOAuthClientSessions", () => {
       data: { revokedAt: expect.any(Date) },
     });
     expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-1", "logout");
-    expect(mockSendBackchannel).toHaveBeenCalledWith("user-1", ["client-1"], {
-      sids: { "client-1": "sid-1" },
-    });
+    expect(mockSendBackchannel).toHaveBeenCalledWith("user-1", ["client-1"]);
   });
 
   it("无活跃会话时幂等：不广播，仍撤销该 client 的 refresh token（可能残留有效 token）", async () => {

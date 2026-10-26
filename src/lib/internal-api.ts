@@ -229,7 +229,7 @@ export function createSignedInternalRequestHeaders(
     timestamp,
     nonce,
     bodyHash,
-    useQueryBinding ? options?.query ?? "" : undefined
+    useQueryBinding ? (options?.query ?? "") : undefined
   );
 
   return {
@@ -306,7 +306,10 @@ export function verifyInternalApiSignature(
   for (const candidate of candidates) {
     try {
       const expectedBuf = Buffer.from(candidate.signature, "hex");
-      if (signatureBuf.length === expectedBuf.length && timingSafeEqual(signatureBuf, expectedBuf)) {
+      if (
+        signatureBuf.length === expectedBuf.length &&
+        timingSafeEqual(signatureBuf, expectedBuf)
+      ) {
         if (candidate.legacy && !legacySignatureWarned) {
           legacySignatureWarned = true;
           apiConsole.warn(

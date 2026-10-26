@@ -6,7 +6,7 @@
  * 内容与 /api/oauth/.well-known/openid-configuration 完全一致（共用 buildOpenIdConfiguration），
  * 历史路径继续保留以兼容自家 SDK 硬编码地址。
  *
- * 注意：middleware.ts 中 isApiPath 已将 "/.well-known/" 视为 API 路径，
+ * 注意：proxy.ts 中 isApiPath 已将 "/.well-known/" 视为 API 路径，
  * 不会被 CSP nonce 注入或后台认证逻辑拦截，无需额外 matcher 配置。
  */
 import { NextRequest, NextResponse } from "next/server";

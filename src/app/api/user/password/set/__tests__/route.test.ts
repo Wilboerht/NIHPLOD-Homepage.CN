@@ -23,7 +23,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/sms", () => ({
-  verifyCode: vi.fn(),
+  verifySmsCodeWithLimit: vi.fn(),
   recordSmsCodeFailure: vi.fn().mockResolvedValue(undefined),
   sendPasswordChangedNotification: vi.fn().mockResolvedValue(undefined),
   SMS_CODE_MAX_ATTEMPTS: 5,
@@ -68,7 +68,7 @@ vi.mock("@/lib/points", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { verifyCode, recordSmsCodeFailure } from "@/lib/sms";
+import { verifySmsCodeWithLimit, recordSmsCodeFailure } from "@/lib/sms";
 import { rateLimit } from "@/lib/ratelimit";
 import { invalidateProfileCache } from "@/lib/points";
 import { POST } from "@/app/api/user/password/set/route";
@@ -78,7 +78,7 @@ const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 const mockSmsFindFirst = prisma.smsCode.findFirst as ReturnType<typeof vi.fn>;
 const mockSmsUpdateMany = prisma.smsCode.updateMany as ReturnType<typeof vi.fn>;
 const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
-const mockVerifyCode = verifyCode as ReturnType<typeof vi.fn>;
+const mockVerifyCode = verifySmsCodeWithLimit as ReturnType<typeof vi.fn>;
 const mockRecordSmsCodeFailure = recordSmsCodeFailure as ReturnType<typeof vi.fn>;
 
 function createRequest(body: unknown): NextRequest {
@@ -108,7 +108,7 @@ describe("POST /api/user/password/set 验证码防爆破", () => {
 
     expect(res.status).toBe(400);
     expect(data.error.code).toBe("CODE_INVALID");
-    expect(mockRecordSmsCodeFailure).toHaveBeenCalledWith("sms-1");
+    expect(mockVerifyCode).toHaveBeenCalledWith("13800138000", "123456", "reset", "sms-1");
     // 不核销验证码
     expect(mockSmsUpdateMany).not.toHaveBeenCalled();
   });

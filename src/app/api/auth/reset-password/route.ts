@@ -13,17 +13,12 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { rateLimit, getClientIP as getRateLimitClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { checkUserStatus } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import {
-  verifyCode,
-  recordSmsCodeFailure,
+  verifySmsCodeWithLimit,
   sendPasswordChangedNotification,
   SMS_CODE_MAX_ATTEMPTS,
 } from "@/lib/sms";
@@ -141,9 +136,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!verifyCode(phone, code, "reset", smsCode.codeHash)) {
-      // 单码失败计数：达到上限自动作废该验证码（防爆破，与账户锁定叠加）
-      await recordSmsCodeFailure(smsCode.id);
+    if (!(await verifySmsCodeWithLimit(phone, code, "reset", smsCode.id))) {
       // 验证码类失败不写入 LoginAttempt（不计入账户锁定池，与 register 口径一致）：
       // 防止攻击者无需验证码即可通过连发错误验证码锁定受害者账号（锁号 DoS）
       return NextResponse.json(

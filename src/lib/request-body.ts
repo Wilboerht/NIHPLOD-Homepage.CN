@@ -79,10 +79,7 @@ async function readBytes(request: Request, maxBytes: number): Promise<Uint8Array
   return merged;
 }
 
-export async function readTextBody(
-  request: Request,
-  maxBytes: number
-): Promise<string> {
+export async function readTextBody(request: Request, maxBytes: number): Promise<string> {
   const bytes = await readBytes(request, maxBytes);
   return new TextDecoder().decode(bytes);
 }
@@ -92,10 +89,7 @@ export function readInternalApiBody(request: Request): Promise<string> {
   return readTextBody(request, 1024 * 1024);
 }
 
-export async function readJsonBody<T = unknown>(
-  request: Request,
-  maxBytes: number
-): Promise<T> {
+export async function readJsonBody<T = unknown>(request: Request, maxBytes: number): Promise<T> {
   const text = await readTextBody(request, maxBytes);
   return JSON.parse(text) as T;
 }
@@ -117,10 +111,7 @@ export async function readJsonBodyOrDefault<T>(
   }
 }
 
-export async function readFormDataBody(
-  request: Request,
-  maxBytes: number
-): Promise<FormData> {
+export async function readFormDataBody(request: Request, maxBytes: number): Promise<FormData> {
   const bytes = await readBytes(request, maxBytes);
   const contentType = request.headers.get("content-type");
   if (!contentType) {

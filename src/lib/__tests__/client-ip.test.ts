@@ -199,8 +199,6 @@ describe("normalizeRateLimitIdentifier", () => {
   });
 
   it("sms-ip 复合 key 也归一化", () => {
-    expect(normalizeRateLimitIdentifier("sms-ip:2001:DB8::1")).toBe(
-      "sms-ip:2001:db8:0:0::/64"
-    );
+    expect(normalizeRateLimitIdentifier("sms-ip:2001:DB8::1")).toBe("sms-ip:2001:db8:0:0::/64");
   });
 });

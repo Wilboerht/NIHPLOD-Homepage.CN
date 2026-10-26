@@ -591,22 +591,22 @@ function OAuthClientsPage() {
     if (Object.keys(nextErrors).length > 0) return;
 
     setSaving(true);
-      try {
-        const data = await withStepUp(() =>
-          apiPost<CreateClientResponse>("/api/admin/oauth-clients", {
-            name: formName.trim(),
-            redirectUris: uriValidation.parsed,
-            postLogoutRedirectUris: postLogoutValidation.parsed,
-            scopes,
-            isPublic: formIsPublic,
-            backchannelLogoutUri: formBackchannelUri.trim() || undefined,
-            webhookUri: formWebhookUri.trim() || undefined,
-            codeTtlSeconds: Number(formCodeTtl),
-            accessTokenTtlSeconds: Number(formAccessTokenTtl),
-          })
-        );
-        if (data === null) return;
-        setNewSecret(data.plainSecret);
+    try {
+      const data = await withStepUp(() =>
+        apiPost<CreateClientResponse>("/api/admin/oauth-clients", {
+          name: formName.trim(),
+          redirectUris: uriValidation.parsed,
+          postLogoutRedirectUris: postLogoutValidation.parsed,
+          scopes,
+          isPublic: formIsPublic,
+          backchannelLogoutUri: formBackchannelUri.trim() || undefined,
+          webhookUri: formWebhookUri.trim() || undefined,
+          codeTtlSeconds: Number(formCodeTtl),
+          accessTokenTtlSeconds: Number(formAccessTokenTtl),
+        })
+      );
+      if (data === null) return;
+      setNewSecret(data.plainSecret);
       setShowNewSecret(false);
       setNewSecretSaved(false);
       toast.success("Client 创建成功");
@@ -1168,7 +1168,10 @@ if (!payload) {
                     <span className="block truncate" title={c.redirectUris.join(", ")}>
                       {c.redirectUris[0] || "-"}
                       {c.redirectUris.length > 1 && (
-                        <span className="text-brand-charcoal/50"> +{c.redirectUris.length - 1}</span>
+                        <span className="text-brand-charcoal/50">
+                          {" "}
+                          +{c.redirectUris.length - 1}
+                        </span>
                       )}
                     </span>
                   </td>

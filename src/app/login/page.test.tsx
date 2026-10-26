@@ -44,8 +44,7 @@ const mockApiPost = apiPost as unknown as ReturnType<typeof vi.fn>;
 const mockUseSearchParams = useSearchParams as unknown as ReturnType<typeof vi.fn>;
 const mockUseAuth = useAuth as unknown as ReturnType<typeof vi.fn>;
 
-const SMS_UNAVAILABLE_HINT =
-  "短信服务暂不可用，请使用密码登录或联系客服（service@nihplod.cn）";
+const SMS_UNAVAILABLE_HINT = "短信服务暂不可用，请使用密码登录或联系客服（service@nihplod.cn）";
 
 function setupLoggedOut() {
   mockUseAuth.mockReturnValue({ user: null, isLoading: false, refreshUser: mockRefreshUser });
@@ -142,9 +141,7 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "Passw0rd" } });
     fireEvent.submit(document.getElementById("pc-login-form")!);
 
-    expect(
-      await screen.findByText("请先阅读并同意《用户协议》和《隐私政策》")
-    ).toBeInTheDocument();
+    expect(await screen.findByText("请先阅读并同意《用户协议》和《隐私政策》")).toBeInTheDocument();
     expect(mockApiPost).not.toHaveBeenCalled();
   });
 

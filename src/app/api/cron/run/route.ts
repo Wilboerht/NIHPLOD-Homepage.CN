@@ -80,7 +80,10 @@ export async function POST(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json(
-      { success: false, error: { code: "CRON_SECRET_NOT_CONFIGURED", message: "CRON_SECRET 未配置" } },
+      {
+        success: false,
+        error: { code: "CRON_SECRET_NOT_CONFIGURED", message: "CRON_SECRET 未配置" },
+      },
       { status: 500 }
     );
   }
@@ -148,7 +151,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     apiConsole.error("[CronRun] 调度执行异常（可能超时）:", error);
     return NextResponse.json(
-      { success: false, error: { code: "CRON_RUN_FAILED", message: "调度执行异常，请查看服务端日志" } },
+      {
+        success: false,
+        error: { code: "CRON_RUN_FAILED", message: "调度执行异常，请查看服务端日志" },
+      },
       { status: 500 }
     );
   }

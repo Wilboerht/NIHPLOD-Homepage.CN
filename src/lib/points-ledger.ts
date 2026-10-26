@@ -280,39 +280,24 @@ export async function expirePoints(
     where: { userId },
     select: { available: true, frozen: true },
   });
-  const availableDeduct = Math.min(availableExpired, Math.max(0, balance?.available ?? 0));
   const frozenDeduct = Math.min(frozenExpired, balance?.frozen ?? 0);
 
-  const deducted = availableDeduct + frozenDeduct;
-  if (deducted > 0) {
-    await tx.pointBalance.upsert({
-      where: { userId },
-      create: { userId },
-      update: {
-        ...(availableDeduct > 0 ? { available: { decrement: availableDeduct } } : {}),
-        ...(frozenDeduct > 0 ? { frozen: { decrement: frozenDeduct } } : {}),
-      },
-    });
-  }
+  await tx.pointBalance.upsert({
+    where: { userId },
+    create: { userId, available: -availableExpired },
+    update: {
+      ...(availableExpired > 0 ? { available: { decrement: availableExpired } } : {}),
+      ...(frozenDeduct > 0 ? { frozen: { decrement: frozenDeduct } } : {}),
+    },
+  });
 
-  // 只记实际扣减额：余额为负（超兑债务）时过期不减免债务，
-  // 记 -total 会让用户账单出现“过期扣了 200、余额却没变”的矛盾记录。
-  // 全部为债务抵扣时无余额变动，不产生流水；发放流水的 remaining 已清零可供审计。
-  if (deducted <= 0) return total;
-
-  const debtOffset = total - deducted;
   await tx.pointLedger.create({
     data: {
       userId,
       type: "EXPIRE",
-      amount: -deducted,
-      // 时间戳 reference：同一用户同一天可能有多批不同时刻到期的流水（创建时间不同），
-      // 每次过期处理独立记账，避免同参考键唯一冲突
+      amount: -total,
       reference: `expire:${userId}:${now.getTime()}`,
-      note:
-        debtOffset > 0
-          ? `积分过期（6 个月有效期；其中 ${debtOffset} 分用于抵扣超兑债务）`
-          : "积分过期（6 个月有效期）",
+      note: "积分过期（6 个月有效期）",
     },
   });
   return total;
@@ -689,10 +674,7 @@ export async function grantBirthdayRewards(): Promise<{ rewarded: number; skippe
       skipped += 1;
       continue;
     }
-    if (
-      user.lastBirthdayRewardYear !== null &&
-      user.lastBirthdayRewardYear >= occasionYear
-    ) {
+    if (user.lastBirthdayRewardYear !== null && user.lastBirthdayRewardYear >= occasionYear) {
       skipped += 1;
       continue;
     }

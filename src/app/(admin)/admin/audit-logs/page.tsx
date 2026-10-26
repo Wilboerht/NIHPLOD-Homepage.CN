@@ -192,7 +192,10 @@ function DetailDiff({ detail }: { detail: Record<string, unknown> | null | undef
             {changes.map((change, index) => {
               const item = change as { field?: string; before?: unknown; after?: unknown };
               return (
-                <tr key={`${item.field ?? "field"}-${index}`} className="border-t border-brand-charcoal/5">
+                <tr
+                  key={`${item.field ?? "field"}-${index}`}
+                  className="border-t border-brand-charcoal/5"
+                >
                   <td className="px-3 py-2 font-mono">{item.field ?? "-"}</td>
                   <td className="max-w-[240px] break-all px-3 py-2 text-red-700">
                     {JSON.stringify(item.before ?? null)}
@@ -326,33 +329,45 @@ function AuditLogsContent() {
   const fetchDetail = useCallback(
     async (log: AuditLogItem) => {
       setDetailLoading(true);
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        try {
-          const data = await apiGet<AuditLogItem>(`/api/admin/audit-logs/${log.id}`);
-          setDetail(data);
-          break;
-        } catch (error) {
-          if (attempt === 0 && isTotpRequired(error)) {
-            const verified = await requireTotp(
-              error && typeof error === "object" && "code" in error
-                ? String((error as { code?: string }).code)
-                : undefined
-            );
-            if (verified) continue;
+      try {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            const data = await apiGet<AuditLogItem>(`/api/admin/audit-logs/${log.id}`);
+            setDetail(data);
+            setDetailOpen(true);
+            return;
+          } catch (error) {
+            if (isTotpRequired(error)) {
+              if (attempt === 0) {
+                const verified = await requireTotp(
+                  error && typeof error === "object" && "code" in error
+                    ? String((error as { code?: string }).code)
+                    : undefined
+                );
+                if (verified) continue;
+              }
+              // 用户取消二次验证，或验证后服务端仍要求 TOTP：
+              // 不打开详情弹窗，也不回退展示列表摘要。
+              return;
+            }
+            toast.error(error instanceof Error ? error.message : "加载详情失败");
+            setDetail(log);
+            setDetailOpen(true);
+            return;
           }
-          toast.error(error instanceof Error ? error.message : "加载详情失败");
-          setDetail(log);
-          break;
         }
+      } finally {
+        setDetailLoading(false);
       }
-      setDetailLoading(false);
     },
     [requireTotp, toast]
   );
 
   const openDetail = (log: AuditLogItem) => {
-    setDetail(log);
-    setDetailOpen(true);
+    // 详情内容必须等 TOTP 验证通过（或非 TOTP 错误回退）后再打开，
+    // 否则取消验证时会把列表摘要留在弹窗里。
+    setDetail(null);
+    setDetailOpen(false);
     void fetchDetail(log);
   };
 
@@ -367,18 +382,18 @@ function AuditLogsContent() {
 
   const hasFilters = Boolean(
     actorType !== "ADMIN" ||
-      action ||
-      targetType ||
-      outcome ||
-      riskLevel ||
-      category ||
-      legalHold ||
-      search ||
-      targetId ||
-      requestId ||
-      userId ||
-      startDate ||
-      endDate
+    action ||
+    targetType ||
+    outcome ||
+    riskLevel ||
+    category ||
+    legalHold ||
+    search ||
+    targetId ||
+    requestId ||
+    userId ||
+    startDate ||
+    endDate
   );
 
   const columns: Column<AuditLogItem>[] = [
@@ -437,7 +452,10 @@ function AuditLogsContent() {
           <p className="truncate text-sm text-brand-charcoal/80">
             {TARGET_TYPE_LABELS[log.targetType] || log.targetType}
           </p>
-          <p className="truncate font-mono text-xs text-brand-charcoal/55" title={log.targetId || undefined}>
+          <p
+            className="truncate font-mono text-xs text-brand-charcoal/55"
+            title={log.targetId || undefined}
+          >
             {log.targetLabel || log.targetId || "-"}
           </p>
         </div>
@@ -559,7 +577,10 @@ function AuditLogsContent() {
                 aria-label="按风险筛选"
                 options={[
                   { value: "", label: "全部风险" },
-                  ...AUDIT_RISK_LEVELS.map((level) => ({ value: level, label: RISK_META[level].label })),
+                  ...AUDIT_RISK_LEVELS.map((level) => ({
+                    value: level,
+                    label: RISK_META[level].label,
+                  })),
                 ]}
                 value={riskLevel}
                 onChange={(e) => updateParams({ riskLevel: e.target.value })}
@@ -706,10 +727,16 @@ function AuditLogsContent() {
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
                 <span className="truncate">
-                  操作人：{log.actorName || log.admin?.name || ACTOR_TYPE_LABELS[log.actorType ?? "SYSTEM"] || "-"}
+                  操作人：
+                  {log.actorName ||
+                    log.admin?.name ||
+                    ACTOR_TYPE_LABELS[log.actorType ?? "SYSTEM"] ||
+                    "-"}
                 </span>
                 <span className="truncate">IP：{log.ipAddress || "-"}</span>
-                <span className="col-span-2 truncate">目标：{log.targetLabel || log.targetId || "-"}</span>
+                <span className="col-span-2 truncate">
+                  目标：{log.targetLabel || log.targetId || "-"}
+                </span>
               </div>
               <div className="flex justify-end border-t border-brand-charcoal/10 pt-2">
                 <Button variant="ghost" size="sm" onClick={() => openDetail(log)}>
@@ -764,7 +791,10 @@ function AuditLogsContent() {
                   <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
                     <dt className="mb-1 text-brand-charcoal/65">操作人</dt>
                     <dd className="font-medium">
-                      {detail.actorName || detail.admin?.name || ACTOR_TYPE_LABELS[detail.actorType ?? "SYSTEM"] || "-"}
+                      {detail.actorName ||
+                        detail.admin?.name ||
+                        ACTOR_TYPE_LABELS[detail.actorType ?? "SYSTEM"] ||
+                        "-"}
                       {(detail.actorEmail || detail.admin?.email) && (
                         <span className="ml-1 text-xs text-brand-charcoal/60">
                           ({detail.actorEmail || detail.admin?.email})
@@ -827,7 +857,8 @@ function AuditLogsContent() {
                   <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
                     <dt className="mb-1 text-brand-charcoal/65">链序号 / 哈希</dt>
                     <dd className="break-all font-mono text-xs font-medium">
-                      {detail.chainSeq ?? "-"} / {detail.entryHash ? `${detail.entryHash.slice(0, 16)}…` : "-"}
+                      {detail.chainSeq ?? "-"} /{" "}
+                      {detail.entryHash ? `${detail.entryHash.slice(0, 16)}…` : "-"}
                     </dd>
                   </div>
                 </div>

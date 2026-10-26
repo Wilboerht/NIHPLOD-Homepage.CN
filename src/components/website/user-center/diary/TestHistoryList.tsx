@@ -64,7 +64,9 @@ export function TestHistoryList({
   const [loading, setLoading] = useState(!hasInitial);
   const [error, setError] = useState(false);
   const [page, setPage] = useState(initialPage ?? 1);
-  const [totalPages, setTotalPages] = useState(initialTotal > 0 ? Math.ceil(initialTotal / pageSize) : 0);
+  const [totalPages, setTotalPages] = useState(
+    initialTotal > 0 ? Math.ceil(initialTotal / pageSize) : 0
+  );
   const [total, setTotal] = useState(initialTotal);
   // 请求时序守卫：快速翻页/重试时丢弃晚到的旧响应，避免旧页数据覆盖新页
   const requestSeqRef = useRef(0);
@@ -78,9 +80,12 @@ export function TestHistoryList({
     setError(false);
     try {
       // 走官网 fetchWithAuth：401 自动刷新会话，刷新失败触发全局登出流程
-      const res = await fetchWithAuth(`/api/user/skincare-tests?page=${page}&limit=${pageSize}&lite=1`, {
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
+      const res = await fetchWithAuth(
+        `/api/user/skincare-tests?page=${page}&limit=${pageSize}&lite=1`,
+        {
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (seq !== requestSeqRef.current) return; // 已被更新的请求取代，丢弃本次结果
@@ -108,7 +113,12 @@ export function TestHistoryList({
   }, [page, pageSize, onDataChange]);
 
   // 卸载时作废在途请求，避免晚到响应写回已卸载组件
-  useEffect(() => () => { requestSeqRef.current += 1; }, []);
+  useEffect(
+    () => () => {
+      requestSeqRef.current += 1;
+    },
+    []
+  );
 
   useEffect(() => {
     // 已提供首屏数据：跳过初始拉取，避免与父级（DiaryPanel 时间线）重复请求
@@ -123,7 +133,7 @@ export function TestHistoryList({
   return (
     <div>
       {title && (
-        <div className="flex items-center justify-between mb-5">
+        <div className="mb-5 flex items-center justify-between">
           <h3 className="text-[15px] font-medium text-brand-charcoal">{title}</h3>
           {total > 0 && <span className="text-[12px] text-brand-charcoal/60">共 {total} 条</span>}
         </div>
@@ -132,7 +142,7 @@ export function TestHistoryList({
       {loading ? (
         <div className="animate-pulse space-y-3 pt-1">
           {[0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex items-center gap-3 pl-1 py-2.5">
+            <div key={i} className="flex items-center gap-3 py-2.5 pl-1">
               <div className="h-3 w-12 rounded-full bg-brand-charcoal/[0.06]" />
               <div className="h-3 flex-1 rounded-full bg-brand-charcoal/[0.06]" />
               <div className="h-3 w-14 rounded-full bg-brand-charcoal/[0.06]" />
@@ -140,30 +150,30 @@ export function TestHistoryList({
           ))}
         </div>
       ) : error ? (
-        <div className="h-48 flex flex-col items-center justify-center gap-4">
+        <div className="flex h-48 flex-col items-center justify-center gap-4">
           <p className="text-[13px] text-brand-charcoal/60">测肤记录加载失败，请检查网络后重试</p>
           <button
             type="button"
             onClick={() => {
               if (!busyRef.current) fetchHistory();
             }}
-            className="inline-flex items-center gap-2 h-9 px-5 rounded-full text-[12px] tracking-[0.05em] text-brand-cocoa border border-brand-charcoal/20 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04] transition-all duration-300"
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-brand-charcoal/20 px-5 text-[12px] tracking-[0.05em] text-brand-cocoa transition-all duration-300 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04]"
           >
             重新加载
           </button>
         </div>
       ) : history.length === 0 ? (
-        <div className="text-center py-14 md:py-20">
-          <Clock className="w-7 h-7 mx-auto mb-3 text-brand-charcoal/40" strokeWidth={1.5} />
-          <h3 className="text-[15px] font-medium text-brand-charcoal mb-1.5">暂无测肤记录</h3>
-          <p className="text-[13px] text-brand-charcoal/60 mb-5">开始第一次 AI 皮肤分析</p>
+        <div className="py-14 text-center md:py-20">
+          <Clock className="mx-auto mb-3 h-7 w-7 text-brand-charcoal/40" strokeWidth={1.5} />
+          <h3 className="mb-1.5 text-[15px] font-medium text-brand-charcoal">暂无测肤记录</h3>
+          <p className="mb-5 text-[13px] text-brand-charcoal/60">开始第一次 AI 皮肤分析</p>
           <Link
             href={`${ADVISOR_URL}/?start=1`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 h-9 px-5 rounded-full text-[12px] tracking-[0.05em] text-brand-cocoa border border-brand-charcoal/20 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04] transition-all duration-300"
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-brand-charcoal/20 px-5 text-[12px] tracking-[0.05em] text-brand-cocoa transition-all duration-300 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.04]"
           >
-            <ScanFace className="w-3.5 h-3.5" />
+            <ScanFace className="h-3.5 w-3.5" />
             立即测肤
           </Link>
         </div>
@@ -196,28 +206,28 @@ export function TestHistoryList({
             return (
               <div key={session.sessionId}>
                 {isNewDay && (
-                  <div className="pt-4 pb-1.5 first:pt-0 flex items-center gap-2.5">
-                    <span className="shrink-0 text-[11px] font-medium text-brand-charcoal/60 font-num tabular-nums">
+                  <div className="flex items-center gap-2.5 pb-1.5 pt-4 first:pt-0">
+                    <span className="shrink-0 font-num text-[11px] font-medium tabular-nums text-brand-charcoal/60">
                       {showYear ? `${year}.${day}` : day}
                       <span className="ml-1 font-normal text-brand-charcoal/45">{weekday}</span>
                     </span>
-                    <span className="flex-1 h-px bg-stone-200/60" />
+                    <span className="h-px flex-1 bg-stone-200/60" />
                   </div>
                 )}
                 <Link
                   href={`${ADVISOR_URL}/reports/${session.sessionId}?skipCover=1`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-3 pl-1 py-2.5 rounded-md hover:bg-brand-charcoal/[0.03] transition-colors"
+                  className="group flex items-center gap-3 rounded-md py-2.5 pl-1 transition-colors hover:bg-brand-charcoal/[0.03]"
                 >
-                  <span className="shrink-0 w-12 text-[12px] text-brand-charcoal/60 font-light font-num tabular-nums">
+                  <span className="w-12 shrink-0 font-num text-[12px] font-light tabular-nums text-brand-charcoal/60">
                     {time}
                   </span>
-                  <span className="flex-1 min-w-0 truncate text-[13px] text-brand-charcoal/85">
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-brand-charcoal/85">
                     {skinType || "肌肤分析"}
                   </span>
                   <span
-                    className="shrink-0 inline-flex items-baseline text-[13px] font-medium font-num tabular-nums"
+                    className="inline-flex shrink-0 items-baseline font-num text-[13px] font-medium tabular-nums"
                     style={scoreState ? { color: STATE_META[scoreState].color } : undefined}
                   >
                     {score != null && score > 0 ? (
@@ -229,7 +239,7 @@ export function TestHistoryList({
                       "—"
                     )}
                   </span>
-                  <ChevronRight className="w-3.5 h-3.5 shrink-0 text-brand-charcoal/40 group-hover:text-brand-charcoal/60 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-brand-charcoal/40 transition-all group-hover:translate-x-0.5 group-hover:text-brand-charcoal/60" />
                 </Link>
               </div>
             );
@@ -238,7 +248,7 @@ export function TestHistoryList({
       )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6">
+        <div className="mt-6 flex items-center justify-between">
           <button
             type="button"
             onClick={() => {
@@ -246,13 +256,13 @@ export function TestHistoryList({
               setPage((p) => Math.max(1, p - 1));
             }}
             disabled={page <= 1 || loading}
-            className="inline-flex items-center gap-1 h-8 px-3.5 rounded-full border border-brand-charcoal/20 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-brand-charcoal/20 px-3.5 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <ChevronLeft className="h-3.5 w-3.5" />
             上一页
           </button>
 
-          <span className="text-[12px] text-brand-charcoal/55 font-num tabular-nums">
+          <span className="font-num text-[12px] tabular-nums text-brand-charcoal/55">
             {page} / {totalPages}
           </span>
 
@@ -263,10 +273,10 @@ export function TestHistoryList({
               setPage((p) => Math.min(totalPages, p + 1));
             }}
             disabled={page >= totalPages || loading}
-            className="inline-flex items-center gap-1 h-8 px-3.5 rounded-full border border-brand-charcoal/20 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border border-brand-charcoal/20 px-3.5 text-[12px] text-brand-charcoal/60 transition-colors hover:border-brand-charcoal/50 hover:text-brand-charcoal disabled:cursor-not-allowed disabled:opacity-40"
           >
             下一页
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
       )}

@@ -49,9 +49,7 @@ describe("GET /api/oauth/check-post-logout-uri", () => {
 
   it("已注册的 postLogoutRedirectUri 返回 trusted=true", async () => {
     const { GET } = await import("@/app/api/oauth/check-post-logout-uri/route");
-    const res = await GET(
-      createRequest("https://smart.nihplod.cn/logged-out", "advisor-client")
-    );
+    const res = await GET(createRequest("https://smart.nihplod.cn/logged-out", "advisor-client"));
     expect((await res.json()).trusted).toBe(true);
   });
 
@@ -65,17 +63,15 @@ describe("GET /api/oauth/check-post-logout-uri", () => {
     ).toBe(false);
   });
 
-  it.each([
-    "/\\evil.com",
-    "/\n//evil.com",
-    "/\t//evil.com",
-    "//evil.com",
-  ])("开放重定向向量 %j 返回 trusted=false", async (uri) => {
-    const { GET } = await import("@/app/api/oauth/check-post-logout-uri/route");
-    const res = await GET(createRequest(uri, "advisor-client"));
-    expect(res.status).toBe(200);
-    expect((await res.json()).trusted).toBe(false);
-  });
+  it.each(["/\\evil.com", "/\n//evil.com", "/\t//evil.com", "//evil.com"])(
+    "开放重定向向量 %j 返回 trusted=false",
+    async (uri) => {
+      const { GET } = await import("@/app/api/oauth/check-post-logout-uri/route");
+      const res = await GET(createRequest(uri, "advisor-client"));
+      expect(res.status).toBe(200);
+      expect((await res.json()).trusted).toBe(false);
+    }
+  );
 
   it("限流触发返回 429", async () => {
     mockRateLimit.mockResolvedValue({ success: false, remaining: 0, reset: 0, limit: 20 });

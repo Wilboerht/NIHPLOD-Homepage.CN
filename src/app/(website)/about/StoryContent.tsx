@@ -201,45 +201,45 @@ export function StoryContent() {
                 aria-label="切换关于我们板块"
               >
                 {navItems.map((item, index) => {
-                    const isActive = activeSection === item.id;
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        ref={(el) => {
-                          aboutTabButtonsRef.current[index] = el;
-                        }}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        tabIndex={isActive ? 0 : -1}
-                        onKeyDown={(e) =>
-                          handleAboutTabKeyDown(e, navItems.length, index, (i) => {
-                            setActiveSection(navItems[i].id);
-                            contentRef.current?.scrollTo({ top: 0 });
-                          })
-                        }
-                        onClick={() => {
-                          setActiveSection(item.id);
-                          contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
+                  const isActive = activeSection === item.id;
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      ref={(el) => {
+                        aboutTabButtonsRef.current[index] = el;
+                      }}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      tabIndex={isActive ? 0 : -1}
+                      onKeyDown={(e) =>
+                        handleAboutTabKeyDown(e, navItems.length, index, (i) => {
+                          setActiveSection(navItems[i].id);
+                          contentRef.current?.scrollTo({ top: 0 });
+                        })
+                      }
+                      onClick={() => {
+                        setActiveSection(item.id);
+                        contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className={cn(
+                        "flex flex-col items-center gap-1 whitespace-nowrap transition-colors",
+                        isActive ? "text-brand-primary" : "text-brand-charcoal/40"
+                      )}
+                    >
+                      <Icon size={20} strokeWidth={1.5} />
+                      <span
                         className={cn(
-                          "flex flex-col items-center gap-1 whitespace-nowrap transition-colors",
-                          isActive ? "text-brand-primary" : "text-brand-charcoal/40"
+                          "text-[11px] tracking-[0.06em]",
+                          isActive ? "font-normal" : "font-light"
                         )}
                       >
-                        <Icon size={20} strokeWidth={1.5} />
-                        <span
-                          className={cn(
-                            "text-[11px] tracking-[0.06em]",
-                            isActive ? "font-normal" : "font-light"
-                          )}
-                        >
-                          {item.pcLabel}
-                        </span>
-                      </button>
-                    );
-                  })}
+                        {item.pcLabel}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

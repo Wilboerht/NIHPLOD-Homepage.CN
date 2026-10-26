@@ -172,7 +172,14 @@ function RetentionContent() {
       });
       toast.success("法律保留已设置");
       setHoldOpen(false);
-      setHoldForm({ targetType: "", targetId: "", userId: "", adminId: "", reason: "", totpCode: "" });
+      setHoldForm({
+        targetType: "",
+        targetId: "",
+        userId: "",
+        adminId: "",
+        reason: "",
+        totpCode: "",
+      });
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "设置法律保留失败");
@@ -332,7 +339,10 @@ function RetentionContent() {
                 </tr>
               ) : data && data.preview.buckets.length > 0 ? (
                 data.preview.buckets.map((bucket) => (
-                  <tr key={`${bucket.stream}-${bucket.day}`} className="border-b border-brand-charcoal/5">
+                  <tr
+                    key={`${bucket.stream}-${bucket.day}`}
+                    className="border-b border-brand-charcoal/5"
+                  >
                     <td className="py-2 pr-3">
                       <Badge variant={bucket.stream === "audit" ? "primary" : "secondary"}>
                         {bucket.stream === "audit" ? "管理审计" : "SSO"}
@@ -373,7 +383,12 @@ function RetentionContent() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-brand-charcoal">清理任务</h3>
           {isOwner && (
-            <Button variant="outline" size="sm" leftIcon={<Lock className="h-4 w-4" />} onClick={() => setHoldOpen(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Lock className="h-4 w-4" />}
+              onClick={() => setHoldOpen(true)}
+            >
               设置法律保留
             </Button>
           )}
@@ -506,7 +521,12 @@ function RetentionContent() {
         </div>
       )}
 
-      <Modal open={executeOpen} onClose={() => setExecuteOpen(false)} title="执行审计到期清理" size="md">
+      <Modal
+        open={executeOpen}
+        onClose={() => setExecuteOpen(false)}
+        title="执行审计到期清理"
+        size="md"
+      >
         <div className="space-y-4">
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
             <div className="mb-1 flex items-center gap-1.5 font-medium">
@@ -520,7 +540,11 @@ function RetentionContent() {
             <strong>{formatBytes(data?.preview.expectedBytes ?? 0)}</strong>；法律保留排除{" "}
             <strong>{data?.preview.holdsExcluded ?? 0}</strong> 条。
           </div>
-          <Input label="原因（至少 10 字）" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Input
+            label="原因（至少 10 字）"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
           <Input
             label="确认短语"
             placeholder="输入：确认删除审计日志"
@@ -610,11 +634,7 @@ function RetentionContent() {
               disabled={
                 holdForm.reason.trim().length < 5 ||
                 holdForm.totpCode.length < 6 ||
-                !(
-                  (holdForm.targetType && holdForm.targetId) ||
-                  holdForm.userId ||
-                  holdForm.adminId
-                )
+                !((holdForm.targetType && holdForm.targetId) || holdForm.userId || holdForm.adminId)
               }
               onClick={() => void createHold()}
             >
@@ -634,7 +654,11 @@ function RetentionContent() {
           <p className="text-xs text-brand-charcoal/60">
             解除后，命中该目标的审计记录将重新参与到期清理。
           </p>
-          <Input label="原因" value={releaseReason} onChange={(e) => setReleaseReason(e.target.value)} />
+          <Input
+            label="原因"
+            value={releaseReason}
+            onChange={(e) => setReleaseReason(e.target.value)}
+          />
           <Input
             label="TOTP 验证码"
             value={releaseCode}

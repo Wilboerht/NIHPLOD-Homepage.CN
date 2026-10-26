@@ -126,7 +126,13 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
   const fallbackAmount =
     streak !== null && Number.isInteger(streak) ? Math.min(3, Math.max(1, streak)) : null;
   const isFirst = upstream?.isFirstManualCheckin === true;
-  const grantAmount = isFirst ? (amountValid ? rawAmount : null) : amountValid ? null : fallbackAmount;
+  const grantAmount = isFirst
+    ? amountValid
+      ? rawAmount
+      : null
+    : amountValid
+      ? null
+      : fallbackAmount;
   const shouldAttemptGrant = isToday && grantAmount !== null;
 
   if (shouldAttemptGrant) {

@@ -79,7 +79,7 @@ function OAuthSessionsPage() {
   const router = useRouter();
   const toast = useToast();
   const { requireTotp, totpModal } = useTotpConfirm();
-    const { can: canAdmin } = useAdminPermissions();
+  const { can: canAdmin } = useAdminPermissions();
   const canWrite = canAdmin("sso:write");
   const canReadClients = canAdmin("sso:clients:read");
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -207,19 +207,19 @@ function OAuthSessionsPage() {
   const handleTerminate = async () => {
     if (!terminateTarget) return;
     setTerminating(true);
+    try {
+      const submit = () =>
+        apiPost("/api/admin/oauth/sessions", {
+          sessionId: terminateTarget.id,
+        });
       try {
-        const submit = () =>
-          apiPost("/api/admin/oauth/sessions", {
-            sessionId: terminateTarget.id,
-          });
-        try {
-          await submit();
-        } catch (err) {
-          if (!isTotpRequired(err)) throw err;
-          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
-          if (!verified) return;
-          await submit();
-        }
+        await submit();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
       toast.success("会话已终止");
       setShowTerminate(false);
       fetchSessions();
@@ -235,17 +235,17 @@ function OAuthSessionsPage() {
       toast.error("请输入 TERMINATE ALL 以确认批量终止");
       return;
     }
-      setBatchTerminating(true);
+    setBatchTerminating(true);
+    try {
+      const submit = () => apiDelete("/api/admin/oauth/sessions", { confirm: true });
       try {
-        const submit = () => apiDelete("/api/admin/oauth/sessions", { confirm: true });
-        try {
-          await submit();
-        } catch (err) {
-          if (!isTotpRequired(err)) throw err;
-          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
-          if (!verified) return;
-          await submit();
-        }
+        await submit();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
       toast.success("全部会话已终止");
       setShowBatchTerminate(false);
       setBatchConfirmText("");
@@ -269,24 +269,24 @@ function OAuthSessionsPage() {
       toast.error("请输入用户 ID");
       return;
     }
-      setUserTerminating(true);
-      try {
-        const submit = () =>
-          apiPost<{ terminatedCount: number }>("/api/admin/oauth/sessions", {
-            userId,
-            ...(userTerminateClientId ? { clientId: userTerminateClientId } : {}),
-          });
+    setUserTerminating(true);
+    try {
+      const submit = () =>
+        apiPost<{ terminatedCount: number }>("/api/admin/oauth/sessions", {
+          userId,
+          ...(userTerminateClientId ? { clientId: userTerminateClientId } : {}),
+        });
 
-        let data: { terminatedCount: number };
-        try {
-          data = await submit();
-        } catch (err) {
-          if (!isTotpRequired(err)) throw err;
-          const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
-          if (!verified) return;
-          data = await submit();
-        }
-        toast.success(`已终止该用户 ${data.terminatedCount} 个活跃会话`);
+      let data: { terminatedCount: number };
+      try {
+        data = await submit();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        data = await submit();
+      }
+      toast.success(`已终止该用户 ${data.terminatedCount} 个活跃会话`);
       setShowUserTerminateConfirm(false);
       setShowUserTerminate(false);
       setUserTerminateId("");

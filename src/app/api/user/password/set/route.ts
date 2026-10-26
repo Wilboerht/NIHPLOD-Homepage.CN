@@ -56,7 +56,10 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
 
     if (!manageResult.ok) {
       return NextResponse.json(
-        { success: false, error: { code: manageResult.error.code, message: manageResult.error.message } },
+        {
+          success: false,
+          error: { code: manageResult.error.code, message: manageResult.error.message },
+        },
         { status: manageResult.error.status }
       );
     }

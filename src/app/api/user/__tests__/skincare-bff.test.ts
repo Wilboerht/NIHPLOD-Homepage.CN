@@ -14,8 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/auth", () => ({
   withUserAuth:
-    (handler: (req: NextRequest, payload: { id: string }) => unknown) =>
-    (req: NextRequest) =>
+    (handler: (req: NextRequest, payload: { id: string }) => unknown) => (req: NextRequest) =>
       handler(req, { id: "user-1" }),
 }));
 
@@ -61,7 +60,11 @@ function createPostRequest(url: string, body: unknown): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.advisorRequest.mockResolvedValue({ ok: true, status: 200, data: { success: true, data: [] } });
+  mocks.advisorRequest.mockResolvedValue({
+    ok: true,
+    status: 200,
+    data: { success: true, data: [] },
+  });
   mocks.grantCheckinPoints.mockResolvedValue({ duplicated: false, amount: 2 });
 });
 
@@ -97,7 +100,12 @@ describe("GET /api/user/skincare-archive", () => {
   });
 
   it("子站失败返回 502 契约错误", async () => {
-    mocks.advisorRequest.mockResolvedValue({ ok: false, status: 0, code: "UPSTREAM_ERROR", message: "子站服务连接失败" });
+    mocks.advisorRequest.mockResolvedValue({
+      ok: false,
+      status: 0,
+      code: "UPSTREAM_ERROR",
+      message: "子站服务连接失败",
+    });
     const res = await archiveGet(createRequest("/api/user/skincare-archive?bootstrap=1"));
     expect(res.status).toBe(502);
     await expect(res.json()).resolves.toEqual({
@@ -171,15 +179,12 @@ describe("POST /api/user/skincare-archive（打卡 + 官网直发积分）", () 
         body: { date: "2026-09-24", skinState: "good" },
       })
     );
-    expect(mocks.grantCheckinPoints).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        userId: "user-1",
-        amount: 2,
-        reference: "checkin:user-1:2026-09-24",
-        note: "连续第 2 天",
-      }
-    );
+    expect(mocks.grantCheckinPoints).toHaveBeenCalledWith(expect.anything(), {
+      userId: "user-1",
+      amount: 2,
+      reference: "checkin:user-1:2026-09-24",
+      note: "连续第 2 天",
+    });
   });
 
   it("账本已存在同 reference（duplicated）：打卡成功但不返回 points", async () => {
@@ -256,7 +261,10 @@ describe("POST /api/user/skincare-archive（打卡 + 官网直发积分）", () 
       message: "肌肤状态不合法",
     });
     const res = await POST(
-      createPostRequest("/api/user/skincare-archive", { date: "2026-09-24", skinState: "bad-value" })
+      createPostRequest("/api/user/skincare-archive", {
+        date: "2026-09-24",
+        skinState: "bad-value",
+      })
     );
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toMatchObject({
@@ -269,7 +277,11 @@ describe("POST /api/user/skincare-archive（打卡 + 官网直发积分）", () 
 
 describe("DELETE /api/user/skincare-archive", () => {
   it("代理子站删除并透传删除条数", async () => {
-    mocks.advisorRequest.mockResolvedValue({ ok: true, status: 200, data: { success: true, deleted: 1 } });
+    mocks.advisorRequest.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { success: true, deleted: 1 },
+    });
     const res = await DELETE(createRequest("/api/user/skincare-archive?date=2026-09-24"));
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ success: true, deleted: 1 });
@@ -282,7 +294,11 @@ describe("DELETE /api/user/skincare-archive", () => {
 
 describe("GET /api/user/skincare-trends 与 /skincare-tests", () => {
   it("趋势：代理 /api/internal/skin-trends 并透传", async () => {
-    mocks.advisorRequest.mockResolvedValue({ ok: true, status: 200, data: { success: true, data: null } });
+    mocks.advisorRequest.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { success: true, data: null },
+    });
     const res = await trendsGet(createRequest("/api/user/skincare-trends"));
     expect(mocks.advisorRequest).toHaveBeenCalledWith(
       "/api/internal/skin-trends",
@@ -292,7 +308,11 @@ describe("GET /api/user/skincare-trends 与 /skincare-tests", () => {
   });
 
   it("测肤记录：代理 /api/internal/test-history，lite/page 与 clientIp 透传", async () => {
-    mocks.advisorRequest.mockResolvedValue({ ok: true, status: 200, data: { history: [], pagination: { total: 0 } } });
+    mocks.advisorRequest.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { history: [], pagination: { total: 0 } },
+    });
     const res = await testsGet(createRequest("/api/user/skincare-tests?page=2&limit=50&lite=1"));
     expect(mocks.advisorRequest).toHaveBeenCalledWith(
       "/api/internal/test-history",
@@ -310,7 +330,12 @@ describe("GET /api/user/skincare-trends 与 /skincare-tests", () => {
   });
 
   it("测肤记录：子站失败返回 502", async () => {
-    mocks.advisorRequest.mockResolvedValue({ ok: false, status: 502, code: "UPSTREAM_ERROR", message: "子站服务暂时不可用" });
+    mocks.advisorRequest.mockResolvedValue({
+      ok: false,
+      status: 502,
+      code: "UPSTREAM_ERROR",
+      message: "子站服务暂时不可用",
+    });
     const res = await testsGet(createRequest("/api/user/skincare-tests"));
     expect(res.status).toBe(502);
   });

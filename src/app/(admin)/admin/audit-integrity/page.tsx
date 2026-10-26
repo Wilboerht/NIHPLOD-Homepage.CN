@@ -114,7 +114,7 @@ function IntegrityContent() {
       title: "条数",
       width: "80px",
       align: "right",
-      render: (_, item) => <span className="tabular-nums text-sm">{item.count}</span>,
+      render: (_, item) => <span className="text-sm tabular-nums">{item.count}</span>,
     },
     {
       key: "signatureVersion",
@@ -132,7 +132,9 @@ function IntegrityContent() {
       title: "摘要",
       width: "180px",
       render: (_, item) => (
-        <span className="font-mono text-xs text-brand-charcoal/60">{item.digest.slice(0, 16)}…</span>
+        <span className="font-mono text-xs text-brand-charcoal/60">
+          {item.digest.slice(0, 16)}…
+        </span>
       ),
     },
     {
@@ -203,9 +205,7 @@ function IntegrityContent() {
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
           <p className="text-xs text-brand-charcoal/60">最新管理审计锚点</p>
-          <p className="mt-1 font-mono text-lg font-semibold">
-            {data?.latest.audit?.day ?? "-"}
-          </p>
+          <p className="mt-1 font-mono text-lg font-semibold">{data?.latest.audit?.day ?? "-"}</p>
           <p className="text-xs text-brand-charcoal/50">
             {data?.latest.audit ? `${data.latest.audit.count} 条` : "暂无"}
           </p>

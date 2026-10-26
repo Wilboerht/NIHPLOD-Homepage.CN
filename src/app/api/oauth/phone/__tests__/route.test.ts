@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   smsUpdateMany: vi.fn(),
   smsCreate: vi.fn(),
   smsCount: vi.fn(),
-  verifyCode: vi.fn(),
+  verifySmsCodeWithLimit: vi.fn(),
   recordSmsCodeFailure: vi.fn(),
   sendLoginCode: vi.fn(),
   sendPhoneChangedNotification: vi.fn(),
@@ -65,7 +65,7 @@ vi.mock("@/lib/prisma", () => {
 });
 
 vi.mock("@/lib/sms", () => ({
-  verifyCode: mocks.verifyCode,
+  verifySmsCodeWithLimit: mocks.verifySmsCodeWithLimit,
   recordSmsCodeFailure: mocks.recordSmsCodeFailure,
   sendLoginCode: mocks.sendLoginCode,
   sendPhoneChangedNotification: mocks.sendPhoneChangedNotification,
@@ -96,10 +96,18 @@ const mockSmsCreate = mocks.smsCreate;
 function authOk() {
   return {
     ok: true as const,
-    payload: { id: AUTH_CONTEXT.id, client_id: "client-1", scope: "openid phone", type: "access_token" },
+    payload: {
+      id: AUTH_CONTEXT.id,
+      client_id: "client-1",
+      scope: "openid phone",
+      type: "access_token",
+    },
     ip: "127.0.0.1",
     resJson: (body: unknown, status = 200, extraHeaders?: Record<string, string>) =>
-      NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", ...extraHeaders } }),
+      NextResponse.json(body, {
+        status,
+        headers: { "Cache-Control": "no-store", ...extraHeaders },
+      }),
     corsHeaders: {},
   };
 }
@@ -128,7 +136,7 @@ describe("OAuth 换绑手机号", () => {
     mocks.smsUpdateMany.mockResolvedValue({ count: 1 });
     mocks.smsCount.mockResolvedValue(0);
     mocks.smsCreate.mockResolvedValue({});
-    mocks.verifyCode.mockReturnValue(true);
+    mocks.verifySmsCodeWithLimit.mockReturnValue(true);
     mocks.sendLoginCode.mockResolvedValue({ success: true });
     mocks.sendPhoneChangedNotification.mockResolvedValue(undefined);
     mocks.simulateSmsSendLatency.mockResolvedValue(undefined);
@@ -145,7 +153,11 @@ describe("OAuth 换绑手机号", () => {
       mockAuthenticate.mockResolvedValue({ ok: false, response: denied });
 
       const res = await PUT(
-        createRequest("/api/oauth/phone", { newPhone: "13900139000", currentCode: "123456", newCode: "654321" }, "PUT")
+        createRequest(
+          "/api/oauth/phone",
+          { newPhone: "13900139000", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
       );
       expect(res.status).toBe(403);
       expect(mockAuthenticate).toHaveBeenCalledWith(
@@ -158,7 +170,11 @@ describe("OAuth 换绑手机号", () => {
 
     it("参数非法应返回 400 INVALID_PARAMS", async () => {
       const res = await PUT(
-        createRequest("/api/oauth/phone", { newPhone: "12345", currentCode: "123456", newCode: "654321" }, "PUT")
+        createRequest(
+          "/api/oauth/phone",
+          { newPhone: "12345", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
       );
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("INVALID_PARAMS");
@@ -167,7 +183,11 @@ describe("OAuth 换绑手机号", () => {
     it("用户级限流触发应返回 429", async () => {
       mockRateLimit.mockResolvedValueOnce({ success: false });
       const res = await PUT(
-        createRequest("/api/oauth/phone", { newPhone: "13900139000", currentCode: "123456", newCode: "654321" }, "PUT")
+        createRequest(
+          "/api/oauth/phone",
+          { newPhone: "13900139000", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
       );
       expect(res.status).toBe(429);
       expect(mocks.findUnique).not.toHaveBeenCalled();
@@ -176,7 +196,11 @@ describe("OAuth 换绑手机号", () => {
     it("双验证码通过后更新手机号；无 Cookie 通道会话全撤（currentRefreshToken=null）", async () => {
       mocks.smsFindFirst.mockResolvedValue(CODE_RECORD);
       const res = await PUT(
-        createRequest("/api/oauth/phone", { newPhone: "13900139000", currentCode: "123456", newCode: "654321" }, "PUT")
+        createRequest(
+          "/api/oauth/phone",
+          { newPhone: "13900139000", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
       );
       const body = await res.json();
 
@@ -186,16 +210,20 @@ describe("OAuth 换绑手机号", () => {
       expect(body.data.phone).toBe("139****9000");
       expect(mockUserUpdate).toHaveBeenCalledWith({
         where: { id: "user-1" },
-        data: { phone: "13900139000" },
+        data: { phone: "13900139000", sessionsInvalidatedAt: expect.any(Date) },
       });
       expect(mockRevoke).toHaveBeenCalledWith({ userId: "user-1", currentRefreshToken: null });
     });
 
     it("验证码错误应返回 400 CODE_INVALID，且不撤销会话", async () => {
       mocks.smsFindFirst.mockResolvedValue(CODE_RECORD);
-      mocks.verifyCode.mockReturnValue(false);
+      mocks.verifySmsCodeWithLimit.mockReturnValue(false);
       const res = await PUT(
-        createRequest("/api/oauth/phone", { newPhone: "13900139000", currentCode: "000000", newCode: "654321" }, "PUT")
+        createRequest(
+          "/api/oauth/phone",
+          { newPhone: "13900139000", currentCode: "000000", newCode: "654321" },
+          "PUT"
+        )
       );
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("CODE_INVALID");
@@ -209,7 +237,11 @@ describe("OAuth 换绑手机号", () => {
       mocks.smsFindFirst.mockResolvedValue(CODE_RECORD);
 
       const res = await PUT(
-        createRequest("/api/oauth/phone", { newPhone: "13900139000", currentCode: "123456", newCode: "654321" }, "PUT")
+        createRequest(
+          "/api/oauth/phone",
+          { newPhone: "13900139000", currentCode: "123456", newCode: "654321" },
+          "PUT"
+        )
       );
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("PHONE_IN_USE");
@@ -224,10 +256,14 @@ describe("OAuth 换绑手机号", () => {
         "id" in args.where ? { id: "user-1", phone: "13800138000" } : { id: "user-2" }
       );
       mocks.smsFindFirst.mockResolvedValue(CODE_RECORD);
-      mocks.verifyCode.mockReturnValue(false);
+      mocks.verifySmsCodeWithLimit.mockReturnValue(false);
 
       const res = await PUT(
-        createRequest("/api/oauth/phone", { newPhone: "13900139000", currentCode: "000000", newCode: "654321" }, "PUT")
+        createRequest(
+          "/api/oauth/phone",
+          { newPhone: "13900139000", currentCode: "000000", newCode: "654321" },
+          "PUT"
+        )
       );
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("CODE_INVALID");

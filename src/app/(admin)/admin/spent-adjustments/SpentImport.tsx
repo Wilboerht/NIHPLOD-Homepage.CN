@@ -601,12 +601,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
               检查最近 90 天导入成功与已通过补录的重复订单号
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            loading={conflictLoading}
-            onClick={checkConflicts}
-          >
+          <Button size="sm" variant="outline" loading={conflictLoading} onClick={checkConflicts}>
             检查订单冲突
           </Button>
         </div>
@@ -707,7 +702,10 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
                         {b.fileName}
                       </p>
                       {b.reason && (
-                        <p className="mt-0.5 truncate text-[11px] text-brand-charcoal/50" title={b.reason}>
+                        <p
+                          className="mt-0.5 truncate text-[11px] text-brand-charcoal/50"
+                          title={b.reason}
+                        >
                           原因：{b.reason}
                         </p>
                       )}
@@ -737,11 +735,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDetailBatchId(b.id)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => setDetailBatchId(b.id)}>
                           详情
                         </Button>
                         {!b.undoneAt && b.successRows > 0 && (

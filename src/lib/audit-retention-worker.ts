@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 审计到期清理 worker。
  *
  * 由独立系统 cron 调用，使用 AUDIT_RETENTION_DATABASE_URL（audit_retention 角色）
@@ -14,10 +14,7 @@ import {
   verifyRetentionApproval,
   type RetentionStreamCutoff,
 } from "./audit-retention";
-import {
-  computeAuditEntryHash,
-  getAuditIntegrityKeyVersion,
-} from "./audit-chain";
+import { computeAuditEntryHash, getAuditIntegrityKeyVersion } from "./audit-chain";
 
 const BATCH_SIZE = 5000;
 const JOB_LIMIT = 3;
@@ -239,6 +236,13 @@ async function processOne(jobId: string): Promise<void> {
       return fail("未确认 AUDIT_RETENTION_ALLOW_LOCAL_ONLY");
     }
     if (job.requestedByRole !== "owner") return fail("仅 owner 可执行");
+    const requester = await prisma.admin.findFirst({
+      where: { id: job.requestedBy, deletedAt: null },
+      select: { role: true, status: true },
+    });
+    if (!requester || requester.status !== "ACTIVE" || requester.role !== "owner") {
+      return fail("审批人权限已失效，已取消执行任务");
+    }
     if (!verifyRetentionApproval(job)) return fail("审批签名无效");
 
     const cutoffs = parseRetentionCutoffs(job.streams);
@@ -257,9 +261,7 @@ async function processOne(jobId: string): Promise<void> {
       let deleted = 0;
       const updateProgress = async (next: number) => {
         const total = deleted + next;
-        const bytes = Math.round(
-          job.expectedBytes * (total / Math.max(1, job.expectedCount))
-        );
+        const bytes = Math.round(job.expectedBytes * (total / Math.max(1, job.expectedCount)));
         await client.query(
           `UPDATE "AuditRetentionJob" SET "deletedCount" = $1, "deletedBytes" = $2 WHERE "id" = $3`,
           [total, bytes, job.id]
@@ -341,5 +343,3 @@ export async function processAuditRetentionJobs(): Promise<number> {
   }
   return jobs.length;
 }
-
-

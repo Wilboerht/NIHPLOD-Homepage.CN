@@ -160,7 +160,9 @@ export function RegisterForm({
               <button
                 type="button"
                 onClick={onSendRegCode}
-                disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11 || captchaSolving}
+                disabled={
+                  regCodeSending || regCountdown > 0 || regPhone.length !== 11 || captchaSolving
+                }
                 className="mb-2 shrink-0 self-end border border-brand-charcoal/25 px-4 py-2 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all hover:bg-brand-charcoal/[0.02] disabled:opacity-30"
               >
                 {captchaSolving ? "核验中…" : regCountdown > 0 ? `${regCountdown}s` : "获取"}
@@ -294,7 +296,9 @@ export function RegisterForm({
             <button
               type="button"
               onClick={onSendRegCode}
-              disabled={regCodeSending || regCountdown > 0 || regPhone.length !== 11 || captchaSolving}
+              disabled={
+                regCodeSending || regCountdown > 0 || regPhone.length !== 11 || captchaSolving
+              }
               className="mb-2 inline-flex h-12 shrink-0 items-center justify-center self-end border border-brand-charcoal/25 px-3 text-xs font-light tracking-[0.12em] text-brand-charcoal/80 transition-all disabled:opacity-30"
             >
               {captchaSolving ? "核验中…" : regCountdown > 0 ? `${regCountdown}s` : "获取验证码"}

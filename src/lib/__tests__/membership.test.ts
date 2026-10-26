@@ -49,9 +49,7 @@ describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
   });
 
   it("普通会员：10 次测肤体验 + 消费积分，无档案/顾问/兑礼权益", () => {
-    const texts = LEVEL_DEFAULT_BENEFITS.REGULAR.benefits.map(
-      (b) => `${b.title}${b.desc}`
-    );
+    const texts = LEVEL_DEFAULT_BENEFITS.REGULAR.benefits.map((b) => `${b.title}${b.desc}`);
     expect(texts.join()).toContain("10 次");
     const titles = LEVEL_DEFAULT_BENEFITS.REGULAR.benefits.map((b) => b.title);
     expect(titles).toContain("消费积分");
@@ -61,9 +59,7 @@ describe("LEVEL_DEFAULT_BENEFITS 等级权益", () => {
   });
 
   it("银卡：每满 ¥1,000 加 20 次测肤权益", () => {
-    const texts = LEVEL_DEFAULT_BENEFITS.SILVER.benefits.map(
-      (b) => `${b.title}${b.desc}`
-    );
+    const texts = LEVEL_DEFAULT_BENEFITS.SILVER.benefits.map((b) => `${b.title}${b.desc}`);
     expect(texts.join()).toContain("20 次");
   });
 

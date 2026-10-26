@@ -55,23 +55,38 @@ export function AuditExportDialog({
         created = await apiPost<{ id: string }>("/api/admin/audit-logs/exports", payload);
       } catch (error) {
         if (isTotpRequired(error)) {
-          const verified = await requireTotp(
-            error instanceof ApiError ? error.code : undefined
-          );
-          if (!verified) return;
+          const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+          if (!verified) {
+            // 取消二次验证即取消导出操作，关闭导出配置弹窗，避免残留操作界面。
+            onClose();
+            return;
+          }
           created = await apiPost<{ id: string }>("/api/admin/audit-logs/exports", payload);
         } else {
           throw error;
         }
       }
       toast.success("导出任务已创建");
-      setJob({ id: created.id, status: "QUEUED", format, processedRows: 0, totalRows: 0, sha256: null, error: null, expiresAt: null });
+      setJob({
+        id: created.id,
+        status: "QUEUED",
+        format,
+        processedRows: 0,
+        totalRows: 0,
+        sha256: null,
+        error: null,
+        expiresAt: null,
+      });
       stopPolling();
       pollRef.current = setInterval(async () => {
         try {
           const data = await apiGet<ExportJob>(`/api/admin/audit-logs/exports/${created.id}`);
           setJob(data);
-          if (data.status === "SUCCEEDED" || data.status === "FAILED" || data.status === "EXPIRED") {
+          if (
+            data.status === "SUCCEEDED" ||
+            data.status === "FAILED" ||
+            data.status === "EXPIRED"
+          ) {
             stopPolling();
           }
         } catch {
@@ -96,12 +111,14 @@ export function AuditExportDialog({
       const message = error instanceof Error ? error.message : "";
       if (isTotpRequired(error) || message.includes("二次验证") || message.includes("TOTP")) {
         const verified = await requireTotp("TOTP_REQUIRED");
-        if (verified) {
-          await downloadFromUrl(
-            `/api/admin/audit-logs/exports/${job.id}/download`,
-            `audit-export-${job.id}.${job.format}`
-          );
+        if (!verified) {
+          onClose();
+          return;
         }
+        await downloadFromUrl(
+          `/api/admin/audit-logs/exports/${job.id}/download`,
+          `audit-export-${job.id}.${job.format}`
+        );
         return;
       }
       toast.error(message || "下载失败");

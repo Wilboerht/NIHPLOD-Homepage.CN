@@ -128,6 +128,7 @@ export function ApprovalRequestDialog({
         payload,
         reason: reason.trim(),
       });
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       toast.success("审批申请已提交");
       setUserId("");
       setAmount("");

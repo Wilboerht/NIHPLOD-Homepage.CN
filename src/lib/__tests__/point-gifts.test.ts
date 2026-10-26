@@ -33,11 +33,7 @@ vi.mock("@/lib/points-ledger", () => ({
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { redeemPoints } from "@/lib/points-ledger";
-import {
-  giftCostForUser,
-  redeemGiftForUser,
-  fulfillRedemption,
-} from "@/lib/point-gifts";
+import { giftCostForUser, redeemGiftForUser, fulfillRedemption } from "@/lib/point-gifts";
 
 const mockRedeemPoints = redeemPoints as ReturnType<typeof vi.fn>;
 const mockTxFindUnique = txClient.pointRedemption.findUnique as ReturnType<typeof vi.fn>;
@@ -92,7 +88,7 @@ describe("redeemGiftForUser 兑换事务", () => {
     mockTxFindUnique.mockResolvedValue(null);
     mockTxProductFind.mockResolvedValue(REDEEMABLE_PRODUCT);
     mockTxProductUpdateMany.mockResolvedValue({ count: 1 });
-    mockTxUserFind.mockResolvedValue({ membershipLevel: "GOLD" });
+    mockTxUserFind.mockResolvedValue({ membershipLevel: "GOLD", status: "ACTIVE" });
     mockTxAddressFind.mockResolvedValue(SHIPPING_ADDRESS);
     mockTxBalanceFind.mockResolvedValue({ available: 770 });
     mockTxCreate.mockResolvedValue({ id: "redemption-1" });
@@ -186,7 +182,7 @@ describe("redeemGiftForUser 兑换事务", () => {
   });
 
   it("事务内读到普通档：NOT_ELIGIBLE（等级以事务内重读为准）", async () => {
-    mockTxUserFind.mockResolvedValue({ membershipLevel: "REGULAR" });
+    mockTxUserFind.mockResolvedValue({ membershipLevel: "REGULAR", status: "ACTIVE" });
     const result = await redeemGiftForUser({
       userId: "user-1",
       productId: "product-1",

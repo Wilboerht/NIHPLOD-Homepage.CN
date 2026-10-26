@@ -11,7 +11,13 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
-import { advisorJson, advisorRequest, mapAdvisorError, getSubsitePurgeTargets, purgeUserFromSubsites } from "@/lib/advisor-internal";
+import {
+  advisorJson,
+  advisorRequest,
+  mapAdvisorError,
+  getSubsitePurgeTargets,
+  purgeUserFromSubsites,
+} from "@/lib/advisor-internal";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -58,7 +64,10 @@ describe("advisorRequest", () => {
       body: { date: "2026-01-01", skinState: "good" },
     });
 
-    const [url, init] = globalFetch.mock.calls[0] as [string, { method: string; headers: Record<string, string> }];
+    const [url, init] = globalFetch.mock.calls[0] as [
+      string,
+      { method: string; headers: Record<string, string> },
+    ];
     expect(url).toBe("http://127.0.0.1:3002/api/internal/diary?userId=u1");
     expect(init.method).toBe("POST");
     expect(init.headers["X-Internal-API-Key"]).toBe("advisor-test-key");
@@ -72,7 +81,11 @@ describe("advisorRequest", () => {
   it("失败归一化：非 2xx 透传子站错误文案；网络异常为 UPSTREAM_ERROR", async () => {
     process.env.ADVISOR_INTERNAL_SECRET = "s";
 
-    globalFetch.mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: "日期格式错误" }) });
+    globalFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "日期格式错误" }),
+    });
     const bad = await advisorRequest("/api/internal/diary");
     expect(bad).toMatchObject({ ok: false, status: 400, message: "日期格式错误" });
 
@@ -197,11 +210,10 @@ describe("purgeUserFromSubsites", () => {
     { project: "mall", key: "mall-test-key", secret: "b".repeat(32) },
   ]);
 
-  it("L4：目标未配置密钥（NOT_CONFIGURED）warn 级跳过，注销继续执行", async () => {
-    // 不配置任何 INTERNAL_API_KEYS / ADVISOR_INTERNAL_SECRET
+  it("L4：目标未配置密钥（NOT_CONFIGURED）必须失败，不能假完成注销", async () => {
     const result = await purgeUserFromSubsites("user-1");
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toMatchObject({ ok: false, target: "advisor", code: "NOT_CONFIGURED" });
     expect(globalFetch).not.toHaveBeenCalled();
   });
 
@@ -227,8 +239,8 @@ describe("purgeUserFromSubsites", () => {
     );
   });
 
-  it("L4：混合场景——未配置目标跳过 + 已配置目标执行", async () => {
-    // 只配置 advisor 密钥，mall 未配置 → mall 跳过，整体 ok
+  it("L4：任一已注册目标未配置密钥即失败，不继续假完成", async () => {
+    // 只配置 advisor 密钥，mall 未配置 → mall 失败
     process.env.INTERNAL_API_KEYS = JSON.stringify([
       { project: "advisor", key: "advisor-test-key", secret: "a".repeat(32) },
     ]);
@@ -240,8 +252,8 @@ describe("purgeUserFromSubsites", () => {
 
     const result = await purgeUserFromSubsites("user-1");
 
-    expect(result).toEqual({ ok: true });
-    expect(globalFetch).toHaveBeenCalledTimes(1); // 仅 advisor 发出请求
+    expect(result).toMatchObject({ ok: false, target: "mall", code: "NOT_CONFIGURED" });
+    expect(globalFetch).not.toHaveBeenCalled();
   });
 
   it("L3：purge 请求始终绑定 query 签名（独立于 INTERNAL_API_SIGN_QUERY 全局开关）", async () => {

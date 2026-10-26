@@ -14,14 +14,20 @@
  */
 import { createHash, createHmac } from "crypto";
 import { createReadStream, createWriteStream } from "fs";
-import { access, chmod, cp, mkdir, readFile, writeFile } from "fs/promises";
+import { access, chmod, cp, mkdir, readFile, unlink, writeFile } from "fs/promises";
 import { join } from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
-import { createGzip } from "zlib";
+import { createGunzip, createGzip } from "zlib";
+import readline from "readline";
 import { prisma } from "./prisma";
 import { apiConsole } from "./logger";
-import { getAuditIntegrityKey, getAuditIntegrityKeyVersion } from "./audit-chain";
+import {
+  computeAuditDigest,
+  getAuditIntegrityKey,
+  getAuditIntegrityKeyVersion,
+  stableStringify,
+} from "./audit-chain";
 
 export type AuditStream = "audit" | "sso";
 
@@ -46,6 +52,7 @@ export interface ArchiveManifest {
   sha256: string;
   createdAt: string;
   eventFile: string;
+  signatureIncludesFile?: boolean;
 }
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -190,22 +197,32 @@ function buildManifest(input: {
     toAt: input.day.toAt.toISOString(),
     count: input.count,
     digest: input.digest,
-    signature: input.signature,
+    signature: createHmac("sha256", getAuditIntegrityKey(input.keyVersion))
+      .update(
+        `${input.prevAnchorHash ?? ""}:${input.digest}:${input.count}:${input.stream}:${input.day.day}:${input.sha256}:events.jsonl.gz`
+      )
+      .digest("hex"),
     signatureVersion: input.signatureVersion,
     keyVersion: input.keyVersion,
     prevAnchorHash: input.prevAnchorHash,
     sha256: input.sha256,
     createdAt: new Date().toISOString(),
     eventFile: "events.jsonl.gz",
+    signatureIncludesFile: true,
   };
 }
 
 async function writeEventsFile(
   filePath: string,
   rows: AsyncIterable<Record<string, unknown>>
-): Promise<void> {
+): Promise<{ count: number; digest: string }> {
+  const digest = createHash("sha256");
+  let count = 0;
   async function* lines() {
     for await (const row of rows) {
+      if (count > 0) digest.update("\n");
+      digest.update(stableStringify(row));
+      count += 1;
       yield `${JSON.stringify(row)}\n`;
     }
   }
@@ -215,6 +232,19 @@ async function writeEventsFile(
     createWriteStream(filePath, { flags: "wx", mode: 0o600 })
   );
   await chmod(filePath, 0o600);
+  return { count, digest: digest.digest("hex") };
+}
+
+async function readEventsDigest(filePath: string): Promise<{ count: number; digest: string }> {
+  const rows: Record<string, unknown>[] = [];
+  const reader = readline.createInterface({
+    input: createReadStream(filePath).pipe(createGunzip()),
+    crlfDelay: Infinity,
+  });
+  for await (const line of reader) {
+    if (line.trim()) rows.push(JSON.parse(line) as Record<string, unknown>);
+  }
+  return { count: rows.length, digest: computeAuditDigest(rows) };
 }
 
 async function readManifest(
@@ -309,7 +339,11 @@ export async function archiveAuditDay(
   if (await pathExists(eventPath)) {
     throw new Error(`[AuditArchive] 事件文件已存在但缺少 manifest: ${eventPath}`);
   }
-  await writeEventsFile(eventPath, eventRows(stream, day));
+  const archived = await writeEventsFile(eventPath, eventRows(stream, day));
+  if (archived.count !== anchor.count || archived.digest !== anchor.digest) {
+    await unlink(eventPath);
+    throw new Error(`[AuditArchive] 归档内容与锚点不一致: ${stream}/${day.day}`);
+  }
   const sha256 = await hashFile(eventPath);
   const manifest = buildManifest({
     stream,
@@ -376,8 +410,11 @@ export async function verifyArchiveDay(stream: AuditStream, day: string): Promis
   if (!(await pathExists(eventPath))) return false;
   const sha256 = await hashFile(eventPath);
   if (sha256 !== manifest.sha256) return false;
+  const archived = await readEventsDigest(eventPath);
+  if (archived.count !== manifest.count || archived.digest !== manifest.digest) return false;
 
-  const payload = `${manifest.prevAnchorHash ?? ""}:${manifest.digest}:${manifest.count}:${manifest.stream}:${manifest.day}`;
+  const filePayload = manifest.signatureIncludesFile ? `:${sha256}:${manifest.eventFile}` : "";
+  const payload = `${manifest.prevAnchorHash ?? ""}:${manifest.digest}:${manifest.count}:${manifest.stream}:${manifest.day}${filePayload}`;
   const expected = createHmac("sha256", getAuditIntegrityKey(manifest.keyVersion))
     .update(payload)
     .digest("hex");
@@ -392,13 +429,23 @@ export async function verifyArchiveBackup(stream: AuditStream, day: string): Pro
   if (!manifest) return false;
   const eventPath = join(dayDir(backupRoot, stream, day), manifest.eventFile || "events.jsonl.gz");
   if (!(await pathExists(eventPath))) return false;
-  return (await hashFile(eventPath)) === manifest.sha256;
+  const archived = await readEventsDigest(eventPath);
+  return (
+    archived.count === manifest.count &&
+    archived.digest === manifest.digest &&
+    (await hashFile(eventPath)) === manifest.sha256
+  );
 }
 
 export async function getArchiveStatus(
   stream: AuditStream,
   day: string
-): Promise<{ archived: boolean; verified: boolean; backupVerified: boolean; sha256: string | null }> {
+): Promise<{
+  archived: boolean;
+  verified: boolean;
+  backupVerified: boolean;
+  sha256: string | null;
+}> {
   const manifest = await readManifest(getAuditArchiveRoot(), stream, day);
   if (!manifest) return { archived: false, verified: false, backupVerified: false, sha256: null };
   return {

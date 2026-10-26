@@ -25,16 +25,14 @@ const LEGACY_KEY_PREFIX = "private:";
 const LOCAL_KEY_PREFIX = "private-local:";
 const OSS_KEY_PREFIX = "private-oss:";
 const OBJECT_PREFIX = "resumes/";
-const FILE_PATTERN =
-  /^(?:private-local:|private-oss:|private:)resumes\/[0-9a-f-]{36}\.pdf$/i;
+const FILE_PATTERN = /^(?:private-local:|private-oss:|private:)resumes\/[0-9a-f-]{36}\.pdf$/i;
 const PRIVATE_ROOT = resolve(process.cwd(), "private");
 const PRIVATE_URL_TTL_SECONDS = 5 * 60;
 
 export type ResumeStorageBackend = "local" | "oss" | "legacy";
 
 export type ResumeDownload =
-  | { kind: "redirect"; url: string }
-  | { kind: "file"; path: string; filename: string };
+  { kind: "redirect"; url: string } | { kind: "file"; path: string; filename: string };
 
 interface ParsedResumeKey {
   backend: ResumeStorageBackend;
@@ -43,10 +41,7 @@ interface ParsedResumeKey {
 
 /** 生产环境默认禁止把简历落到本地磁盘，除非显式开启逃生开关。 */
 export function isLocalResumeStorageAllowed(): boolean {
-  return (
-    process.env.NODE_ENV !== "production" ||
-    process.env.ALLOW_LOCAL_RESUME_STORAGE === "true"
-  );
+  return process.env.NODE_ENV !== "production" || process.env.ALLOW_LOCAL_RESUME_STORAGE === "true";
 }
 
 /** 清洗候选人上传的原始文件名，仅用于展示/下载，不参与存储路径。 */
@@ -129,7 +124,7 @@ export async function uploadResumeFile(buffer: Buffer): Promise<{ key: string }>
     throw new Error("INVALID_RESUME_FILE");
   }
 
-  const safety = inspectPdfSafety(buffer);
+  const safety = await inspectPdfSafety(buffer);
   if (!safety.safe) {
     throw new Error(`UNSAFE_RESUME_PDF: ${safety.reason ?? "文件包含受限内容"}`);
   }

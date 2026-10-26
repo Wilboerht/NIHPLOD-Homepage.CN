@@ -105,12 +105,7 @@ function LogoutConfirmContent() {
         }
       `}</style>
 
-      <svg
-        className="h-14 w-14"
-        viewBox="0 0 56 56"
-        fill="none"
-        aria-hidden="true"
-      >
+      <svg className="h-14 w-14" viewBox="0 0 56 56" fill="none" aria-hidden="true">
         <circle
           className="logout-check-circle"
           cx="28"
@@ -129,9 +124,7 @@ function LogoutConfirmContent() {
         />
       </svg>
 
-      <h1 className="logout-fade-in mt-5 text-lg font-medium text-gray-900">
-        已退出登录
-      </h1>
+      <h1 className="logout-fade-in mt-5 text-lg font-medium text-gray-900">已退出登录</h1>
       <p className="logout-fade-in mt-1 text-sm text-gray-400">
         {done ? "正在返回..." : "即将返回..."}
       </p>

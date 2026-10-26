@@ -93,23 +93,23 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
   return (
     <div>
       {/* 摘要：最新评分 + 测评日期 + 与上次差值 */}
-      <div className="flex items-end justify-between mb-3">
+      <div className="mb-3 flex items-end justify-between">
         <div>
-          <p className="text-[12px] tracking-[0.15em] text-brand-charcoal/45 font-light mb-1">
+          <p className="mb-1 text-[12px] font-light tracking-[0.15em] text-brand-charcoal/45">
             最新综合评分
           </p>
-          <p className="text-3xl md:text-4xl font-num font-light text-brand-charcoal leading-none">
+          <p className="font-num text-3xl font-light leading-none text-brand-charcoal md:text-4xl">
             {latest}
-            <span className="text-sm text-brand-charcoal/40 ml-1.5">分</span>
+            <span className="ml-1.5 text-sm text-brand-charcoal/40">分</span>
           </p>
-          <p className="mt-1.5 text-[12px] text-brand-charcoal/40 font-light tracking-[0.08em]">
+          <p className="mt-1.5 text-[12px] font-light tracking-[0.08em] text-brand-charcoal/40">
             {latestDate} 测
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           {delta !== 0 && (
             <span
-              className={`text-[12px] font-light px-2.5 py-1 rounded-full ${
+              className={`rounded-full px-2.5 py-1 text-[12px] font-light ${
                 Math.abs(delta) <= 2
                   ? "bg-brand-charcoal/[0.06] text-brand-charcoal/55"
                   : delta > 0
@@ -121,14 +121,19 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
             </span>
           )}
           {typeof totalTests === "number" && totalTests > 0 && (
-            <p className="text-[12px] text-brand-charcoal/45 font-light tracking-[0.08em]">
+            <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/45">
               累计测肤 {totalTests} 次
             </p>
           )}
         </div>
       </div>
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="近几次测肤综合评分趋势">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="h-auto w-full"
+        role="img"
+        aria-label="近几次测肤综合评分趋势"
+      >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#5c4937" stopOpacity="0.12" />
@@ -148,8 +153,15 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
               strokeOpacity="0.08"
               strokeDasharray="3 5"
             />
-            <text x={PAD_L - 10} y={yOf(v) + 9} textAnchor="end" fill="#8c7a6b" className="text-[26px]">
-              {v}{idx === gridValues.length - 1 ? " 分" : ""}
+            <text
+              x={PAD_L - 10}
+              y={yOf(v) + 9}
+              textAnchor="end"
+              fill="#8c7a6b"
+              className="text-[26px]"
+            >
+              {v}
+              {idx === gridValues.length - 1 ? " 分" : ""}
             </text>
           </g>
         ))}
@@ -191,7 +203,15 @@ export function TrendChart({ trends, totalTests }: { trends: TrendsData; totalTe
               </circle>
               {/* 最新点光环：视觉锚点 */}
               {isLatest && (
-                <circle cx={p.x} cy={p.y} r={9} fill="none" stroke="#5c4937" strokeOpacity="0.25" strokeWidth="1.5" />
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={9}
+                  fill="none"
+                  stroke="#5c4937"
+                  strokeOpacity="0.25"
+                  strokeWidth="1.5"
+                />
               )}
               <circle
                 cx={p.x}

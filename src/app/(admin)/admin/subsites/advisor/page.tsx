@@ -161,8 +161,7 @@ function BudgetBar({
 }) {
   const configured = budget > 0;
   const width = configured ? Math.min(Math.max(percent, 0), 100) : 0;
-  const color =
-    percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-amber-500" : "bg-emerald-500";
+  const color = percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-amber-500" : "bg-emerald-500";
 
   return (
     <div>
@@ -261,11 +260,7 @@ function AIHealthSummary({ health }: { health: AdvisorAIHealth | null }) {
   );
 }
 
-function SkinDistribution({
-  items,
-}: {
-  items: AdvisorSubsiteDashboard["skinTypeDistribution"];
-}) {
+function SkinDistribution({ items }: { items: AdvisorSubsiteDashboard["skinTypeDistribution"] }) {
   const total = items.reduce((sum, item) => sum + item.value, 0);
 
   if (total === 0) {
@@ -646,10 +641,7 @@ export default function AdvisorSubsitePage() {
       updatedAt={payload.dashboard.generatedAt}
       onRefresh={reload}
     >
-      <DashboardContent
-        dashboard={payload.dashboard}
-        canOpenAdvisor={canOpenAdvisor}
-      />
+      <DashboardContent dashboard={payload.dashboard} canOpenAdvisor={canOpenAdvisor} />
     </PageFrame>
   );
 }

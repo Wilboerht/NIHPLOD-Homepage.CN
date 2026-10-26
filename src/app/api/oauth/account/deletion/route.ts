@@ -29,11 +29,7 @@ import {
   readJsonBodyOrDefault,
 } from "@/lib/request-body";
 import { prisma } from "@/lib/prisma";
-import {
-  recordSmsCodeFailure,
-  SMS_CODE_MAX_ATTEMPTS,
-  verifyCode,
-} from "@/lib/sms";
+import { SMS_CODE_MAX_ATTEMPTS, verifySmsCodeWithLimit } from "@/lib/sms";
 import { apiConsole } from "@/lib/logger";
 import {
   getDeletionStatus,
@@ -84,7 +80,10 @@ export async function POST(request: NextRequest) {
     const limitResult = await rateLimit(`user:${payload.id}`, "account-deletion");
     if (!limitResult.success) {
       return resJson(
-        { success: false, error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" } },
+        {
+          success: false,
+          error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" },
+        },
         429
       );
     }
@@ -132,8 +131,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!verifyCode(user.phone, parsed.data.smsCode, "deletion", smsCode.codeHash)) {
-      await recordSmsCodeFailure(smsCode.id);
+    if (!(await verifySmsCodeWithLimit(user.phone, parsed.data.smsCode, "deletion", smsCode.id))) {
       return resJson(
         { success: false, error: { code: "SMS_CODE_INVALID", message: "验证码错误或已过期" } },
         400
@@ -194,7 +192,10 @@ export async function DELETE(request: NextRequest) {
     const limitResult = await rateLimit(`user:${payload.id}`, "account-deletion-cancel");
     if (!limitResult.success) {
       return resJson(
-        { success: false, error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" } },
+        {
+          success: false,
+          error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" },
+        },
         429
       );
     }

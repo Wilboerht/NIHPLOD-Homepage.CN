@@ -16,11 +16,7 @@ const ossConfig = {
 
 // 检查配置是否完整
 const isOSSCredentialsConfigured = () => {
-  return (
-    !!ossConfig.region &&
-    !!ossConfig.accessKeyId &&
-    !!ossConfig.accessKeySecret
-  );
+  return !!ossConfig.region && !!ossConfig.accessKeyId && !!ossConfig.accessKeySecret;
 };
 
 export const isOSSConfigured = () => {
@@ -104,6 +100,7 @@ export async function deleteOSSFiles(urls: string[]) {
     apiConsole.info(`Deleted OSS files: ${names.join(", ")}`);
   } catch (e) {
     apiConsole.error("Failed to delete OSS files:", e);
+    throw e;
   }
 }
 
@@ -167,9 +164,7 @@ export function signPrivateObjectUrl(
   return client.signatureUrl(objectName, {
     method: "GET",
     expires: expiresSec,
-    ...(contentDisposition
-      ? { response: { "content-disposition": contentDisposition } }
-      : {}),
+    ...(contentDisposition ? { response: { "content-disposition": contentDisposition } } : {}),
   });
 }
 
@@ -181,12 +176,13 @@ export async function deletePrivateOSSObject(objectName: string): Promise<boolea
   return true;
 }
 
-/** 列出私有 bucket 指定前缀下的对象名（用于孤儿简历清理）。 */
-export async function listPrivateOSSObjectNames(prefix: string): Promise<string[]> {
+export async function listPrivateOSSObjects(
+  prefix: string
+): Promise<{ name: string; lastModified: string | null }[]> {
   const client = getPrivateOssClient();
   if (!client) return [];
 
-  const names: string[] = [];
+  const objects: { name: string; lastModified: string | null }[] = [];
   let marker: string | undefined;
   do {
     const result = await client.list(
@@ -198,10 +194,14 @@ export async function listPrivateOSSObjectNames(prefix: string): Promise<string[
       {}
     );
     for (const object of result.objects ?? []) {
-      names.push(object.name);
+      objects.push({ name: object.name, lastModified: object.lastModified ?? null });
     }
     marker = result.nextMarker;
   } while (marker);
 
-  return names;
+  return objects;
+}
+
+export async function listPrivateOSSObjectNames(prefix: string): Promise<string[]> {
+  return (await listPrivateOSSObjects(prefix)).map((object) => object.name);
 }

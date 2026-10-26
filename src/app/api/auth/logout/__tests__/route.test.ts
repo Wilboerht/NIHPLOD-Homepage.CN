@@ -206,7 +206,9 @@ describe("POST /api/auth/logout allDevices（全设备登出）", () => {
     vi.clearAllMocks();
     // 已认证用户
     mockVerifyUserAuth.mockResolvedValue({ id: "user-1", jti: "jti-1", exp: 9999999999 });
-    (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ phone: "13800000000" });
+    (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      phone: "13800000000",
+    });
   });
 
   it("allDevices=true：撤销全部 refresh token 并写入 sessionsInvalidatedAt 使已签发 access token 失效", async () => {

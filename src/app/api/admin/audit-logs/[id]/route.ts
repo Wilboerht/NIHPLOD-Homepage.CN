@@ -22,10 +22,7 @@ const NO_STORE_HEADERS = {
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
@@ -79,9 +76,7 @@ export async function GET(
           actorEmail: log.actorEmail ? maskIdentifier(log.actorEmail) : null,
           ipAddress: log.ipAddress ? maskIp(log.ipAddress) : null,
           userAgent: null,
-          admin: log.admin
-            ? { ...log.admin, email: maskIdentifier(log.admin.email) ?? "-" }
-            : null,
+          admin: log.admin ? { ...log.admin, email: maskIdentifier(log.admin.email) ?? "-" } : null,
         };
 
     await createAuditLog({
@@ -105,10 +100,7 @@ export async function GET(
       request,
     });
 
-    return NextResponse.json(
-      { success: true, data: sanitized },
-      { headers: NO_STORE_HEADERS }
-    );
+    return NextResponse.json({ success: true, data: sanitized }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     apiConsole.error("[AuditLogDetail] GET 异常:", error);
     return NextResponse.json(

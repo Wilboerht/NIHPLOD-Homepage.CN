@@ -166,21 +166,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    // 只允许发放“今天（UTC+8）”的打卡积分：reference 中的日期即打卡日。
-    // 仅校验格式并不能阻止逐日补录历史日期刷分，必须把日期窗口收紧到当天。
-    if (referenceMatch[2] !== getUtc8DateKey()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "INVALID_REFERENCE",
-            message: "仅允许发放当天（UTC+8）的打卡积分，历史日期补录不发分",
-          },
-        },
-        { status: 400 }
-      );
-    }
-
     // 5. 按 userId 定位用户（子站本地 user.id 即 SSO sub，与官网 User.id 同源）
     // 同时校验账户状态：封禁/冻结用户不得再被发放积分
     const user = await prisma.user.findUnique({
@@ -192,6 +177,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
         { status: 404 }
+      );
+    }
+
+    const existing = await prisma.pointLedger.findUnique({
+      where: { userId_reference: { userId, reference } },
+      select: { id: true },
+    });
+    if (existing) {
+      const balance = await getPointBalanceView(prisma, userId);
+      return NextResponse.json({
+        success: true,
+        data: { granted: 0, duplicated: true, available: balance.available },
+      });
+    }
+    if (referenceMatch[2] !== getUtc8DateKey()) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_REFERENCE",
+            message: "仅允许发放当天（UTC+8）的打卡积分，历史日期补录不发分",
+          },
+        },
+        { status: 400 }
       );
     }
 

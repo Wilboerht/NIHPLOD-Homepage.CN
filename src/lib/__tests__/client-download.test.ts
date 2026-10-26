@@ -4,9 +4,9 @@ import { downloadFromUrl, parseContentDispositionFilename } from "@/lib/client-d
 
 describe("parseContentDispositionFilename", () => {
   it("解析普通 filename", () => {
-    expect(
-      parseContentDispositionFilename('attachment; filename="users-2026-10-23.csv"')
-    ).toBe("users-2026-10-23.csv");
+    expect(parseContentDispositionFilename('attachment; filename="users-2026-10-23.csv"')).toBe(
+      "users-2026-10-23.csv"
+    );
   });
 
   it("优先解析 RFC 5987 filename* 并解码中文", () => {
@@ -86,12 +86,14 @@ describe("downloadFromUrl", () => {
   it("非 2xx 时抛出服务端错误信息，不创建 blob", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({ success: false, error: { message: "权限不足：导出审计日志" } }),
-          { status: 403, headers: { "Content-Type": "application/json" } }
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ success: false, error: { message: "权限不足：导出审计日志" } }),
+            { status: 403, headers: { "Content-Type": "application/json" } }
+          )
         )
-      )
     );
 
     await expect(downloadFromUrl("/export", "x.csv")).rejects.toThrow("权限不足：导出审计日志");

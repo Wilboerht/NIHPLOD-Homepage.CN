@@ -97,10 +97,7 @@ export async function GET(request: NextRequest) {
         { status: 401, headers: NO_STORE_HEADERS }
       );
     }
-    if (
-      !hasAdminPermission(admin, "users:read") ||
-      !hasAdminPermission(admin, "users:export")
-    ) {
+    if (!hasAdminPermission(admin, "users:read") || !hasAdminPermission(admin, "users:export")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户数据导出" } },
         { status: 403, headers: NO_STORE_HEADERS }
@@ -116,17 +113,17 @@ export async function GET(request: NextRequest) {
         ? { maxRequests: 30, windowMs: 60 * 1000 }
         : { maxRequests: 5, windowMs: 10 * 60 * 1000 }
     );
-      if (!limit.success) {
-        return NextResponse.json(
-          { success: false, error: { code: "RATE_LIMITED", message: "导出过于频繁，请稍后再试" } },
-          { status: 429, headers: NO_STORE_HEADERS }
-        );
-      }
+    if (!limit.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "导出过于频繁，请稍后再试" } },
+        { status: 429, headers: NO_STORE_HEADERS }
+      );
+    }
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const params = userListQuerySchema.parse({
+    const params = userListQuerySchema.parse({
       page: searchParams.get("page"),
       pageSize: searchParams.get("pageSize"),
       search: searchParams.get("search"),
@@ -161,6 +158,18 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           error: { code: "FORBIDDEN", message: "权限不足：测肤子站档案导出" },
+        },
+        { status: 403, headers: NO_STORE_HEADERS }
+      );
+    }
+    if (
+      normalized.groups.includes("advisorFullAnalysis") &&
+      !hasAdminPermission(admin, "advisor:report:read")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "FORBIDDEN", message: "权限不足：完整测肤报告导出" },
         },
         { status: 403, headers: NO_STORE_HEADERS }
       );

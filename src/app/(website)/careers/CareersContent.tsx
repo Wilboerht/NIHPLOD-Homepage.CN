@@ -621,11 +621,14 @@ function JobModal({
             center: [lng, lat],
             viewMode: "2D",
           });
+          const label = document.createElement("div");
+          label.className = "amap-custom-label";
+          label.textContent = job.location;
           const marker = new amap.Marker({
             position: [lng, lat],
             title: job.location,
             label: {
-              content: `<div class="amap-custom-label">${job.location}</div>`,
+              content: label.outerHTML,
               direction: "bottom",
               offset: new amap.Pixel(0, 10),
             },
@@ -824,9 +827,9 @@ function JobModal({
         {/* Body */}
         <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
           {/* Map */}
-            {amapEnabled && job.location && (
-              <div id={`map-${job.id}`} className="h-48 w-full rounded-xl border border-zinc-100" />
-            )}
+          {amapEnabled && job.location && (
+            <div id={`map-${job.id}`} className="h-48 w-full rounded-xl border border-zinc-100" />
+          )}
 
           {/* Description */}
           <div>

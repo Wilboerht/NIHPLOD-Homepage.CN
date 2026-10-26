@@ -5,6 +5,8 @@
  * POST /api/admin/users/:id/reveal-phone - 显示完整手机号（敏感操作，写审计）
  */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { beginAuditLog, createAuditLog, createAuditLogStrict, finishAuditLog } from "@/lib/audit";
@@ -53,6 +55,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const rateLimitResponse = await checkAdminRateLimit(request, "user:read");
     if (rateLimitResponse) return rateLimitResponse;
+
+    const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
+    if (canReadSensitive) {
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+    }
 
     const { id } = await context.params;
 
@@ -192,8 +200,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     ]);
 
     // 查看用户详情（含积分/地址等敏感档案）记审计——同一管理员 5 分钟内重复查看合并为一条。
-    // 拥有 users:sensitive:read 时返回完整联系方式，审计动作升级为 user_detail_sensitive_view。
-    const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
+    // 拥有 users:sensitive:read 且通过 step-up 时返回完整联系方式。
     const auditAction = canReadSensitive ? "user_detail_sensitive_view" : "user_detail_view";
     const recentView = await prisma.auditLog.findFirst({
       where: {
@@ -450,21 +457,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         { status: 401 }
       );
     }
-      if (!hasAdminPermission(admin, "users:write")) {
-        return NextResponse.json(
-          { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户状态/生日变更" } },
-          { status: 403 }
-        );
-      }
-      const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
+    if (!hasAdminPermission(admin, "users:write")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户状态/生日变更" } },
+        { status: 403 }
+      );
+    }
+    const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
 
-      const rateLimitResponse = await checkAdminRateLimit(request);
-      if (rateLimitResponse) return rateLimitResponse;
+    const rateLimitResponse = await checkAdminRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const { id } = await context.params;
+    const { id } = await context.params;
     if (!validateCUID(id)) {
       return invalidIdResponse();
     }
@@ -583,13 +590,29 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         .update({
           where: { id },
           data: birthdayData,
-          select: { id: true, phone: true, status: true, birthday: true, birthdayLocked: true },
+          select: {
+            id: true,
+            phone: true,
+            status: true,
+            birthday: true,
+            birthdayLocked: true,
+            nickname: true,
+            avatar: true,
+            gender: true,
+          },
         })
         .catch(async (error) => {
           await finishAuditLog(auditId, "FAILURE", birthdayAudit);
           throw error;
         });
       updatedUser = saved;
+      revalidateTag("user-profile", { expire: 0 });
+      void sendProfileUpdateWebhook(saved.id, {
+        nickname: saved.nickname,
+        avatar: saved.avatar,
+        birthday: saved.birthday?.toISOString() ?? null,
+        gender: normalizeGender(saved.gender),
+      }).catch((error) => apiConsole.warn("[AdminUserBirthday] 资料 webhook 失败:", error));
 
       await finishAuditLog(auditId, "SUCCESS", {
         ...birthdayAudit,
@@ -821,33 +844,56 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     // 建立/重置注销申请（到期时间为现在），随后同步执行——
     // 管理员能立即看到成败（与人工重试同口径），无需等待下一轮 cron
-    const deletionRequest = await prisma.accountDeletionRequest
-      .upsert({
-        where: { userId: id },
-        create: {
-          userId: id,
-          reason: "管理端删除",
-          phoneHash: hashIdentifier(user.phone),
-          scheduledAt: now,
-        },
-        update: {
-          status: DELETION_STATUS.PENDING,
-          reason: "管理端删除",
-          phoneHash: hashIdentifier(user.phone),
-          requestedAt: now,
-          scheduledAt: now,
-          cancelledAt: null,
-          completedAt: null,
-          attempts: 0,
-          lastError: null,
-          lockedAt: null,
-          leaseToken: null,
-        },
+    const deletionRequest = await prisma
+      .$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "AccountDeletionRequest" WHERE "userId" = ${id} FOR UPDATE`;
+        const current = await tx.accountDeletionRequest.findUnique({
+          where: { userId: id },
+          select: { status: true, lockedAt: true },
+        });
+        const running =
+          current?.status === DELETION_STATUS.RUNNING &&
+          (!current.lockedAt || current.lockedAt.getTime() > now.getTime() - DELETION_LEASE_MS);
+        if (running) return null;
+
+        return tx.accountDeletionRequest.upsert({
+          where: { userId: id },
+          create: {
+            userId: id,
+            reason: "管理端删除",
+            phoneHash: hashIdentifier(user.phone),
+            scheduledAt: now,
+          },
+          update: {
+            status: DELETION_STATUS.PENDING,
+            reason: "管理端删除",
+            phoneHash: hashIdentifier(user.phone),
+            requestedAt: now,
+            scheduledAt: now,
+            cancelledAt: null,
+            completedAt: null,
+            attempts: 0,
+            lastError: null,
+            lockedAt: null,
+            leaseToken: null,
+          },
+        });
       })
       .catch(async (error) => {
         await finishAuditLog(auditId, "FAILURE", { error: "REQUEST_CREATE_FAILED" });
         throw error;
       });
+
+    if (!deletionRequest) {
+      await finishAuditLog(auditId, "FAILURE", { error: "DELETION_IN_PROGRESS" });
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "DELETION_IN_PROGRESS", message: "该用户注销正在执行中，请稍后查询结果" },
+        },
+        { status: 409 }
+      );
+    }
 
     let result: Awaited<ReturnType<typeof executeAccountDeletion>>;
     try {

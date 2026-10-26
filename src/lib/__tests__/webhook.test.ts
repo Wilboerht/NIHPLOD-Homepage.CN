@@ -25,7 +25,12 @@ import {
   signWebhookPayload,
 } from "@/lib/webhook";
 
-const change = { userId: "user-1", oldStatus: "ACTIVE", newStatus: "BANNED", source: "admin" } as const;
+const change = {
+  userId: "user-1",
+  oldStatus: "ACTIVE",
+  newStatus: "BANNED",
+  source: "admin",
+} as const;
 const target = {
   url: "https://sub.example.com/webhook",
   clientId: "sub-app",

@@ -55,9 +55,7 @@ export async function decorateOAuthResponse(
   });
 }
 
-export type OAuthResourceAuthResult =
-  | OAuthResourceAuthOk
-  | { ok: false; response: NextResponse };
+export type OAuthResourceAuthResult = OAuthResourceAuthOk | { ok: false; response: NextResponse };
 
 /**
  * 共享鉴权流程。失败时返回可直接返回给客户端的响应（审计已写入）；
@@ -201,7 +199,6 @@ export async function authenticateOAuthResourceRequest(
  */
 export function isM2mPayload(payload: OAuthAccessTokenPayload): boolean {
   return (
-    (payload as { client_type?: string }).client_type === "m2m" ||
-    payload.id.startsWith("client:")
+    (payload as { client_type?: string }).client_type === "m2m" || payload.id.startsWith("client:")
   );
 }

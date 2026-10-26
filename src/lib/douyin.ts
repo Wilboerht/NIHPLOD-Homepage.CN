@@ -71,7 +71,9 @@ export async function getDouyinOAuthToken(code: string): Promise<DouyinOAuthToke
     code,
     grant_type: "authorization_code",
   });
-  const response = await douyinFetch(`https://open.douyin.com/oauth/access_token/?${params.toString()}`);
+  const response = await douyinFetch(
+    `https://open.douyin.com/oauth/access_token/?${params.toString()}`
+  );
   if (!response.ok) {
     throw new Error(`抖音 access_token 请求失败: HTTP ${response.status}`);
   }
@@ -112,12 +114,17 @@ export interface DouyinUserInfo {
  * 获取抖音用户信息（昵称/头像）
  * 抖音响应结构：{ data: { openid, unionid, nickname, avatar, error_code, description } }
  */
-export async function getDouyinUserInfo(accessToken: string, openId: string): Promise<DouyinUserInfo> {
+export async function getDouyinUserInfo(
+  accessToken: string,
+  openId: string
+): Promise<DouyinUserInfo> {
   const params = new URLSearchParams({
     access_token: accessToken,
     open_id: openId,
   });
-  const response = await douyinFetch(`https://open.douyin.com/oauth/userinfo/?${params.toString()}`);
+  const response = await douyinFetch(
+    `https://open.douyin.com/oauth/userinfo/?${params.toString()}`
+  );
   if (!response.ok) {
     throw new Error(`抖音用户信息请求失败: HTTP ${response.status}`);
   }

@@ -71,10 +71,7 @@ function LogoutConfirmContent({
         className="relative z-10 w-full max-w-xs rounded-[24px] bg-[#FDFBF7] px-6 pb-6 pt-6 shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3
-          id="logout-confirm-title"
-          className="mb-2 text-base font-semibold text-brand-charcoal"
-        >
+        <h3 id="logout-confirm-title" className="mb-2 text-base font-semibold text-brand-charcoal">
           退出登录
         </h3>
         <p className="mb-4 text-[13px] font-light leading-relaxed text-brand-charcoal/70">

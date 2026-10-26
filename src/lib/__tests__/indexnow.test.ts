@@ -48,9 +48,7 @@ describe("submitToIndexNow", () => {
 
   it("请求抛错时返回 false 且不抛出异常", async () => {
     vi.stubEnv("INDEXNOW_KEY", "test-key");
-    global.fetch = vi
-      .fn()
-      .mockRejectedValue(new Error("network")) as unknown as typeof fetch;
+    global.fetch = vi.fn().mockRejectedValue(new Error("network")) as unknown as typeof fetch;
     const { submitToIndexNow } = await import("../indexnow");
     await expect(submitToIndexNow(["/products"])).resolves.toBe(false);
   });

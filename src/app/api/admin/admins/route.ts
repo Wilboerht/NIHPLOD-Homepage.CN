@@ -179,23 +179,23 @@ export const POST = withAuth(async (request, admin) => {
     const body = await request.json();
 
     // 批量操作
-      if (body.ids && body.action) {
-        const batch = batchSchema.parse(body);
-        if (isAdminApprovalEnforced() && batch.action === "delete" && admin.role !== "owner") {
-          return NextResponse.json(
-            {
-              success: false,
-              error: {
-                code: "APPROVAL_REQUIRED",
-                message: "该操作需要 owner 审批，请前往审批中心提交申请",
-                details: { policyKey: "admin.delete" },
-              },
+    if (body.ids && body.action) {
+      const batch = batchSchema.parse(body);
+      if (isAdminApprovalEnforced() && batch.action === "delete" && admin.role !== "owner") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "APPROVAL_REQUIRED",
+              message: "该操作需要 owner 审批，请前往审批中心提交申请",
+              details: { policyKey: "admin.delete" },
             },
-            { status: 403 }
-          );
-        }
-        if (batch.action === "delete") {
-          const auditId = await beginAuditLog({
+          },
+          { status: 403 }
+        );
+      }
+      if (batch.action === "delete") {
+        const auditId = await beginAuditLog({
           action: "delete_admin",
           targetType: "admin",
           detail: { ids: batch.ids, count: batch.ids.length },

@@ -82,6 +82,7 @@ model Category {
 model Image {
   id        String   @id @default(cuid())
   url       String // 图片路径
+  derivedUrls String[] @default([]) // 缩略图等派生对象，统一纳入删除生命周期
   alt       String? // 替代文本
   order     Int      @default(0) // 排序
   productId String
@@ -90,6 +91,17 @@ model Image {
   updatedAt DateTime @default(now()) @updatedAt
 
   @@index([productId])
+}
+
+model MediaDeletionTask {
+  id          String   @id @default(cuid())
+  objectKey   String
+  attempts    Int      @default(0)
+  nextRetryAt DateTime @default(now())
+  lastError   String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([nextRetryAt])
 }
 
 // ============================================
@@ -137,7 +149,7 @@ model JobApplication {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @default(now()) @updatedAt
 
-  job    Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job    Job                @relation(fields: [jobId], references: [id], onDelete: Restrict)
   folder ApplicationFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
   @@index([jobId, createdAt(sort: Desc)])
@@ -367,6 +379,7 @@ model RefreshToken {
   @@index([userId, revokedAt, expiresAt])
   @@index([userId, clientId, revokedAt, expiresAt])
   @@index([oauthSessionId])
+  @@index([revokedAt])
   @@index([expiresAt])
 }
 
@@ -394,6 +407,7 @@ model LoginAttempt {
   @@index([identifier, success, createdAt(sort: Desc)])
   @@index([clientId, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt])
 }
 
 /**
@@ -510,6 +524,7 @@ model UserConsent {
   @@index([clientId])
   @@index([grantedAt(sort: Desc)])
   @@index([clientId, revokedAt, grantedAt])
+  @@index([revokedAt])
 }
 
 model SsoAuditEvent {
@@ -587,6 +602,7 @@ model SmsCode {
   @@index([phone, type])
   @@index([expiresAt])
   @@index([phone, used, expiresAt])
+  @@index([createdAt])
 }
 
 // PoW 人机验证挑战（自研，原理同 Cap.js：SHA-256 前导零工作量证明）
@@ -719,9 +735,11 @@ model AuditExportJob {
   expiresAt     DateTime?
   createdAt     DateTime  @default(now())
   startedAt     DateTime?
+  heartbeatAt   DateTime? // worker 心跳；RUNNING 崩溃后按此回收
   finishedAt    DateTime?
 
   @@index([status, createdAt])
+  @@index([status, heartbeatAt])
   @@index([adminId, createdAt])
 }
 
@@ -954,6 +972,8 @@ model SpentImportBatch {
   processedRows Int                    @default(0)
   lastError     String?                @db.Text
   startedAt     DateTime               @default(now())
+  leaseToken    String? // 导入执行器租约；撤销/超时回收后禁止旧执行器继续写入
+  heartbeatAt   DateTime? // 每行处理时续租
   finishedAt    DateTime?
   totalRows     Int // Excel ?????
   successRows   Int // ??????

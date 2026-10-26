@@ -68,7 +68,10 @@ export async function GET(request: NextRequest) {
         success: false,
         detail: { action: "membership", reason: guard.reason },
       });
-      return resJson({ error: guard.error, error_description: guard.errorDescription }, guard.status);
+      return resJson(
+        { error: guard.error, error_description: guard.errorDescription },
+        guard.status
+      );
     }
 
     // 会员视图与主站 /api/user/vip 共用组装逻辑（不含 skinTestUsage 子站私有数据）

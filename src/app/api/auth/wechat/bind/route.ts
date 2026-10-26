@@ -22,11 +22,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { rateLimit } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
-import {
-  isBodyTooLargeError,
-  payloadTooLargeResponse,
-  readJsonBody,
-} from "@/lib/request-body";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 
 /**
  * 微信绑定表单
@@ -36,7 +32,10 @@ import {
  * 避免恶意客户端错标平台污染 ExternalIdentity 数据
  */
 const bindSchema = z.object({
-  phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号").optional(),
+  phone: z
+    .string()
+    .regex(/^1[3-9]\d{9}$/, "请输入正确的手机号")
+    .optional(),
   code: z.string().length(6, "验证码为6位数字").optional(),
   // 微信手机号快速验证授权码：仅 bindToken 通道（小程序等无 Cookie 环境）可用，
   // 浏览器 Cookie 通道维持短信验证码不变
@@ -220,7 +219,10 @@ export async function POST(request: NextRequest) {
         return await failAndRelease(
           {
             success: false,
-            error: { code: "INVALID_PARAMS", message: "请输入手机号和验证码，或使用微信手机号授权" },
+            error: {
+              code: "INVALID_PARAMS",
+              message: "请输入手机号和验证码，或使用微信手机号授权",
+            },
           },
           400
         );

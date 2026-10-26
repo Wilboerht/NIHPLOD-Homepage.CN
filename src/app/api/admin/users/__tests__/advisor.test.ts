@@ -274,7 +274,11 @@ describe("PATCH /api/admin/users/[id]/advisor", () => {
 
   it("主站非 ACTIVE 时仍可调整每日上限", async () => {
     mockFindUnique.mockResolvedValue({ id: USER_ID, status: "SUSPENDED" });
-    mocks.advisorRequest.mockResolvedValue({ ok: true, status: 200, data: { success: true, data: updateResult } });
+    mocks.advisorRequest.mockResolvedValue({
+      ok: true,
+      status: 200,
+      data: { success: true, data: updateResult },
+    });
     const res = await PATCH(createPatchRequest({ dailyTestLimit: 20 }), context);
     expect(res.status).toBe(200);
   });

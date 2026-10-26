@@ -185,6 +185,11 @@ export async function POST(request: NextRequest) {
         if (!original || original.type !== "REDEEM" || original.amount >= 0) {
           return { notFound: true as const };
         }
+        const websiteRedemption = await tx.pointRedemption.findUnique({
+          where: { userId_reference: { userId: user.id, reference: `redeem:${reference}` } },
+          select: { id: true },
+        });
+        if (websiteRedemption) return { notFound: true as const };
 
         const refund = await refundRedeemPoints(tx, {
           userId: user.id,

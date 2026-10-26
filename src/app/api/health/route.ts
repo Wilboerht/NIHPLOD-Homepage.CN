@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { rateLimit, getClientIP } from "@/lib/ratelimit";
 
 /**
  * 健康检查 API
@@ -22,13 +21,7 @@ async function checkHttp(url: string, timeoutMs = 3000): Promise<string> {
   }
 }
 
-export async function GET(request: Request) {
-  const ip = getClientIP(request);
-  const limitResult = await rateLimit(ip, "health");
-  if (!limitResult.success) {
-    return NextResponse.json({ status: "rate_limited", message: "请求过于频繁" }, { status: 429 });
-  }
-
+export async function GET() {
   const checks: Record<
     string,
     { status: string; latency?: number; error?: string; detail?: Record<string, unknown> }
@@ -79,9 +72,7 @@ export async function GET(request: Request) {
       }),
       prisma.auditLog.count({ where: { outcome: "PENDING" } }),
     ]);
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const stale = !auditAnchor || auditAnchor.day < yesterday;
     checks.audit = {
       status: stale || pendingCount > 50 ? "warn" : "ok",

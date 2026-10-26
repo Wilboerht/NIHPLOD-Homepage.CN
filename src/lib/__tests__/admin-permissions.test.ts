@@ -77,12 +77,13 @@ describe("角色模板", () => {
 
   it("未知角色 fail-closed 回退空权限集（不回退 admin，防止提权）", () => {
     expect(resolveAdminPermissions("unknown-role")).toEqual([]);
-    expect(
-      hasAdminPermission({ role: "unknown-role" }, "users:sensitive:read")
-    ).toBe(false);
+    expect(hasAdminPermission({ role: "unknown-role" }, "users:sensitive:read")).toBe(false);
     // 个人追加授权在未知角色上仍可生效（空模板 + 覆盖）
     expect(
-      hasAdminPermission({ role: "unknown-role", permissionOverrides: ["audit:read"] }, "audit:read")
+      hasAdminPermission(
+        { role: "unknown-role", permissionOverrides: ["audit:read"] },
+        "audit:read"
+      )
     ).toBe(true);
   });
 });
@@ -90,33 +91,24 @@ describe("角色模板", () => {
 describe("个人权限覆盖", () => {
   it("追加授权生效", () => {
     expect(
-      hasAdminPermission(
-        { role: "support", permissions: ["spent:review"] },
-        "spent:review"
-      )
+      hasAdminPermission({ role: "support", permissions: ["spent:review"] }, "spent:review")
     ).toBe(true);
   });
 
   it("撤销覆盖模板授权", () => {
-    expect(
-      hasAdminPermission({ role: "ops", permissions: ["!gifts:write"] }, "gifts:write")
-    ).toBe(false);
+    expect(hasAdminPermission({ role: "ops", permissions: ["!gifts:write"] }, "gifts:write")).toBe(
+      false
+    );
     expect(resolveAdminPermissions("ops", ["!gifts:write"])).not.toContain("gifts:write");
   });
 
   it("API 层字段 permissionOverrides 的撤销/追加必须生效（回归）", () => {
     // API 的 verifyAuth 返回 permissionOverrides（原始覆盖条目）
     expect(
-      hasAdminPermission(
-        { role: "ops", permissionOverrides: ["!gifts:write"] },
-        "gifts:write"
-      )
+      hasAdminPermission({ role: "ops", permissionOverrides: ["!gifts:write"] }, "gifts:write")
     ).toBe(false);
     expect(
-      hasAdminPermission(
-        { role: "support", permissionOverrides: ["spent:review"] },
-        "spent:review"
-      )
+      hasAdminPermission({ role: "support", permissionOverrides: ["spent:review"] }, "spent:review")
     ).toBe(true);
     // 同时存在 permissions 与 permissionOverrides 时以覆盖为准
     expect(
@@ -156,9 +148,7 @@ describe("buildPermissionOverrides 与模板互转", () => {
 
   it("往返一致：生成覆盖后解析结果等于勾选集合", () => {
     const role = "hr" as const;
-    const selected = [...ROLE_TEMPLATES[role], "audit:read"].filter(
-      (p) => p !== "jobs:delete"
-    );
+    const selected = [...ROLE_TEMPLATES[role], "audit:read"].filter((p) => p !== "jobs:delete");
     const overrides = buildPermissionOverrides(role, selected);
     const resolved = resolveAdminPermissions(role, overrides);
     expect(new Set(resolved)).toEqual(new Set(selected));

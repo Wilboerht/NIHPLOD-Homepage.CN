@@ -8,10 +8,7 @@
  *    PostgreSQL advisory lock 串行化整个判定 + 删除流程。
  */
 import prisma from "@/lib/prisma";
-import {
-  resolveAdminPermissions,
-  type AdminRoleValue,
-} from "@/lib/admin-permissions";
+import { resolveAdminPermissions, type AdminRoleValue } from "@/lib/admin-permissions";
 
 export interface DeletedAdminSummary {
   id: string;

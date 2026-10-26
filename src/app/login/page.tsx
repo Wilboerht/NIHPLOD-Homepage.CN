@@ -50,8 +50,7 @@ const CONSENT_ERROR_MESSAGES: Record<string, string> = {
  * 短信服务不可用（生产环境 mock 短信时 send-code 返回 503 + SMS_UNAVAILABLE）的统一提示。
  * 命中该错误码时不得提示"验证码已发送"，也不进入重发倒计时。
  */
-const SMS_UNAVAILABLE_MESSAGE =
-  "短信服务暂不可用，请使用密码登录或联系客服（service@nihplod.cn）";
+const SMS_UNAVAILABLE_MESSAGE = "短信服务暂不可用，请使用密码登录或联系客服（service@nihplod.cn）";
 
 function isSmsUnavailable(error: unknown): boolean {
   return error instanceof ApiError && error.code === "SMS_UNAVAILABLE";
@@ -175,9 +174,7 @@ function LoginPageContent() {
     ? (rawMode as AuthMode)
     : "login";
   const clientNameParam = searchParams.get("client_name");
-  const clientName = (clientNameParam || "第三方应用")
-    .replace(/[<>"'&`\/\\;]/g, "")
-    .slice(0, 50);
+  const clientName = (clientNameParam || "第三方应用").replace(/[<>"'&`\/\\;]/g, "").slice(0, 50);
   const oauthId = searchParams.get("oauth_id") || "";
   const oauthParamsFromUrl = searchParams.get("oauth_params") || "";
   // SSO 登录上下文：authorize 重定向登录页时透传 reauth / login_hint
@@ -293,6 +290,7 @@ function LoginPageContent() {
     loginNotice?: string;
     resetError?: string;
   } | null>(null);
+  const authRequestIdRef = useRef(0);
 
   const isSafeReturnTo = useCallback((url: string): boolean => {
     // 统一走 src/lib/url-safety：拒绝反斜杠/控制字符（"/\evil.com" 会被浏览器解析为跨站）
@@ -406,6 +404,7 @@ function LoginPageContent() {
   const [prevMode, setPrevMode] = useState(mode);
   if (prevMode !== mode) {
     setPrevMode(mode);
+    authRequestIdRef.current += 1;
     setLoading(false);
     setForgotSubmitted(false);
     setRegCodeSending(false);
@@ -478,7 +477,9 @@ function LoginPageContent() {
   >(null);
 
   /** 求解 PoW token（期间置对应流程的 captchaSolving，供按钮展示「核验中…」） */
-  const runWithCaptcha = async (flow: "login" | "login-code" | "reg" | "reset"): Promise<string> => {
+  const runWithCaptcha = async (
+    flow: "login" | "login-code" | "reg" | "reset"
+  ): Promise<string> => {
     setCaptchaSolving(flow);
     try {
       return await solveCaptcha();
@@ -535,7 +536,8 @@ function LoginPageContent() {
     };
   }, [isMobile]);
 
-  const handleAuthSuccess = async (successMessage: string) => {
+  const handleAuthSuccess = async (successMessage: string, requestId?: number) => {
+    if (requestId !== undefined && requestId !== authRequestIdRef.current) return;
     // 面板淡出并淡入成功视图（打勾动画），同时并行刷新登录态
     setAuthSuccess(successMessage);
     const startedAt = Date.now();
@@ -558,6 +560,7 @@ function LoginPageContent() {
         /* sessionStorage 不可用时忽略 */
       }
     }
+    if (requestId !== undefined && requestId !== authRequestIdRef.current) return;
     navigateToReturnTo(returnTo);
   };
 
@@ -571,6 +574,7 @@ function LoginPageContent() {
       setFieldErrors({ agreement: "请先阅读并同意《用户协议》和《隐私政策》" });
       return;
     }
+    const requestId = ++authRequestIdRef.current;
     try {
       if (loginMethod === "code") {
         // 验证码登录：短信码即凭证，无需人机验证
@@ -586,8 +590,10 @@ function LoginPageContent() {
           captchaToken,
         });
       }
-      await handleAuthSuccess("登录成功");
+      if (requestId !== authRequestIdRef.current) return;
+      await handleAuthSuccess("登录成功", requestId);
     } catch (error) {
+      if (requestId !== authRequestIdRef.current) return;
       // 密码过期（密码登录/短信登录均可能）：引导进入"忘记密码"短信重置闭环。
       // 同时提示短信不可用时的兜底渠道（生产 mock 短信场景下短信重置走不通）。
       if (error instanceof ApiError && error.code === "PASSWORD_EXPIRED") {
@@ -600,7 +606,7 @@ function LoginPageContent() {
         setFormError(getErrorMessage(error, "登录失败，请检查账号密码"));
       }
     } finally {
-      setLoading(false);
+      if (requestId === authRequestIdRef.current) setLoading(false);
     }
   };
 
@@ -623,6 +629,7 @@ function LoginPageContent() {
       return;
     }
     setLoading(true);
+    const requestId = ++authRequestIdRef.current;
     try {
       await apiPost("/api/auth/register", {
         name: regName,
@@ -631,11 +638,14 @@ function LoginPageContent() {
         password: regPassword,
         confirmPassword: regConfirmPassword,
       });
-      await handleAuthSuccess("注册成功");
+      if (requestId !== authRequestIdRef.current) return;
+      await handleAuthSuccess("注册成功", requestId);
     } catch (error) {
-      setFormError(getErrorMessage(error, "注册失败，请稍后重试"));
+      if (requestId === authRequestIdRef.current) {
+        setFormError(getErrorMessage(error, "注册失败，请稍后重试"));
+      }
     } finally {
-      setLoading(false);
+      if (requestId === authRequestIdRef.current) setLoading(false);
     }
   };
 
@@ -1236,7 +1246,8 @@ function LoginPageContent() {
                 ))}
             </ul>
             <p className="mt-2 text-[11px] leading-relaxed text-brand-charcoal/40">
-              授权后此应用会记住您的选择，后续登录时会根据实际情况可能需要再次授权确认；可在用户中心「安全中心 → 授权管理」撤销。
+              授权后此应用会记住您的选择，后续登录时会根据实际情况可能需要再次授权确认；可在用户中心「安全中心
+              → 授权管理」撤销。
             </p>
           </div>
 

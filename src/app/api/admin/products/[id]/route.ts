@@ -6,7 +6,7 @@ import { toInputJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
 import { sanitizeHtml } from "@/lib/html-sanitize";
-import { deleteUploadedFile } from "@/lib/upload";
+import { enqueueMediaDeletions } from "@/lib/media-deletion";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -261,7 +261,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // 获取现有图片 ID
     const existingImages = await prisma.image.findMany({
       where: { productId: id },
-      select: { id: true },
+      select: { id: true, url: true, derivedUrls: true },
     });
     const existingImageIds = existingImages.map((i) => i.id);
     const newImageIds = validated.images.filter((i) => i.id).map((i) => i.id);
@@ -284,6 +284,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     await prisma.$transaction(async (tx) => {
       // 删除不再使用的图片
       if (imagesToDelete.length > 0) {
+        const removedImages = existingImages.filter((image) => imagesToDelete.includes(image.id));
+        await enqueueMediaDeletions(
+          tx,
+          removedImages.flatMap((image) => [image.url, ...image.derivedUrls])
+        );
         await tx.image.deleteMany({
           where: { id: { in: imagesToDelete } },
         });
@@ -323,13 +328,19 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           // 更新已有图片
           await tx.image.update({
             where: { id: img.id },
-            data: { url: img.url, alt: img.alt, order: img.order },
+            data: {
+              url: img.url,
+              derivedUrls: img.derivedUrls ?? [],
+              alt: img.alt,
+              order: img.order,
+            },
           });
         } else {
           // 创建新图片
           await tx.image.create({
             data: {
               url: img.url,
+              derivedUrls: img.derivedUrls ?? [],
               alt: img.alt,
               order: img.order,
               productId: id,
@@ -446,17 +457,17 @@ export async function DELETE(
         { status: 401 }
       );
     }
-      if (!hasAdminPermission(admin, "products:delete")) {
-        return NextResponse.json(
-          { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品删除" } },
-          { status: 403 }
-        );
-      }
+    if (!hasAdminPermission(admin, "products:delete")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：产品删除" } },
+        { status: 403 }
+      );
+    }
 
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
-      const { id } = await params;
+    const { id } = await params;
 
     if (!validateCUID(id)) {
       return invalidIdResponse();
@@ -474,13 +485,13 @@ export async function DELETE(
       );
     }
 
-    // 删除关联的物理图片文件
-    for (const image of existing.images) {
-      await deleteUploadedFile(image.url);
-    }
-
-    // 删除产品（级联删除关联的图片数据库记录）
-    await prisma.product.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await enqueueMediaDeletions(
+        tx,
+        existing.images.flatMap((image) => [image.url, ...image.derivedUrls])
+      );
+      await tx.product.delete({ where: { id } });
+    });
 
     // 重新验证前台页面缓存 & 管理后台统计缓存
     revalidatePath("/products");

@@ -139,7 +139,12 @@ export async function POST(request: NextRequest) {
       }
 
       // 使用 auth-security 的 revokeRefreshToken 撤销（自动处理 SHA-256 哈希比对）
-      const revokedCount = await revokeRefreshToken(refreshPayload.id, token, undefined, "user_revoke");
+      const revokedCount = await revokeRefreshToken(
+        refreshPayload.id,
+        token,
+        undefined,
+        "user_revoke"
+      );
 
       // 同步撤销关联的 OAuthSession（登出后会话一并失效）。
       // refresh token 携带 sid 时仅撤销该会话：多设备同 client 场景下，
@@ -222,10 +227,7 @@ export async function POST(request: NextRequest) {
     });
     // RFC 7009 仅对"token 未知/无效"允许返回 200；服务端故障必须显式失败，
     // 否则子站收到成功响应会停止重试，被泄 token 继续可用（fail-open）
-    return resJson(
-      { error: "server_error", error_description: "服务器内部错误，请稍后重试" },
-      503
-    );
+    return resJson({ error: "server_error", error_description: "服务器内部错误，请稍后重试" }, 503);
   }
 }
 

@@ -22,6 +22,7 @@ import Image from "next/image";
 import { X, User, LogOut, Crown, Gift, Shield, NotebookPen } from "lucide-react";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { LogoutConfirmDialog } from "@/components/ui/LogoutConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import { levelMeta } from "@/lib/membership";
 import { ProfilePanel } from "./user-center/panels/ProfilePanel";
 import { DiaryPanel } from "./user-center/diary/DiaryPanel";
@@ -51,6 +52,8 @@ export function UserCenterModal() {
   const { user, userCenterOpen, userCenterView, closeUserCenter, setUserCenterView, logout } =
     useAuth();
   const mounted = useMounted();
+  const toast = useToast();
+  const [logoutPending, setLogoutPending] = useState(false);
   // 与 CSS md 断点（768px）对齐：移动端全屏壳，桌面端居中卡片壳
   const isMobile = useMediaQuery("(max-width: 767px)");
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -140,8 +143,15 @@ export function UserCenterModal() {
   };
 
   const handleLogoutConfirm = async (allDevices: boolean) => {
-    setShowLogoutConfirm(false);
-    await logout({ allDevices });
+    setLogoutPending(true);
+    try {
+      await logout({ allDevices });
+      setShowLogoutConfirm(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "退出失败，请稍后重试");
+    } finally {
+      setLogoutPending(false);
+    }
   };
   const content = (
     <AnimatePresence>
@@ -282,7 +292,7 @@ export function UserCenterModal() {
                       })}
                     </nav>
 
-                    <div className="mt-auto px-12 pt-8 pb-6">
+                    <div className="mt-auto px-12 pb-6 pt-8">
                       <button
                         onClick={handleLogout}
                         className="group -mx-2 flex w-[calc(100%_+_1rem)] items-center justify-start gap-5 rounded-2xl px-2 py-3.5 text-stone-600 transition-all hover:bg-white/40 hover:text-stone-900"
@@ -352,7 +362,9 @@ export function UserCenterModal() {
                               onClick={() => setUserCenterView(id)}
                               aria-current={isActive ? "page" : undefined}
                               className={`flex flex-col items-center justify-center gap-1 transition-colors active:opacity-60 ${
-                                isActive ? "text-brand-primary" : "text-stone-400 hover:text-stone-800"
+                                isActive
+                                  ? "text-brand-primary"
+                                  : "text-stone-400 hover:text-stone-800"
                               }`}
                             >
                               <Icon className="h-5 w-5" strokeWidth={isActive ? 2 : 1.5} />
@@ -391,6 +403,7 @@ export function UserCenterModal() {
         open={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={handleLogoutConfirm}
+        loading={logoutPending}
       />
     </>,
     document.body

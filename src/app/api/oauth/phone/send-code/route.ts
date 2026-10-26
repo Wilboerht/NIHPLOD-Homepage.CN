@@ -26,7 +26,10 @@ export async function POST(request: NextRequest) {
     const userLimit = await rateLimit(`user:${auth.payload.id}`, "phone-rebind");
     if (!userLimit.success) {
       return auth.resJson(
-        { success: false, error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" } },
+        {
+          success: false,
+          error: { code: "TOO_MANY_REQUESTS", message: "操作过于频繁，请稍后再试" },
+        },
         429
       );
     }
