@@ -167,7 +167,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    scheduleAdvisorProductSync("save");
+    // 排序不影响测肤子站，只有上下架变化才需要推送
+    if (validated.published !== undefined) {
+      scheduleAdvisorProductSync("save");
+    }
 
     // 记录审计日志
     await createAuditLog({

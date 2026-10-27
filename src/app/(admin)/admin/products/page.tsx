@@ -216,13 +216,15 @@ function AdminProductsContent() {
         missing?: number;
         skippedProducts?: number;
         warnings?: unknown[];
-      }>("/api/admin/products/sync-advisor", {});
+      }>("/api/admin/products/sync-advisor", {}, { timeoutMs: 60_000 });
       if (data?.skipped) {
         showSuccess(data.reason === "disabled" ? "产品同步已停用" : "同步已跳过");
       } else {
         const warnings = Array.isArray(data?.warnings) ? data.warnings.length : 0;
+        const skippedProducts = data?.skippedProducts ?? 0;
         showSuccess(
           `同步完成：更新 ${data?.updated ?? 0}、新增 ${data?.created ?? 0}、停用 ${data?.deactivated ?? 0}` +
+            (skippedProducts > 0 ? `、跳过 ${skippedProducts}` : "") +
             (warnings > 0 ? `、${warnings} 条提示` : "")
         );
       }
