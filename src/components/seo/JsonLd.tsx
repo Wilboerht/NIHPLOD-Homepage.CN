@@ -167,6 +167,11 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
     category: product.category.name,
     // 产品功效作为关键词
     keywords: product.benefits.join(", "),
+    // 关联产品页 FAQPage，帮助搜索引擎/LLM 识别问答归属
+    subjectOf: {
+      "@type": "FAQPage",
+      "@id": `${productUrl}#faq`,
+    },
     // 站内不直接成交（购买走第三方授权平台），仅声明官方定价与在售状态
     ...(product.price > 0 && {
       offers: {
@@ -231,12 +236,16 @@ interface FAQItem {
 
 interface FAQJsonLdProps {
   items: FAQItem[];
+  id?: string;
+  inLanguage?: string;
 }
 
-export async function FAQJsonLd({ items }: FAQJsonLdProps) {
+export async function FAQJsonLd({ items, id, inLanguage }: FAQJsonLdProps) {
   const data = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    ...(id && { "@id": id }),
+    ...(inLanguage && { inLanguage }),
     mainEntity: items.map((item) => ({
       "@type": "Question",
       name: item.question,

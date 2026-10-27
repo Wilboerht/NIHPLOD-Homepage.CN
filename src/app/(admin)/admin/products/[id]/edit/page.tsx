@@ -13,7 +13,9 @@ import { Button } from "@/components/ui/Button";
 import { apiGet } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 import { isPurchasePlatformKey } from "@/lib/purchase-platforms";
+import { parseGeoFaqs } from "@/lib/product-faqs";
 import type { PurchaseLinkItem } from "@/lib/purchase-link-form";
+import type { GeoFaq } from "@/schemas/product";
 
 interface Category {
   id: string;
@@ -45,7 +47,7 @@ interface ProductData {
   images: ImageItem[];
   order: number;
   published: boolean;
-  geoFaqs: { question: string; answer: string }[] | null;
+  geoFaqs: GeoFaq[] | null;
 }
 
 function EditProductContent() {
@@ -100,7 +102,7 @@ function EditProductContent() {
           })),
           order: data.order,
           published: data.published,
-          geoFaqs: data.geoFaqs ?? null,
+          geoFaqs: parseGeoFaqs(data.geoFaqs),
         });
       })
       .catch((err) => {
@@ -175,8 +177,10 @@ function EditProductContent() {
 export default function EditProductPage() {
   return (
     <RequirePermission permission="products:write">
-      <RequirePermission permission="categories:read">
-        <EditProductContent />
+      <RequirePermission permission="products:read">
+        <RequirePermission permission="categories:read">
+          <EditProductContent />
+        </RequirePermission>
       </RequirePermission>
     </RequirePermission>
   );

@@ -125,7 +125,9 @@ function EditJobContent() {
 export default function EditJobPage() {
   return (
     <RequirePermission permission="jobs:write">
-      <EditJobContent />
+      <RequirePermission permission="jobs:read">
+        <EditJobContent />
+      </RequirePermission>
     </RequirePermission>
   );
 }

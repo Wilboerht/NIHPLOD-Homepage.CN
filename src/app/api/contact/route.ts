@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         type: readableType,
         location,
       });
-      await sendWecomNotification(wecomContent);
+      await sendWecomNotification(wecomContent, "contact");
       if (process.env.NODE_ENV === "development")
         apiConsole.debug("✅ [Contact API] WeCom bot notification sent");
 

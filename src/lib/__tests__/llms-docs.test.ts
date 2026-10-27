@@ -1,8 +1,8 @@
 /**
  * llms 文档构建测试
  * - 产品目录覆盖全部已发布产品（含 gift-box）
- * - 测肤链接固定 advisor 子域，不出现站内不存在的 /ai-consultation
- * - 产品 geoFaqs 存在时合并进 FAQ 段
+ * - 产品 geoFaqs 存在时优先，缺失时使用规则兜底
+ * - 富文本标签不会进入 llms 文档
  */
 import { describe, it, expect } from "vitest";
 import { ADVISOR_URL, buildLlmsFullDoc, buildLlmsSummary, type LlmsProduct } from "../llms-docs";
@@ -14,13 +14,16 @@ function product(overrides: Partial<LlmsProduct>): LlmsProduct {
     name: "净透温和洁面慕斯",
     nameEn: "Foam Cleanser",
     slug: "foam-cleanser",
-    description: "氨基酸洁面慕斯",
+    description: "<p>氨基酸洁面慕斯</p>",
     price: "680",
     benefits: ["温和清洁", "保湿不紧绷"],
-    ingredients: "椰油酰甘氨酸钾",
-    usage: "取适量泡沫轻柔按摩",
+    ingredients: "<p>椰油酰甘氨酸钾</p>",
+    usage: "<p>取适量泡沫轻柔按摩</p>",
+    capacity: "120ml",
+    origin: "摩纳哥",
     category: { name: "洁面" },
     geoFaqs: null,
+    purchaseLinks: [{ platform: "天猫" }],
     ...overrides,
   };
 }
@@ -51,11 +54,21 @@ describe("buildLlmsFullDoc", () => {
     expect((doc.match(/### \[/g) ?? []).length).toBe(3);
   });
 
-  it("保留人工模板段落并合并产品 geoFaqs", () => {
+  it("保留人工模板段落", () => {
     expect(doc).toContain(sections.brandSection);
     expect(doc).toContain(sections.ritualsSection);
     expect(doc).toContain(sections.faqSection);
+  });
+
+  it("后台 FAQ 优先，缺失时使用规则兜底", () => {
     expect(doc).toContain("### Q: 面霜怎么用？");
+    expect(doc).toContain("### 净透温和洁面慕斯 (Foam Cleanser)");
+    expect(doc).toContain("NIHPLOD 净透温和洁面慕斯的核心功效是什么？");
+  });
+
+  it("剥离富文本标签", () => {
+    expect(doc).toContain("氨基酸洁面慕斯");
+    expect(doc).not.toContain("<p>");
   });
 
   it("不包含站内不存在的 AI 测肤路径", () => {
@@ -76,5 +89,10 @@ describe("buildLlmsSummary", () => {
     expect(summary).toContain("https://nihplod.cn/about");
     expect(summary).toContain("https://nihplod.cn/guide");
     expect(summary).toContain("https://nihplod.cn/llms-full.txt");
+  });
+
+  it("没有产品时仍输出完整产品入口文案", () => {
+    const empty = buildLlmsSummary({ siteUrl, products: [] });
+    expect(empty).toContain("探索 NIHPLOD 高端护肤系列");
   });
 });

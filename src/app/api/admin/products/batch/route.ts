@@ -10,6 +10,7 @@ import { deleteUploadedFile } from "@/lib/upload";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
+import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
@@ -135,6 +136,7 @@ export async function POST(request: NextRequest) {
         : ["/products"]
     );
     revalidateTag("admin-stats", "max");
+    revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
 
     // 记录审计日志
     createAuditLog({

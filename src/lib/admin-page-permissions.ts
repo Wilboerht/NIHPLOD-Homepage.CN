@@ -22,8 +22,11 @@ export interface AdminPageRule {
   authenticatedOnly?: boolean;
 }
 
-function matchesPath(pathname: string, base: string): boolean {
-  return pathname === base || pathname.startsWith(`${base}/`);
+function normalizePathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.replace(/\/+$/, "") || "/";
+  }
+  return pathname;
 }
 
 function isProductEditPath(pathname: string): boolean {
@@ -35,8 +38,8 @@ function isJobEditPath(pathname: string): boolean {
 }
 
 /**
- * 规则顺序很重要：动态页面必须排在对应的列表前缀规则之前，
- * 否则 /admin/products/new 会被 /admin/products 的只读规则先匹配。
+ * 规则按“具体 → 通用”顺序排列；所有页面都使用精确匹配（尾部斜杠由
+ * getAdminPageRule 归一化），未知子路径不会继承父级页面的权限，必须显式注册。
  */
 export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
   { match: (pathname) => pathname === "/admin", allOf: ["dashboard:read"] },
@@ -44,88 +47,91 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
   // 自服务 / 无业务数据页面：登录即可访问
   { match: (pathname) => pathname === "/admin/settings/totp", authenticatedOnly: true },
   { match: (pathname) => pathname === "/admin/sso/denied", authenticatedOnly: true },
-  { match: (pathname) => matchesPath(pathname, "/admin/sso-audit"), authenticatedOnly: true },
+  { match: (pathname) => pathname === "/admin/sso-audit", authenticatedOnly: true },
 
   // 会员与管理员
-  { match: (pathname) => matchesPath(pathname, "/admin/users"), allOf: ["users:read"] },
-  {
-    match: (pathname) => matchesPath(pathname, "/admin/account-deletions"),
-    allOf: ["users:read"],
-  },
-  { match: (pathname) => matchesPath(pathname, "/admin/admins"), allOf: ["admins:read"] },
+  { match: (pathname) => pathname === "/admin/users", allOf: ["users:read"] },
+  { match: (pathname) => pathname === "/admin/account-deletions", allOf: ["users:read"] },
+  { match: (pathname) => pathname === "/admin/admins", allOf: ["admins:read"] },
 
   // 商品与分类
   {
-    match: (pathname) => pathname === "/admin/products/new" || isProductEditPath(pathname),
+    match: isProductEditPath,
+    allOf: ["products:write", "products:read", "categories:read"],
+  },
+  {
+    match: (pathname) => pathname === "/admin/products/new",
     allOf: ["products:write", "categories:read"],
   },
-  { match: (pathname) => matchesPath(pathname, "/admin/products"), allOf: ["products:read"] },
-  { match: (pathname) => matchesPath(pathname, "/admin/categories"), allOf: ["categories:read"] },
+  { match: (pathname) => pathname === "/admin/products", allOf: ["products:read"] },
+  { match: (pathname) => pathname === "/admin/categories", allOf: ["categories:read"] },
 
   // 招聘
   {
-    match: (pathname) => pathname === "/admin/jobs/new" || isJobEditPath(pathname),
+    match: isJobEditPath,
+    allOf: ["jobs:write", "jobs:read"],
+  },
+  {
+    match: (pathname) => pathname === "/admin/jobs/new",
     allOf: ["jobs:write"],
   },
-  { match: (pathname) => matchesPath(pathname, "/admin/jobs"), allOf: ["jobs:read"] },
-  {
-    match: (pathname) => matchesPath(pathname, "/admin/applications"),
-    allOf: ["applications:read"],
-  },
+  { match: (pathname) => pathname === "/admin/jobs", allOf: ["jobs:read"] },
+  { match: (pathname) => pathname === "/admin/applications", allOf: ["applications:read"] },
 
   // 会员运营
-  { match: (pathname) => matchesPath(pathname, "/admin/messages"), allOf: ["messages:read"] },
+  { match: (pathname) => pathname === "/admin/messages", allOf: ["messages:read"] },
   {
-    match: (pathname) => matchesPath(pathname, "/admin/spent-adjustments"),
+    match: (pathname) => pathname === "/admin/spent-adjustments",
     anyOf: ["spent:read", "spent:import"],
   },
   {
-    match: (pathname) => matchesPath(pathname, "/admin/point-gifts"),
+    match: (pathname) => pathname === "/admin/point-gifts",
     anyOf: ["redemptions:read", "gifts:read"],
   },
   {
-    match: (pathname) => matchesPath(pathname, "/admin/approvals"),
+    match: (pathname) => pathname === "/admin/approvals",
     anyOf: ["approvals:request", "approvals:review"],
   },
 
   // 审计
-  { match: (pathname) => matchesPath(pathname, "/admin/audit-logs"), allOf: ["audit:read"] },
-  { match: (pathname) => matchesPath(pathname, "/admin/audit-integrity"), allOf: ["audit:read"] },
+  { match: (pathname) => pathname === "/admin/audit-logs", allOf: ["audit:read"] },
+  { match: (pathname) => pathname === "/admin/audit-integrity", allOf: ["audit:read"] },
   {
-    match: (pathname) => matchesPath(pathname, "/admin/audit-retention"),
+    match: (pathname) => pathname === "/admin/audit-retention",
     allOf: ["audit:retention:read"],
   },
 
   // 系统
-  { match: (pathname) => matchesPath(pathname, "/admin/cron-tasks"), allOf: ["cron:read"] },
+  { match: (pathname) => pathname === "/admin/cron-tasks", allOf: ["cron:read"] },
   {
-    match: (pathname) => matchesPath(pathname, "/admin/webhook-failures"),
+    match: (pathname) => pathname === "/admin/webhook-failures",
     allOf: ["webhooks:read"],
   },
 
   // SSO
-  { match: (pathname) => matchesPath(pathname, "/admin/oauth/audit"), allOf: ["sso:read"] },
-  { match: (pathname) => matchesPath(pathname, "/admin/oauth/consents"), allOf: ["sso:read"] },
-  { match: (pathname) => matchesPath(pathname, "/admin/oauth/sessions"), allOf: ["sso:read"] },
-  { match: (pathname) => matchesPath(pathname, "/admin/oauth/stats"), allOf: ["sso:read"] },
+  { match: (pathname) => pathname === "/admin/oauth/audit", allOf: ["sso:read"] },
+  { match: (pathname) => pathname === "/admin/oauth/consents", allOf: ["sso:read"] },
+  { match: (pathname) => pathname === "/admin/oauth/sessions", allOf: ["sso:read"] },
+  { match: (pathname) => pathname === "/admin/oauth/stats", allOf: ["sso:read"] },
   {
-    match: (pathname) => matchesPath(pathname, "/admin/oauth-clients/wizard"),
+    match: (pathname) => pathname === "/admin/oauth-clients/wizard",
     allOf: ["sso:clients:write", "sso:clients:read"],
   },
   {
-    match: (pathname) => matchesPath(pathname, "/admin/oauth-clients"),
+    match: (pathname) => pathname === "/admin/oauth-clients",
     allOf: ["sso:clients:read"],
   },
 
   // 测肤子站：有概览权限或子站访问权限均可进入（仅有 access 时页面不含概览数据）
   {
-    match: (pathname) => matchesPath(pathname, "/admin/subsites/advisor"),
+    match: (pathname) => pathname === "/admin/subsites/advisor",
     anyOf: ["advisor:stats:read", "advisor:access", "advisor:admin"],
   },
 ];
 
 export function getAdminPageRule(pathname: string): AdminPageRule | null {
-  return ADMIN_PAGE_RULES.find((rule) => rule.match(pathname)) ?? null;
+  const normalized = normalizePathname(pathname);
+  return ADMIN_PAGE_RULES.find((rule) => rule.match(normalized)) ?? null;
 }
 
 export function getAdminPageRulePermissions(rule: AdminPageRule): AdminPermission[] {
@@ -143,10 +149,24 @@ export function canAccessAdminPage(
   const rule = getAdminPageRule(pathname);
   if (!rule) return false;
   if (rule.authenticatedOnly) return true;
-  if (rule.allOf && !rule.allOf.every((permission) => hasAdminPermission(admin, permission))) {
+
+  const can = (permission: AdminPermission): boolean => {
+    if (admin.role === "owner") return true;
+    // permissionOverrides 是原始覆盖条目（!perm 表示撤销）；permissions 是已解析的
+    // 有效权限。两者同时存在时以 overrides 为准，避免把已解析数组当成追加授权。
+    if (
+      (admin.permissionOverrides === undefined || admin.permissionOverrides === null) &&
+      admin.permissions
+    ) {
+      return admin.permissions.includes(permission);
+    }
+    return hasAdminPermission(admin, permission);
+  };
+
+  if (rule.allOf && !rule.allOf.every((permission) => can(permission))) {
     return false;
   }
-  if (rule.anyOf && !rule.anyOf.some((permission) => hasAdminPermission(admin, permission))) {
+  if (rule.anyOf && !rule.anyOf.some((permission) => can(permission))) {
     return false;
   }
   return Boolean(rule.allOf?.length || rule.anyOf?.length);

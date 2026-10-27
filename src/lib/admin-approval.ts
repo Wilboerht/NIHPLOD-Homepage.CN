@@ -72,7 +72,7 @@ function userLabel(user: { nickname: string | null; phone: string }): string {
 
 async function notifyApprovalEvent(title: string, lines: string[]): Promise<void> {
   try {
-    const result = await sendWecomNotification([`## ${title}`, "", ...lines].join("\n"));
+    const result = await sendWecomNotification([`## ${title}`, "", ...lines].join("\n"), "admin");
     if (!result.success) {
       apiConsole.warn(`[AdminApproval] 企业微信通知未发送: ${result.error ?? "unknown"}`);
     }

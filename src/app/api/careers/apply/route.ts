@@ -257,18 +257,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 通知不阻塞候选人响应：响应发出后由 after 执行。
-    const adminBaseUrl = (
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      "https://nihplod.cn"
-    ).replace(/\/$/, "");
     const wecomMsg = formatJobApplicationToWecom({
       name: validatedName,
       phone: validatedPhone,
       // 使用数据库中的职位标题，而非用户提交的标题（防篡改）
       position: job.title,
-      // 通知只给后台入口，不把私有简历 URL 外发给群机器人
-      resumeUrl: `${adminBaseUrl}/admin/applications`,
     });
     after(async () => {
       try {

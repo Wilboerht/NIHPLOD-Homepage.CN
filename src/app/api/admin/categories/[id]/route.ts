@@ -10,6 +10,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
+import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
 
 // 分类更新 Schema
 const CategoryUpdateSchema = z.object({
@@ -173,6 +174,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
     revalidateTag("admin-stats", "max");
+    revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidatePath("/products");
     pushSearchEngines(["/products"]);
 
@@ -280,6 +282,7 @@ export async function DELETE(
     }
 
     revalidateTag("admin-stats", "max");
+    revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidatePath("/products");
     pushSearchEngines(["/products"]);
 

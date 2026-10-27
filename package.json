@@ -22,7 +22,6 @@
     "resumes:cleanup-orphans": "tsx scripts/cleanup-orphan-resumes.ts",
     "applications:purge": "tsx scripts/purge-job-applications.ts",
     "check:production-env": "tsx scripts/check-production-env.ts",
-    "geo:docs": "tsx scripts/generate-llms-docs.ts",
     "check:sso-config": "tsx scripts/check-sso-production-config.ts",
     "check:audit-coverage": "tsx scripts/check-audit-coverage.ts",
     "generate:oauth-rs256-keys": "tsx scripts/generate-oauth-rs256-keys.ts",

@@ -7,6 +7,7 @@ import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
 
 // 排序更新 Schema
 const OrderUpdateSchema = z.object({
@@ -74,6 +75,7 @@ export async function PUT(request: NextRequest) {
 
     revalidatePath("/products");
     revalidateTag("admin-stats", "max");
+    revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
 
     await createAuditLog({
       action: "reorder_categories",

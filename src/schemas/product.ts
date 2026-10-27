@@ -84,6 +84,47 @@ export const PurchaseLinkSchema = z
     }
   });
 
+// GEO FAQ 限制
+export const MAX_GEO_FAQS = 20;
+export const MAX_GEO_FAQ_QUESTION_LENGTH = 200;
+export const MAX_GEO_FAQ_ANSWER_LENGTH = 1000;
+
+// GEO FAQ 单条问答 Schema
+export const GeoFaqItemSchema = z.object({
+  question: z
+    .string()
+    .trim()
+    .min(1, "FAQ问题不能为空")
+    .max(MAX_GEO_FAQ_QUESTION_LENGTH, `FAQ问题不能超过${MAX_GEO_FAQ_QUESTION_LENGTH}个字符`),
+  answer: z
+    .string()
+    .trim()
+    .min(1, "FAQ答案不能为空")
+    .max(MAX_GEO_FAQ_ANSWER_LENGTH, `FAQ答案不能超过${MAX_GEO_FAQ_ANSWER_LENGTH}个字符`),
+});
+
+export type GeoFaq = z.infer<typeof GeoFaqItemSchema>;
+
+// GEO FAQ 列表 Schema
+export const GeoFaqsSchema = z
+  .array(GeoFaqItemSchema)
+  .max(MAX_GEO_FAQS, `最多添加${MAX_GEO_FAQS}组问答`)
+  .superRefine((faqs, ctx) => {
+    const seen = new Set<string>();
+    faqs.forEach((faq, index) => {
+      const key = faq.question.trim().toLowerCase();
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "FAQ问题重复",
+          path: [index, "question"],
+        });
+        return;
+      }
+      seen.add(key);
+    });
+  });
+
 // 产品创建/更新 Schema
 export const ProductSchema = z
   .object({
@@ -110,15 +151,7 @@ export const ProductSchema = z
     order: z.number().int().min(0).default(0),
     published: z.boolean().default(false),
     // GEO FAQ 数据
-    geoFaqs: z
-      .array(
-        z.object({
-          question: z.string().min(1, "FAQ问题不能为空"),
-          answer: z.string().min(1, "FAQ答案不能为空"),
-        })
-      )
-      .optional()
-      .nullable(),
+    geoFaqs: GeoFaqsSchema.optional().nullable(),
   })
   .superRefine((data, ctx) => {
     const seen = new Map<string, number>();

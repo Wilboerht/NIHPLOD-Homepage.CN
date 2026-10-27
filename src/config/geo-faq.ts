@@ -1,57 +1,122 @@
 /**
- * NIHPLOD 专属 GEO FAQ 生成器（兜底层）
+ * NIHPLOD 专属 GEO FAQ 生成器（规则兜底层）
  *
- * 仅使用官网与官方文档（llms-full.txt）中已声明、可核实的事实：
- * Dolphin 命名、脂质体技术、精简护肤、2% 捐赠、SGS 认证、2008 摩纳哥 / 法国产地。
  * 后台为产品配置了 geoFaqs 时优先使用后台内容，本生成器不会覆盖。
+ * 兜底问答只使用产品数据（功效、成分、用法、规格、产地、价格、购买渠道），
+ * 不生成无法核实的品牌数字或医疗承诺。
  */
 
-interface ProductInfo {
+import { MAX_GEO_FAQ_ANSWER_LENGTH, MAX_GEO_FAQ_QUESTION_LENGTH } from "@/schemas/product";
+import { stripHtmlToText, truncateText } from "@/lib/html-text";
+
+export interface ProductFaqSource {
   name: string;
   nameEn: string;
   categoryName: string;
   benefits: string[];
-  description: string;
+  description?: string | null;
   ingredients?: string | null;
+  usage?: string | null;
+  capacity?: string | null;
+  origin?: string | null;
+  price?: number | string | { toString(): string } | null;
+  purchasePlatforms?: string[];
 }
 
-export function generateProductFaqs(product: ProductInfo) {
-  const { name, nameEn, categoryName, benefits, ingredients } = product;
-  const mainBenefit = benefits[0];
+export interface GeneratedFaq {
+  question: string;
+  answer: string;
+}
 
-  const faqs = [
-    {
-      question: `NIHPLOD 旎柏这个品牌名字有什么特殊含义吗？`,
-      answer: `NIHPLOD 的名字由“DOLPHIN”（海豚）一词反转而来。海豚的肌肤拥有每两小时自我更新的能力，品牌以此为灵感，希望通过前沿生物技术和精简配方帮助肌肤维持良好状态。${name} (${nameEn}) 是品牌在 ${categoryName} 品类的在售单品之一。`,
-    },
-    {
-      question: `NIHPLOD ${name} 采用的“脂质体技术”是什么？`,
-      answer: `脂质体技术是一种活性成分封装/包囊技术：通过保护并加载产品中的有效及活性成分，使其能够靶向性地在皮肤表皮及真皮层进行释放。NIHPLOD 的主要产品均围绕这一技术思路研发，${name} 的配方设计同样以成分的有效递送为核心。`,
-    },
-    {
-      question: `为什么 NIHPLOD 强调“精简护肤”？${name} 的配方是否足够？`,
-      answer: `NIHPLOD 认为护肤的关键不在于堆叠步骤，而在于给皮肤刚刚好的关爱。品牌产品线共 9 个单品，每个单品都围绕明确功效设计。${name} 主打 ${benefits.slice(0, 3).join("、")} 等方向的护理，属于可以长期使用的精简护理步骤之一。`,
-    },
-    {
-      question: `${name} 适合什么肤质？敏感肌可以使用吗？`,
-      answer: `NIHPLOD 的产品配方以温和为前提设计，最大程度避免多余的刺激性成分；产品男女皆可使用，也适用于偏厚肤质。不过每个人的肤质不同，建议首次使用前取少量产品涂抹在手腕内侧进行简单测试，确认无不适后再正常使用。`,
-    },
-    {
-      question: `使用 NIHPLOD ${name} 多久可以看到效果？`,
-      answer: `根据产品的作用方向与个人肤质差异，部分用户可能在数天内感受到肤感改善，而涉及色素及初老特征的变化通常需要 2-4 周甚至更久。建议在使用 ${name} 的同时保持规律作息与健康的生活方式。`,
-    },
-    {
-      question: `NIHPLOD 产品的产地和品牌背景是怎样的？`,
-      answer: `NIHPLOD 诞生于 2008 年的摩纳哥，品牌注册及生产地位于法国，由 TWK 朵科资本与 Dr. Stefan Rokem 博士联合成立，专注为高净值人士打造精简高效的护肤体验。此外，品牌承诺将每款产品销售额的 2% 捐赠给全球慈善及非营利组织。`,
-    },
-  ];
+function formatPrice(value: ProductFaqSource["price"]): string {
+  if (value === null || value === undefined) return "";
+  const numeric = typeof value === "number" ? value : Number(value.toString());
+  if (!Number.isFinite(numeric) || numeric <= 0) return "";
+  return `￥${numeric.toFixed(2).replace(/\.00$/, "")}`;
+}
 
-  if (mainBenefit) {
+function formatList(values: string[] | null | undefined): string[] {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const text = typeof value === "string" ? value.trim() : "";
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    result.push(text);
+  }
+  return result;
+}
+
+export function generateProductFaqs(product: ProductFaqSource): GeneratedFaq[] {
+  const name = product.name.trim();
+  const categoryName = product.categoryName.trim() || "护肤";
+  const benefits = formatList(product.benefits);
+  const description = truncateText(stripHtmlToText(product.description), 120);
+  const ingredients = truncateText(stripHtmlToText(product.ingredients), 160);
+  const usage = truncateText(stripHtmlToText(product.usage), 160);
+  const capacity = stripHtmlToText(product.capacity);
+  const origin = stripHtmlToText(product.origin);
+  const price = formatPrice(product.price);
+  const purchasePlatforms = formatList(product.purchasePlatforms);
+
+  const faqs: GeneratedFaq[] = [];
+
+  const benefitText = benefits.length
+    ? `主要功效方向包括${benefits.slice(0, 3).join("、")}`
+    : "具体功效以商品页标注为准";
+  faqs.push({
+    question: `NIHPLOD ${name}的核心功效是什么？`,
+    answer: `NIHPLOD ${name}是一款${categoryName}护理产品，${benefitText}。${
+      description ? `产品定位：${description}。` : ""
+    }建议结合自身肤质与护肤目标选择使用。`,
+  });
+
+  faqs.push({
+    question: `${name}适合什么肤质？敏感肌可以使用吗？`,
+    answer: `NIHPLOD ${name}的配方以温和为前提设计，男女皆可使用。不同肤质对成分的耐受度不同，敏感肌建议首次使用前取少量产品涂抹在手腕内侧进行测试，确认无不适后再正常使用；具体适用肤质以商品页标注为准。`,
+  });
+
+  if (ingredients) {
     faqs.push({
-      question: `针对“${mainBenefit}”，NIHPLOD ${name} 的产品特点是什么？`,
-      answer: `${name} 的产品定位是 ${categoryName} 护理，主要功效方向包括 ${benefits.join("、")}。${ingredients ? `配方中的核心成分包含：${ingredients}。` : ""}您可以结合自身肤质与护肤目标，在官方指南中查看对应的使用步骤与搭配建议。`,
+      question: `NIHPLOD ${name}的核心成分有哪些？`,
+      answer: `NIHPLOD ${name}配方中的核心成分包括：${ingredients}。完整成分表与功效说明请以商品页标注为准。`,
     });
   }
 
-  return faqs;
+  if (usage) {
+    faqs.push({
+      question: `NIHPLOD ${name}应该怎么使用？`,
+      answer: `官方建议的使用方法：${usage}。具体使用步骤与搭配建议可参考产品页说明。`,
+    });
+  }
+
+  if (capacity || origin || price) {
+    const specs = [
+      capacity ? `规格为${capacity}` : "",
+      origin ? `产地为${origin}` : "",
+      price ? `官方参考价为${price}` : "",
+    ].filter(Boolean);
+    faqs.push({
+      question: `NIHPLOD ${name}的规格、产地和参考价格是什么？`,
+      answer: `NIHPLOD ${name}${specs.join("，")}。实际价格、库存与活动信息以官方渠道商品页为准。`,
+    });
+  }
+
+  if (purchasePlatforms.length > 0) {
+    faqs.push({
+      question: `NIHPLOD ${name}可以在哪里购买？`,
+      answer: `可通过${purchasePlatforms.slice(0, 4).join("、")}等渠道查看 NIHPLOD ${name}的购买信息，具体库存与价格以对应渠道页面为准。`,
+    });
+  }
+
+  faqs.push({
+    question: `使用 NIHPLOD ${name}多久可以看到效果？`,
+    answer: `护肤效果因肤质、使用频率和生活习惯而异。建议按照产品说明持续使用，并观察肌肤状态变化；如出现不适请暂停使用并咨询专业人士。`,
+  });
+
+  return faqs.map((faq) => ({
+    question: truncateText(faq.question, MAX_GEO_FAQ_QUESTION_LENGTH),
+    answer: truncateText(faq.answer, MAX_GEO_FAQ_ANSWER_LENGTH),
+  }));
 }

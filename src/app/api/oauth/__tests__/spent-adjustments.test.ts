@@ -42,6 +42,11 @@ vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
+// === Mock 管理端企业微信通知 ===
+vi.mock("@/lib/admin-notify", () => ({
+  notifyNewSpentApplication: vi.fn(),
+}));
+
 // === Mock prisma ===
 const prismaMock = vi.hoisted(() => {
   const m = {
@@ -49,6 +54,7 @@ const prismaMock = vi.hoisted(() => {
     spentAdjustmentApplication: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
     },
@@ -65,6 +71,9 @@ vi.mock("@/lib/oauth-cors", () => ({
 }));
 
 import { GET, POST } from "../spent-adjustments/route";
+import { notifyNewSpentApplication } from "@/lib/admin-notify";
+
+const mockNotifyNewSpentApplication = notifyNewSpentApplication as ReturnType<typeof vi.fn>;
 
 function makeRequest(method: "GET" | "POST", body?: unknown): NextRequest {
   return new NextRequest(new URL("http://localhost/api/oauth/spent-adjustments"), {
@@ -155,6 +164,33 @@ describe("/api/oauth/spent-adjustments", () => {
     expect(body.success).toBe(true);
     expect(body.data.application.id).toBe("app-new");
     expect(body.data.application.statusLabel).toBe("待审核");
+    expect(mockNotifyNewSpentApplication).toHaveBeenCalledWith("app-new");
+  });
+
+  it("POST 同一 requestId 重试返回已有申请且不重复创建", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid membership",
+    });
+    prismaMock.user.findUnique.mockResolvedValue({ status: "ACTIVE" });
+    prismaMock.spentAdjustmentApplication.findUnique.mockResolvedValue({
+      id: "app-existing",
+      status: "PENDING",
+    });
+
+    const res = await POST(
+      makeRequest("POST", {
+        requestId: "retry-key-123",
+        channel: "TMALL",
+        orderNo: "ORDER123",
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.application.id).toBe("app-existing");
+    expect(prismaMock.spentAdjustmentApplication.create).not.toHaveBeenCalled();
   });
 
   it("POST 待审达到上限返回 400 PENDING_LIMIT", async () => {
@@ -170,6 +206,7 @@ describe("/api/oauth/spent-adjustments", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error.code).toBe("PENDING_LIMIT");
+    expect(mockNotifyNewSpentApplication).not.toHaveBeenCalled();
   });
 
   it("POST 订单号重复（P2002）返回 409", async () => {

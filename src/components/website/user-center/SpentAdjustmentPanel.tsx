@@ -77,6 +77,13 @@ const STATUS_BG = {
   REJECTED: "bg-red-50",
 } as const;
 
+function createRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -125,6 +132,8 @@ export function SpentAdjustmentPanel({
   // 录入历史中展开查看凭证缩略图的申请 id
   const [expandedImages, setExpandedImages] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const requestIdRef = useRef<string | null>(null);
+  const requestIdSignatureRef = useRef<string>("");
   const { error: showError, success: showSuccess } = useToast();
   const { redirectToLogin } = useAuth();
 
@@ -237,10 +246,31 @@ export function SpentAdjustmentPanel({
     }
     setSubmitting(true);
     try {
+      const requestSignature = JSON.stringify({
+        channel,
+        orderNo: orderNo.trim(),
+        dealerName: channel === "DEALER" ? dealerName.trim() : "",
+        amountClaimed: amountClaimed ? Number(amountClaimed) : null,
+        purchasedAt,
+        images,
+        note: note.trim(),
+      });
+      if (
+        requestIdRef.current &&
+        requestIdSignatureRef.current !== requestSignature
+      ) {
+        requestIdRef.current = null;
+      }
+      if (!requestIdRef.current) {
+        requestIdRef.current = createRequestId();
+      }
+      requestIdSignatureRef.current = requestSignature;
+
       const res = await fetchWithAuth("/api/user/spent-adjustments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          requestId: requestIdRef.current,
           channel,
           orderNo: orderNo.trim(),
           dealerName: channel === "DEALER" ? dealerName.trim() : undefined,
@@ -253,6 +283,8 @@ export function SpentAdjustmentPanel({
       const data = await res.json();
       if (data.success) {
         showSuccess("申请已提交，等待审核");
+        requestIdRef.current = null;
+        requestIdSignatureRef.current = "";
         onViewChange("default");
         setOrderNo("");
         setDealerName("");

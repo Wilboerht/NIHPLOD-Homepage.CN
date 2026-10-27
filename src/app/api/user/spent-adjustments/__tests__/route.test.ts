@@ -43,13 +43,19 @@ vi.mock("@/lib/audit", () => ({
   createAuditLog: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock("@/lib/admin-notify", () => ({
+  notifyNewSpentApplication: vi.fn(),
+}));
+
 import { rateLimit } from "@/lib/ratelimit";
+import { notifyNewSpentApplication } from "@/lib/admin-notify";
 import { GET, POST } from "@/app/api/user/spent-adjustments/route";
 
 const mockFindMany = prismaMock.spentAdjustmentApplication.findMany as ReturnType<typeof vi.fn>;
 const mockCount = prismaMock.spentAdjustmentApplication.count as ReturnType<typeof vi.fn>;
 const mockCreate = prismaMock.spentAdjustmentApplication.create as ReturnType<typeof vi.fn>;
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
+const mockNotifyNewSpentApplication = notifyNewSpentApplication as ReturnType<typeof vi.fn>;
 
 function createRequest(method: string, body?: unknown): NextRequest {
   return new NextRequest(new URL("/api/user/spent-adjustments", "http://localhost:3000"), {
@@ -126,6 +132,7 @@ describe("POST /api/user/spent-adjustments", () => {
         images: [],
       }),
     });
+    expect(mockNotifyNewSpentApplication).toHaveBeenCalledWith("app-new");
   });
 
   it("非法渠道返回 400", async () => {
@@ -201,6 +208,7 @@ describe("POST /api/user/spent-adjustments", () => {
     expect(res.status).toBe(400);
     expect(data.error.code).toBe("PENDING_LIMIT");
     expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockNotifyNewSpentApplication).not.toHaveBeenCalled();
   });
 
   it("订单号与待审/已通过申请冲突（P2002）返回 409", async () => {

@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
+import { notifyNewSpentApplication } from "@/lib/admin-notify";
 import {
   SPENT_CHANNELS,
   SPENT_CHANNEL_LABELS,
@@ -25,6 +26,13 @@ import {
 // 提交申请 schema：经销渠道必填经销商名称
 export const createSpentApplicationSchema = z
   .object({
+    requestId: z
+      .string()
+      .trim()
+      .min(8, "幂等键过短")
+      .max(128, "幂等键过长")
+      .regex(/^[A-Za-z0-9_-]+$/, "幂等键格式不正确")
+      .optional(),
     channel: z.enum(SPENT_CHANNELS),
     orderNo: z.string().trim().min(1, "请填写订单号或小票号").max(MAX_ORDER_NO_LENGTH, "单号过长"),
     dealerName: z.string().trim().max(MAX_DEALER_NAME_LENGTH, "经销商名称过长").optional(),
@@ -80,7 +88,11 @@ export async function listSpentApplications(userId: string) {
 }
 
 export type CreateSpentApplicationResult =
-  | { ok: true; application: { id: string; status: string; statusLabel: string } }
+  | {
+      ok: true;
+      application: { id: string; status: string; statusLabel: string };
+      idempotent?: boolean;
+    }
   | { ok: false; kind: "pending_limit" | "duplicate" | "invalid_image" };
 
 /**
@@ -93,7 +105,8 @@ export async function createSpentApplication(params: {
   request?: NextRequest;
 }): Promise<CreateSpentApplicationResult> {
   const { userId, input, request } = params;
-  const { channel, orderNo, dealerName, amountClaimed, purchasedAt, images, note } = input;
+  const { requestId, channel, orderNo, dealerName, amountClaimed, purchasedAt, images, note } =
+    input;
 
   // 新提交的凭证只允许当前用户自己的本地私有 key，防止引用他人文件
   if (images?.some((image) => !isOwnedSpentProofImageRef(image, userId))) {
@@ -102,6 +115,7 @@ export async function createSpentApplication(params: {
 
   type ClaimResult =
     | { kind: "ok"; application: { id: string; status: string } }
+    | { kind: "replay"; application: { id: string; status: string } }
     | { kind: "limit" }
     | { kind: "duplicate" };
 
@@ -110,6 +124,14 @@ export async function createSpentApplication(params: {
     claim = await prisma.$transaction(async (tx): Promise<ClaimResult> => {
       // 同一用户串行化：待审上限检查 + 订单号大小写不敏感查重都依赖此锁
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+
+      if (requestId) {
+        const existing = await tx.spentAdjustmentApplication.findUnique({
+          where: { userId_requestId: { userId, requestId } },
+          select: { id: true, status: true },
+        });
+        if (existing) return { kind: "replay", application: existing };
+      }
 
       // DB 部分唯一索引是大小写敏感的；这里补一次同一用户内
       // “忽略大小写”的活动申请查重，防止 ABC123 / abc123 被重复提交。
@@ -139,13 +161,31 @@ export async function createSpentApplication(params: {
           purchasedAt: purchasedAt ? new Date(purchasedAt) : null,
           images: images ?? [],
           note: note || null,
+          requestId: requestId ?? null,
         },
       });
       return { kind: "ok", application };
     });
   } catch (error) {
-    // P2002 唯一约束冲突 = 并发提交撞上精确大小写的活动订单号索引
+    // P2002 唯一约束冲突 = 并发提交撞上活动订单号索引或同一 requestId
     if ((error as { code?: string }).code === "P2002") {
+      if (requestId) {
+        const existing = await prisma.spentAdjustmentApplication.findUnique({
+          where: { userId_requestId: { userId, requestId } },
+          select: { id: true, status: true },
+        });
+        if (existing) {
+          return {
+            ok: true,
+            idempotent: true,
+            application: {
+              id: existing.id,
+              status: existing.status,
+              statusLabel: SPENT_STATUS_LABELS[existing.status as keyof typeof SPENT_STATUS_LABELS],
+            },
+          };
+        }
+      }
       return { ok: false, kind: "duplicate" };
     }
     throw error;
@@ -156,6 +196,18 @@ export async function createSpentApplication(params: {
   }
   if (claim.kind === "limit") {
     return { ok: false, kind: "pending_limit" };
+  }
+  if (claim.kind === "replay") {
+    return {
+      ok: true,
+      idempotent: true,
+      application: {
+        id: claim.application.id,
+        status: claim.application.status,
+        statusLabel:
+          SPENT_STATUS_LABELS[claim.application.status as keyof typeof SPENT_STATUS_LABELS],
+      },
+    };
   }
   const application = claim.application;
 
@@ -173,6 +225,9 @@ export async function createSpentApplication(params: {
     },
     request,
   });
+
+  // 管理端企业微信群通知（响应返回后异步发送）
+  notifyNewSpentApplication(application.id);
 
   return {
     ok: true,

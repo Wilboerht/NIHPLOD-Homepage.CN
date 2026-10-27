@@ -1,26 +1,28 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
-import { Save, Send, Plus, Trash2, Sparkles } from "lucide-react";
+import { Save, Send, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
 import { Select, SelectOption } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { TagInput } from "@/components/ui/TagInput";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { FormActions } from "@/components/admin/FormActions";
+import { GeoFaqEditor } from "@/components/admin/GeoFaqEditor";
+import { ProductFormSection } from "@/components/admin/ProductFormSection";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, apiPut, ApiError } from "@/lib/api-client";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
-import { ProductSchema } from "@/schemas/product";
-import { cn, generateSlug } from "@/lib/utils";
+import { ProductSchema, type GeoFaq } from "@/schemas/product";
+import { generateSlug } from "@/lib/utils";
 import { focusFirstInvalid } from "@/lib/form";
+import { mapProductFormIssues } from "@/lib/product-form-errors";
 import { createPurchaseLinkKey, type PurchaseLinkItem } from "@/lib/purchase-link-form";
 import {
   PURCHASE_PLATFORM_OPTIONS,
@@ -75,7 +77,7 @@ interface FormData {
   images: ImageItem[];
   order: number;
   published: boolean;
-  geoFaqs: { question: string; answer: string }[] | null;
+  geoFaqs: GeoFaq[] | null;
 }
 
 // 分类类型
@@ -113,36 +115,6 @@ const defaultFormData: FormData = {
   published: false,
   geoFaqs: null,
 };
-
-/** 产品表单分区：统一更紧凑的标题与内边距，避免长表单过度松散 */
-function ProductFormSection({
-  title,
-  description,
-  action,
-  children,
-  className,
-}: {
-  title: string;
-  description?: string;
-  action?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={cn("rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-5", className)}
-    >
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-brand-charcoal">{title}</h2>
-          {description && <p className="mt-1 text-xs text-brand-charcoal/65">{description}</p>}
-        </div>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function getPurchaseLinkKey(link: PurchaseLinkItem): PurchasePlatformKey | null {
   return isPurchasePlatformKey(link.platformKey)
@@ -304,6 +276,25 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     });
   };
 
+  const clearGeoFaqErrors = () => {
+    setErrors((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const key of Object.keys(next)) {
+        if (key === "geoFaqs" || key.startsWith("geoFaqs.")) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  };
+
+  const updateGeoFaqs = (faqs: GeoFaq[] | null) => {
+    setFormData((prev) => ({ ...prev, geoFaqs: faqs }));
+    clearGeoFaqErrors();
+  };
+
   const canonicalLinkMap = useMemo(() => {
     const map = new Map<PurchasePlatformKey, { link: PurchaseLinkItem; index: number }>();
     formData.purchaseLinks.forEach((link, index) => {
@@ -396,22 +387,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     clearPurchaseLinkErrors();
   };
 
-  const updateGeoFaq = (index: number, patch: Partial<{ question: string; answer: string }>) => {
-    const next = [...(formData.geoFaqs ?? [])];
-    if (!next[index]) return;
-    next[index] = { ...next[index], ...patch };
-    updateField("geoFaqs", next);
-  };
-
-  const addGeoFaq = () => {
-    updateField("geoFaqs", [...(formData.geoFaqs ?? []), { question: "", answer: "" }]);
-  };
-
-  const removeGeoFaq = (index: number) => {
-    const next = (formData.geoFaqs ?? []).filter((_, i) => i !== index);
-    updateField("geoFaqs", next.length ? next : null);
-  };
-
   // 验证表单
   const validateForm = (): boolean => {
     const purchaseLinkIndexes = formData.purchaseLinks
@@ -430,21 +405,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       return true;
     } catch (err) {
       if (err instanceof z.ZodError) {
-        const fieldErrors: Record<string, string> = {};
-        err.issues.forEach((e) => {
-          const path = e.path.map(String);
-          if (path[0] === "purchaseLinks" && path[1] !== undefined) {
-            const actualIndex = purchaseLinkIndexes[Number(path[1])]?.index;
-            if (actualIndex === undefined) return;
-            const suffix = path.slice(2).join(".");
-            fieldErrors[`purchaseLinks.${actualIndex}${suffix ? `.${suffix}` : ""}`] = e.message;
-            return;
-          }
-          if (e.path[0]) {
-            fieldErrors[String(e.path[0])] = e.message;
-          }
-        });
-        setErrors(fieldErrors);
+        setErrors(mapProductFormIssues(err.issues, purchaseLinkIndexes));
         focusFirstInvalid(formRef.current);
       }
       return false;
@@ -881,80 +842,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           </ProductFormSection>
 
           {/* GEO FAQ 设置 */}
-          <ProductFormSection
-            title="GEO FAQ 优化"
-            description="编写针对 AI 搜索（如 Perplexity、ChatGPT）优化的问答对，提升内容曝光权重"
-            action={
-              <div className="flex items-center gap-2">
-                {formData.geoFaqs && (
-                  <Badge variant="secondary">{formData.geoFaqs.length} 组</Badge>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addGeoFaq}
-                  leftIcon={<Plus className="h-4 w-4" />}
-                >
-                  添加问答
-                </Button>
-              </div>
-            }
-          >
-            {!formData.geoFaqs ? (
-              <div className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-brand-charcoal/15 bg-brand-charcoal/[0.02] py-6 text-center">
-                <Sparkles className="h-6 w-6 text-brand-charcoal/40" />
-                <p className="text-sm text-brand-charcoal/65">尚未添加 GEO 问答</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {formData.geoFaqs.map((faq, index) => (
-                  <div
-                    key={index}
-                    className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3"
-                  >
-                    <div className="flex items-start gap-2">
-                      <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-primary text-xs font-bold text-white">
-                        Q
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <Input
-                          aria-label={`问题 ${index + 1}`}
-                          placeholder="输入问题，如：这款产品适合敏感肌吗？"
-                          className="border-none bg-transparent px-1 py-0.5 text-sm font-medium focus:bg-white focus:ring-1 focus:ring-brand-primary/40"
-                          value={faq.question}
-                          onChange={(e) => updateGeoFaq(index, { question: e.target.value })}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeGeoFaq(index)}
-                        aria-label={`删除问答 ${index + 1}`}
-                        className="flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-500"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="mt-1.5 flex items-start gap-2">
-                      <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-charcoal text-xs font-bold text-white">
-                        A
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <Textarea
-                          aria-label={`回答 ${index + 1}`}
-                          placeholder="输入简洁、可被 AI 引用的回答"
-                          className="h-auto resize-none border-none bg-transparent px-1 py-0.5 text-sm focus:bg-white focus:ring-1 focus:ring-brand-primary/40"
-                          rows={2}
-                          value={faq.answer}
-                          onChange={(e) => updateGeoFaq(index, { answer: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ProductFormSection>
+          <GeoFaqEditor value={formData.geoFaqs} onChange={updateGeoFaqs} errors={errors} />
         </div>
 
         <aside className="hidden xl:sticky xl:top-6 xl:flex xl:flex-col xl:gap-5">

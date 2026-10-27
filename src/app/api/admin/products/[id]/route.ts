@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
-import { toInputJson } from "@/lib/prisma-json";
+import { toGeoFaqsJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
 import { sanitizeHtml } from "@/lib/html-sanitize";
@@ -15,6 +15,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
+import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
 const patchProductSchema = z
@@ -157,6 +158,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // 刷新前台缓存；发布/排序变化时主动推送搜索引擎
     revalidatePath("/products");
+    revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     if (product.published) {
       revalidatePath(`/products/${product.slug}`);
       if (validated.published !== undefined || validated.order !== undefined) {
@@ -318,7 +320,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           order: validated.order,
           published: validated.published,
           category: { connect: { id: validated.categoryId } },
-          geoFaqs: toInputJson(validated.geoFaqs),
+          geoFaqs: toGeoFaqsJson(validated.geoFaqs),
         },
       });
 
@@ -395,6 +397,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // 重新验证前台页面缓存；已发布产品同步推送搜索引擎
     revalidatePath("/products");
+    revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     if (fullProduct?.slug) {
       revalidatePath(`/products/${fullProduct.slug}`);
     }
@@ -497,6 +500,7 @@ export async function DELETE(
     revalidatePath("/products");
     revalidatePath(`/products/${existing.slug}`);
     revalidateTag("admin-stats", "max");
+    revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     // 已删除的 URL 不再推送，仅刷新并推送列表页
     pushSearchEngines(["/products"]);
 

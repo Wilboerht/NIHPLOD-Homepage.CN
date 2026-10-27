@@ -5,7 +5,7 @@ import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
 import { ProductFaq } from "@/components/website/ProductFaq";
 import { Breadcrumbs } from "@/components/website/Breadcrumbs";
-import { generateProductFaqs } from "@/config/geo-faq";
+import { resolveProductFaqs } from "@/lib/product-faqs";
 import { mockCategories, mockProducts } from "../mock-data";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
 
@@ -167,7 +167,7 @@ async function getProduct(slug: string) {
     return {
       ...product,
       origin: null as string | null,
-      geoFaqs: undefined,
+      geoFaqs: null,
       images: product.images.map((img, i) => ({ ...img, id: `mock-img-${i}` })),
     };
   }
@@ -309,26 +309,28 @@ export default async function ProductDetailPage({ params }: PageProps) {
     { name: product.name, url: `/products/${product.slug}` },
   ];
 
-  // 可见 FAQ 与 FAQPage 结构化数据共用同一份问答
-  const storedFaqs = product.geoFaqs as { question: string; answer: string }[] | null | undefined;
-  const productFaqs =
-    storedFaqs && storedFaqs.length > 0
-      ? storedFaqs
-      : generateProductFaqs({
-          name: product.name,
-          nameEn: product.nameEn,
-          categoryName: product.category.name,
-          benefits: product.benefits,
-          description: product.description,
-          ingredients: product.ingredients,
-        });
+  // 可见 FAQ、FAQPage 结构化数据与 llms 文档共用同一份问答
+  const productFaqs = resolveProductFaqs({
+    geoFaqs: product.geoFaqs,
+    name: product.name,
+    nameEn: product.nameEn,
+    categoryName: product.category.name,
+    benefits: product.benefits,
+    description: product.description,
+    ingredients: product.ingredients,
+    usage: product.usage,
+    capacity: product.capacity,
+    origin: product.origin,
+    price: product.price,
+    purchasePlatforms: product.purchaseLinks.map((link) => link.platform),
+  });
 
   return (
     <>
       {/* Schema.org 结构化数据 */}
       <ProductJsonLd product={product} />
       <BreadcrumbJsonLd items={breadcrumbs} />
-      <FAQJsonLd items={productFaqs} />
+      <FAQJsonLd items={productFaqs} id={`${baseUrl}/products/${slug}#faq`} inLanguage="zh-CN" />
 
       <Breadcrumbs items={breadcrumbs} className="mx-auto w-full max-w-7xl px-6 pt-6 lg:px-10" />
 

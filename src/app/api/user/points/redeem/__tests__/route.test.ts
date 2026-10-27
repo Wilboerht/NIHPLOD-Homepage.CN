@@ -32,14 +32,20 @@ vi.mock("@/lib/point-gifts", () => ({
   redeemGiftForUser: vi.fn(),
 }));
 
+vi.mock("@/lib/admin-notify", () => ({
+  notifyNewRedemption: vi.fn(),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { redeemGiftForUser } from "@/lib/point-gifts";
+import { notifyNewRedemption } from "@/lib/admin-notify";
 import { rateLimit } from "@/lib/ratelimit";
 import { POST } from "@/app/api/user/points/redeem/route";
 
 const mockUserFindUnique = (prisma.user as unknown as { findUnique: ReturnType<typeof vi.fn> })
   .findUnique;
 const mockRedeem = redeemGiftForUser as ReturnType<typeof vi.fn>;
+const mockNotifyNewRedemption = notifyNewRedemption as ReturnType<typeof vi.fn>;
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 
 function postRequest(body: unknown): NextRequest {
@@ -113,6 +119,22 @@ describe("POST /api/user/points/redeem", () => {
       expectedPoints: undefined,
       clientId: null,
     });
+    expect(mockNotifyNewRedemption).toHaveBeenCalledWith("redemption-1");
+  });
+
+  it("幂等重放不应重复发送企业微信通知", async () => {
+    mockRedeem.mockResolvedValue({
+      ok: true,
+      duplicated: true,
+      points: 230,
+      available: 770,
+      redemptionId: "redemption-1",
+    });
+
+    const res = await POST(postRequest(VALID_BODY));
+
+    expect(res.status).toBe(200);
+    expect(mockNotifyNewRedemption).not.toHaveBeenCalled();
   });
 
   it("触发用户级限流应返回 429 RATE_LIMITED 且不进入兑换流程", async () => {
@@ -123,6 +145,7 @@ describe("POST /api/user/points/redeem", () => {
     expect(res.status).toBe(429);
     expect((await res.json()).error.code).toBe("RATE_LIMITED");
     expect(mockRedeem).not.toHaveBeenCalled();
+    expect(mockNotifyNewRedemption).not.toHaveBeenCalled();
   });
 
   it("积分不足应返回 400 INSUFFICIENT", async () => {

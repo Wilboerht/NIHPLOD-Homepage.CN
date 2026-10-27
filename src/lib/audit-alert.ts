@@ -45,7 +45,7 @@ async function claimAlert(ruleKey: string, count: number, now: Date): Promise<bo
 
 async function notify(title: string, lines: string[]): Promise<void> {
   const content = [`## ${title}`, "", ...lines].join("\n");
-  const result = await sendWecomNotification(content);
+  const result = await sendWecomNotification(content, "admin");
   if (!result.success) {
     apiConsole.warn(`[AuditAlert] 企业微信通知未发送: ${result.error ?? "unknown"}`);
   }

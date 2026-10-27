@@ -10,3 +10,16 @@ import { Prisma } from "@/generated/prisma/client";
 export function toInputJson<T>(value: T | null | undefined): Prisma.InputJsonValue | undefined {
   return value as unknown as Prisma.InputJsonValue | undefined;
 }
+
+/**
+ * GEO FAQ 的 Prisma 写入值。
+ *
+ * Prisma 不允许把顶层 null 直接写入 Json 字段，否则会产生
+ * "null is ambiguous" 的校验错误；清空 FAQ 必须使用 Prisma.DbNull。
+ */
+export function toGeoFaqsJson(
+  value: { question: string; answer: string }[] | null | undefined
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput {
+  if (!value || value.length === 0) return Prisma.DbNull;
+  return value as unknown as Prisma.InputJsonValue;
+}

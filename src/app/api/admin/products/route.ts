@@ -3,7 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
-import { toInputJson } from "@/lib/prisma-json";
+import { toGeoFaqsJson } from "@/lib/prisma-json";
 import { z } from "zod";
 import { ProductSchema } from "@/schemas/product";
 import { createAuditLog } from "@/lib/audit";
@@ -14,6 +14,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
+import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
@@ -236,7 +237,7 @@ export async function POST(request: NextRequest) {
         order: validated.order,
         published: validated.published,
         categoryId: validated.categoryId,
-        geoFaqs: toInputJson(validated.geoFaqs),
+        geoFaqs: toGeoFaqsJson(validated.geoFaqs),
         images: {
           create: sanitized.images.map((img, index) => ({
             url: img.url,
@@ -268,6 +269,7 @@ export async function POST(request: NextRequest) {
     // 重新验证前台页面缓存 & 管理后台统计缓存
     revalidatePath("/products");
     revalidateTag("admin-stats", "max");
+    revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     if (product.published) {
       revalidatePath(`/products/${product.slug}`);
       pushSearchEngines(["/products", `/products/${product.slug}`]);

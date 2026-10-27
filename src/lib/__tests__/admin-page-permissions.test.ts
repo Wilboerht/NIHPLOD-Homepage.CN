@@ -16,7 +16,6 @@ describe("管理端页面权限映射", () => {
     const cases: [string, string][] = [
       ["/admin", "dashboard:read"],
       ["/admin/users", "users:read"],
-      ["/admin/users/user-1", "users:read"],
       ["/admin/account-deletions", "users:read"],
       ["/admin/admins", "admins:read"],
       ["/admin/applications", "applications:read"],
@@ -43,17 +42,18 @@ describe("管理端页面权限映射", () => {
     }
   });
 
-  it("动态编辑页优先匹配写权限规则，避免被列表只读规则先命中", () => {
+  it("动态编辑页优先匹配写权限规则，且包含实际数据读取所需权限", () => {
     expect(getAdminPageRulePermissions(getAdminPageRule("/admin/products/new")!)).toEqual([
       "products:write",
       "categories:read",
     ]);
     expect(getAdminPageRulePermissions(getAdminPageRule("/admin/products/prod-1/edit")!)).toEqual([
       "products:write",
+      "products:read",
       "categories:read",
     ]);
     expect(getAdminPageRule("/admin/jobs/new")?.allOf).toEqual(["jobs:write"]);
-    expect(getAdminPageRule("/admin/jobs/job-1/edit")?.allOf).toEqual(["jobs:write"]);
+    expect(getAdminPageRule("/admin/jobs/job-1/edit")?.allOf).toEqual(["jobs:write", "jobs:read"]);
     expect(getAdminPageRule("/admin/oauth-clients/wizard")?.allOf).toEqual([
       "sso:clients:write",
       "sso:clients:read",
@@ -77,10 +77,25 @@ describe("管理端页面权限映射", () => {
     expect(canAccessAdminPage(admin("hr"), "/admin/sso-audit")).toBe(true);
   });
 
-  it("未知路径默认拒绝（fail-closed）", () => {
+  it("兼容尾部斜杠，避免 /admin/ 等合法入口被误判为未知路径", () => {
+    expect(getAdminPageRule("/admin/")).toEqual(getAdminPageRule("/admin"));
+    expect(getAdminPageRule("/admin/settings/totp/")).toEqual(
+      getAdminPageRule("/admin/settings/totp")
+    );
+    expect(getAdminPageRule("/admin/jobs/new/")).toEqual(getAdminPageRule("/admin/jobs/new"));
+    expect(canAccessAdminPage(admin("finance"), "/admin/audit-retention/")).toBe(true);
+  });
+
+  it("未知路径默认拒绝（fail-closed），未注册子路径不继承父级权限", () => {
     expect(getAdminPageRule("/admin/unknown")).toBeNull();
     expect(canAccessAdminPage(admin("owner"), "/admin/unknown")).toBe(false);
     expect(canAccessAdminPage(admin("owner"), "/admin/users-extra")).toBe(false);
+    expect(getAdminPageRule("/admin/users/export")).toBeNull();
+    expect(getAdminPageRule("/admin/audit-logs/export")).toBeNull();
+    expect(getAdminPageRule("/admin/oauth-clients/abc")).toBeNull();
+    expect(getAdminPageRule("/admin/products/abc")).toBeNull();
+    expect(getAdminPageRule("/admin/jobs/abc")).toBeNull();
+    expect(canAccessAdminPage(admin("support"), "/admin/users/export")).toBe(false);
   });
 
   it("零权限管理员无法进入任何业务页面", () => {
@@ -108,17 +123,54 @@ describe("管理端页面权限映射", () => {
     expect(canAccessAdminPage(admin("hr"), "/admin/approvals")).toBe(true);
   });
 
-  it("allOf 页面必须满足全部权限", () => {
+  it("allOf 页面必须满足全部权限，编辑页还必须能读取待编辑数据", () => {
     const writeOnly = admin("unknown-role", ["products:write"]);
     expect(canAccessAdminPage(writeOnly, "/admin/products/new")).toBe(false);
 
     const writeAndCategories = admin("unknown-role", ["products:write", "categories:read"]);
     expect(canAccessAdminPage(writeAndCategories, "/admin/products/new")).toBe(true);
+    expect(canAccessAdminPage(writeAndCategories, "/admin/products/prod-1/edit")).toBe(false);
+
+    const productEditor = admin("unknown-role", [
+      "products:write",
+      "products:read",
+      "categories:read",
+    ]);
+    expect(canAccessAdminPage(productEditor, "/admin/products/prod-1/edit")).toBe(true);
+
+    expect(canAccessAdminPage(admin("unknown-role", ["jobs:write"]), "/admin/jobs/new")).toBe(true);
+    expect(
+      canAccessAdminPage(admin("unknown-role", ["jobs:write"]), "/admin/jobs/job-1/edit")
+    ).toBe(false);
+    expect(
+      canAccessAdminPage(
+        admin("unknown-role", ["jobs:write", "jobs:read"]),
+        "/admin/jobs/job-1/edit"
+      )
+    ).toBe(true);
   });
 
   it("个人撤销覆盖会立即影响页面判定", () => {
     expect(canAccessAdminPage(admin("hr", ["!jobs:read"]), "/admin/jobs")).toBe(false);
     expect(canAccessAdminPage(admin("owner", ["!users:read"]), "/admin/users")).toBe(true);
+  });
+
+  it("兼容只传已解析 permissions 的调用方，不会把有效权限误当成追加覆盖", () => {
+    const resolved = { role: "finance", permissions: ["users:read"] };
+    expect(canAccessAdminPage(resolved, "/admin/users")).toBe(true);
+    // finance 模板本身含 audit:read，但已解析列表里没有，必须按列表判断
+    expect(canAccessAdminPage(resolved, "/admin/audit-logs")).toBe(false);
+
+    const resolvedWithNullOverrides = {
+      role: "finance",
+      permissionOverrides: null,
+      permissions: ["users:read"],
+    };
+    expect(canAccessAdminPage(resolvedWithNullOverrides, "/admin/users")).toBe(true);
+    expect(canAccessAdminPage(resolvedWithNullOverrides, "/admin/audit-logs")).toBe(false);
+
+    const revoked = { role: "finance", permissionOverrides: ["!audit:read"] };
+    expect(canAccessAdminPage(revoked, "/admin/audit-logs")).toBe(false);
   });
 
   it("导航中的每个入口都有页面权限规则且规则覆盖导航权限", () => {

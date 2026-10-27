@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID } from "@/lib/validation";
 import { listRedeemableProducts, giftCostForUser, redeemGiftForUser } from "@/lib/point-gifts";
+import { notifyNewRedemption } from "@/lib/admin-notify";
 import { getPointBalanceView, POINT_GRANT_LEDGER_TYPES } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { MAX_ADDRESSES, addressFieldsSchema, type UserAddressView } from "@/lib/user-address";
@@ -383,6 +384,11 @@ export async function redeemPointsResponse(
         },
         { status: statusMap[result.code] ?? 500 }
       );
+    }
+
+    // 管理端企业微信群通知（幂等重放不重复发送；响应返回后异步发送）
+    if (!result.duplicated) {
+      notifyNewRedemption(result.redemptionId);
     }
 
     return NextResponse.json(

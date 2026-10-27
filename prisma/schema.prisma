@@ -34,7 +34,7 @@ model Product {
   published       Boolean        @default(false) // 是否发布
   pointRedeemable Boolean        @default(false) // 是否可在用户面板积分兑换（兑换扣分 = ⌊价格 ÷ 当前兑礼率⌋）
   redeemStock     Int? // 积分兑换库存（null = 不限量；兑换时条件扣减，0 即拒绝）
-  geoFaqs         Json? // AI 生成的 GEO FAQ 数据
+  geoFaqs         Json? // 人工维护的 GEO FAQ 数据（为空时使用规则兜底）
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @default(now()) @updatedAt
 
@@ -883,6 +883,7 @@ model SpentAdjustmentApplication {
   purchasedAt   DateTime? // 消费日期（不限制时间范围）
   images        String[] // 凭证截图 URL（选填，最多 3 张）
   note          String?                @db.Text // 备注
+  requestId     String? // 客户端幂等键：同一用户同一 requestId 只创建一条申请
   status        SpentAdjustmentStatus  @default(PENDING)
   reviewAmount  Int? // 审核核实金额（元，以人工核实为准）
   reviewNote    String?                @db.Text // 驳回原因/审核备注
@@ -894,6 +895,7 @@ model SpentAdjustmentApplication {
   user       User   @relation(fields: [userId], references: [id], onDelete: Restrict)
   reviewedBy Admin? @relation("SpentAdjustmentReview", fields: [reviewedById], references: [id], onDelete: SetNull)
 
+  @@unique([userId, requestId])
   @@index([userId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
