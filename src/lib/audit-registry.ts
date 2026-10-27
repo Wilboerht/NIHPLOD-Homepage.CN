@@ -109,6 +109,7 @@ const SECURITY_ACTIONS = new Set([
   "application_list_view",
   "resume_download",
   "spent_receipt_view",
+  "spent_proof_public_purge",
   "point_redemption_pii_view",
   "amap_config_view",
   "user_deleted",
@@ -174,6 +175,7 @@ const CRITICAL_ACTIONS = new Set([
   "audit_retention_execute",
   "admin_totp_recovery_issued",
   "admin_totp_recovery_used",
+  "spent_proof_public_purge",
 ]);
 
 const HIGH_ACTIONS = new Set([

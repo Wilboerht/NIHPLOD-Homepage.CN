@@ -143,6 +143,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.ok) {
+      if (result.kind === "invalid_image") {
+        return resJson(
+          {
+            success: false,
+            error: { code: "INVALID_IMAGE", message: "凭证图片无效或不属于当前用户" },
+          },
+          400
+        );
+      }
       if (result.kind === "pending_limit") {
         return resJson(
           {

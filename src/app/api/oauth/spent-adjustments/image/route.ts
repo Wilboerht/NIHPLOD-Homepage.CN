@@ -1,12 +1,16 @@
 /**
  * OAuth 2.0 消费补录凭证图片端点
- * GET /api/oauth/spent-adjustments/image?key=<objectName>
+ * GET /api/oauth/spent-adjustments/image?key=<key>
  *
- * 仅允许凭证所属用户查看：验证 token 归属 + 申请归属后，302 重定向到
- * 私有 bucket 的短时效签名 URL。要求 scope 含 membership。
- * 归属校验与签名逻辑与主站会话路由共用（src/lib/spent-adjustment-files.ts）。
+ * 仅允许凭证所属用户查看：验证 token 归属 + 申请归属后：
+ * - 本地私有对象：流式返回文件；
+ * - 历史私有 OSS 对象：302 到短时效签名 URL。
+ * 要求 scope 含 membership。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { createReadStream } from "fs";
+import { stat } from "fs/promises";
+import { Readable } from "stream";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
@@ -15,6 +19,13 @@ import { resolveSpentProofImage } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, private",
+  Pragma: "no-cache",
+  "X-Content-Type-Options": "nosniff",
+} as const;
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,20 +72,34 @@ export async function GET(request: NextRequest) {
       return resJson({ error: result.code, error_description: result.message }, result.status);
     }
 
-    // 302 同样带 CORS 与 no-store：浏览器脚本 fetch 跟随重定向时需要放行头，
-    // 且签名地址不应被中间缓存
-    const redirect = NextResponse.redirect(result.signedUrl, 302);
     const corsHeaders = await getOAuthCorsHeaders(request);
-    for (const [name, value] of Object.entries(corsHeaders)) {
-      redirect.headers.set(name, value);
+
+    if (result.kind === "redirect") {
+      const redirect = NextResponse.redirect(result.signedUrl, 302);
+      for (const [name, value] of Object.entries(corsHeaders)) {
+        redirect.headers.set(name, value);
+      }
+      redirect.headers.set("Cache-Control", "no-store");
+      return redirect;
     }
-    redirect.headers.set("Cache-Control", "no-store");
-    return redirect;
+
+    const fileStat = await stat(result.path);
+    const stream = Readable.toWeb(createReadStream(result.path)) as unknown as ReadableStream;
+
+    return new NextResponse(stream, {
+      headers: {
+        ...NO_STORE_HEADERS,
+        ...corsHeaders,
+        "Content-Type": result.contentType,
+        "Content-Length": String(fileStat.size),
+        "Content-Disposition": 'inline; filename="receipt.webp"',
+      },
+    });
   } catch (error) {
     apiConsole.error("[OAuth SpentAdjustments] 凭证图片访问失败:", error);
     return NextResponse.json(
       { error: "server_error", error_description: "服务器内部错误" },
-      { status: 500 }
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
 }

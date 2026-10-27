@@ -4,9 +4,12 @@
  * GET  /api/user/spent-adjustments/image
  *
  * 路由为薄封装：这里覆盖会话鉴权、响应契约与错误透传，
- * 上传/签名核心逻辑由 spent-adjustment-files 单测/集成覆盖。
+ * 上传/存储核心逻辑由 spent-adjustment-files 单测覆盖。
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterAll, beforeAll, describe, it, expect, vi, beforeEach } from "vitest";
+import { mkdtemp, rm, writeFile } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
 import { NextRequest } from "next/server";
 
 const mockVerifyUserAuth = vi.fn();
@@ -36,6 +39,19 @@ vi.mock("@/lib/spent-adjustment-files", () => ({
 import { POST as uploadPOST } from "../upload/route";
 import { GET as imageGET } from "../image/route";
 
+let tempDir = "";
+let imagePath = "";
+
+beforeAll(async () => {
+  tempDir = await mkdtemp(join(tmpdir(), "spent-proof-route-"));
+  imagePath = join(tempDir, "receipt.webp");
+  await writeFile(imagePath, Buffer.from("webp-bytes"));
+});
+
+afterAll(async () => {
+  await rm(tempDir, { recursive: true, force: true });
+});
+
 function uploadRequest(withFile = true): NextRequest {
   const form = new FormData();
   if (withFile) {
@@ -52,7 +68,7 @@ function uploadRequest(withFile = true): NextRequest {
 
 function imageRequest(): NextRequest {
   return new NextRequest(
-    new URL("http://localhost/api/user/spent-adjustments/image?key=spent-adjustments/a.webp")
+    new URL("http://localhost/api/user/spent-adjustments/image?key=private-local:test")
   );
 }
 
@@ -62,14 +78,14 @@ describe("POST /api/user/spent-adjustments/upload", () => {
   it("上传成功返回 { success, data }", async () => {
     mockUploadSpentProofFile.mockResolvedValue({
       ok: true,
-      url: "spent-adjustments/x.webp",
+      url: "private-local:spent-adjustments/user-1/x.webp",
       private: true,
     });
     const res = await uploadPOST(uploadRequest());
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       success: true,
-      data: { url: "spent-adjustments/x.webp", private: true },
+      data: { url: "private-local:spent-adjustments/user-1/x.webp", private: true },
     });
   });
 
@@ -103,10 +119,28 @@ describe("GET /api/user/spent-adjustments/image", () => {
     expect(res.status).toBe(401);
   });
 
-  it("归属校验通过后 302 到签名地址", async () => {
+  it("本地私有文件返回 image/webp + no-store", async () => {
     mockVerifyUserAuth.mockResolvedValue({ id: "user-1" });
     mockResolveSpentProofImage.mockResolvedValue({
       ok: true,
+      kind: "file",
+      path: imagePath,
+      contentType: "image/webp",
+    });
+
+    const res = await imageGET(imageRequest());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/webp");
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(Buffer.from(await res.arrayBuffer()).toString()).toBe("webp-bytes");
+  });
+
+  it("历史 OSS 文件仍返回 302 签名地址", async () => {
+    mockVerifyUserAuth.mockResolvedValue({ id: "user-1" });
+    mockResolveSpentProofImage.mockResolvedValue({
+      ok: true,
+      kind: "redirect",
       signedUrl: "https://bucket.oss-cn.aliyuncs.com/x.webp?Signature=abc",
     });
     const res = await imageGET(imageRequest());
@@ -114,6 +148,7 @@ describe("GET /api/user/spent-adjustments/image", () => {
     expect(res.headers.get("location")).toBe(
       "https://bucket.oss-cn.aliyuncs.com/x.webp?Signature=abc"
     );
+    expect(res.headers.get("cache-control")).toContain("no-store");
   });
 
   it("图片不存在按错误状态透传", async () => {

@@ -1,26 +1,36 @@
 /**
- * 消费补录凭证文件：上传与签名访问
+ * 消费补录凭证文件：上传与访问
  *
  * 会话路由（/api/user/spent-adjustments/{upload,image}）与 OAuth 资源端点
- * （/api/oauth/spent-adjustments/{upload,image}）共用，保证私有 bucket
- * 存储策略与归属校验口径一致。
+ * （/api/oauth/spent-adjustments/{upload,image}）共用，保证存储策略与归属校验口径一致。
+ *
+ * 生产当前使用本地私有存储：
+ * - 目录：private/spent-adjustments/<userId>/<uuid>.webp
+ * - key：private-local:spent-adjustments/<userId>/<uuid>.webp
+ * - 读取：必须经鉴权 API 流式返回，不暴露公开 URL
  */
 import { randomUUID } from "crypto";
+import { promises as fs } from "fs";
+import { dirname, resolve, sep } from "path";
 import { prisma } from "@/lib/prisma";
+import { processImageToWebp, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import {
-  processAndSaveImage,
-  processImageToWebp,
-  validateUploadServer,
-  validateFileBuffer,
-} from "@/lib/upload";
-import { isPrivateBucketConfigured, uploadToPrivateOSS, signPrivateObjectUrl } from "@/lib/ali-oss";
+  deletePrivateOSSObject,
+  isPrivateBucketConfigured,
+  uploadToPrivateOSS,
+  signPrivateObjectUrl,
+} from "@/lib/ali-oss";
 
 export type SpentProofUploadResult =
   | { ok: true; url: string; private: boolean }
   | { ok: false; status: number; code: string; message: string };
 
-/** 私有对象命名空间与前缀 */
+/** 本地私有对象命名空间与前缀 */
 const OBJECT_PREFIX = "spent-adjustments";
+const LOCAL_KEY_PREFIX = "private-local:";
+const OSS_KEY_PREFIX = "private-oss:";
+const LEGACY_PRIVATE_KEY_PREFIX = "private:";
+const PRIVATE_ROOT = resolve(process.cwd(), "private");
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** multipart 请求体粗粒度上限：文件上限（10MB）+ 表单开销；精确校验仍按 file.size 执行 */
@@ -53,13 +63,39 @@ function isLegacyObjectKey(key: string): boolean {
   return name.endsWith(".webp") && UUID_PATTERN.test(name.slice(0, -".webp".length));
 }
 
+function keyToLocalObjectName(key: string): string | null {
+  if (!key.startsWith(LOCAL_KEY_PREFIX)) return null;
+  return key.slice(LOCAL_KEY_PREFIX.length);
+}
+
+function localPathForObject(objectName: string): string | null {
+  const localPath = resolve(PRIVATE_ROOT, objectName);
+  if (!localPath.startsWith(`${PRIVATE_ROOT}${sep}`)) return null;
+  return localPath;
+}
+
+function isLocalSpentProofAllowed(): boolean {
+  return (
+    process.env.ALLOW_LOCAL_SPENT_PROOF_STORAGE === "true" || process.env.NODE_ENV !== "production"
+  );
+}
+
+async function hasApplicationImage(userId: string, key: string): Promise<boolean> {
+  const application = await prisma.spentAdjustmentApplication.findFirst({
+    where: { userId, images: { has: key } },
+    select: { id: true },
+  });
+  return Boolean(application);
+}
+
 /**
  * 上传凭证截图。
  *
  * 安全策略：
- * - 私有 bucket（ALI_OSS_PRIVATE_BUCKET）优先，对象名含 userId 前缀；
- * - 未配置私有 bucket 时默认 fail-closed（凭证含个人信息，不得落公开存储），
- *   仅非生产环境或显式设置 ALLOW_PUBLIC_SPENT_PROOF_STORAGE=true 时回退公开管线。
+ * - 私有 OSS 优先（未来可选），对象名含 userId 前缀；
+ * - 未配置私有 OSS 时使用本地私有存储，要求显式 ALLOW_LOCAL_SPENT_PROOF_STORAGE=true
+ *   （非生产环境默认允许，便于本地开发）；
+ * - 不再回退到 public/uploads 公开存储。
  */
 export async function uploadSpentProofFile(
   file: File,
@@ -99,83 +135,201 @@ export async function uploadSpentProofFile(
     };
   }
 
-  // 私有 bucket 优先：凭证含个人信息，不落公开读存储
+  // 私有 OSS 优先（保留未来启用能力）
   if (isPrivateBucketConfigured()) {
     const processed = await processImageToWebp(buffer);
-    // userId 前缀使归属校验可由对象名权威判定（防"把自己申请里的他人 key 拿去签名"）
     const objectName = `${OBJECT_PREFIX}/${userId}/${randomUUID()}.webp`;
     const result = await uploadToPrivateOSS(processed, objectName, "image/webp");
-    return { ok: true, url: result.objectName, private: true };
+    return { ok: true, url: `${OSS_KEY_PREFIX}${result.objectName}`, private: true };
   }
 
-  // 未配置私有 bucket：默认 fail-closed（避免凭证落公开存储 + 1 年公共缓存）
-  const allowPublicFallback =
-    process.env.ALLOW_PUBLIC_SPENT_PROOF_STORAGE === "true" ||
-    process.env.NODE_ENV !== "production";
-  if (!allowPublicFallback) {
+  if (!isLocalSpentProofAllowed()) {
     return {
       ok: false,
       status: 503,
       code: "STORAGE_NOT_CONFIGURED",
-      message: "凭证存储未配置，请联系管理员（需配置 ALI_OSS_PRIVATE_BUCKET）",
+      message: "凭证存储未配置，请联系管理员（需配置 ALLOW_LOCAL_SPENT_PROOF_STORAGE 或私有 OSS）",
     };
   }
 
-  // 安全清理文件名
-  const safeName = file.name
-    .replace(/\\/g, "/")
-    .replace(/^.*[\\/]/, "")
-    .replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g, "_")
-    .replace(/_{2,}/g, "_")
-    .substring(0, 200);
+  const processed = await processImageToWebp(buffer);
+  const objectName = `${OBJECT_PREFIX}/${userId}/${randomUUID()}.webp`;
+  const localPath = localPathForObject(objectName);
+  if (!localPath) {
+    return {
+      ok: false,
+      status: 500,
+      code: "STORAGE_ERROR",
+      message: "凭证存储路径无效",
+    };
+  }
 
-  // 回退公开管线：凭证截图不需要缩略图/占位符，减轻处理开销
-  const result = await processAndSaveImage(buffer, safeName || "receipt", "spent-adjustments", {
-    generateThumbnail: false,
-    generateBlur: false,
-  });
+  await fs.mkdir(dirname(localPath), { recursive: true, mode: 0o700 });
+  await fs.writeFile(localPath, processed, { mode: 0o600 });
+  await fs.chmod(localPath, 0o600);
 
-  return { ok: true, url: result.url, private: false };
+  return { ok: true, url: `${LOCAL_KEY_PREFIX}${objectName}`, private: true };
 }
 
 export type SpentProofImageResult =
-  { ok: true; signedUrl: string } | { ok: false; status: number; code: string; message: string };
+  | { ok: true; kind: "file"; path: string; contentType: string }
+  | { ok: true; kind: "redirect"; signedUrl: string }
+  | { ok: false; status: number; code: string; message: string };
 
 /** 私有对象签名 URL 有效期：15 分钟（短时效 capability，降低泄漏窗口） */
 const PRIVATE_URL_TTL_SECONDS = 15 * 60;
 
+function signedUrlResult(objectName: string): SpentProofImageResult {
+  const signedUrl = signPrivateObjectUrl(objectName, PRIVATE_URL_TTL_SECONDS);
+  if (!signedUrl) {
+    return { ok: false, status: 404, code: "NOT_CONFIGURED", message: "图片服务未配置" };
+  }
+  return { ok: true, kind: "redirect", signedUrl };
+}
+
+async function localFileResult(path: string): Promise<SpentProofImageResult> {
+  try {
+    await fs.access(path);
+  } catch {
+    return { ok: false, status: 404, code: "NOT_FOUND", message: "图片不存在" };
+  }
+  return { ok: true, kind: "file", path, contentType: "image/webp" };
+}
+
 /**
- * 解析凭证图片的签名地址：
- * - 新格式（含 userId 前缀）：前缀即权威归属，直接放行；
- * - 历史格式（无前缀）：必须命中当前用户自己的申请记录（兼容存量对象）；
- * - 私有 bucket 未配置时视为不可用。
+ * 解析凭证图片：
+ * - 本地私有 key：前缀即归属，直接返回本地文件；
+ * - 私有 OSS key：前缀即归属，返回短时效签名 URL；
+ * - 历史 key（无 userId 前缀）：必须命中当前用户自己的申请记录。
+ * - 公开 /uploads/... 不再接受。
  */
 export async function resolveSpentProofImage(
   userId: string,
   key: string
 ): Promise<SpentProofImageResult> {
-  if (!key || key.length > 200 || key.includes("..")) {
+  if (!key || key.length > 200 || key.includes("..") || key.includes("\\")) {
     return { ok: false, status: 400, code: "INVALID_PARAMS", message: "参数错误" };
   }
 
-  if (!isOwnedObjectKey(userId, key)) {
-    if (!isLegacyObjectKey(key)) {
+  if (key.startsWith(LOCAL_KEY_PREFIX)) {
+    const objectName = keyToLocalObjectName(key);
+    if (!objectName) {
       return { ok: false, status: 404, code: "NOT_FOUND", message: "图片不存在" };
     }
-    // 历史对象无 userId 前缀：退化为申请归属校验（兼容存量数据）
-    const application = await prisma.spentAdjustmentApplication.findFirst({
-      where: { userId, images: { has: key } },
-      select: { id: true },
-    });
-    if (!application) {
+    if (!isOwnedObjectKey(userId, objectName)) {
+      if (!isLegacyObjectKey(objectName) || !(await hasApplicationImage(userId, key))) {
+        return { ok: false, status: 404, code: "NOT_FOUND", message: "图片不存在" };
+      }
+    }
+    const localPath = localPathForObject(objectName);
+    if (!localPath) {
       return { ok: false, status: 404, code: "NOT_FOUND", message: "图片不存在" };
+    }
+    return localFileResult(localPath);
+  }
+
+  if (key.startsWith(OSS_KEY_PREFIX)) {
+    const objectName = key.slice(OSS_KEY_PREFIX.length);
+    if (!isOwnedObjectKey(userId, objectName)) {
+      if (!isLegacyObjectKey(objectName) || !(await hasApplicationImage(userId, key))) {
+        return { ok: false, status: 404, code: "NOT_FOUND", message: "图片不存在" };
+      }
+    }
+    return signedUrlResult(objectName);
+  }
+
+  if (key.startsWith(LEGACY_PRIVATE_KEY_PREFIX)) {
+    const objectName = key.slice(LEGACY_PRIVATE_KEY_PREFIX.length);
+    if (!isOwnedObjectKey(userId, objectName)) {
+      if (!isLegacyObjectKey(objectName) || !(await hasApplicationImage(userId, key))) {
+        return { ok: false, status: 404, code: "NOT_FOUND", message: "图片不存在" };
+      }
+    }
+    const localPath = localPathForObject(objectName);
+    if (
+      localPath &&
+      (await fs
+        .access(localPath)
+        .then(() => true)
+        .catch(() => false))
+    ) {
+      return { ok: true, kind: "file", path: localPath, contentType: "image/webp" };
+    }
+    return signedUrlResult(objectName);
+  }
+
+  if (key.startsWith(`${OBJECT_PREFIX}/`)) {
+    if (isOwnedObjectKey(userId, key)) return signedUrlResult(key);
+    if (isLegacyObjectKey(key) && (await hasApplicationImage(userId, key))) {
+      return signedUrlResult(key);
+    }
+    return { ok: false, status: 404, code: "NOT_FOUND", message: "图片不存在" };
+  }
+
+  return { ok: false, status: 404, code: "NOT_FOUND", message: "图片不存在" };
+}
+
+/**
+ * 删除凭证文件（账号注销使用）。
+ *
+ * 只允许删除当前用户前缀的本地私有对象；任意 /uploads/... 一律不删，
+ * 历史 OSS 对象仅在私有 bucket 已配置且归属匹配时删除。
+ */
+export async function deleteSpentProofFile(key: string, userId: string): Promise<boolean> {
+  if (!key || key.includes("..") || key.includes("\\")) return false;
+
+  if (key.startsWith(LOCAL_KEY_PREFIX)) {
+    const objectName = keyToLocalObjectName(key);
+    if (!objectName || !isOwnedObjectKey(userId, objectName)) return false;
+    const localPath = localPathForObject(objectName);
+    if (!localPath) return false;
+    try {
+      await fs.unlink(localPath);
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+      throw error;
     }
   }
 
-  const signedUrl = signPrivateObjectUrl(key, PRIVATE_URL_TTL_SECONDS);
-  if (!signedUrl) {
-    return { ok: false, status: 404, code: "NOT_CONFIGURED", message: "图片服务未配置" };
+  if (key.startsWith(OSS_KEY_PREFIX)) {
+    const objectName = key.slice(OSS_KEY_PREFIX.length);
+    if (!isOwnedObjectKey(userId, objectName)) {
+      if (!isLegacyObjectKey(objectName) || !(await hasApplicationImage(userId, key))) {
+        return false;
+      }
+    }
+    return deletePrivateOSSObject(objectName);
   }
 
-  return { ok: true, signedUrl };
+  if (key.startsWith(LEGACY_PRIVATE_KEY_PREFIX)) {
+    const objectName = key.slice(LEGACY_PRIVATE_KEY_PREFIX.length);
+    if (!isOwnedObjectKey(userId, objectName)) {
+      if (!isLegacyObjectKey(objectName) || !(await hasApplicationImage(userId, key))) {
+        return false;
+      }
+    }
+    const localPath = localPathForObject(objectName);
+    if (localPath) {
+      try {
+        await fs.unlink(localPath);
+        return true;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+    }
+    return deletePrivateOSSObject(objectName);
+  }
+
+  if (key.startsWith(`${OBJECT_PREFIX}/`)) {
+    if (!isOwnedObjectKey(userId, key)) {
+      if (!isLegacyObjectKey(key) || !(await hasApplicationImage(userId, key))) {
+        return false;
+      }
+    }
+    return deletePrivateOSSObject(key);
+  }
+
+  // 公开 /uploads/... 或未知 key：不删除，避免任意文件删除。
+  return false;
 }

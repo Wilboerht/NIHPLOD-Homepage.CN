@@ -27,8 +27,9 @@ import { quiesceUserSessions } from "@/lib/user-status";
 import { createAuditLog } from "@/lib/audit";
 import { sendAccountDeletedNotification, sendAccountDeletionReminder } from "@/lib/sms";
 import { hashIdentifier } from "@/lib/auth-security";
-import { deleteOSSFiles, deletePrivateOSSObject } from "@/lib/ali-oss";
+import { deleteOSSFiles } from "@/lib/ali-oss";
 import { deleteUploadedFile } from "@/lib/upload";
+import { deleteSpentProofFile } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 import { DELETION_STATUS } from "@/lib/account-deletion-requests";
 
@@ -169,9 +170,18 @@ export async function executeAccountDeletion(
       where: { userId, images: { isEmpty: false } },
       select: { images: true },
     });
+    let proofPurgeFailed = false;
     for (const image of proofApplications.flatMap((item) => item.images)) {
-      if (image.startsWith("spent-adjustments/")) await deletePrivateOSSObject(image);
-      else await deleteUploadedFile(image);
+      try {
+        const deleted = await deleteSpentProofFile(image, userId);
+        if (!deleted) {
+          apiConsole.warn("[AccountDeletion] 凭证文件未删除（可能已不存在或需迁移）:", image);
+        }
+      } catch (error) {
+        // 单个凭证删除失败不阻断注销；账户匿名化与 DB 引用清理继续执行
+        proofPurgeFailed = true;
+        apiConsole.warn("[AccountDeletion] 凭证文件删除失败（不阻断注销）:", error);
+      }
     }
 
     // 5. 事务：解绑第三方身份 + 匿名化 User + 清理 PII 衍生数据
@@ -331,6 +341,7 @@ export async function executeAccountDeletion(
         result: "completed",
         // OSS 清理失败需人工补删，纳入审计留痕（不含明文手机号/URL 之外的 PII）
         ...(avatarPurgeFailed ? { avatarPurgeFailed: true } : {}),
+        ...(proofPurgeFailed ? { proofPurgeFailed: true } : {}),
       },
     });
 

@@ -3,10 +3,13 @@
  * POST /api/oauth/spent-adjustments/upload
  * GET  /api/oauth/spent-adjustments/image
  *
- * 覆盖：鉴权/scope/账户状态、上传成功与错误透传、图片 302（含 CORS 与 no-store）、
- * 归属校验错误透传
+ * 覆盖：鉴权/scope/账户状态、上传成功与错误透传、本地文件流式响应/CORS、
+ * 历史 OSS 302、归属校验错误透传。
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterAll, beforeAll, describe, it, expect, vi, beforeEach } from "vitest";
+import { mkdtemp, rm, writeFile } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/ratelimit", () => ({
@@ -55,6 +58,19 @@ vi.mock("@/lib/spent-adjustment-files", () => ({
 import { POST as uploadPOST } from "../spent-adjustments/upload/route";
 import { GET as imageGET } from "../spent-adjustments/image/route";
 
+let tempDir = "";
+let imagePath = "";
+
+beforeAll(async () => {
+  tempDir = await mkdtemp(join(tmpdir(), "spent-proof-oauth-"));
+  imagePath = join(tempDir, "receipt.webp");
+  await writeFile(imagePath, Buffer.from("webp-bytes"));
+});
+
+afterAll(async () => {
+  await rm(tempDir, { recursive: true, force: true });
+});
+
 function authedToken(scope = "openid membership") {
   mockVerifyOAuthAccessToken.mockResolvedValue({
     id: "user-1",
@@ -80,7 +96,7 @@ function uploadRequest(withFile = true, auth = true): NextRequest {
 
 function imageRequest(auth = true): NextRequest {
   return new NextRequest(
-    new URL("http://localhost/api/oauth/spent-adjustments/image?key=spent-adjustments/a.webp"),
+    new URL("http://localhost/api/oauth/spent-adjustments/image?key=private-local:test"),
     { headers: auth ? { Authorization: "Bearer valid-token" } : {} }
   );
 }
@@ -119,14 +135,17 @@ describe("/api/oauth/spent-adjustments/upload", () => {
     authedToken();
     mockUploadSpentProofFile.mockResolvedValue({
       ok: true,
-      url: "spent-adjustments/x.webp",
+      url: "private-local:spent-adjustments/user-1/x.webp",
       private: true,
     });
     const res = await uploadPOST(uploadRequest());
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.data).toEqual({ url: "spent-adjustments/x.webp", private: true });
+    expect(body.data).toEqual({
+      url: "private-local:spent-adjustments/user-1/x.webp",
+      private: true,
+    });
     expect(mockUploadSpentProofFile).toHaveBeenCalledTimes(1);
   });
 
@@ -162,10 +181,28 @@ describe("/api/oauth/spent-adjustments/image", () => {
     mockUserFindUnique.mockResolvedValue({ status: "ACTIVE" });
   });
 
-  it("归属校验通过后 302 到签名地址，并带 CORS 与 no-store", async () => {
+  it("本地文件返回 200 image/webp，并带 CORS 与 no-store", async () => {
     authedToken();
     mockResolveSpentProofImage.mockResolvedValue({
       ok: true,
+      kind: "file",
+      path: imagePath,
+      contentType: "image/webp",
+    });
+
+    const res = await imageGET(imageRequest());
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/webp");
+    expect(res.headers.get("access-control-allow-origin")).toBe("https://smart.nihplod.cn");
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    expect(Buffer.from(await res.arrayBuffer()).toString()).toBe("webp-bytes");
+  });
+
+  it("历史 OSS 文件归属校验通过后 302，并带 CORS 与 no-store", async () => {
+    authedToken();
+    mockResolveSpentProofImage.mockResolvedValue({
+      ok: true,
+      kind: "redirect",
       signedUrl: "https://bucket.oss-cn.aliyuncs.com/x.webp?Signature=abc",
     });
 
@@ -176,7 +213,6 @@ describe("/api/oauth/spent-adjustments/image", () => {
     );
     expect(res.headers.get("access-control-allow-origin")).toBe("https://smart.nihplod.cn");
     expect(res.headers.get("cache-control")).toBe("no-store");
-    expect(mockResolveSpentProofImage).toHaveBeenCalledWith("user-1", "spent-adjustments/a.webp");
   });
 
   it("图片不存在按错误状态透传", async () => {

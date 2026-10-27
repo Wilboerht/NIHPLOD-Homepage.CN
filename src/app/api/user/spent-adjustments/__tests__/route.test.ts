@@ -224,12 +224,14 @@ describe("POST /api/user/spent-adjustments", () => {
     expect(res.status).toBe(400);
   });
 
-  it("本地存储模式的相对路径图片 URL 可正常提交", async () => {
+  it("本地私有凭证 key 可正常提交", async () => {
+    const proofKey =
+      "private-local:spent-adjustments/user-1/123e4567-e89b-42d3-a456-426614174000.webp";
     const res = await POST(
       createRequest("POST", {
         channel: "OFFLINE",
         orderNo: "RCPT-2",
-        images: ["/uploads/spent-adjustments/abc.webp"],
+        images: [proofKey],
       })
     );
     const data = await res.json();
@@ -237,8 +239,25 @@ describe("POST /api/user/spent-adjustments", () => {
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(mockCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ images: ["/uploads/spent-adjustments/abc.webp"] }),
+      data: expect.objectContaining({ images: [proofKey] }),
     });
+  });
+
+  it("引用其他用户的私有凭证 key 返回 400 INVALID_IMAGE", async () => {
+    const res = await POST(
+      createRequest("POST", {
+        channel: "OFFLINE",
+        orderNo: "RCPT-3",
+        images: [
+          "private-local:spent-adjustments/user-2/123e4567-e89b-42d3-a456-426614174000.webp",
+        ],
+      })
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error.code).toBe("INVALID_IMAGE");
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it("非法图片地址（非 URL 非站内路径）返回 400", async () => {

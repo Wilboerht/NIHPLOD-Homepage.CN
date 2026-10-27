@@ -38,6 +38,8 @@ const mockTxPointLedgerCreate = vi.fn();
 
 const mockPurgeUserFromSubsites = vi.fn();
 const mockDeleteOSSFiles = vi.fn();
+const mockDeleteSpentProofFile = vi.fn();
+const mockSpentProofFindMany = vi.fn();
 const mockQuiesce = vi.fn();
 const mockCreateAuditLog = vi.fn();
 const mockSendReceipt = vi.fn();
@@ -55,7 +57,9 @@ vi.mock("@/lib/prisma", () => ({
       update: (...args: unknown[]) => mockRequestUpdate(...args),
     },
     user: { findUnique: (...args: unknown[]) => mockUserFindUnique(...args) },
-    spentAdjustmentApplication: { findMany: vi.fn().mockResolvedValue([]) },
+    spentAdjustmentApplication: {
+      findMany: (...args: unknown[]) => mockSpentProofFindMany(...args),
+    },
     $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
 }));
@@ -71,6 +75,10 @@ vi.mock("@/lib/ali-oss", () => ({
 
 vi.mock("@/lib/upload", () => ({
   deleteUploadedFile: (...args: unknown[]) => mockDeleteOSSFiles(...args),
+}));
+
+vi.mock("@/lib/spent-adjustment-files", () => ({
+  deleteSpentProofFile: (...args: unknown[]) => mockDeleteSpentProofFile(...args),
 }));
 
 vi.mock("@/lib/user-status", () => ({
@@ -165,6 +173,8 @@ describe("executeAccountDeletion", () => {
     mockUserFindUnique.mockResolvedValue(activeUser);
     mockPurgeUserFromSubsites.mockResolvedValue({ ok: true });
     mockDeleteOSSFiles.mockResolvedValue(undefined);
+    mockDeleteSpentProofFile.mockResolvedValue(true);
+    mockSpentProofFindMany.mockResolvedValue([]);
     mockQuiesce.mockResolvedValue(undefined);
     mockTxPointRedemptionFindMany.mockResolvedValue([]);
     mockTxPointBalanceFindUnique.mockResolvedValue({ available: 0, frozen: 0 });
@@ -335,6 +345,40 @@ describe("executeAccountDeletion", () => {
     const deleteOrder = mockDeleteOSSFiles.mock.invocationCallOrder[0];
     const txOrder = mockTransaction.mock.invocationCallOrder[0];
     expect(deleteOrder).toBeLessThan(txOrder);
+  });
+
+  it("M4b：注销时通过 deleteSpentProofFile 删除凭证，且不直接删任意 /uploads 文件", async () => {
+    const localKey =
+      "private-local:spent-adjustments/user-1/123e4567-e89b-42d3-a456-426614174000.webp";
+    const publicPath = "/uploads/images/NIHPLOD-logo.png";
+    mockSpentProofFindMany.mockResolvedValue([{ images: [localKey, publicPath] }]);
+
+    const result = await executeAccountDeletion("req-1");
+
+    expect(result).toBe("completed");
+    expect(mockDeleteSpentProofFile).toHaveBeenCalledWith(localKey, "user-1");
+    expect(mockDeleteSpentProofFile).toHaveBeenCalledWith(publicPath, "user-1");
+    // 凭证删除走专用 helper，不能回退到 deleteUploadedFile 直接删公开文件
+    expect(mockDeleteOSSFiles).not.toHaveBeenCalledWith(publicPath);
+  });
+
+  it("M4c：单个凭证删除失败不阻断注销，并在审计中标记 proofPurgeFailed", async () => {
+    mockSpentProofFindMany.mockResolvedValue([
+      {
+        images: [
+          "private-local:spent-adjustments/user-1/123e4567-e89b-42d3-a456-426614174000.webp",
+        ],
+      },
+    ]);
+    mockDeleteSpentProofFile.mockRejectedValueOnce(new Error("fs error"));
+
+    const result = await executeAccountDeletion("req-1");
+
+    expect(result).toBe("completed");
+    const auditCall = mockCreateAuditLog.mock.calls.find(
+      (call) => call[0]?.action === "account_deletion_execute"
+    );
+    expect(auditCall?.[0]?.detail?.proofPurgeFailed).toBe(true);
   });
 
   it("M4：头像为完整 URL 时原样传给 deleteOSSFiles", async () => {

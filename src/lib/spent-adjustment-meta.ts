@@ -65,18 +65,33 @@ export function isDirectImageUrl(value: string): boolean {
   return value.startsWith("/") && !value.startsWith("//") && !value.includes("\\");
 }
 
-/** 私有凭证对象名前缀（与 spent-adjustment-files.ts 的 OBJECT_PREFIX 一致） */
-const SPENT_PROOF_OBJECT_PREFIX = "spent-adjustments/";
+/**
+ * 当前生产使用本地私有存储，新提交接受：
+ * - private-local:spent-adjustments/<userId>/<uuid>.webp
+ * - private-oss:spent-adjustments/<userId>/<uuid>.webp（未来启用私有 OSS 时）
+ *
+ * 历史公开 /uploads/... 与无 userId 前缀的 OSS key 不再接受新提交；
+ * 存量数据由迁移/清理脚本处理。
+ */
+const SPENT_PROOF_KEY_PATTERN =
+  /^private-(?:local|oss):spent-adjustments\/[A-Za-z0-9_-]{1,64}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/i;
 
 /**
- * 凭证图片引用校验（提交入口使用）：
- * 公开 URL / 站内路径 / 私有 bucket objectName（spent-adjustments/ 前缀）均为合法引用。
- * objectName 的归属由读取端（resolveSpentProofImage）按 userId 前缀/申请记录权威校验。
+ * 凭证图片引用格式校验（提交入口使用）。
+ * 归属由 createSpentApplication 按 userId 再做一次前缀校验。
  */
 export function isValidSpentProofImageRef(value: string): boolean {
   if (value.includes("..") || value.includes("\\")) return false;
-  if (isDirectImageUrl(value)) return value.startsWith("/uploads/");
-  return value.startsWith(SPENT_PROOF_OBJECT_PREFIX);
+  return SPENT_PROOF_KEY_PATTERN.test(value);
+}
+
+/** 当前用户是否拥有该私有凭证 key（提交入口二次校验） */
+export function isOwnedSpentProofImageRef(value: string, userId: string): boolean {
+  if (!isValidSpentProofImageRef(value)) return false;
+  return (
+    value.startsWith(`private-local:spent-adjustments/${userId}/`) ||
+    value.startsWith(`private-oss:spent-adjustments/${userId}/`)
+  );
 }
 
 /**

@@ -19,6 +19,7 @@ import {
   MAX_ORDER_NO_LENGTH,
   MAX_DEALER_NAME_LENGTH,
   isValidSpentProofImageRef,
+  isOwnedSpentProofImageRef,
 } from "@/lib/spent-adjustment-meta";
 
 // 提交申请 schema：经销渠道必填经销商名称
@@ -80,7 +81,7 @@ export async function listSpentApplications(userId: string) {
 
 export type CreateSpentApplicationResult =
   | { ok: true; application: { id: string; status: string; statusLabel: string } }
-  | { ok: false; kind: "pending_limit" | "duplicate" };
+  | { ok: false; kind: "pending_limit" | "duplicate" | "invalid_image" };
 
 /**
  * 提交补录申请：事务内对用户行 SELECT FOR UPDATE 串行化同一用户的并发提交，
@@ -93,6 +94,11 @@ export async function createSpentApplication(params: {
 }): Promise<CreateSpentApplicationResult> {
   const { userId, input, request } = params;
   const { channel, orderNo, dealerName, amountClaimed, purchasedAt, images, note } = input;
+
+  // 新提交的凭证只允许当前用户自己的本地私有 key，防止引用他人文件
+  if (images?.some((image) => !isOwnedSpentProofImageRef(image, userId))) {
+    return { ok: false, kind: "invalid_image" };
+  }
 
   type ClaimResult =
     | { kind: "ok"; application: { id: string; status: string } }

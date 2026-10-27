@@ -1,26 +1,30 @@
 /**
  * 消费补录凭证文件助手单元测试（spent-adjustment-files）
  *
- * 覆盖：上传校验分支（声明类型/大小、magic bytes、仅图片）、私有 bucket 与公开回退、
- * 图片归属校验与签名失败分支。路由层（会话/OAuth）另有单独测试。
+ * 覆盖：上传校验分支、私有 OSS / 本地私有存储选择、归属校验、
+ * 本地文件读取/删除、任意 /uploads 路径拒绝。
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   validateUploadServer: vi.fn(),
   validateFileBuffer: vi.fn(),
-  processAndSaveImage: vi.fn(),
   processImageToWebp: vi.fn(),
   isPrivateBucketConfigured: vi.fn(),
   uploadToPrivateOSS: vi.fn(),
   signPrivateObjectUrl: vi.fn(),
+  deletePrivateOSSObject: vi.fn(),
   findFirst: vi.fn(),
+  mkdir: vi.fn(),
+  writeFile: vi.fn(),
+  chmod: vi.fn(),
+  access: vi.fn(),
+  unlink: vi.fn(),
 }));
 
 vi.mock("@/lib/upload", () => ({
   validateUploadServer: mocks.validateUploadServer,
   validateFileBuffer: mocks.validateFileBuffer,
-  processAndSaveImage: mocks.processAndSaveImage,
   processImageToWebp: mocks.processImageToWebp,
 }));
 
@@ -28,15 +32,27 @@ vi.mock("@/lib/ali-oss", () => ({
   isPrivateBucketConfigured: mocks.isPrivateBucketConfigured,
   uploadToPrivateOSS: mocks.uploadToPrivateOSS,
   signPrivateObjectUrl: mocks.signPrivateObjectUrl,
+  deletePrivateOSSObject: mocks.deletePrivateOSSObject,
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: { spentAdjustmentApplication: { findFirst: mocks.findFirst } },
 }));
 
+vi.mock("fs", () => ({
+  promises: {
+    mkdir: mocks.mkdir,
+    writeFile: mocks.writeFile,
+    chmod: mocks.chmod,
+    access: mocks.access,
+    unlink: mocks.unlink,
+  },
+}));
+
 import {
   uploadSpentProofFile,
   resolveSpentProofImage,
+  deleteSpentProofFile,
   isSpentProofMultipartTooLarge,
 } from "../spent-adjustment-files";
 
@@ -44,9 +60,11 @@ function makeFile(type = "image/jpeg", name = "receipt.jpg"): File {
   return new File([new Uint8Array([1, 2, 3])], name, { type });
 }
 
-const LEGACY_KEY = "spent-adjustments/123e4567-e89b-42d3-a456-426614174000.webp";
-const OWN_KEY = "spent-adjustments/user-1/123e4567-e89b-42d3-a456-426614174000.webp";
-const OTHER_USER_KEY = "spent-adjustments/user-2/123e4567-e89b-42d3-a456-426614174000.webp";
+const UUID = "123e4567-e89b-42d3-a456-426614174000";
+const LOCAL_OWN = `private-local:spent-adjustments/user-1/${UUID}.webp`;
+const LOCAL_OTHER = `private-local:spent-adjustments/user-2/${UUID}.webp`;
+const OSS_OWN = `private-oss:spent-adjustments/user-1/${UUID}.webp`;
+const OSS_LEGACY = `spent-adjustments/${UUID}.webp`;
 
 describe("isSpentProofMultipartTooLarge", () => {
   it("无 Content-Length（chunked）不拦截，交由 file.size 校验", () => {
@@ -61,9 +79,18 @@ describe("isSpentProofMultipartTooLarge", () => {
 describe("uploadSpentProofFile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     mocks.validateUploadServer.mockReturnValue({ valid: true });
     mocks.validateFileBuffer.mockResolvedValue({ valid: true, detectedType: "image/jpeg" });
     mocks.isPrivateBucketConfigured.mockReturnValue(false);
+    mocks.processImageToWebp.mockResolvedValue(Buffer.from("webp"));
+    mocks.mkdir.mockResolvedValue(undefined);
+    mocks.writeFile.mockResolvedValue(undefined);
+    mocks.chmod.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("声明类型/大小校验失败返回 400 INVALID_FILE", async () => {
@@ -91,128 +118,132 @@ describe("uploadSpentProofFile", () => {
     if (!result.ok) expect(result.message).toContain("仅支持图片");
   });
 
-  it("私有 bucket 配置时返回含 userId 前缀的 objectName 且标记 private", async () => {
+  it("私有 bucket 配置时上传到 OSS，返回 private-oss key", async () => {
     mocks.isPrivateBucketConfigured.mockReturnValue(true);
-    mocks.processImageToWebp.mockResolvedValue(Buffer.from("webp"));
-    mocks.uploadToPrivateOSS.mockResolvedValue({ objectName: "spent-adjustments/x.webp" });
-
-    const result = await uploadSpentProofFile(makeFile(), "user-1");
-    expect(result).toEqual({ ok: true, url: "spent-adjustments/x.webp", private: true });
-
-    const [processed, objectName, mime] = mocks.uploadToPrivateOSS.mock.calls[0];
-    expect(processed).toBeInstanceOf(Buffer);
-    // 归属由对象名前缀权威判定
-    expect(String(objectName)).toMatch(/^spent-adjustments\/user-1\/[0-9a-f-]{36}\.webp$/i);
-    expect(mime).toBe("image/webp");
-  });
-
-  it("非生产环境未配置私有 bucket 时回退公开管线（private=false）", async () => {
-    mocks.processAndSaveImage.mockResolvedValue({ url: "/uploads/spent-adjustments/a.webp" });
+    mocks.uploadToPrivateOSS.mockResolvedValue({
+      objectName: `spent-adjustments/user-1/${UUID}.webp`,
+    });
 
     const result = await uploadSpentProofFile(makeFile(), "user-1");
     expect(result).toEqual({
       ok: true,
-      url: "/uploads/spent-adjustments/a.webp",
-      private: false,
+      url: `private-oss:spent-adjustments/user-1/${UUID}.webp`,
+      private: true,
     });
-
-    const [, , folder, options] = mocks.processAndSaveImage.mock.calls[0];
-    expect(folder).toBe("spent-adjustments");
-    expect(options).toEqual({ generateThumbnail: false, generateBlur: false });
+    expect(mocks.writeFile).not.toHaveBeenCalled();
   });
 
-  it("生产环境未配置私有 bucket 时 fail-closed（503，不落公开存储）", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    try {
-      const result = await uploadSpentProofFile(makeFile(), "user-1");
-      expect(result).toEqual({
-        ok: false,
-        status: 503,
-        code: "STORAGE_NOT_CONFIGURED",
-        message: "凭证存储未配置，请联系管理员（需配置 ALI_OSS_PRIVATE_BUCKET）",
-      });
-      expect(mocks.processAndSaveImage).not.toHaveBeenCalled();
-    } finally {
-      vi.unstubAllEnvs();
+  it("未配置 OSS 时写入本地私有目录，返回 private-local key", async () => {
+    vi.stubEnv("ALLOW_LOCAL_SPENT_PROOF_STORAGE", "true");
+    const result = await uploadSpentProofFile(makeFile(), "user-1");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.url).toMatch(/^private-local:spent-adjustments\/user-1\/[0-9a-f-]{36}\.webp$/i);
+      expect(result.private).toBe(true);
     }
+    expect(mocks.processImageToWebp).toHaveBeenCalled();
+    expect(mocks.mkdir).toHaveBeenCalledWith(
+      expect.stringContaining("private"),
+      expect.objectContaining({ recursive: true, mode: 0o700 })
+    );
+    expect(mocks.writeFile).toHaveBeenCalledWith(
+      expect.stringContaining("spent-adjustments"),
+      expect.any(Buffer),
+      expect.objectContaining({ mode: 0o600 })
+    );
+    expect(mocks.chmod).toHaveBeenCalledWith(expect.stringContaining("spent-adjustments"), 0o600);
   });
 
-  it("生产环境显式放行时可回退公开管线（逃生开关）", async () => {
+  it("生产环境未开本地私有且无 OSS 时 fail-closed（503）", async () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("ALLOW_PUBLIC_SPENT_PROOF_STORAGE", "true");
-    try {
-      mocks.processAndSaveImage.mockResolvedValue({ url: "/uploads/spent-adjustments/a.webp" });
-      const result = await uploadSpentProofFile(makeFile(), "user-1");
-      expect(result.ok).toBe(true);
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    vi.stubEnv("ALLOW_LOCAL_SPENT_PROOF_STORAGE", "");
+    const result = await uploadSpentProofFile(makeFile(), "user-1");
+
+    expect(result).toEqual({
+      ok: false,
+      status: 503,
+      code: "STORAGE_NOT_CONFIGURED",
+      message: "凭证存储未配置，请联系管理员（需配置 ALLOW_LOCAL_SPENT_PROOF_STORAGE 或私有 OSS）",
+    });
+    expect(mocks.writeFile).not.toHaveBeenCalled();
+  });
+
+  it("生产环境显式 ALLOW_LOCAL_SPENT_PROOF_STORAGE=true 时允许本地私有", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ALLOW_LOCAL_SPENT_PROOF_STORAGE", "true");
+    const result = await uploadSpentProofFile(makeFile(), "user-1");
+    expect(result.ok).toBe(true);
+    expect(mocks.writeFile).toHaveBeenCalled();
   });
 });
 
 describe("resolveSpentProofImage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.access.mockResolvedValue(undefined);
   });
 
-  it("key 缺失或超长返回 400", async () => {
-    const result = await resolveSpentProofImage("user-1", "");
-    expect(result).toEqual({ ok: false, status: 400, code: "INVALID_PARAMS", message: "参数错误" });
-    expect(mocks.findFirst).not.toHaveBeenCalled();
+  it("key 缺失、超长或含 .. 返回 400", async () => {
+    for (const key of ["", "x".repeat(201), `${LOCAL_OWN}/../../etc/passwd`]) {
+      const result = await resolveSpentProofImage("user-1", key);
+      expect(result).toEqual({
+        ok: false,
+        status: 400,
+        code: "INVALID_PARAMS",
+        message: "参数错误",
+      });
+    }
   });
 
-  it("含 .. 的 key 拒绝", async () => {
-    const result = await resolveSpentProofImage("user-1", "spent-adjustments/user-1/../../x.webp");
-    expect(result).toEqual({ ok: false, status: 400, code: "INVALID_PARAMS", message: "参数错误" });
-  });
-
-  it("新格式（当前用户前缀）直接放行，不查库，使用 15 分钟短时效签名", async () => {
-    mocks.signPrivateObjectUrl.mockReturnValue("https://bucket/signed");
-    const result = await resolveSpentProofImage("user-1", OWN_KEY);
-    expect(result).toEqual({ ok: true, signedUrl: "https://bucket/signed" });
-    expect(mocks.findFirst).not.toHaveBeenCalled();
-    expect(mocks.signPrivateObjectUrl).toHaveBeenCalledWith(OWN_KEY, 15 * 60);
-  });
-
-  it("新格式但属于其他用户前缀时拒绝（不查库）", async () => {
-    const result = await resolveSpentProofImage("user-1", OTHER_USER_KEY);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe("NOT_FOUND");
-    expect(mocks.findFirst).not.toHaveBeenCalled();
-  });
-
-  it("历史格式（无 userId 前缀）不属于当前用户的申请返回 404", async () => {
-    mocks.findFirst.mockResolvedValue(null);
-    const result = await resolveSpentProofImage("user-1", LEGACY_KEY);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe("NOT_FOUND");
-  });
-
-  it("历史格式且签名失败返回 404 NOT_CONFIGURED", async () => {
-    mocks.findFirst.mockResolvedValue({ id: "app-1" });
-    mocks.signPrivateObjectUrl.mockReturnValue(null);
-    const result = await resolveSpentProofImage("user-1", LEGACY_KEY);
-    expect(result).toEqual({
-      ok: false,
-      status: 404,
-      code: "NOT_CONFIGURED",
-      message: "图片服务未配置",
-    });
-  });
-
-  it("历史格式归属校验通过返回签名地址（仍查询申请归属）", async () => {
-    mocks.findFirst.mockResolvedValue({ id: "app-1" });
-    mocks.signPrivateObjectUrl.mockReturnValue(
-      "https://bucket.oss-cn.aliyuncs.com/x.webp?Signature=a"
-    );
-
-    const result = await resolveSpentProofImage("user-1", LEGACY_KEY);
+  it("本人本地 key 返回本地文件，不查库", async () => {
+    const result = await resolveSpentProofImage("user-1", LOCAL_OWN);
     expect(result).toEqual({
       ok: true,
-      signedUrl: "https://bucket.oss-cn.aliyuncs.com/x.webp?Signature=a",
+      kind: "file",
+      path: expect.stringMatching(/spent-adjustments[\\/]user-1[\\/].*\.webp$/),
+      contentType: "image/webp",
     });
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("他人本地 key 返回 404，不查库", async () => {
+    const result = await resolveSpentProofImage("user-1", LOCAL_OTHER);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("NOT_FOUND");
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("本地文件不存在返回 404", async () => {
+    mocks.access.mockRejectedValueOnce(new Error("ENOENT"));
+    const result = await resolveSpentProofImage("user-1", LOCAL_OWN);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("NOT_FOUND");
+  });
+
+  it("本人 OSS key 直接签名，不查库", async () => {
+    mocks.signPrivateObjectUrl.mockReturnValue("https://bucket/signed");
+    const result = await resolveSpentProofImage("user-1", OSS_OWN);
+    expect(result).toEqual({ ok: true, kind: "redirect", signedUrl: "https://bucket/signed" });
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+    expect(mocks.signPrivateObjectUrl).toHaveBeenCalledWith(
+      `spent-adjustments/user-1/${UUID}.webp`,
+      15 * 60
+    );
+  });
+
+  it("历史 OSS key 必须命中当前用户申请", async () => {
+    mocks.findFirst.mockResolvedValue(null);
+    const missing = await resolveSpentProofImage("user-1", OSS_LEGACY);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.code).toBe("NOT_FOUND");
+
+    mocks.findFirst.mockResolvedValue({ id: "app-1" });
+    mocks.signPrivateObjectUrl.mockReturnValue("https://bucket/signed");
+    const ok = await resolveSpentProofImage("user-1", OSS_LEGACY);
+    expect(ok).toEqual({ ok: true, kind: "redirect", signedUrl: "https://bucket/signed" });
     expect(mocks.findFirst).toHaveBeenCalledWith({
-      where: { userId: "user-1", images: { has: LEGACY_KEY } },
+      where: { userId: "user-1", images: { has: OSS_LEGACY } },
       select: { id: true },
     });
   });
@@ -221,5 +252,39 @@ describe("resolveSpentProofImage", () => {
     const result = await resolveSpentProofImage("user-1", "products/other.webp");
     expect(result.ok).toBe(false);
     expect(mocks.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteSpentProofFile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.unlink.mockResolvedValue(undefined);
+    mocks.isPrivateBucketConfigured.mockReturnValue(false);
+    mocks.deletePrivateOSSObject.mockResolvedValue(true);
+  });
+
+  it("删除本人本地 key", async () => {
+    await expect(deleteSpentProofFile(LOCAL_OWN, "user-1")).resolves.toBe(true);
+    expect(mocks.unlink).toHaveBeenCalledWith(expect.stringContaining("spent-adjustments"));
+  });
+
+  it("拒绝删除他人本地 key", async () => {
+    await expect(deleteSpentProofFile(LOCAL_OTHER, "user-1")).resolves.toBe(false);
+    expect(mocks.unlink).not.toHaveBeenCalled();
+  });
+
+  it("拒绝删除任意 /uploads 路径", async () => {
+    await expect(deleteSpentProofFile("/uploads/images/NIHPLOD-logo.png", "user-1")).resolves.toBe(
+      false
+    );
+    expect(mocks.unlink).not.toHaveBeenCalled();
+  });
+
+  it("本人 OSS key 在私有 bucket 配置时删除 OSS 对象", async () => {
+    mocks.isPrivateBucketConfigured.mockReturnValue(true);
+    await expect(deleteSpentProofFile(OSS_OWN, "user-1")).resolves.toBe(true);
+    expect(mocks.deletePrivateOSSObject).toHaveBeenCalledWith(
+      `spent-adjustments/user-1/${UUID}.webp`
+    );
   });
 });
