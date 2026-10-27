@@ -105,6 +105,8 @@ const nextConfig = {
         hostname: "**.aliyuncs.com",
       },
     ],
+    // 允许的图片质量（Next 16 默认仅 [75]；商品主图使用 90）
+    qualities: [75, 90],
     // 启用的图片格式 (自托管服务器不使用 AVIF，避免实时编码开销)
     formats: ["image/webp"],
     // 响应式图片断点

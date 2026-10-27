@@ -1,8 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { createHmac } from "crypto";
-import { mkdtemp, rm, writeFile } from "fs/promises";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash, createHmac } from "crypto";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
+import { gzipSync } from "zlib";
 
 const mocks = vi.hoisted(() => ({
   auditFindMany: vi.fn(),
@@ -32,6 +33,49 @@ const KEY = "y".repeat(32);
 let root = "";
 let backup = "";
 
+function makeAuditRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "log-1",
+    createdAt: new Date("2026-10-23T01:00:00.000Z"),
+    action: "admin_login",
+    targetType: "admin",
+    targetId: "admin-1",
+    targetLabel: "Owner",
+    detail: { ok: true },
+    outcome: "SUCCESS",
+    requestId: "req-1",
+    actorType: "ADMIN",
+    actorEmail: "owner@test.com",
+    actorName: "Owner",
+    actorRole: "owner",
+    authMethod: "totp",
+    sessionJti: "jti-1",
+    legalHold: false,
+    ipAddress: "1.2.3.4",
+    userAgent: "test",
+    adminId: "admin-1",
+    userId: null,
+    category: "auth",
+    riskLevel: "LOW",
+    source: "WEB",
+    reason: null,
+    schemaVersion: 2,
+    chainVersion: 1,
+    integrityKeyVersion: 1,
+    chainSeq: 1,
+    prevHash: null,
+    entryHash: "e".repeat(64),
+    finalizedAt: new Date("2026-10-23T01:00:01.000Z"),
+    ...overrides,
+  };
+}
+
+function stripLegalHold(row: Record<string, unknown>): Record<string, unknown> {
+  const rest = { ...row };
+  delete rest.legalHold;
+  return rest;
+}
+
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "audit-archive-"));
   backup = await mkdtemp(join(tmpdir(), "audit-archive-backup-"));
@@ -40,49 +84,24 @@ beforeAll(async () => {
   process.env.AUDIT_INTEGRITY_HMAC_KEY = KEY;
 });
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 afterAll(async () => {
   await rm(root, { recursive: true, force: true });
   await rm(backup, { recursive: true, force: true });
 });
 
 describe("audit archive", () => {
-  it("写入 gzip/manifest，可校验，篡改后校验失败", async () => {
+  it("新归档写入 gzip/manifest，可校验，篡改后校验失败", async () => {
     const day = "2026-10-23";
-    const auditRow = {
-      id: "log-1",
-      createdAt: new Date("2026-10-23T01:00:00.000Z"),
-      action: "admin_login",
-      targetType: "admin",
-      targetId: "admin-1",
-      targetLabel: "Owner",
-      detail: { ok: true },
-      outcome: "SUCCESS",
-      requestId: "req-1",
-      actorType: "ADMIN",
-      actorEmail: "owner@test.com",
-      actorName: "Owner",
-      actorRole: "owner",
-      authMethod: "totp",
-      sessionJti: "jti-1",
-      legalHold: false,
-      ipAddress: "1.2.3.4",
-      userAgent: "test",
-      adminId: "admin-1",
-      userId: null,
-      category: "auth",
-      riskLevel: "LOW",
-      source: "WEB",
-      reason: null,
-      schemaVersion: 2,
-      chainVersion: 1,
-      integrityKeyVersion: 1,
-      chainSeq: 1,
-      prevHash: null,
-      entryHash: "e".repeat(64),
-      finalizedAt: new Date("2026-10-23T01:00:01.000Z"),
-    };
-    const digest = computeAuditDigest([auditRow]);
-    const signature = createHmac("sha256", KEY).update(`:${digest}:1:audit:${day}`).digest("hex");
+    // 模拟 Prisma 返回带 legalHold 的旧行：归档层必须剥离，digest 才能与锚点一致
+    const auditRow = makeAuditRow();
+    const anchorDigest = computeAuditDigest([stripLegalHold(auditRow)]);
+    const signature = createHmac("sha256", KEY)
+      .update(`:${anchorDigest}:1:audit:${day}`)
+      .digest("hex");
     mocks.auditFindMany.mockResolvedValue([auditRow]);
     mocks.anchorFindFirst.mockResolvedValue({
       id: "anchor-1",
@@ -91,7 +110,7 @@ describe("audit archive", () => {
       signatureVersion: 2,
       keyVersion: 1,
       count: 1,
-      digest,
+      digest: anchorDigest,
       signature,
       prevAnchorHash: null,
     });
@@ -108,5 +127,57 @@ describe("audit archive", () => {
 
     await writeFile(join(root, "audit", day, "events.jsonl.gz"), "tampered");
     expect(await verifyArchiveDay("audit", day)).toBe(false);
+  });
+
+  it("旧归档文件含 legalHold 时仍可通过 verifyArchiveDay", async () => {
+    const day = "2026-10-22";
+    const rowWithHold = makeAuditRow({
+      id: "log-legacy",
+      legalHold: true,
+    });
+    const anchorDigest = computeAuditDigest([stripLegalHold(rowWithHold)]);
+    const eventsBuffer = gzipSync(Buffer.from(`${JSON.stringify(rowWithHold)}\n`, "utf8"));
+    const sha256 = createHash("sha256").update(eventsBuffer).digest("hex");
+    const signature = createHmac("sha256", KEY)
+      .update(`:${anchorDigest}:1:audit:${day}:${sha256}:events.jsonl.gz`)
+      .digest("hex");
+
+    const dir = join(root, "audit", day);
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "events.jsonl.gz"), eventsBuffer);
+    await writeFile(
+      join(dir, "manifest.json"),
+      JSON.stringify({
+        version: 1,
+        stream: "audit",
+        day,
+        fromAt: "2026-10-21T16:00:00.000Z",
+        toAt: "2026-10-22T16:00:00.000Z",
+        count: 1,
+        digest: anchorDigest,
+        signature,
+        signatureVersion: 2,
+        keyVersion: 1,
+        prevAnchorHash: null,
+        sha256,
+        createdAt: new Date().toISOString(),
+        eventFile: "events.jsonl.gz",
+        signatureIncludesFile: true,
+      })
+    );
+
+    expect(await verifyArchiveDay("audit", day)).toBe(true);
+  });
+
+  it("把其他日期的归档复制到目标日期时校验失败", async () => {
+    const sourceDay = "2026-10-22";
+    const targetDay = "2026-10-24";
+    const sourceDir = join(root, "audit", sourceDay);
+    const targetDir = join(root, "audit", targetDay);
+    await mkdir(targetDir, { recursive: true });
+    await cp(join(sourceDir, "events.jsonl.gz"), join(targetDir, "events.jsonl.gz"));
+    await cp(join(sourceDir, "manifest.json"), join(targetDir, "manifest.json"));
+
+    expect(await verifyArchiveDay("audit", targetDay)).toBe(false);
   });
 });

@@ -126,7 +126,6 @@ async function* auditRows(
         actorRole: true,
         authMethod: true,
         sessionJti: true,
-        legalHold: true,
         ipAddress: true,
         userAgent: true,
         adminId: true,
@@ -212,6 +211,18 @@ function buildManifest(input: {
   };
 }
 
+/**
+ * 归档 digest 的规范字段集必须与 audit-integrity.auditSelect() 一致。
+ * legalHold 是 DB 侧的运营字段，不参与锚点/归档 digest；旧归档文件里可能
+ * 仍含该字段，读写时统一剥离，避免新旧归档摘要不一致。
+ */
+function canonicalArchiveRow(row: Record<string, unknown>): Record<string, unknown> {
+  if (!Object.prototype.hasOwnProperty.call(row, "legalHold")) return row;
+  const rest = { ...row };
+  delete rest.legalHold;
+  return rest;
+}
+
 async function writeEventsFile(
   filePath: string,
   rows: AsyncIterable<Record<string, unknown>>
@@ -219,7 +230,8 @@ async function writeEventsFile(
   const digest = createHash("sha256");
   let count = 0;
   async function* lines() {
-    for await (const row of rows) {
+    for await (const rawRow of rows) {
+      const row = canonicalArchiveRow(rawRow);
       if (count > 0) digest.update("\n");
       digest.update(stableStringify(row));
       count += 1;
@@ -242,7 +254,7 @@ async function readEventsDigest(filePath: string): Promise<{ count: number; dige
     crlfDelay: Infinity,
   });
   for await (const line of reader) {
-    if (line.trim()) rows.push(JSON.parse(line) as Record<string, unknown>);
+    if (line.trim()) rows.push(canonicalArchiveRow(JSON.parse(line) as Record<string, unknown>));
   }
   return { count: rows.length, digest: computeAuditDigest(rows) };
 }
@@ -405,6 +417,15 @@ export async function verifyArchiveDay(stream: AuditStream, day: string): Promis
   const root = getAuditArchiveRoot();
   const manifest = await readManifest(root, stream, day);
   if (!manifest) return false;
+  // manifest 必须属于请求的 stream/day，防止把其他日期的完整归档复制过来通过校验
+  if (manifest.stream !== stream || manifest.day !== day) return false;
+  if (
+    !manifest.eventFile ||
+    manifest.eventFile.includes("/") ||
+    manifest.eventFile.includes("\\")
+  ) {
+    return false;
+  }
   const dir = dayDir(root, stream, day);
   const eventPath = join(dir, manifest.eventFile || "events.jsonl.gz");
   if (!(await pathExists(eventPath))) return false;
@@ -427,6 +448,14 @@ export async function verifyArchiveBackup(stream: AuditStream, day: string): Pro
   assertSafeRoot(backupRoot);
   const manifest = await readManifest(backupRoot, stream, day);
   if (!manifest) return false;
+  if (manifest.stream !== stream || manifest.day !== day) return false;
+  if (
+    !manifest.eventFile ||
+    manifest.eventFile.includes("/") ||
+    manifest.eventFile.includes("\\")
+  ) {
+    return false;
+  }
   const eventPath = join(dayDir(backupRoot, stream, day), manifest.eventFile || "events.jsonl.gz");
   if (!(await pathExists(eventPath))) return false;
   const archived = await readEventsDigest(eventPath);
