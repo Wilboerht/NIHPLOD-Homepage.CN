@@ -969,15 +969,22 @@ function AdminUsersContent() {
     setLedgerPage(1);
     setLedgerTotalPages(0);
     try {
-      const data = await apiGet<{
-        user: UserDetail;
-        points: UserDetailPoints;
-        addresses: AddressItem[];
-        spentAdjustments: { items: SpentAdjustmentItem[]; total: number };
-        levelChanges: LevelChangeItem[];
-        loginAttempts: LoginAttemptItem[];
-      }>(`/api/admin/users/${id}`);
+      const data = await runWithStepUp(() =>
+        apiGet<{
+          user: UserDetail;
+          points: UserDetailPoints;
+          addresses: AddressItem[];
+          spentAdjustments: { items: SpentAdjustmentItem[]; total: number };
+          levelChanges: LevelChangeItem[];
+          loginAttempts: LoginAttemptItem[];
+        }>(`/api/admin/users/${id}`)
+      );
       if (!isLatest()) return;
+      // 取消二次验证：关闭详情弹窗，避免停留在加载骨架
+      if (data === null) {
+        setDetailOpen(false);
+        return;
+      }
       setDetailUser(data.user);
       setDetailPoints(data.points);
       setDetailAddresses(data.addresses);
