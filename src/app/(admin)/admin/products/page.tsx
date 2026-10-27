@@ -3,12 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, RefreshCw, Search, X } from "lucide-react";
 import { ProductsTable, RequirePermission, PageHeader } from "@/components/admin";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input } from "@/components/ui/Input";
 import { Select, SelectOption } from "@/components/ui/Select";
-import { apiGet, ApiError } from "@/lib/api-client";
+import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -47,10 +48,12 @@ export default function AdminProductsPage() {
 function AdminProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { error: showError } = useToast();
+  const { error: showError, success: showSuccess } = useToast();
 
   // 状态
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -200,6 +203,37 @@ function AdminProductsContent() {
     ...categories.map((c) => ({ value: c.id, label: c.name })),
   ];
 
+  const handleSyncAdvisor = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const data = await apiPost<{
+        skipped?: boolean;
+        reason?: string;
+        created?: number;
+        updated?: number;
+        bound?: number;
+        deactivated?: number;
+        missing?: number;
+        skippedProducts?: number;
+        warnings?: unknown[];
+      }>("/api/admin/products/sync-advisor", {});
+      if (data?.skipped) {
+        showSuccess(data.reason === "disabled" ? "产品同步已停用" : "同步已跳过");
+      } else {
+        const warnings = Array.isArray(data?.warnings) ? data.warnings.length : 0;
+        showSuccess(
+          `同步完成：更新 ${data?.updated ?? 0}、新增 ${data?.created ?? 0}、停用 ${data?.deactivated ?? 0}` +
+            (warnings > 0 ? `、${warnings} 条提示` : "")
+        );
+      }
+      setSyncOpen(false);
+    } catch (error) {
+      showError(error instanceof ApiError ? error.message : "同步到测肤子站失败");
+    } finally {
+      setSyncing(false);
+    }
+  }, [showError, showSuccess]);
+
   return (
     <RequirePermission permission="products:read">
       <div className="flex flex-col gap-6">
@@ -209,11 +243,22 @@ function AdminProductsContent() {
           description={`管理所有产品，共 ${pagination.total} 个`}
           actions={
             canWriteProducts ? (
-              <Link href={`/admin/products/new?returnTo=${encodeURIComponent(returnTo)}`}>
-                <Button variant="outline" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
-                  新增产品
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<RefreshCw className="h-4 w-4" />}
+                  onClick={() => setSyncOpen(true)}
+                  disabled={syncing}
+                >
+                  同步到测肤子站
                 </Button>
-              </Link>
+                <Link href={`/admin/products/new?returnTo=${encodeURIComponent(returnTo)}`}>
+                  <Button variant="outline" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
+                    新增产品
+                  </Button>
+                </Link>
+              </div>
             ) : undefined
           }
         />
@@ -286,6 +331,19 @@ function AdminProductsContent() {
             canWrite={canWriteProducts}
           />
         )}
+
+        <ConfirmDialog
+          open={syncOpen}
+          onClose={() => {
+            if (!syncing) setSyncOpen(false);
+          }}
+          onConfirm={handleSyncAdvisor}
+          title="同步产品到测肤子站"
+          description="将把主站全部产品的基础信息（名称、分类、价格、容量、图片、描述、用法、购买链接）同步到测肤子站。子站的推荐属性（是否参与推荐、适合肤质、禁忌人群、精选、核心成分、主要功效、推荐理由）不会被覆盖；主站已下架/删除的产品会在子站停用。"
+          confirmText="开始同步"
+          type="info"
+          loading={syncing}
+        />
       </div>
     </RequirePermission>
   );

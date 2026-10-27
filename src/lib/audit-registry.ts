@@ -136,6 +136,7 @@ const CONTENT_ACTIONS = new Set([
   "update_product",
   "delete_product",
   "batch_product",
+  "sync_products_to_advisor",
   "create_category",
   "update_category",
   "delete_category",
@@ -215,6 +216,7 @@ const HIGH_ACTIONS = new Set([
 ]);
 
 const MEDIUM_ACTIONS = new Set([
+  "sync_products_to_advisor",
   "message_sensitive_view",
   "user_detail_sensitive_view",
   "advisor_report_view",

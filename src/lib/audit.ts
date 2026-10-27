@@ -30,6 +30,7 @@ export type AuditAction =
   | "update_product"
   | "delete_product"
   | "batch_product"
+  | "sync_products_to_advisor"
   | "create_category"
   | "update_category"
   | "delete_category"
@@ -191,6 +192,7 @@ export const AUDIT_ACTIONS = [
   "update_product",
   "delete_product",
   "batch_product",
+  "sync_products_to_advisor",
   "create_category",
   "update_category",
   "delete_category",

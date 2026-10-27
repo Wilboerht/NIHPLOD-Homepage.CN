@@ -11,6 +11,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
+import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
 
 // 分类更新 Schema
 const CategoryUpdateSchema = z.object({
@@ -177,6 +178,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidatePath("/products");
     pushSearchEngines(["/products"]);
+
+    scheduleAdvisorProductSync("save");
 
     return NextResponse.json({
       success: true,

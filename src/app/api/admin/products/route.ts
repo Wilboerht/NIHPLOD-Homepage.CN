@@ -15,6 +15,7 @@ import { requireAdminStepUp } from "@/lib/admin-totp";
 import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
+import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
@@ -284,6 +285,8 @@ export async function POST(request: NextRequest) {
       adminId: admin.id,
       request,
     }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
+
+    scheduleAdvisorProductSync("save");
 
     return NextResponse.json({
       success: true,

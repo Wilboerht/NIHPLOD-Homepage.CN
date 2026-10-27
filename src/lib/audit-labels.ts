@@ -15,6 +15,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   update_product: "更新产品",
   delete_product: "删除产品",
   batch_product: "批量操作产品",
+  sync_products_to_advisor: "同步产品到测肤子站",
   create_category: "创建分类",
   update_category: "更新分类",
   delete_category: "删除分类",

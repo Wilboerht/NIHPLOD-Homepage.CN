@@ -11,6 +11,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
+import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
@@ -137,6 +138,8 @@ export async function POST(request: NextRequest) {
     );
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
+
+    scheduleAdvisorProductSync("save");
 
     // 记录审计日志
     createAuditLog({

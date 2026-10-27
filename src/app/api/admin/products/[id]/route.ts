@@ -16,6 +16,7 @@ import { requireAdminStepUp } from "@/lib/admin-totp";
 import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
+import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
 const patchProductSchema = z
@@ -165,6 +166,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         pushSearchEngines(["/products", `/products/${product.slug}`]);
       }
     }
+
+    scheduleAdvisorProductSync("save");
 
     // 记录审计日志
     await createAuditLog({
@@ -405,6 +408,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       pushSearchEngines(["/products", `/products/${fullProduct.slug}`]);
     }
 
+    scheduleAdvisorProductSync("save");
+
     // 记录审计日志
     createAuditLog({
       action: "update_product",
@@ -503,6 +508,8 @@ export async function DELETE(
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     // 已删除的 URL 不再推送，仅刷新并推送列表页
     pushSearchEngines(["/products"]);
+
+    scheduleAdvisorProductSync("save");
 
     // 记录审计日志
     createAuditLog({
