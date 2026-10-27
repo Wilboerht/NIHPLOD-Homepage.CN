@@ -48,6 +48,7 @@
 - 个人安全设置入口固定在侧边栏底部，不占用业务分组。
 - 导航待办数量通过 `NavItem.countKey` 绑定 `/api/admin/nav-counts`，禁止在壳层按 href 硬编码判断。
 - 折叠模式下保留分组分隔线，避免纯图标导航丢失分组语义。
+- 新增 `/admin` 页面必须同步在 `src/lib/admin-page-permissions.ts` 注册路径权限；服务端 layout 会对未注册路径 fail-closed。`RequirePermission` 只作为客户端 UI 兜底，不能替代服务端页面门禁和 API 权限校验。
 
 ## 列表状态与 URL
 

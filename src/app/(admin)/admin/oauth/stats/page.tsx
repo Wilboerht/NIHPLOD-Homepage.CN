@@ -73,6 +73,14 @@ function StatSkeleton({ count, className }: { count: number; className?: string 
 }
 
 export default function OAuthStatsPage() {
+  return (
+    <RequirePermission permission="sso:read">
+      <OAuthStatsContent />
+    </RequirePermission>
+  );
+}
+
+function OAuthStatsContent() {
   const [stats, setStats] = useState<OAuthStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

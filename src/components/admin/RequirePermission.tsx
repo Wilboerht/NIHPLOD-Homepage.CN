@@ -19,10 +19,11 @@
  * ```
  */
 import { ReactNode } from "react";
-import { ShieldAlert, WifiOff, RefreshCw } from "lucide-react";
+import { WifiOff, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useAdminSession } from "@/contexts/AdminSessionContext";
-import { PERMISSION_LABELS, type AdminPermission } from "@/lib/admin-permissions";
+import type { AdminPermission } from "@/lib/admin-permissions";
+import { AdminAccessDenied } from "./AdminAccessDenied";
 
 interface RequirePermissionProps {
   /** 单一权限点 */
@@ -60,16 +61,7 @@ export function RequirePermission({ permission, permissions, children }: Require
   }
 
   if (!allowed) {
-    const labels = required.map((item) => PERMISSION_LABELS[item]).join("」或「");
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
-        <ShieldAlert className="h-12 w-12 text-brand-charcoal/65" />
-        <p className="text-lg font-medium text-brand-charcoal/70">无权访问</p>
-        <p className="text-sm text-brand-charcoal/65">
-          该页面需要「{labels}」权限，请联系超级管理员开通
-        </p>
-      </div>
-    );
+    return <AdminAccessDenied permissions={required} />;
   }
 
   return <>{children}</>;

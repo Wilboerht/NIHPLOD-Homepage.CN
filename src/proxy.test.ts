@@ -9,7 +9,27 @@
  */
 import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
+import { SignJWT } from "jose";
+import { getIssuer } from "@/lib/oauth-constants";
+import { ADMIN_PAGE_PATH_HEADER } from "@/lib/admin-page-path";
 import { proxy } from "./proxy";
+
+async function createAdminToken(role = "hr") {
+  const secret = new TextEncoder().encode(process.env.JWT_ADMIN_SECRET!);
+  return new SignJWT({
+    id: "admin-1",
+    email: "admin@test.com",
+    name: "Admin",
+    role,
+    type: "admin",
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuer(getIssuer())
+    .setAudience("admin")
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(secret);
+}
 
 describe("proxy", () => {
   it("未登录 GET /admin/** 保留 307 重定向到 /admin-login，并附加 CSP", async () => {
@@ -85,5 +105,26 @@ describe("proxy", () => {
     expect(res.status).toBe(410);
     expect(res.headers.get("cache-control")).toContain("no-store");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("已登录管理员请求 /admin/** 时注入真实路径头，并覆盖客户端伪造值", async () => {
+    const token = await createAdminToken();
+    const req = new NextRequest("https://nihplod.cn/admin/users", {
+      headers: { [ADMIN_PAGE_PATH_HEADER]: "/admin/settings/totp" },
+    });
+    req.cookies.set("__Host-admin_token", token);
+
+    const res = await proxy(req);
+
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+    expect(res.headers.get(`x-middleware-request-${ADMIN_PAGE_PATH_HEADER}`)).toBe("/admin/users");
+  });
+
+  it("未登录请求 /admin/** 不注入页面路径头（直接重定向登录页）", async () => {
+    const res = await proxy(new NextRequest("https://nihplod.cn/admin/users"));
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/admin-login");
+    expect(res.headers.get(`x-middleware-request-${ADMIN_PAGE_PATH_HEADER}`)).toBeNull();
   });
 });

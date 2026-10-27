@@ -37,6 +37,14 @@ interface Category {
 }
 
 export default function AdminProductsPage() {
+  return (
+    <RequirePermission permission="products:read">
+      <AdminProductsContent />
+    </RequirePermission>
+  );
+}
+
+function AdminProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { error: showError } = useToast();

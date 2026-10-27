@@ -1,7 +1,8 @@
 /**
- * 管理端解绑用户外部身份 API（仅超级管理员）
+ * 管理端解绑用户外部身份 API
  * DELETE /api/admin/users/[id]/identities/[identityId] - 解绑指定第三方平台身份
  *
+ * 权限：users:write（用户状态/生日/解绑）。
  * 用于错误绑定（如微信绑错账号）的客服纠正；写审计 user_identity_unbind。
  */
 import { NextRequest, NextResponse } from "next/server";

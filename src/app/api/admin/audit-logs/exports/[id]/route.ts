@@ -15,9 +15,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       { status: 401 }
     );
   }
-  if (!hasAdminPermission(admin, "audit:export")) {
+  if (!hasAdminPermission(admin, "audit:read") || !hasAdminPermission(admin, "audit:export")) {
     return NextResponse.json(
-      { success: false, error: { code: "FORBIDDEN", message: "权限不足：审计导出" } },
+      { success: false, error: { code: "FORBIDDEN", message: "权限不足：审计日志查看或导出" } },
       { status: 403 }
     );
   }

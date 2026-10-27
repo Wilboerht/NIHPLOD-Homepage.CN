@@ -15,12 +15,9 @@ export async function GET(request: NextRequest) {
       { status: 401 }
     );
   }
-  if (
-    !hasAdminPermission(admin, "audit:retention:read") &&
-    !hasAdminPermission(admin, "audit:read")
-  ) {
+  if (!hasAdminPermission(admin, "audit:retention:read")) {
     return NextResponse.json(
-      { success: false, error: { code: "FORBIDDEN", message: "权限不足" } },
+      { success: false, error: { code: "FORBIDDEN", message: "权限不足：审计保留查看" } },
       { status: 403 }
     );
   }

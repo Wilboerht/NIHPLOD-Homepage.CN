@@ -20,3 +20,4 @@ export { ProductForm } from "./ProductForm";
 export { CategoryForm } from "./CategoryForm";
 export { JobForm } from "./JobForm";
 export { RequirePermission } from "./RequirePermission";
+export { AdminAccessDenied } from "./AdminAccessDenied";

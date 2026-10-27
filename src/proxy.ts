@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { getIssuer } from "@/lib/oauth-constants";
 import { getBodyLimitForPath, hasRequestBody } from "@/lib/body-limits";
+import { ADMIN_PAGE_PATH_HEADER } from "@/lib/admin-page-path";
 
 const AUTH_COOKIE_NAME = "__Host-admin_token";
 const CSRF_COOKIE_NAME = "__Host-csrf_token";
@@ -222,6 +223,12 @@ function applyCspNonce(request: NextRequest, response: NextResponse): NextRespon
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+
+  // 服务端 /admin layout 依赖真实 pathname 做页面级权限校验。
+  // 这里覆盖同名请求头，防止客户端伪造路径绕过服务端门禁。
+  if (matchesPath(pathname, PROTECTED_PATHS)) {
+    requestHeaders.set(ADMIN_PAGE_PATH_HEADER, pathname);
+  }
 
   // 必须同时改写 request 头，服务端组件才能通过 headers() 读取 nonce
   const rewritten = NextResponse.next({ request: { headers: requestHeaders } });

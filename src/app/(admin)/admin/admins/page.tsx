@@ -71,6 +71,14 @@ interface AdminItem {
 }
 
 export default function AdminAdminsPage() {
+  return (
+    <RequirePermission permission="admins:read">
+      <AdminAdminsContent />
+    </RequirePermission>
+  );
+}
+
+function AdminAdminsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error } = useToast();

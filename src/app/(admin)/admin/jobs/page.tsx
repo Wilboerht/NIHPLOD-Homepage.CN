@@ -53,6 +53,14 @@ const STATUS_TABS = [
 ] as const;
 
 export default function AdminJobsPage() {
+  return (
+    <RequirePermission permission="jobs:read">
+      <AdminJobsContent />
+    </RequirePermission>
+  );
+}
+
+function AdminJobsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
