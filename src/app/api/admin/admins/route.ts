@@ -21,6 +21,10 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
+import {
+  adminEmailReuseCutoff,
+  getAdminEmailReuseCooldownDays,
+} from "@/lib/admin-email";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { z } from "zod";
@@ -52,6 +56,7 @@ const createSchema = z.object({
 const batchSchema = z.object({
   ids: z.array(z.string().cuid()).min(1).max(100),
   action: z.enum(["delete"]),
+  reason: z.string().trim().max(500).optional(),
 });
 
 const updateSchema = z.object({
@@ -198,7 +203,7 @@ export const POST = withAuth(async (request, admin) => {
         const auditId = await beginAuditLog({
           action: "delete_admin",
           targetType: "admin",
-          detail: { ids: batch.ids, count: batch.ids.length },
+          detail: { ids: batch.ids, count: batch.ids.length, reason: batch.reason ?? null },
           actorType: "ADMIN",
           actorEmail: admin.email,
           actorName: admin.name,
@@ -225,6 +230,7 @@ export const POST = withAuth(async (request, admin) => {
             actorRole: admin.role,
             actorOverrides: admin.permissionOverrides ?? [],
             targetIds: batch.ids,
+            reason: batch.reason,
           });
         } catch (error) {
           await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
@@ -245,6 +251,7 @@ export const POST = withAuth(async (request, admin) => {
           ids: result.deleted.map((t) => t.id),
           count: result.deleted.length,
           selfSkipped: result.selfSkipped,
+          reason: batch.reason ?? null,
         });
 
         return NextResponse.json({
@@ -291,6 +298,30 @@ export const POST = withAuth(async (request, admin) => {
         { success: false, error: { code: "DUPLICATE_EMAIL", message: "该邮箱已被使用" } },
         { status: 409 }
       );
+    }
+
+    // 邮箱复用冷却：离职/改邮箱归档后短期内不允许他人复用，降低误绑与审计混淆
+    if (getAdminEmailReuseCooldownDays() > 0) {
+      const recentUse = await prisma.adminEmailHistory.findFirst({
+        where: { email: data.email, changedAt: { gte: adminEmailReuseCutoff() } },
+        orderBy: { changedAt: "desc" },
+        select: { changedAt: true },
+      });
+      if (recentUse) {
+        const availableAt = new Date(
+          recentUse.changedAt.getTime() + getAdminEmailReuseCooldownDays() * 24 * 60 * 60 * 1000
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "EMAIL_REUSE_COOLDOWN",
+              message: `该邮箱近期被其他管理员使用，${availableAt.toISOString().slice(0, 10)} 后可复用`,
+            },
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const auditId = await beginAuditLog({
@@ -537,6 +568,32 @@ export const PUT = withAuth(async (request, admin) => {
           { status: 409 }
         );
       }
+      if (data.email !== targetAdmin.email && getAdminEmailReuseCooldownDays() > 0) {
+        const recentUse = await prisma.adminEmailHistory.findFirst({
+          where: {
+            email: data.email,
+            adminId: { not: data.id },
+            changedAt: { gte: adminEmailReuseCutoff() },
+          },
+          orderBy: { changedAt: "desc" },
+          select: { changedAt: true },
+        });
+        if (recentUse) {
+          const availableAt = new Date(
+            recentUse.changedAt.getTime() + getAdminEmailReuseCooldownDays() * 24 * 60 * 60 * 1000
+          );
+          return NextResponse.json(
+            {
+              success: false,
+              error: {
+                code: "EMAIL_REUSE_COOLDOWN",
+                message: `该邮箱近期被其他管理员使用，${availableAt.toISOString().slice(0, 10)} 后可复用`,
+              },
+            },
+            { status: 409 }
+          );
+        }
+      }
     }
 
     const updateData: Record<string, unknown> = {};
@@ -612,6 +669,17 @@ export const PUT = withAuth(async (request, admin) => {
       targetAdmin.role === "owner" && data.role !== undefined && data.role !== "owner";
     const updatedAdmin = await prisma
       .$transaction(async (tx) => {
+        if (emailChanged) {
+          // 归档旧邮箱：改邮箱后原地址可能被新管理员复用，历史查询依赖此表
+          await tx.adminEmailHistory.create({
+            data: {
+              adminId: data.id,
+              email: targetAdmin.email,
+              changedBy: admin.id,
+              reason: "email_changed",
+            },
+          });
+        }
         if (demotingOwner) {
           await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('nihplod_admin_owner_guard'))`;
           const [current, ownerCount] = await Promise.all([

@@ -25,6 +25,10 @@ vi.mock("@/lib/prisma", () => {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       create: vi.fn(),
     },
+    adminEmailHistory: {
+      create: vi.fn().mockResolvedValue({}),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
   };
   // 删除安全策略使用交互式事务 + advisory lock
   prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
@@ -341,7 +345,8 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(prisma.admin.updateMany).toHaveBeenCalled();
+    expect(prisma.admin.update).toHaveBeenCalled();
+    expect(prisma.adminEmailHistory.create).toHaveBeenCalled();
   });
 
   it("委派管理员删除权限更高的非 owner 管理员被拒（防二级提权）", async () => {

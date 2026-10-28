@@ -519,6 +519,7 @@ function executorContext(
       request.targetSnapshot && typeof request.targetSnapshot === "object"
         ? (request.targetSnapshot as Record<string, unknown>)
         : null,
+    reason: request.reason,
     requester: {
       id: request.requesterId,
       email: request.requesterEmail,

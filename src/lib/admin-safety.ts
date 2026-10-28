@@ -9,6 +9,7 @@
  */
 import prisma from "@/lib/prisma";
 import { resolveAdminPermissions, type AdminRoleValue } from "@/lib/admin-permissions";
+import { adminTombstoneEmail } from "@/lib/admin-email";
 
 export interface DeletedAdminSummary {
   id: string;
@@ -34,6 +35,7 @@ export async function deleteAdminsSafely(params: {
   actorRole: AdminRoleValue;
   actorOverrides: string[];
   targetIds: string[];
+  reason?: string;
 }): Promise<DeleteAdminsResult> {
   const ids = params.targetIds.filter((id) => id !== params.actorId);
   const selfSkipped = params.targetIds.length - ids.length;
@@ -101,15 +103,32 @@ export async function deleteAdminsSafely(params: {
       }
     }
 
-    await tx.admin.updateMany({
-      where: { id: { in: targets.map((t) => t.id) } },
-      data: {
-        deletedAt: new Date(),
-        status: "DISABLED",
-        // 旧 token 立即永久失效；新登录被 deletedAt/status 拦截
-        tokenVersion: { increment: 1 },
-      },
-    });
+    const now = new Date();
+    const deletionReason = params.reason?.trim().slice(0, 500) || null;
+
+    for (const target of targets) {
+      // 归档原邮箱后释放给后续管理员复用；审计仍按 adminId 归因
+      await tx.adminEmailHistory.create({
+        data: {
+          adminId: target.id,
+          email: target.email,
+          changedBy: params.actorId,
+          reason: "soft_delete",
+        },
+      });
+      await tx.admin.update({
+        where: { id: target.id },
+        data: {
+          email: adminTombstoneEmail(target.id),
+          deletedAt: now,
+          deletedBy: params.actorId,
+          deletionReason,
+          status: "DISABLED",
+          // 旧 token 立即永久失效；新登录被 deletedAt/status 拦截
+          tokenVersion: { increment: 1 },
+        },
+      });
+    }
 
     return {
       ok: true,

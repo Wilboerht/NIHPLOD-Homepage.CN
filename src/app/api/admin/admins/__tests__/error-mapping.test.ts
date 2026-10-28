@@ -17,6 +17,10 @@ const { prismaMock } = vi.hoisted(() => {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       create: vi.fn(),
     },
+    adminEmailHistory: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({}),
+    },
   };
   prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
   prisma.$executeRaw = vi.fn().mockResolvedValue([]);

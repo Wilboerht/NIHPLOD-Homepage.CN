@@ -1181,6 +1181,9 @@ model Admin {
   tokenVersion      Int         @default(0)
   status            AdminStatus @default(ACTIVE) // 账号状态
   deletedAt         DateTime? // 软删除时间
+  deletedBy         String? // 软删除操作者 adminId（不设 FK，保留操作者删除后的归因）
+  deletionReason    String?     @db.Text // 删除原因
+  anonymizedAt      DateTime? // 离职账号匿名化时间（保留 id 供审计关联）
   totpSecret        String? // 加密后的 TOTP secret
   totpEnabled       Boolean     @default(false)
   totpEnabledAt     DateTime? // TOTP 绑定时间（启用/重绑时写入，关闭后置空）
@@ -1196,10 +1199,31 @@ model Admin {
   adminStepUpGrants        AdminStepUpGrant[]
   totpRecoveryCodes        AdminTotpRecovery[]          @relation("AdminTotpRecoveryTarget")
   createdTotpRecoveryCodes AdminTotpRecovery[]          @relation("AdminTotpRecoveryCreator")
+  emailHistory             AdminEmailHistory[]
 
   @@index([status])
   @@index([deletedAt])
   @@index([role])
+  @@index([anonymizedAt])
+}
+
+/**
+ * 管理员邮箱历史。
+ * - 改邮箱、软删除时归档旧邮箱，允许离职账号原邮箱在冷却期后被新管理员复用
+ * - 只存邮箱字面值（本身已是登录标识），不存密码等凭证
+ */
+model AdminEmailHistory {
+  id        String   @id @default(cuid())
+  adminId   String
+  email     String
+  changedAt DateTime @default(now())
+  changedBy String? // 操作者 adminId；system 表示匿名化任务
+  reason    String? // email_changed | soft_delete | anonymized
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, changedAt(sort: Desc)])
+  @@index([email])
 }
 
 /**

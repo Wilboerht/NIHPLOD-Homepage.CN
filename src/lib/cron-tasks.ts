@@ -27,6 +27,7 @@ import { failStaleImportBatches } from "./spent-import";
 import { findSpentOrderConflicts } from "./spent-order-conflicts";
 import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
+import { anonymizeDeletedAdmins } from "./admin-retention";
 import { cleanupExpiredAdminStepUpGrants } from "./admin-step-up";
 import { cleanupExpiredAdminTotpRecoveries } from "./admin-totp-recovery";
 import { anchorMissingAuditDays } from "./audit-integrity";
@@ -536,6 +537,25 @@ const tasks: ScheduledTask[] = [
         }
       } catch (error) {
         apiConsole.error("[Cron] 账号注销执行任务失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Anonymize Deleted Admins",
+    // 每天 03:45：离职管理员软删除满 ADMIN_RETENTION_DAYS（默认 365 天）后匿名化
+    cronExpression: "45 3 * * *",
+    isCleanup: true,
+    handler: async () => {
+      try {
+        const result = await anonymizeDeletedAdmins(50);
+        if (result.anonymized > 0) {
+          apiConsole.info(
+            `[Cron] 离职管理员匿名化完成: 扫描 ${result.scanned}，匿名化 ${result.anonymized}`
+          );
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 离职管理员匿名化失败:", error);
         throw error;
       }
     },

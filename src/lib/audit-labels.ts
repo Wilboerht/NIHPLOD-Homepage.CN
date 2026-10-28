@@ -11,6 +11,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   create_admin: "创建管理员",
   update_admin: "更新管理员",
   delete_admin: "删除管理员",
+  admin_anonymized: "匿名化离职管理员",
   create_product: "创建产品",
   update_product: "更新产品",
   delete_product: "删除产品",

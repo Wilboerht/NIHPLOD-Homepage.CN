@@ -10,12 +10,14 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Textarea } from "@/components/ui/Textarea";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { Empty } from "@/components/ui/Empty";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
+import { formatDateTime } from "@/lib/format";
 import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -43,6 +45,12 @@ import { cn } from "@/lib/utils";
 function permissionKey(permissions: Iterable<string>) {
   return Array.from(permissions).sort().join("|");
 }
+
+const EMAIL_HISTORY_REASON_LABELS: Record<string, string> = {
+  email_changed: "修改邮箱",
+  soft_delete: "软删除归档",
+  anonymized: "匿名化归档",
+};
 
 function getAdvisorAccess(admin: AdminItem): {
   label: string;
@@ -148,6 +156,12 @@ function AdminAdminsContent() {
   const isEditingSelf = !!editing && editing.id === currentAdminId;
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminItem | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [batchDeleteReason, setBatchDeleteReason] = useState("");
+  const [emailHistory, setEmailHistory] = useState<
+    { id: string; email: string; changedAt: string; changedBy: string | null; reason: string | null }[]
+  >([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [recoveryTarget, setRecoveryTarget] = useState<AdminItem | null>(null);
   const [recoveryReason, setRecoveryReason] = useState("");
@@ -224,6 +238,7 @@ function AdminAdminsContent() {
       resolveAdminPermissions(role).filter((p) => canGrantPermission(p))
     );
     setEditing(null);
+    setEmailHistory([]);
     setForm(nextForm);
     setSelectedPermissions(nextPermissions);
     setModalBaseline({ form: nextForm, permissions: permissionKey(nextPermissions) });
@@ -239,10 +254,27 @@ function AdminAdminsContent() {
     };
     const nextPermissions = new Set(resolveAdminPermissions(admin.role, admin.permissions));
     setEditing(admin);
+    setEmailHistory([]);
     setForm(nextForm);
     setSelectedPermissions(nextPermissions);
     setModalBaseline({ form: nextForm, permissions: permissionKey(nextPermissions) });
     setShowModal(true);
+
+    setHistoryLoading(true);
+    apiGet<{
+      history: {
+        id: string;
+        email: string;
+        changedAt: string;
+        changedBy: string | null;
+        reason: string | null;
+      }[];
+    }>(`/api/admin/admins/${admin.id}/email-history`)
+      .then((data) => setEmailHistory(data.history))
+      .catch(() => {
+        // 历史邮箱失败不阻断编辑
+      })
+      .finally(() => setHistoryLoading(false));
   };
 
   /** 角色变化时重置为模板默认权限（owner 恒为全部） */
@@ -314,10 +346,15 @@ function AdminAdminsContent() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const result = await withStepUp(() => apiDelete(`/api/admin/admins/${deleteTarget.id}`));
+      const result = await withStepUp(() =>
+        apiDelete(`/api/admin/admins/${deleteTarget.id}`, {
+          reason: deleteReason.trim() || undefined,
+        })
+      );
       if (result === null) return;
       success("删除成功");
       setDeleteTarget(null);
+      setDeleteReason("");
       // 删除本页最后一条时回退一页
       if (admins.length === 1 && page > 1) {
         updateParams({ page: String(page - 1) });
@@ -399,6 +436,7 @@ function AdminAdminsContent() {
         apiPost<{ message: string }>("/api/admin/admins", {
           ids,
           action: "delete",
+          reason: batchDeleteReason.trim() || undefined,
         })
       );
       if (res === null) return;
@@ -406,6 +444,7 @@ function AdminAdminsContent() {
       const deletesWholePage = admins.length > 0 && admins.every((a) => ids.includes(a.id));
       selection.clear();
       setShowBatchDelete(false);
+      setBatchDeleteReason("");
       if (deletesWholePage && page > 1) {
         updateParams({ page: String(page - 1) });
       } else {
@@ -839,6 +878,30 @@ function AdminAdminsContent() {
                   <PasswordRulesChecklist password={form.password} className="mt-1.5" />
                 )}
               </div>
+              {editing && (historyLoading || emailHistory.length > 0) && (
+                <div className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-xs sm:col-span-2">
+                  <p className="font-medium text-brand-charcoal/80">历史邮箱</p>
+                  {historyLoading ? (
+                    <p className="mt-1 text-brand-charcoal/60">加载中…</p>
+                  ) : (
+                    <ul className="mt-1 space-y-1 text-brand-charcoal/70">
+                      {emailHistory.map((item) => (
+                        <li key={item.id} className="flex flex-wrap items-center gap-2">
+                          <span className="break-all font-mono">{item.email}</span>
+                          <span className="text-brand-charcoal/45">
+                            {formatDateTime(item.changedAt)}
+                          </span>
+                          <Badge variant="secondary" size="sm">
+                            {item.reason
+                              ? EMAIL_HISTORY_REASON_LABELS[item.reason] || item.reason
+                              : "历史记录"}
+                          </Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
               <Select
                 label="角色"
                 options={(() => {
@@ -1035,26 +1098,50 @@ function AdminAdminsContent() {
         {/* 删除确认 */}
         <ConfirmDialog
           open={!!deleteTarget}
-          onClose={() => setDeleteTarget(null)}
+          onClose={() => {
+            setDeleteTarget(null);
+            setDeleteReason("");
+          }}
           onConfirm={handleDelete}
           title="删除管理员"
-          description={`确定要删除管理员「${deleteTarget?.name}」吗？此操作不可撤销。`}
+          description={`确定要删除管理员「${deleteTarget?.name}」吗？原邮箱会归档并释放，账号满保留期后匿名化。`}
           type="danger"
           confirmText="删除"
           loading={deleting}
-        />
+        >
+          <Textarea
+            label="删除原因"
+            value={deleteReason}
+            onChange={(event) => setDeleteReason(event.target.value)}
+            placeholder="例如：离职 / 角色调整 / 安全事件（选填，写入审计）"
+            rows={2}
+            maxLength={500}
+          />
+        </ConfirmDialog>
 
         {/* 批量删除确认 */}
         <ConfirmDialog
           open={showBatchDelete}
-          onClose={() => setShowBatchDelete(false)}
+          onClose={() => {
+            setShowBatchDelete(false);
+            setBatchDeleteReason("");
+          }}
           onConfirm={handleBatchDelete}
           title="批量删除管理员"
-          description={`确定要删除选中的 ${selectedIds.size} 名管理员吗？此操作不可撤销。`}
+          description={`确定要删除选中的 ${selectedIds.size} 名管理员吗？原邮箱会归档并释放，账号满保留期后匿名化。`}
           type="danger"
           confirmText="确认删除"
           loading={batchDeleting}
-        />
+        >
+          <Textarea
+            label="删除原因"
+            value={batchDeleteReason}
+            onChange={(event) => setBatchDeleteReason(event.target.value)}
+            placeholder="例如：组织调整 / 批量离职（选填，写入审计）"
+            rows={2}
+            maxLength={500}
+          />
+        </ConfirmDialog>
 
         {/* 高风险操作二次验证 */}
         {totpModal}

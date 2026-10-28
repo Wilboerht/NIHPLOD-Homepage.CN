@@ -30,6 +30,8 @@ export interface ApprovalExecutorContext {
   targetId: string | null;
   targetLabel: string | null;
   targetSnapshot: Record<string, unknown> | null;
+  /** 申请人填写的审批原因（用于删除原因等业务留痕） */
+  reason: string;
   requester: {
     id: string;
     email: string | null;
@@ -311,6 +313,7 @@ async function executeAdminDelete(ctx: ApprovalExecutorContext): Promise<Approva
     actorRole: approver.role,
     actorOverrides: approver.permissions ?? [],
     targetIds: [payload.adminId],
+    reason: ctx.reason,
   });
   if (!result.ok) {
     throw new AdminApprovalError(result.code, result.message, result.status);

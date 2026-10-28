@@ -26,6 +26,7 @@ export type AuditAction =
   | "create_admin"
   | "update_admin"
   | "delete_admin"
+  | "admin_anonymized"
   | "create_product"
   | "update_product"
   | "delete_product"
@@ -188,6 +189,7 @@ export const AUDIT_ACTIONS = [
   "create_admin",
   "update_admin",
   "delete_admin",
+  "admin_anonymized",
   "create_product",
   "update_product",
   "delete_product",

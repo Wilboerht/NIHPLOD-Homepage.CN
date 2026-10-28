@@ -53,6 +53,7 @@ const {
 vi.mock("@/lib/prisma", () => {
   const prisma: Record<string, unknown> = {
     admin: mockPrismaModel(),
+    adminEmailHistory: mockPrismaModel(),
     user: mockPrismaModel(),
     product: mockPrismaModel(),
     loginAttempt: mockPrismaModel(),
