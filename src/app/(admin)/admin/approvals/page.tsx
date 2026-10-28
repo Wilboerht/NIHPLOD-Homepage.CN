@@ -129,6 +129,7 @@ function ApprovalsContent() {
   const [secretSaved, setSecretSaved] = useState(false);
   const [secretOpen, setSecretOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
+  const [riskAcknowledged, setRiskAcknowledged] = useState(false);
 
   const takeLatest = useLatestRequest();
   const fetchItems = useCallback(async () => {
@@ -168,6 +169,11 @@ function ApprovalsContent() {
   };
 
   const isRequester = selected?.requesterId === currentAdminId;
+  const requesterPermission = selected?.targetSnapshot?.requesterPermission as
+    | { actionPermission?: string; hadActionPermission?: boolean }
+    | undefined;
+  const lacksActionPermission =
+    selected?.status === "PENDING" && requesterPermission?.hadActionPermission === false;
   const canRetry =
     selected?.status === "EXECUTION_FAILED" &&
     (selected.executionMode === "AUTO" ? canReview : Boolean(isRequester));
@@ -198,7 +204,12 @@ function ApprovalsContent() {
     try {
       const data = await apiPost<{
         request: ApprovalItem | null;
-        execution: { ok: boolean; status: string; error?: string } | null;
+        execution: {
+          ok: boolean;
+          status: string;
+          error?: string;
+          secret?: string | null;
+        } | null;
       }>(`/api/admin/approvals/${selected.id}/${kind}`, {
         totpCode: code,
         note: note.trim() || undefined,
@@ -206,10 +217,16 @@ function ApprovalsContent() {
       window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       if (data.execution && !data.execution.ok) {
         toast.error(data.execution.error || "审批已通过，但执行失败");
+      } else if (kind === "approve" && data.execution?.secret) {
+        setSecret(data.execution.secret);
+        setSecretSaved(false);
+        setSecretOpen(true);
+        toast.success("审批已通过，恢复码已生成");
       } else {
         toast.success(kind === "approve" ? "审批已通过" : "申请已拒绝");
       }
       setNote("");
+      setRiskAcknowledged(false);
       await fetchItems();
       if (data.request) {
         await refreshSelected(data.request.id);
@@ -384,6 +401,7 @@ function ApprovalsContent() {
                 onClick={() => {
                   setSelected(item);
                   setNote("");
+                  setRiskAcknowledged(false);
                 }}
                 className="w-full rounded-2xl border border-brand-charcoal/10 bg-white p-4 text-left transition-colors hover:border-brand-primary/30 hover:bg-brand-primary/[0.02]"
               >
@@ -538,6 +556,21 @@ function ApprovalsContent() {
                   <ShieldCheck className="h-4 w-4" />
                   审批操作
                 </p>
+                {lacksActionPermission && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    <p className="font-medium">
+                      申请人原本不具备该动作权限：{requesterPermission?.actionPermission}
+                    </p>
+                    <p className="mt-1">
+                      批准后将以你的身份代其执行该操作。请先核对申请原因、目标与参数。
+                    </p>
+                  </div>
+                )}
+                {selected.policyKey === "totp.recovery.issue" && (
+                  <p className="rounded-lg border border-amber-200 bg-white/70 px-3 py-2 text-xs text-amber-800">
+                    恢复码只显示给审批人。批准后请通过安全渠道交付给目标管理员本人，不要交给申请人。
+                  </p>
+                )}
                 <Textarea
                   label="审批备注"
                   placeholder="通过可选填；拒绝必须填写原因"
@@ -545,6 +578,20 @@ function ApprovalsContent() {
                   onChange={(event) => setNote(event.target.value)}
                   rows={3}
                 />
+                {lacksActionPermission && (
+                  <label className="flex items-start gap-2 text-xs text-red-700">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={riskAcknowledged}
+                      onChange={(event) => setRiskAcknowledged(event.target.checked)}
+                    />
+                    <span>
+                      我确认申请人原本不具备{" "}
+                      {requesterPermission?.actionPermission || "该动作"} 权限，仍批准代其执行
+                    </span>
+                  </label>
+                )}
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button
                     variant="outline"
@@ -560,6 +607,7 @@ function ApprovalsContent() {
                     size="sm"
                     leftIcon={<CheckCircle2 className="h-4 w-4" />}
                     loading={actionLoading === "approve"}
+                    disabled={lacksActionPermission && !riskAcknowledged}
                     onClick={() => void handleDecision("approve")}
                   >
                     通过
@@ -660,6 +708,7 @@ function ApprovalsContent() {
         <div className="space-y-3">
           <p className="text-sm text-amber-800">
             该密钥只显示一次，不会写入数据库或审计日志。关闭后只能重新发起申请。
+            请通过安全渠道交付给目标管理员本人，不要交给申请人。
           </p>
           <pre className="break-all rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-3 text-sm">
             {secret}

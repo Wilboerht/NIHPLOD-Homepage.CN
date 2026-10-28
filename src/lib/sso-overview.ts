@@ -41,7 +41,10 @@ export async function getSsoOverview(): Promise<SsoOverview> {
   ] = await Promise.all([
     prisma.oAuthClient.count({ where: { isActive: true } }),
     prisma.oAuthSession.count({ where: { revokedAt: null, expiresAt: { gt: now } } }),
-    prisma.refreshToken.count({ where: { revokedAt: null, expiresAt: { gt: now } } }),
+    // 仅统计 OAuth 客户端 token；clientId 为空的是主站内部 refresh token，不能计入 SSO
+    prisma.refreshToken.count({
+      where: { revokedAt: null, expiresAt: { gt: now }, clientId: { not: null } },
+    }),
     prisma.ssoAuditEvent.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.ssoAuditEvent.count({ where: { createdAt: { gte: weekStart } } }),
     prisma.ssoAuditEvent.count({ where: { createdAt: { gte: monthStart } } }),

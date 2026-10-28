@@ -84,7 +84,7 @@ async function notifyApprovalEvent(title: string, lines: string[]): Promise<void
 async function resolveApprovalTarget(
   policy: ApprovalPolicy,
   payload: Record<string, unknown>,
-  requesterId: string
+  requester: Pick<AdminUser, "id" | "role">
 ): Promise<ApprovalTarget> {
   switch (policy.key) {
     case "points.adjust": {
@@ -178,8 +178,15 @@ async function resolveApprovalTarget(
       if (!target || target.deletedAt) {
         throw new AdminApprovalError("TARGET_NOT_FOUND", "管理员不存在", 404);
       }
-      if (target.id === requesterId) {
+      if (target.id === requester.id) {
         throw new AdminApprovalError("SELF_DELETE", "不能申请删除自己的账号", 400);
+      }
+      if (requester.role !== "owner" && target.role === "owner") {
+        throw new AdminApprovalError(
+          "FORBIDDEN",
+          "非 super admin 不能发起删除 super admin 账号的申请",
+          403
+        );
       }
       return {
         targetType: "admin",
@@ -236,6 +243,7 @@ async function resolveApprovalTarget(
           id: true,
           name: true,
           email: true,
+          role: true,
           status: true,
           totpEnabled: true,
           totpResetRequired: true,
@@ -245,8 +253,15 @@ async function resolveApprovalTarget(
       if (target.status !== "ACTIVE") {
         throw new AdminApprovalError("TARGET_INACTIVE", "目标管理员不可用", 400);
       }
-      if (target.id === requesterId) {
+      if (target.id === requester.id) {
         throw new AdminApprovalError("SELF_RECOVERY_FORBIDDEN", "不能为自己申请恢复码", 400);
+      }
+      if (requester.role !== "owner" && target.role === "owner") {
+        throw new AdminApprovalError(
+          "FORBIDDEN",
+          "非 super admin 不能发起针对 super admin 的恢复码申请",
+          403
+        );
       }
       if (!target.totpEnabled && !target.totpResetRequired) {
         throw new AdminApprovalError("TOTP_NOT_ENABLED", "目标管理员未启用 TOTP", 400);
@@ -322,7 +337,22 @@ export async function createApprovalRequest(input: CreateApprovalRequestInput) {
     );
   }
   const payload = JSON.parse(JSON.stringify(parsed.data)) as Record<string, unknown>;
-  const target = await resolveApprovalTarget(policy, payload, input.admin.id);
+  const target = await resolveApprovalTarget(policy, payload, input.admin);
+
+  // 单人审批下，owner 需要看到“申请人是否原本就能执行该动作”。
+  // 管理面操作已在 requestPermission 收紧；业务面操作保留读权限发起，
+  // 但把权限快照写入 targetSnapshot 供审批页显式提示。
+  const requesterPermissionSnapshot = {
+    role: input.admin.role,
+    requestPermission: policy.requestPermission,
+    actionPermission: policy.actionPermission,
+    hadActionPermission: hasAdminPermission(input.admin, policy.actionPermission),
+  };
+  const targetSnapshot = {
+    ...target.targetSnapshot,
+    requesterPermission: requesterPermissionSnapshot,
+  };
+
   if (!target.approvalRequired) {
     throw new AdminApprovalError("APPROVAL_NOT_REQUIRED", "该操作未达到审批条件，可直接执行", 400);
   }
@@ -356,7 +386,7 @@ export async function createApprovalRequest(input: CreateApprovalRequestInput) {
       targetType: target.targetType,
       targetId: target.targetId,
       targetLabel: target.targetLabel,
-      targetSnapshot: toInputJson(target.targetSnapshot),
+      targetSnapshot: toInputJson(targetSnapshot),
       payload: toInputJson(payload)!,
       payloadHash,
       reason,
@@ -384,6 +414,7 @@ export async function createApprovalRequest(input: CreateApprovalRequestInput) {
       payloadHash,
       reason,
       requesterId: input.admin.id,
+      requesterPermission: requesterPermissionSnapshot,
       expiresAt: expiresAt.toISOString(),
     },
     actorType: "ADMIN",

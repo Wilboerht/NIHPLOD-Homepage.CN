@@ -127,7 +127,7 @@ function AdminProductsContent() {
     } catch (error) {
       if (!isLatest()) return;
       if (error instanceof ApiError && error.status === 401) {
-        router.push("/admin-login");
+        router.push("/admin-login?reauth=1");
         return;
       }
       setLoadError(error instanceof Error ? error.message : "列表加载失败，请重试");

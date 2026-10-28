@@ -140,7 +140,8 @@ export async function GET(request: NextRequest) {
 
     // 活跃 RefreshToken 数量（同样排除已过期记录）
     const refreshTokenCount = await prisma.refreshToken.count({
-      where: { revokedAt: null, expiresAt: { gt: now } },
+      // 主站内部 refresh token（clientId 为空）不属于 SSO 会话统计
+      where: { revokedAt: null, expiresAt: { gt: now }, clientId: { not: null } },
     });
 
     // 批量获取用户信息
@@ -516,7 +517,9 @@ export async function DELETE(request: NextRequest) {
         data: { revokedAt: new Date() },
       }),
       prisma.refreshToken.updateMany({
-        where: { revokedAt: null },
+        // 只撤销 OAuth 客户端的 refresh token；clientId 为空的是主站内部 token，
+        // 批量终止 SSO 会话不得把全站 C 端用户踢下线。
+        where: { revokedAt: null, clientId: { not: null } },
         data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
       }),
     ]);

@@ -215,7 +215,11 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       const rtWhere = prismaMock.refreshToken.count.mock.calls[0][0] as {
         where: Record<string, unknown>;
       };
-      expect(rtWhere.where).toEqual({ revokedAt: null, expiresAt: { gt: expect.any(Date) } });
+      expect(rtWhere.where).toEqual({
+        revokedAt: null,
+        expiresAt: { gt: expect.any(Date) },
+        clientId: { not: null },
+      });
 
       expect(data.data.stats.activeSessions).toBe(0);
       expect(data.data.stats.activeRefreshTokens).toBe(0);
@@ -525,7 +529,7 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
         data: { revokedAt: expect.any(Date) },
       });
       expect(prismaMock.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: { revokedAt: null },
+        where: { revokedAt: null, clientId: { not: null } },
         data: { revokedAt: expect.any(Date), revokedReason: "admin_revoke" },
       });
       // 关键回归点：批量操作不再逐用户同步 HTTP 投递，也不再拉黑 token（会把用户误登出主站），

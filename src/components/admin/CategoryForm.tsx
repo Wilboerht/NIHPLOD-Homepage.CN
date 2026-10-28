@@ -258,7 +258,7 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
             onChange={(e) => updateField("order", e.target.value)}
             error={errors.order}
             placeholder="留空追加到末尾"
-            hint="数字越小越靠前；留空自动追加到末尾"
+            hint="数字越小越靠前；新建时留空自动追加到末尾"
           />
           <Textarea
             label="图标 (SVG)"
@@ -273,7 +273,9 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
           <div className="flex items-center justify-between rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] px-4 py-3">
             <div>
               <label className="text-sm font-medium text-brand-charcoal/80">前台展示</label>
-              <p className="text-xs text-brand-charcoal/65">关闭后该分类不会在产品页显示</p>
+              <p className="text-xs text-brand-charcoal/65">
+                关闭后该分类及其下已发布商品将从产品页、商品详情、指南和站点地图中隐藏
+              </p>
             </div>
             <button
               type="button"

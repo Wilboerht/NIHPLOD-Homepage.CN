@@ -165,7 +165,7 @@ function AdminJobsContent() {
     } catch (error) {
       if (!isLatest()) return;
       if (error instanceof ApiError && error.status === 401) {
-        router.push("/admin-login");
+        router.push("/admin-login?reauth=1");
         return;
       }
       setLoadError(true);

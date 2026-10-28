@@ -161,17 +161,20 @@ describe("管理端仪表盘组件", () => {
   });
 });
 
-describe("治理与监控面板折叠策略", () => {
-  it("无待办、无风险时默认收起", () => {
-    const owner = render(<OwnerGovernanceCard data={EMPTY_OWNER_DATA} />);
-    expect(screen.getByText("Owner 治理").closest("details")).not.toHaveAttribute("open");
-    owner.unmount();
+describe("治理与监控卡片弹窗", () => {
+  it("默认只展示摘要，点击后打开弹窗", () => {
+    render(<OwnerGovernanceCard data={EMPTY_OWNER_DATA} />);
 
-    render(<SecurityMonitor data={EMPTY_MONITOR_DATA} />);
-    expect(screen.getByText("安全与资金监控").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText(/待审批 0/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Owner 治理/ }));
+
+    const dialog = screen.getByRole("dialog", { name: "Owner 治理" });
+    expect(within(dialog).getByText("Owner 专属操作（近 24 小时）")).toBeInTheDocument();
   });
 
-  it("有待审批或高风险时仍默认收起，仅通过摘要提示", () => {
+  it("有待审批或高风险时仅在摘要提示，不自动打开弹窗", () => {
     const owner = render(
       <OwnerGovernanceCard
         data={{
@@ -180,7 +183,7 @@ describe("治理与监控面板折叠策略", () => {
         }}
       />
     );
-    expect(screen.getByText("Owner 治理").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText(/待审批 1/)).toBeInTheDocument();
     owner.unmount();
 
@@ -192,7 +195,26 @@ describe("治理与监控面板折叠策略", () => {
         }}
       />
     );
-    expect(screen.getByText("安全与资金监控").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText(/高危 1/)).toBeInTheDocument();
+  });
+
+  it("安全与资金监控点击后打开弹窗", () => {
+    render(<SecurityMonitor data={EMPTY_MONITOR_DATA} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /安全与资金监控/ }));
+
+    const dialog = screen.getByRole("dialog", { name: "安全与资金监控" });
+    expect(within(dialog).getByText("敏感操作")).toBeInTheDocument();
+    expect(within(dialog).getByText("资金操作")).toBeInTheDocument();
+  });
+
+  it("监控加载失败时点击弹窗展示错误说明", () => {
+    render(<SecurityMonitor data={null} error />);
+
+    fireEvent.click(screen.getByRole("button", { name: /安全与资金监控/ }));
+
+    const dialog = screen.getByRole("dialog", { name: "安全与资金监控" });
+    expect(within(dialog).getByText("监控数据加载失败")).toBeInTheDocument();
   });
 });

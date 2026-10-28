@@ -137,7 +137,9 @@ export async function requireFreshAdminTotp(
   try {
     const secret = decryptTOTPSecret(admin.totpSecret);
     if (verifyTOTP(trimmed, secret)) {
-      const replayKey = `totp:fresh:${adminId}:${trimmed}`;
+      // 与资金操作共用同一重放命名空间：同一验证码不能先在资金操作使用、
+      // 再用于换取 step-up 凭证（反之亦然）。
+      const replayKey = `totp:${adminId}:${trimmed}`;
       if (!(await consumeAccessTokenOnce(replayKey))) {
         return totpError("TOTP_INVALID", "验证码已被使用，请等待下一次刷新");
       }
@@ -178,5 +180,17 @@ export async function requireAdminStepUp(
   request: NextRequest,
   admin: Pick<AdminJWTPayload, "id" | "ver" | "jti">
 ): Promise<NextResponse | null> {
-  return requireMoneyOperationTotp(admin.id, null, { request, admin });
+  // 管理员安全类 step-up 永不受 ADMIN_TOTP_ENFORCE（资金类应急开关）影响。
+  // 该开关只允许临时关闭资金操作校验，不能关闭管理员账号/权限/删除/导出等保护。
+  if (await verifyAdminStepUpGrant(request, admin)) return null;
+
+  const adminRow = await prisma.admin.findUnique({
+    where: { id: admin.id },
+    select: { totpEnabled: true, totpSecret: true },
+  });
+  if (!adminRow) return totpError("TOTP_INVALID", "管理员不存在");
+  if (!adminRow.totpEnabled || !adminRow.totpSecret) {
+    return totpError("TOTP_NOT_ENABLED", "请先在「管理员安全中心」启用二次验证后再执行该操作");
+  }
+  return totpError("TOTP_REQUIRED", "请输入二次验证码以确认该操作");
 }

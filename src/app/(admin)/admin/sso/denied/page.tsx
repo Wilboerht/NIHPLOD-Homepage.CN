@@ -32,7 +32,7 @@ function AdminSsoDeniedContent() {
     setLoggingOut(true);
     try {
       await apiPost("/api/admin/logout");
-      router.push("/admin-login");
+      router.push("/admin-login?reauth=1");
       router.refresh();
     } catch (error) {
       apiConsole.error("登出失败:", error);

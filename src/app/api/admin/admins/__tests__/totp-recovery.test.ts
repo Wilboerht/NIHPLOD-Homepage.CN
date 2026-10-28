@@ -50,7 +50,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 vi.mock("@/lib/admin-totp", () => ({
-  requireMoneyOperationTotp: mocks.requireTotp,
+  requireAdminStepUp: mocks.requireTotp,
 }));
 
 vi.mock("@/lib/audit", () => ({

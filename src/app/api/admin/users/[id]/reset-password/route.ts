@@ -24,7 +24,7 @@ import { randomInt } from "@/lib/random";
 import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { maskPhone } from "@/lib/mask-phone";
-import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { sendAdminPasswordResetNotification } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
@@ -99,11 +99,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // 资金/安全类操作：二次验证（TOTP / 备用码），与积分调整同一口径
-    const totpResponse = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode, {
-      request,
-      admin,
-    });
+    // 安全敏感操作：始终要求 step-up（不受 ADMIN_TOTP_ENFORCE 资金开关影响）
+    const totpResponse = await requireAdminStepUp(request, admin);
     if (totpResponse) return totpResponse;
 
     const user = await prisma.user.findUnique({

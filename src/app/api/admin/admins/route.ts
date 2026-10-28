@@ -441,7 +441,7 @@ export const PUT = withAuth(async (request, admin) => {
     // 目标管理员必须存在且未删除（避免 update 抛 P2025 变成 500）
     const targetAdmin = await prisma.admin.findUnique({
       where: { id: data.id, deletedAt: null },
-      select: { id: true, role: true, permissions: true },
+      select: { id: true, email: true, name: true, role: true, permissions: true },
     });
     if (!targetAdmin) {
       return NextResponse.json(
@@ -540,19 +540,30 @@ export const PUT = withAuth(async (request, admin) => {
     }
 
     const updateData: Record<string, unknown> = {};
-    if (data.email) updateData.email = data.email;
-    if (data.name) updateData.name = data.name;
-    if (data.role) updateData.role = data.role;
-    if (data.password) updateData.password = await hashPassword(data.password);
-    if (permissionOverrides !== undefined) updateData.permissions = permissionOverrides;
-
+    const emailChanged = data.email !== undefined && data.email !== targetAdmin.email;
+    const nameChanged = data.name !== undefined && data.name !== targetAdmin.name;
     const roleChanged = data.role !== undefined && data.role !== targetAdmin.role;
-    // 凭证/授权变化必须递增 tokenVersion：旧 token 立即永久失效，新登录不受影响
+    const passwordChanged = Boolean(data.password);
+    const samePermissions = (a: string[], b: string[] | null | undefined) => {
+      const right = [...(b ?? [])].sort();
+      if (a.length !== right.length) return false;
+      const left = [...a].sort();
+      return left.every((value, index) => value === right[index]);
+    };
+    const permissionsChanged =
+      permissionOverrides !== undefined &&
+      !samePermissions(permissionOverrides, targetAdmin.permissions);
+
+    if (emailChanged) updateData.email = data.email;
+    if (nameChanged) updateData.name = data.name;
+    if (roleChanged) updateData.role = data.role;
+    if (passwordChanged) updateData.password = await hashPassword(data.password!);
+    if (permissionsChanged) updateData.permissions = permissionOverrides;
+
+    // 只有真实变化才递增 tokenVersion：页面会原样提交 email/permissions，
+    // 仅改姓名不应把目标（或 owner 自己）踢下线。
     const invalidatesSessions =
-      roleChanged ||
-      Boolean(data.password) ||
-      Boolean(data.email) ||
-      permissionOverrides !== undefined;
+      roleChanged || passwordChanged || emailChanged || permissionsChanged;
     if (invalidatesSessions) {
       updateData.tokenVersion = { increment: 1 };
     }

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { deleteUploadedFile } from "@/lib/upload";
+import { enqueueMediaDeletions } from "@/lib/media-deletion";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
@@ -62,10 +62,6 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    if (action === "delete") {
-      const stepUpResponse = await requireAdminStepUp(request, admin);
-      if (stepUpResponse) return stepUpResponse;
-    }
     // 批量发布/下架：需要产品编辑权限
     if (action !== "delete" && !hasAdminPermission(admin, "products:write")) {
       return NextResponse.json(
@@ -73,6 +69,10 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+    // 批量上下架与删除都属于会立即影响前台的写操作：统一要求 step-up，
+    // 避免“单条创建要 TOTP、批量发布却可以直接执行”的口径不一致。
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     // 操作前记录受影响产品的 slug，用于精确刷新前台页面缓存
     const affectedProducts = await prisma.product.findMany({
@@ -98,18 +98,20 @@ export async function POST(request: NextRequest) {
         break;
 
       case "delete": {
-        // 删除关联的物理图片文件（先查，后删DB，最后删文件）
-        const images = await prisma.image.findMany({
-          where: { productId: { in: ids } },
-          select: { url: true },
+        // 与单条删除保持同一策略：图片 URL + derivedUrls 入删除队列后，
+        // 在同一事务内删除产品。文件删除由 cron 异步消费，避免“数据库已删、
+        // 文件删除失败却返回 500”以及缩略图孤儿。
+        result = await prisma.$transaction(async (tx) => {
+          const images = await tx.image.findMany({
+            where: { productId: { in: ids } },
+            select: { url: true, derivedUrls: true },
+          });
+          await enqueueMediaDeletions(
+            tx,
+            images.flatMap((image) => [image.url, ...image.derivedUrls])
+          );
+          return tx.product.deleteMany({ where: { id: { in: ids } } });
         });
-        // 删除产品（级联删除关联的图片数据库记录）
-        result = await prisma.product.deleteMany({
-          where: { id: { in: ids } },
-        });
-        for (const img of images) {
-          await deleteUploadedFile(img.url);
-        }
         break;
       }
 

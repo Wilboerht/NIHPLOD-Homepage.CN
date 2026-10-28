@@ -63,7 +63,7 @@ vi.mock("@/lib/backchannel-logout", () => ({
 }));
 
 vi.mock("@/lib/admin-totp", () => ({
-  requireMoneyOperationTotp: vi.fn().mockResolvedValue(null),
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/lib/sms", () => ({
@@ -76,7 +76,7 @@ import { prisma } from "@/lib/prisma";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { updateUserPassword } from "@/lib/password-policy";
 import { blacklistUserTokens } from "@/lib/token-blacklist";
-import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { sendAdminPasswordResetNotification } from "@/lib/sms";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
@@ -155,7 +155,7 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
   });
 
   it("二次验证失败时直接返回 TOTP 错误响应，不执行重置", async () => {
-    vi.mocked(requireMoneyOperationTotp).mockResolvedValueOnce(
+    vi.mocked(requireAdminStepUp).mockResolvedValueOnce(
       NextResponse.json(
         { success: false, error: { code: "TOTP_REQUIRED", message: "请输入二次验证码" } },
         { status: 400 }
@@ -167,14 +167,10 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
     expect(updateUserPassword).not.toHaveBeenCalled();
   });
 
-  it("权限校验通过后携带 totpCode 调用二次验证", async () => {
+  it("权限校验通过后调用 step-up 二次验证", async () => {
     const res = await POST(createRequest({ totpCode: "654321" }), context);
     expect(res.status).toBe(200);
-    expect(requireMoneyOperationTotp).toHaveBeenCalledWith(
-      "admin-1",
-      "654321",
-      expect.objectContaining({ admin: expect.objectContaining({ id: "admin-1" }) })
-    );
+    expect(requireAdminStepUp).toHaveBeenCalledWith(expect.anything(), expect.anything());
   });
 
   it("重置成功后向被重置用户手机号发送安全提醒短信", async () => {

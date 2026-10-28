@@ -21,7 +21,10 @@ export interface ApprovalPolicy {
   action: string;
   targetType: string;
   executionMode: ApprovalExecutionMode;
+  /** 允许发起申请的最低权限（管理面操作应使用写权限） */
   requestPermission: AdminPermission;
+  /** 实际执行该操作所需的业务权限，用于审批页展示“申请人是否原本就能执行” */
+  actionPermission: AdminPermission;
   payloadSchema: z.ZodTypeAny;
   summary: string;
 }
@@ -49,7 +52,7 @@ export const redemptionCancelPayloadSchema = z.object({
 
 export const spentReviewApprovePayloadSchema = z.object({
   applicationId: z.string().cuid(),
-  reviewAmount: z.number().int().min(1),
+  reviewAmount: z.number().int().min(1).max(1_000_000, "核实金额不能超过 1,000,000"),
   reviewNote: z.string().trim().max(500, "备注过长").optional(),
 });
 
@@ -83,6 +86,7 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     targetType: "user",
     executionMode: "AUTO",
     requestPermission: "users:read",
+    actionPermission: "points:adjust",
     payloadSchema: pointsAdjustPayloadSchema,
     summary: "非 owner 单次调整绝对值达到 1000 分时需要 owner 审批",
   },
@@ -93,6 +97,7 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     targetType: "point_redemption",
     executionMode: "AUTO",
     requestPermission: "redemptions:read",
+    actionPermission: "redemptions:cancel",
     payloadSchema: redemptionCancelPayloadSchema,
     summary: "非 owner 取消兑换且退分达到 1000 分时需要 owner 审批",
   },
@@ -103,6 +108,7 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     targetType: "spent_adjustment",
     executionMode: "AUTO",
     requestPermission: "spent:read",
+    actionPermission: "spent:review",
     payloadSchema: spentReviewApprovePayloadSchema,
     summary: "非 owner 核实金额达到 ¥5000 时需要 owner 审批",
   },
@@ -113,6 +119,7 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     targetType: "spent_adjustment",
     executionMode: "AUTO",
     requestPermission: "spent:read",
+    actionPermission: "spent:review",
     payloadSchema: spentReviewUndoPayloadSchema,
     summary: "非 owner 撤销已通过的消费补录需要 owner 审批",
   },
@@ -122,7 +129,8 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     action: "delete_admin",
     targetType: "admin",
     executionMode: "AUTO",
-    requestPermission: "admins:read",
+    requestPermission: "admins:write",
+    actionPermission: "admins:write",
     payloadSchema: adminDeletePayloadSchema,
     summary: "非 owner 删除管理员需要 owner 审批",
   },
@@ -133,6 +141,7 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     targetType: "user",
     executionMode: "AUTO",
     requestPermission: "users:read",
+    actionPermission: "users:write",
     payloadSchema: userStatusPayloadSchema,
     summary: "非 owner 冻结/封禁/恢复用户需要 owner 审批",
   },
@@ -143,6 +152,7 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     targetType: "user",
     executionMode: "AUTO",
     requestPermission: "users:read",
+    actionPermission: "users:delete",
     payloadSchema: userDeletePayloadSchema,
     summary: "非 owner 删除/匿名化用户需要 owner 审批",
   },
@@ -151,10 +161,12 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     label: "签发 TOTP 恢复码",
     action: "admin_totp_recovery_issued",
     targetType: "admin",
-    executionMode: "REQUESTER",
-    requestPermission: "admins:read",
+    // 恢复码只能由 owner 执行并直接交付目标本人，不能交给申请人。
+    executionMode: "AUTO",
+    requestPermission: "admins:write",
+    actionPermission: "admins:write",
     payloadSchema: totpRecoveryPayloadSchema,
-    summary: "owner 审批通过后，由申请人执行并领取一次性恢复码",
+    summary: "owner 审批通过后立即生成一次性恢复码，只显示给 owner，由 owner 安全交付目标本人",
   },
 };
 

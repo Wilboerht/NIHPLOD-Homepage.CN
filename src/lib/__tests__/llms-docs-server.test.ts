@@ -43,7 +43,9 @@ describe("getLlmsDocs", () => {
     const docs = await getLlmsDocs();
 
     expect(prisma.product.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { published: true } })
+      expect.objectContaining({
+        where: { published: true, category: { visible: true } },
+      })
     );
     expect(docs.full).toContain("恒采修护面霜");
     expect(docs.full).toContain("NIHPLOD 恒采修护面霜的核心功效是什么？");

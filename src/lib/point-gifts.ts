@@ -17,7 +17,7 @@ import { apiConsole } from "@/lib/logger";
 /** 可兑换产品（产品库标记 + 已发布），按产品排序；字段供列表卡片与产品详情抽屉共用 */
 export async function listRedeemableProducts() {
   return prisma.product.findMany({
-    where: { pointRedeemable: true, published: true },
+    where: { pointRedeemable: true, published: true, category: { visible: true } },
     orderBy: [{ order: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
@@ -149,12 +149,17 @@ export async function redeemGiftForUser(params: {
             pointRedeemable: true,
             published: true,
             redeemStock: true,
+            category: { select: { visible: true } },
           },
         });
         if (!product) {
           return { ok: false, code: "PRODUCT_NOT_FOUND", message: "产品不存在" };
         }
-        if (!product.pointRedeemable || !product.published) {
+        if (
+          !product.pointRedeemable ||
+          !product.published ||
+          product.category?.visible === false
+        ) {
           return { ok: false, code: "PRODUCT_NOT_REDEEMABLE", message: "该产品暂不支持积分兑换" };
         }
 

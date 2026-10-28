@@ -95,7 +95,11 @@ const userStatusMap: Record<
 > = {
   ACTIVE: { label: "正常", variant: "success", description: "账号可正常登录和使用" },
   SUSPENDED: { label: "冻结", variant: "warning", description: "账号暂时无法登录，可解冻恢复" },
-  BANNED: { label: "封禁", variant: "danger", description: "账号永久封禁，不可恢复" },
+  BANNED: {
+    label: "封禁",
+    variant: "danger",
+    description: "长期封禁，用户不能自助恢复；非 super admin 解封需 owner 审批",
+  },
   DELETED: { label: "已注销", variant: "secondary", description: "账号已注销并匿名化，不可恢复" },
 };
 
@@ -585,7 +589,7 @@ function AdminUsersContent() {
       if (!isLatest()) return;
       // 会话过期统一回登录页，而不是停留在“列表加载失败”
       if (err instanceof ApiError && err.status === 401) {
-        router.push("/admin-login");
+        router.push("/admin-login?reauth=1");
         return;
       }
       setLoadError(err instanceof Error ? err.message : "列表加载失败，请重试");

@@ -14,13 +14,14 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
-import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { formatRelativeTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -65,6 +66,8 @@ function AdminMessagesContent() {
   const canDeleteMessages = canAdmin("messages:delete");
   const canWriteMessages = canAdmin("messages:write");
   const canReadSensitivePhone = canAdmin("messages:sensitive:read");
+  const { requireTotp, totpModal } = useTotpConfirm();
+  const [revealedPhone, setRevealedPhone] = useState<string | null>(null);
 
   // 列表状态由 URL 派生
   const page = getNumber("page", 1);
@@ -185,6 +188,7 @@ function AdminMessagesContent() {
 
   // 查看详情
   const viewDetail = async (message: Message) => {
+    setRevealedPhone(null);
     setDetailMessage(message);
     setReplyDraft(message.reply ?? "");
     if (!message.read) {
@@ -192,7 +196,31 @@ function AdminMessagesContent() {
     }
   };
 
-  // 复制完整手机号（仅持有 messages:sensitive:read 时入口可见）
+  // 显式揭示完整手机号：step-up + 服务端严格审计，失败则不返回明文
+  const revealPhone = async () => {
+    if (!detailMessage || revealedPhone) return;
+    const submit = () =>
+      apiPost<{ phone: string }>(`/api/admin/messages/${detailMessage.id}/reveal`);
+    try {
+      const data = await submit();
+      setRevealedPhone(data.phone);
+    } catch (err) {
+      if (isTotpRequired(err)) {
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        try {
+          const data = await submit();
+          setRevealedPhone(data.phone);
+        } catch (retryError) {
+          showError(retryError instanceof Error ? retryError.message : "查看完整号码失败");
+        }
+        return;
+      }
+      showError(err instanceof Error ? err.message : "查看完整号码失败");
+    }
+  };
+
+  // 复制完整手机号（仅揭示成功后可用）
   const copyPhone = async (phone: string) => {
     try {
       await navigator.clipboard.writeText(phone);
@@ -814,7 +842,10 @@ function AdminMessagesContent() {
       {/* 留言详情弹窗 */}
       <Modal
         open={!!detailMessage}
-        onClose={() => setDetailMessage(null)}
+        onClose={() => {
+          setDetailMessage(null);
+          setRevealedPhone(null);
+        }}
         title="留言详情"
         size="lg"
         mobileFullScreen
@@ -857,12 +888,18 @@ function AdminMessagesContent() {
                     )}
                   </div>
                   <span className="mt-0.5 flex items-center gap-1.5 text-xs text-brand-charcoal/65">
-                    {detailMessage.phone}
-                    {canReadSensitivePhone && (
+                    {revealedPhone ?? detailMessage.phone}
+                    {canReadSensitivePhone && !revealedPhone && (
+                      <Button variant="outline" size="sm" onClick={() => void revealPhone()}>
+                        <Eye className="mr-1 h-3.5 w-3.5" />
+                        显示完整号码
+                      </Button>
+                    )}
+                    {canReadSensitivePhone && revealedPhone && (
                       <Tooltip content="复制手机号" side="top">
                         <IconButton
                           label="复制手机号"
-                          onClick={() => copyPhone(detailMessage.phone)}
+                          onClick={() => copyPhone(revealedPhone)}
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </IconButton>
@@ -958,6 +995,8 @@ function AdminMessagesContent() {
         loading={batchActionLoading === "delete"}
         type="danger"
       />
+
+      {totpModal}
     </div>
   );
 }

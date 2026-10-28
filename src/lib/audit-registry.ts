@@ -180,6 +180,9 @@ const CRITICAL_ACTIONS = new Set([
 ]);
 
 const HIGH_ACTIONS = new Set([
+  "audit_retention_request",
+  "audit_legal_hold_create",
+  "audit_legal_hold_release",
   "delete_product",
   "batch_product",
   "delete_category",

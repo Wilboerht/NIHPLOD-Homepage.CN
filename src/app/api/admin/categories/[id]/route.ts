@@ -177,6 +177,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidatePath("/products");
+    // 分类可见性会影响其下所有商品详情、指南页与 sitemap：
+    // 关闭分类后必须让这些页面立即失效，而不是等 ISR 自然过期。
+    revalidatePath("/products/[slug]", "page");
+    revalidatePath("/guide");
+    revalidatePath("/sitemap.xml");
     pushSearchEngines(["/products"]);
 
     scheduleAdvisorProductSync("save");
@@ -287,6 +292,9 @@ export async function DELETE(
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidatePath("/products");
+    revalidatePath("/products/[slug]", "page");
+    revalidatePath("/guide");
+    revalidatePath("/sitemap.xml");
     pushSearchEngines(["/products"]);
 
     createAuditLog({

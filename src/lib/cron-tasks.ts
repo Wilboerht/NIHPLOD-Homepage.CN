@@ -255,6 +255,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Anchor Missing Audit Days",
     cronExpression: "15 1 * * *", // 每天 01:15（Asia/Shanghai）补锚；重复执行幂等
+    isCleanup: true,
     handler: async () => {
       try {
         const result = await anchorMissingAuditDays({ maxDays: 400 });
@@ -302,6 +303,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Reap Stale Pending Audit Logs",
     cronExpression: "*/15 * * * *",
+    isCleanup: true,
     handler: async () => {
       try {
         await reapStalePendingAuditLogs(10);
@@ -314,6 +316,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Process Audit Export Jobs",
     cronExpression: "* * * * *", // 每分钟处理队列
+    isCleanup: true,
     handler: async () => {
       try {
         await expireAuditExportJobs();
@@ -328,6 +331,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Audit Anomaly Scan",
     cronExpression: "*/5 * * * *",
+    isCleanup: true,
     handler: async () => {
       try {
         await scanAuditAlerts();
@@ -364,6 +368,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Retry Failed Backchannel Logout Notifications",
     cronExpression: "*/15 * * * *", // 每 15 分钟重投一次
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始重投失败的 Backchannel Logout 通知...");
@@ -380,6 +385,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Retry Failed Webhook Deliveries",
     cronExpression: "*/15 * * * *", // 每 15 分钟重投一次（与 Backchannel Logout 重投同周期）
+    isCleanup: true,
     handler: async () => {
       try {
         apiConsole.info("[Cron] 开始重投失败的资料变更 Webhook...");
@@ -417,6 +423,7 @@ const tasks: ScheduledTask[] = [
     name: "Cancel Stale Point Redemptions",
     // 每天 03:00 取消超时未履约的兑换，退还积分并释放限量库存
     cronExpression: "0 3 * * *",
+    isCleanup: true,
     handler: async () => {
       try {
         const result = await expirePendingRedemptions();
@@ -476,6 +483,7 @@ const tasks: ScheduledTask[] = [
     // 进程崩溃/请求超时会让导入批次长期停在 PROCESSING，阻塞同文件重导与撤销。
     // 每小时把超过 30 分钟的 PROCESSING 批次标记 FAILED，由管理端撤销成功行后重试。
     cronExpression: "10 * * * *",
+    isCleanup: true,
     handler: async () => {
       try {
         const count = await failStaleImportBatches(30);
@@ -517,6 +525,7 @@ const tasks: ScheduledTask[] = [
     // 并向到期前 24 小时的申请发送撤回提醒短信；单条失败置 FAILED 下次重试，
     // 达到重试上限转人工（详见 lib/account-deletion.ts）
     cronExpression: "17 * * * *",
+    isCleanup: true,
     handler: async () => {
       try {
         const result = await executeDueAccountDeletions();
@@ -561,6 +570,7 @@ const tasks: ScheduledTask[] = [
   {
     name: "Expire Pending Admin Approvals",
     cronExpression: "*/10 * * * *",
+    isCleanup: true,
     handler: async () => {
       try {
         const count = await expirePendingApprovals();

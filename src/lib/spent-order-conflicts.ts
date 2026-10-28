@@ -69,6 +69,9 @@ export async function findSpentOrderConflicts(
   const mallRecords = await (prisma.spentSyncRecord?.findMany
     ? prisma.spentSyncRecord.findMany({
         where: {
+          // 只统计外部商城同步记录；导入/补录自身也会写 SpentSyncRecord，
+          // 不过滤来源会把正常入账误报成“导入 + 商城同步”冲突。
+          source: "MALL_SYNC",
           spentDelta: { gt: 0 },
           revertedAt: null,
           orderNoKey: { not: null },

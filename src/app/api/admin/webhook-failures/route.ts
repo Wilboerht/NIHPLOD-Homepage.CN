@@ -20,6 +20,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { retryWebhookFailureById } from "@/lib/profile-webhook";
 import { retryBackchannelFailureById } from "@/lib/backchannel-logout";
+import { retryStatusWebhookFailureById } from "@/lib/webhook";
 
 export const dynamic = "force-dynamic";
 
@@ -213,11 +214,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // WebhookDeliveryFailure 同时承载“资料变更”和“账户状态变更”两类 payload。
+    // 手动重投必须按 event 分流，否则状态事件会被资料重试逻辑误判为无可投递字段而丢弃。
+    let isStatusWebhook = false;
+    if (kind === "webhook") {
+      const failure = await prisma.webhookDeliveryFailure.findUnique({
+        where: { id },
+        select: { payload: true },
+      });
+      if (!failure) {
+        return NextResponse.json(
+          { success: false, error: { code: "NOT_FOUND", message: "记录不存在" } },
+          { status: 404 }
+        );
+      }
+      const payload = failure.payload as Record<string, unknown> | null;
+      isStatusWebhook = payload?.event === "account_status_change";
+    }
+
     const auditId = await beginAuditLog({
       action: "webhook_failure_retry",
       targetType: "system",
       targetId: id,
-      detail: { kind, status: "PENDING", attempts: null },
+      detail: { kind, event: isStatusWebhook ? "account_status_change" : "profile_update" },
       adminId: admin.id,
       request,
     });
@@ -232,15 +251,20 @@ export async function POST(request: NextRequest) {
     }
 
     const result =
-      kind === "webhook"
-        ? await retryWebhookFailureById(id).catch(async (error) => {
+      kind === "backchannel"
+        ? await retryBackchannelFailureById(id).catch(async (error) => {
             await finishAuditLog(auditId, "FAILURE", { kind, reason: "EXCEPTION" });
             throw error;
           })
-        : await retryBackchannelFailureById(id).catch(async (error) => {
-            await finishAuditLog(auditId, "FAILURE", { kind, reason: "EXCEPTION" });
-            throw error;
-          });
+        : isStatusWebhook
+          ? await retryStatusWebhookFailureById(id).catch(async (error) => {
+              await finishAuditLog(auditId, "FAILURE", { kind, reason: "EXCEPTION" });
+              throw error;
+            })
+          : await retryWebhookFailureById(id).catch(async (error) => {
+              await finishAuditLog(auditId, "FAILURE", { kind, reason: "EXCEPTION" });
+              throw error;
+            });
 
     if (result.status === "not_found") {
       await finishAuditLog(auditId, "FAILURE", { kind, reason: "NOT_FOUND" });
@@ -250,10 +274,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await finishAuditLog(auditId, "SUCCESS", {
+    const auditOutcome =
+      result.status === "delivered" ? "SUCCESS" : result.status === "dropped" ? "PARTIAL" : "FAILURE";
+    await finishAuditLog(auditId, auditOutcome, {
       kind,
+      event: isStatusWebhook ? "account_status_change" : "profile_update",
       status: result.status,
       attempts: result.attempts ?? null,
+      error: result.error ?? null,
     });
 
     const messages: Record<string, string> = {

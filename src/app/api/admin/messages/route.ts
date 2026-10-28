@@ -101,15 +101,14 @@ export async function GET(request: NextRequest) {
           ? readFilteredCount
           : allCount;
 
-    // 持有 messages:sensitive:read 的管理员返回完整手机号（用于回访跟进），否则保持脱敏
-    const canReadSensitive = hasAdminPermission(admin, "messages:sensitive:read");
-
+    // 列表始终脱敏：完整手机号必须通过 /[id]/reveal 显式揭示（step-up + 严格审计），
+    // 避免拥有 messages:sensitive:read 的管理员仅打开列表就批量拖取 PII。
     return NextResponse.json({
       success: true,
       data: {
         items: items.map((item) => ({
           ...item,
-          phone: canReadSensitive ? item.phone : maskPhone(item.phone),
+          phone: maskPhone(item.phone),
           repliedAt: item.repliedAt?.toISOString() ?? null,
           createdAt: item.createdAt.toISOString(),
         })),

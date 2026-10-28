@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import {
   ADMIN_TOTP_RECOVERY_TTL_MINUTES,
@@ -102,10 +102,8 @@ export const POST = withAuth<NextRequest, { params: Promise<{ id: string }> }, N
         );
       }
 
-      const totpFailure = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode, {
-        request,
-        admin,
-      });
+      // 恢复码签发属于管理员安全操作：始终要求 step-up，不受资金开关影响
+      const totpFailure = await requireAdminStepUp(request, admin);
       if (totpFailure) return totpFailure;
 
       const auditDetail = {

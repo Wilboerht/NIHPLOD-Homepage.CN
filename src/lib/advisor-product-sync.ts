@@ -207,7 +207,7 @@ export async function buildAdvisorProductSnapshot(): Promise<AdvisorProductSnaps
       benefits: true,
       published: true,
       updatedAt: true,
-      category: { select: { name: true } },
+      category: { select: { name: true, visible: true } },
       images: { orderBy: { order: "asc" }, select: { url: true, order: true } },
       purchaseLinks: {
         orderBy: { order: "asc" },
@@ -241,7 +241,7 @@ export async function buildAdvisorProductSnapshot(): Promise<AdvisorProductSnaps
       category: product.category.name,
       price: Number.isFinite(priceNumber) ? String(priceNumber) : "0",
       description: htmlToPlainText(product.description).slice(0, MAX_DESCRIPTION_LENGTH),
-      published: product.published,
+      published: product.published && product.category.visible,
       updatedAt: product.updatedAt.toISOString(),
       capacity: product.capacity?.trim() || null,
       howToUse:

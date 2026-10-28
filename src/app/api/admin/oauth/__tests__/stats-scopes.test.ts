@@ -130,7 +130,7 @@ describe("GET /api/admin/oauth/stats", () => {
       where: { revokedAt: null, expiresAt: { gt: expect.any(Date) } },
     });
     expect(prismaMock.refreshToken.count).toHaveBeenCalledWith({
-      where: { revokedAt: null, expiresAt: { gt: expect.any(Date) } },
+      where: { revokedAt: null, expiresAt: { gt: expect.any(Date) }, clientId: { not: null } },
     });
   });
 

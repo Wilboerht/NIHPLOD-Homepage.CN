@@ -4,7 +4,7 @@
  * 账号注销申请管理页
  * - 注销申请列表（默认展示执行失败 FAILED，可切换状态筛选；手机号脱敏）
  * - FAILED 申请支持人工重试：同步执行注销任务并立即返回结果
- *   （重试为不可逆操作，需 users:security:write 权限 + 二次确认）
+ *   （重试为不可逆操作，需 users:delete 权限 + 二次确认）
  */
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, RefreshCw, RotateCw, AlertCircle } from "lucide-react";
@@ -97,7 +97,7 @@ function AdminAccountDeletionsContent() {
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
   const { requireTotp, totpModal } = useTotpConfirm();
-  const canRetry = canAdmin("users:security:write");
+  const canRetry = canAdmin("users:delete");
   const statusParam = get("status", "FAILED");
   const status: DeletionStatus = STATUS_TABS.some((tab) => tab.key === statusParam)
     ? (statusParam as DeletionStatus)

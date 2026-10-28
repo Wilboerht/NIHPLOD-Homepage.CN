@@ -185,7 +185,7 @@ function AdminAdminsContent() {
     } catch (err) {
       if (!isLatest()) return;
       if (err instanceof ApiError && err.status === 401) {
-        router.push("/admin-login");
+        router.push("/admin-login?reauth=1");
         return;
       }
       setLoadError(true);

@@ -53,7 +53,7 @@ export async function generateStaticParams() {
 
   try {
     const products = await prisma.product.findMany({
-      where: { published: true },
+      where: { published: true, category: { visible: true } },
       select: { slug: true },
     });
 
@@ -102,8 +102,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const product = await prisma.product.findUnique({
-    where: { slug, published: true },
+  const product = await prisma.product.findFirst({
+    where: { slug, published: true, category: { visible: true } },
     select: {
       name: true,
       nameEn: true,
@@ -172,8 +172,8 @@ async function getProduct(slug: string) {
     };
   }
 
-  const product = await prisma.product.findUnique({
-    where: { slug, published: true },
+  const product = await prisma.product.findFirst({
+    where: { slug, published: true, category: { visible: true } },
     include: {
       category: {
         select: { id: true, name: true, nameEn: true, slug: true },
@@ -224,6 +224,7 @@ async function getRelatedProducts(categoryId: string, currentProductId: string) 
     where: {
       published: true,
       categoryId,
+      category: { visible: true },
       id: { not: currentProductId },
     },
     take: 4,
@@ -273,7 +274,7 @@ async function getNavProducts() {
   }
   try {
     const products = await prisma.product.findMany({
-      where: { published: true },
+      where: { published: true, category: { visible: true } },
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       select: { id: true, slug: true, categoryId: true },
     });

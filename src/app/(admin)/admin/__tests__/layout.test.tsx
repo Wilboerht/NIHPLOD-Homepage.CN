@@ -58,7 +58,7 @@ describe("AdminServerLayout 服务端页面门禁", () => {
     mockGetCurrentAdmin.mockResolvedValue(null);
 
     await expect(AdminServerLayout({ children: <div>page</div> })).rejects.toThrow("NEXT_REDIRECT");
-    expect(mockRedirect).toHaveBeenCalledWith("/admin-login?reason=session_expired");
+    expect(mockRedirect).toHaveBeenCalledWith("/admin-login?reauth=1");
   });
 
   it("有权限时渲染页面内容", async () => {

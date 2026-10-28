@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
   const session = await getCurrentAdminSession();
   if (!session) {
     const loginUrl = new URL("/admin-login", getIssuer());
+    loginUrl.searchParams.set("reauth", "1");
     loginUrl.searchParams.set("redirect", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }

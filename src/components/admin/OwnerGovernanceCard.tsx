@@ -5,7 +5,7 @@ import { APPROVAL_POLICIES, type ApprovalPolicyKey } from "@/lib/admin-approval-
 import { PERMISSION_LABELS } from "@/lib/admin-permissions";
 import { formatDateTimeSeconds, formatRelativeTime } from "@/lib/format";
 import { Badge } from "./Badge";
-import { CollapsiblePanel } from "./CollapsiblePanel";
+import { DashboardModalCard } from "./DashboardModalCard";
 
 function CountBox({
   label,
@@ -43,14 +43,11 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
   const ownerOnly = data.ownerOnly.events;
 
   return (
-    <CollapsiblePanel
-      title={
-        <span className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-brand-primary" />
-          Owner 治理
-        </span>
-      }
+    <DashboardModalCard
+      title="Owner 治理"
+      icon={<ShieldCheck className="h-4 w-4 text-brand-primary" />}
       summary={`待审批 ${data.approvals.pending} · 待执行 ${data.approvals.approvedAwaiting} · 非 owner 操作 ${data.ownerOnly.nonOwner}`}
+      modalSize="xl"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-brand-charcoal/65">审批、owner 级权限与高风险操作概览</p>
@@ -226,6 +223,6 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
           </p>
         )}
       </details>
-    </CollapsiblePanel>
+    </DashboardModalCard>
   );
 }

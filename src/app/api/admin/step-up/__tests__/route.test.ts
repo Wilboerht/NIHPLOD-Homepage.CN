@@ -31,7 +31,7 @@ vi.mock("@/lib/ratelimit", () => ({
 }));
 
 vi.mock("@/lib/admin-totp", () => ({
-  requireMoneyOperationTotp: mocks.requireTotp,
+  requireFreshAdminTotp: mocks.requireTotp,
 }));
 
 vi.mock("@/lib/admin-step-up", () => ({

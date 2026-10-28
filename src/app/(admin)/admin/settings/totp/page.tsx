@@ -270,7 +270,7 @@ export default function TOTPSettingsPage() {
         ...(totpEnabled ? { totpCode: passwordTotpCode.trim() } : {}),
       });
       toast.success("密码已修改，请使用新密码重新登录");
-      router.replace("/admin-login?passwordChanged=1");
+      router.replace("/admin-login?passwordChanged=1&reauth=1");
       router.refresh();
     } catch (err) {
       setPasswordError(err instanceof ApiError ? err.message : "密码修改失败，请重试");

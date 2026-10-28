@@ -159,9 +159,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!hasAdminPermission(admin, "users:security:write")) {
+    // 注销重试会不可逆地执行账号匿名化，必须与“删除用户”同一权限口径，
+    // 不能只凭 users:security:write（重置密码等安全操作）放行。
+    if (!hasAdminPermission(admin, "users:delete")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户安全操作" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：用户删除" } },
         { status: 403 }
       );
     }

@@ -233,7 +233,7 @@ function AdminApplicationsContent() {
       apiConsole.error("获取申请列表失败:", error);
       if (error instanceof ApiError && error.status === 401) {
         showError("登录已过期，请重新登录");
-        router.push("/admin-login");
+        router.push("/admin-login?reauth=1");
         return;
       }
       showError(error instanceof ApiError ? error.message : "网络异常，请刷新重试");

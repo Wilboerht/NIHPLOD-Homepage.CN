@@ -14,7 +14,7 @@ import { LLMS_BRAND_SECTION, LLMS_FAQ_SECTION, LLMS_RITUALS_SECTION } from "@/co
 const getCachedLlmsDocs = unstable_cache(
   async () => {
     const products = await prisma.product.findMany({
-      where: { published: true },
+      where: { published: true, category: { visible: true } },
       include: {
         category: { select: { name: true } },
         purchaseLinks: {

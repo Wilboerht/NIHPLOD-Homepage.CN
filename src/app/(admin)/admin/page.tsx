@@ -19,7 +19,7 @@ import {
   StatStrip,
   PageHeader,
   PanelCard,
-  CollapsiblePanel,
+  DashboardModalCard,
   PendingQueue,
   SystemAlertIndicator,
   type StatStripItem,
@@ -264,7 +264,7 @@ export default async function AdminDashboard() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="仪表盘"
-        description="待办优先；治理、监控与历史记录按需展开"
+        description="待办优先；治理、监控与历史记录点击查看"
         accessory={
           systemAlerts.length > 0 ? <SystemAlertIndicator alerts={systemAlerts} /> : undefined
         }
@@ -296,19 +296,20 @@ export default async function AdminDashboard() {
         </>
       )}
 
-      {/* 治理与监控：始终默认收起，仅在摘要中展示关键计数 */}
+      {/* 治理与监控：卡片仅展示摘要，点击打开弹窗查看完整内容 */}
       {governanceData && <OwnerGovernanceCard data={governanceData} />}
 
       {canMonitor && <SecurityMonitor data={monitorData} error={monitorError} />}
 
-      {/* 最近留言 + SSO 概览：始终默认收起，不抢占首屏 */}
+      {/* 最近留言 + SSO 概览：点击打开弹窗，不抢占首屏 */}
       {(showRecentMessages || ssoStats) && (
         <div className={cn("grid grid-cols-1 gap-4", twoColumnBottom && "lg:grid-cols-3")}>
           {showRecentMessages && (
-            <CollapsiblePanel
+            <DashboardModalCard
               title="最近留言"
               summary={`未读 ${stats?.unreadMessages ?? 0} · 最近 ${recentMessages?.length ?? 0} 条`}
               className={cn(twoColumnBottom && "lg:col-span-2")}
+              modalSize="lg"
             >
               <div className="mb-2 flex justify-end">
                 <Link href="/admin/messages" className="text-xs text-brand-primary hover:underline">
@@ -320,19 +321,16 @@ export default async function AdminDashboard() {
               ) : (
                 <Empty title="暂无留言" className="py-10" />
               )}
-            </CollapsiblePanel>
+            </DashboardModalCard>
           )}
 
           {ssoStats && (
-            <CollapsiblePanel
-              title={
-                <>
-                  <Shield className="h-4 w-4 text-brand-primary" />
-                  SSO 概览
-                </>
-              }
+            <DashboardModalCard
+              title="SSO 概览"
+              icon={<Shield className="h-4 w-4 text-brand-primary" />}
               summary={`${ssoStats.activeClients} Client · ${ssoStats.activeSessions} 会话 · 今日 ${ssoStats.todayEvents} 事件`}
               className={cn(twoColumnBottom && "self-start")}
+              modalSize="lg"
             >
               <StatStrip items={ssoItems} layout={twoColumnBottom ? "grid" : "strip"} />
               <Link
@@ -342,7 +340,7 @@ export default async function AdminDashboard() {
                 查看完整统计
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
-            </CollapsiblePanel>
+            </DashboardModalCard>
           )}
         </div>
       )}

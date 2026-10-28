@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth";
-import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { requireFreshAdminTotp } from "@/lib/admin-totp";
 import {
   ADMIN_STEP_UP_COOKIE_NAME,
   ADMIN_STEP_UP_COOKIE_OPTIONS,
@@ -76,7 +76,7 @@ export const POST = withAuth(async (request, admin) => {
       );
     }
 
-    const totpFailure = await requireMoneyOperationTotp(admin.id, parsed.data.totpCode);
+    const totpFailure = await requireFreshAdminTotp(admin.id, parsed.data.totpCode);
     if (totpFailure) {
       await createAuditLog({
         action: "step_up_failed",

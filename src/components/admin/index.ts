@@ -13,6 +13,7 @@ export { DataTable, type Column } from "./DataTable";
 export { StatsCard } from "./StatsCard";
 export { StatStrip, type StatStripItem } from "./StatStrip";
 export { CollapsiblePanel } from "./CollapsiblePanel";
+export { DashboardModalCard } from "./DashboardModalCard";
 export { ProductsTable } from "./ProductsTable";
 export { CategoriesTable, type CategoryItem } from "./CategoriesTable";
 export { ImageUploader } from "./ImageUploader";

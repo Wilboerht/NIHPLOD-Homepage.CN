@@ -47,7 +47,7 @@ import prisma from "@/lib/prisma";
 async function getProducts() {
   try {
     const products = await prisma.product.findMany({
-      where: { published: true },
+      where: { published: true, category: { visible: true } },
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       include: {
         category: {

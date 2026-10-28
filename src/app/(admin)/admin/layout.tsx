@@ -22,7 +22,9 @@ export const dynamic = "force-dynamic";
 export default async function AdminServerLayout({ children }: { children: ReactNode }) {
   const admin = await getCurrentAdmin();
   if (!admin) {
-    redirect("/admin-login?reason=session_expired");
+    // reauth=1 让 proxy 放行登录页；否则 JWT 签名仍有效但 DB 校验失败时
+    //（改密/改角色/禁用/删除/tokenVersion 变化）会在 /admin 与登录页之间死循环。
+    redirect("/admin-login?reauth=1");
   }
 
   const pathname = (await headers()).get(ADMIN_PAGE_PATH_HEADER);

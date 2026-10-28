@@ -14,6 +14,7 @@ vi.mock("@/lib/prisma", () => {
   const prisma = {
     webhookDeliveryFailure: {
       findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue({ payload: { event: "profile_update" } }),
       count: vi.fn().mockResolvedValue(0),
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
@@ -60,11 +61,16 @@ vi.mock("@/lib/backchannel-logout", () => ({
   retryBackchannelFailureById: vi.fn(),
 }));
 
+vi.mock("@/lib/webhook", () => ({
+  retryStatusWebhookFailureById: vi.fn(),
+}));
+
 import { GET, POST } from "../route";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { retryWebhookFailureById } from "@/lib/profile-webhook";
+import { retryStatusWebhookFailureById } from "@/lib/webhook";
 
 const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "owner" };
 const ADMIN = { ...OWNER, role: "admin" };
@@ -152,6 +158,30 @@ describe("POST /api/admin/webhook-failures", () => {
       "audit-1",
       "SUCCESS",
       expect.objectContaining({ status: "delivered" })
+    );
+  });
+
+  it("账户状态事件走状态重投分支，不会被资料重投逻辑丢弃", async () => {
+    (prisma.webhookDeliveryFailure.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      payload: { event: "account_status_change" },
+    });
+    vi.mocked(retryStatusWebhookFailureById).mockResolvedValue({
+      ok: true,
+      status: "delivered",
+      attempts: 1,
+    });
+
+    const res = await POST(
+      createRequest("POST", { kind: "webhook", id: "clx0000000000000000000001", action: "retry" })
+    );
+
+    expect(res.status).toBe(200);
+    expect(retryStatusWebhookFailureById).toHaveBeenCalledWith("clx0000000000000000000001");
+    expect(retryWebhookFailureById).not.toHaveBeenCalled();
+    expect(finishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "SUCCESS",
+      expect.objectContaining({ event: "account_status_change", status: "delivered" })
     );
   });
 

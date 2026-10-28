@@ -39,7 +39,9 @@ describe("admin approval policy", () => {
     expect(isSpentReviewApprovalRequired(5000)).toBe(true);
   });
 
-  it("marks TOTP recovery as requester execution mode", () => {
-    expect(APPROVAL_POLICIES["totp.recovery.issue"].executionMode).toBe("REQUESTER");
+  it("marks TOTP recovery as owner auto execution and admin-plane permission", () => {
+    expect(APPROVAL_POLICIES["totp.recovery.issue"].executionMode).toBe("AUTO");
+    expect(APPROVAL_POLICIES["totp.recovery.issue"].requestPermission).toBe("admins:write");
+    expect(APPROVAL_POLICIES["admin.delete"].requestPermission).toBe("admins:write");
   });
 });

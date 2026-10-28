@@ -217,6 +217,97 @@ export async function dispatchStatusChangeWebhook(
   }
 }
 
+export interface ManualStatusWebhookRetryResult {
+  ok: boolean;
+  status: "delivered" | "failed" | "dropped" | "not_found";
+  error?: string;
+  attempts?: number;
+}
+
+/**
+ * 管理端手动重投单条“账户状态变更”Webhook。
+ *
+ * 与资料 Webhook 的 payload 结构不同（没有 profile/membership），不能复用
+ * profile-webhook 的 retryWebhookFailureById，否则会被误判为“无可投递字段”而丢弃。
+ */
+export async function retryStatusWebhookFailureById(
+  id: string
+): Promise<ManualStatusWebhookRetryResult> {
+  const failure = await prisma.webhookDeliveryFailure.findUnique({ where: { id } });
+  if (!failure) return { ok: false, status: "not_found" };
+
+  const payload = failure.payload as Record<string, unknown> | null;
+  if (!payload || payload.event !== "account_status_change") {
+    return { ok: false, status: "not_found" };
+  }
+
+  // 用 nextRetryAt CAS 认领，避免与 cron 自动重投并发；手动重投忽略退避时间。
+  const claimed = await prisma.webhookDeliveryFailure.updateMany({
+    where: { id, nextRetryAt: failure.nextRetryAt },
+    data: { nextRetryAt: new Date(Date.now() + 5 * 60_000) },
+  });
+  if (claimed.count === 0) return { ok: false, status: "not_found" };
+
+  const client = await prisma.oAuthClient.findUnique({
+    where: { clientId: failure.clientId },
+    select: { clientId: true, name: true, webhookUri: true, isActive: true },
+  });
+  const uri = client?.webhookUri;
+  if (!client?.isActive || !uri || !isSafeBackchannelUrl(uri)) {
+    await prisma.webhookDeliveryFailure.delete({ where: { id } }).catch(() => undefined);
+    recordSsoEvent({
+      event: "status_change",
+      userId: failure.userId,
+      clientId: failure.clientId,
+      clientName: client?.name,
+      success: false,
+      detail: { reason: "target_unavailable", manual: true },
+    });
+    return { ok: true, status: "dropped", attempts: failure.attempts };
+  }
+
+  const success = await sendWebhook(
+    { clientId: client.clientId, clientName: client.name, url: uri },
+    payload,
+    0
+  );
+  if (success) {
+    await prisma.webhookDeliveryFailure.delete({ where: { id } });
+    recordSsoEvent({
+      event: "status_change",
+      userId: failure.userId,
+      clientId: failure.clientId,
+      clientName: client.name,
+      success: true,
+      detail: { manual: true, attempts: failure.attempts },
+    });
+    return { ok: true, status: "delivered", attempts: failure.attempts };
+  }
+
+  const attempts = failure.attempts + 1;
+  if (attempts >= 8) {
+    await prisma.webhookDeliveryFailure.delete({ where: { id } });
+    recordSsoEvent({
+      event: "status_change",
+      userId: failure.userId,
+      clientId: failure.clientId,
+      clientName: client.name,
+      success: false,
+      detail: { reason: "max_attempts_reached", manual: true, attempts },
+    });
+    return { ok: false, status: "dropped", error: "达到重试上限", attempts };
+  }
+
+  await prisma.webhookDeliveryFailure.update({
+    where: { id },
+    data: {
+      attempts,
+      nextRetryAt: new Date(Date.now() + Math.min(60_000 * 2 ** attempts, 60 * 60 * 1000)),
+    },
+  });
+  return { ok: false, status: "failed", error: "重投失败，已安排下一次重试", attempts };
+}
+
 export async function retryFailedStatusWebhooks(limit = 50): Promise<number> {
   const failures = await prisma.webhookDeliveryFailure.findMany({
     where: {

@@ -8,7 +8,7 @@ import type {
 } from "@/lib/admin-dashboard-governance";
 import { formatDateTimeSeconds, formatRelativeTime } from "@/lib/format";
 import { Badge } from "./Badge";
-import { CollapsiblePanel } from "./CollapsiblePanel";
+import { DashboardModalCard } from "./DashboardModalCard";
 
 function riskBadge(risk: string | null) {
   if (risk === "CRITICAL") return <Badge variant="danger">严重</Badge>;
@@ -160,15 +160,11 @@ export function SecurityMonitor({
 }) {
   if (error) {
     return (
-      <CollapsiblePanel
-        title={
-          <span className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-brand-primary" />
-            安全与资金监控
-          </span>
-        }
+      <DashboardModalCard
+        title="安全与资金监控"
+        icon={<ShieldCheck className="h-4 w-4 text-brand-primary" />}
         summary="监控数据加载失败"
-        defaultOpen
+        modalSize="lg"
       >
         <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-3 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -177,20 +173,17 @@ export function SecurityMonitor({
             <p className="mt-1 text-xs text-amber-700/80">请刷新页面，或前往审计日志查看。</p>
           </div>
         </div>
-      </CollapsiblePanel>
+      </DashboardModalCard>
     );
   }
   if (!data) return null;
 
   return (
-    <CollapsiblePanel
-      title={
-        <span className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-brand-primary" />
-          安全与资金监控
-        </span>
-      }
+    <DashboardModalCard
+      title="安全与资金监控"
+      icon={<ShieldCheck className="h-4 w-4 text-brand-primary" />}
       summary={`敏感操作 ${data.sensitive.total} · 高危 ${data.sensitive.highRisk} · 认证失败 ${data.sensitive.authFailures} · 资金失败 ${data.funds.failures}`}
+      modalSize="xl"
     >
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MonitorCard
@@ -220,6 +213,6 @@ export function SecurityMonitor({
           viewAllLabel="查看全部资金操作"
         />
       </div>
-    </CollapsiblePanel>
+    </DashboardModalCard>
   );
 }

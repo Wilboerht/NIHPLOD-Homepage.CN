@@ -83,7 +83,8 @@ async function getProducts() {
 
   try {
     const products = await prisma.product.findMany({
-      where: { published: true },
+      // 分类隐藏时其商品在全站不可见（列表/详情/sitemap/搜索一致）
+      where: { published: true, category: { visible: true } },
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       take: 200,
       include: {
