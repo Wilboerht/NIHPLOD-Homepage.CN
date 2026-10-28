@@ -13,6 +13,7 @@ import { consumeAdminBackupCode } from "@/lib/admin-backup-code";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
 import { apiConsole } from "@/lib/logger";
 import { verifyAdminStepUpGrant } from "@/lib/admin-step-up";
+import { rateLimit } from "@/lib/ratelimit";
 import type { AdminJWTPayload } from "@/types/auth";
 
 export type AdminTotpErrorCode = "TOTP_NOT_ENABLED" | "TOTP_REQUIRED" | "TOTP_INVALID";
@@ -42,24 +43,23 @@ export function isMoneyOperationTotpEnforced(): boolean {
 }
 
 /**
- * 校验资金类操作的二次验证码。
- * @returns null 校验通过；否则返回可直接下发的 400 响应
+ * TOTP 校验的统一尝试限流（按管理员账号，而非 IP）。
+ * 资金/不可逆操作此前只有通用的 30 次/分钟限流，持有会话即可爆破 6 位验证码。
  */
-export async function requireMoneyOperationTotp(
-  adminId: string,
-  code?: string | null,
-  stepUp?: AdminStepUpContext
-): Promise<NextResponse | null> {
-  if (!isMoneyOperationTotpEnforced()) return null;
+async function enforceTotpAttemptLimit(adminId: string): Promise<NextResponse | null> {
+  const limiter = await rateLimit(`admin-totp-op:${adminId}`, "admin-totp");
+  if (limiter.success) return null;
+  const retryAfter = Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000));
+  return NextResponse.json(
+    {
+      success: false,
+      error: { code: "TOTP_RATE_LIMITED", message: "验证尝试过于频繁，请稍后再试" },
+    },
+    { status: 429, headers: { "Retry-After": String(retryAfter) } }
+  );
+}
 
-  if (
-    stepUp &&
-    stepUp.admin.id === adminId &&
-    (await verifyAdminStepUpGrant(stepUp.request, stepUp.admin))
-  ) {
-    return null;
-  }
-
+async function verifyTotpCode(adminId: string, code?: string | null): Promise<NextResponse | null> {
   const admin = await prisma.admin.findUnique({
     where: { id: adminId },
     select: { totpEnabled: true, totpSecret: true, totpBackupCodes: true },
@@ -113,6 +113,31 @@ export async function requireMoneyOperationTotp(
 }
 
 /**
+ * 校验资金类操作的二次验证码。
+ * @returns null 校验通过；否则返回可直接下发的 400 响应
+ */
+export async function requireMoneyOperationTotp(
+  adminId: string,
+  code?: string | null,
+  stepUp?: AdminStepUpContext
+): Promise<NextResponse | null> {
+  if (!isMoneyOperationTotpEnforced()) return null;
+
+  if (
+    stepUp &&
+    stepUp.admin.id === adminId &&
+    (await verifyAdminStepUpGrant(stepUp.request, stepUp.admin))
+  ) {
+    return null;
+  }
+
+  const limited = await enforceTotpAttemptLimit(adminId);
+  if (limited) return limited;
+
+  return verifyTotpCode(adminId, code);
+}
+
+/**
  * 强制新鲜 TOTP：不接受 step-up 缓存，也不受 ADMIN_TOTP_ENFORCE=false 影响。
  * 用于不可逆操作（审计到期清理、法律保留）。
  */
@@ -120,45 +145,34 @@ export async function requireFreshAdminTotp(
   adminId: string,
   code?: string | null
 ): Promise<NextResponse | null> {
-  const admin = await prisma.admin.findUnique({
-    where: { id: adminId },
-    select: { totpEnabled: true, totpSecret: true, totpBackupCodes: true },
-  });
-  if (!admin) return totpError("TOTP_INVALID", "管理员不存在");
-  if (!admin.totpEnabled || !admin.totpSecret) {
-    return totpError("TOTP_NOT_ENABLED", "请先在「管理员安全中心」启用二次验证后再执行该操作");
+  const limited = await enforceTotpAttemptLimit(adminId);
+  if (limited) return limited;
+
+  return verifyTotpCode(adminId, code);
+}
+
+/**
+ * 身份安全类操作（改密等）：与资金类共用 TOTP/备用码校验，
+ * 但**永远不读取 ADMIN_TOTP_ENFORCE 应急开关**，避免运维临时关闭资金校验时
+ * 连带关闭改密二次验证。
+ */
+export async function requireSecurityOperationTotp(
+  adminId: string,
+  code?: string | null,
+  stepUp?: AdminStepUpContext
+): Promise<NextResponse | null> {
+  if (
+    stepUp &&
+    stepUp.admin.id === adminId &&
+    (await verifyAdminStepUpGrant(stepUp.request, stepUp.admin))
+  ) {
+    return null;
   }
 
-  const trimmed = code?.trim();
-  if (!trimmed || trimmed.length < 6) {
-    return totpError("TOTP_REQUIRED", "请输入二次验证码以确认该操作");
-  }
+  const limited = await enforceTotpAttemptLimit(adminId);
+  if (limited) return limited;
 
-  try {
-    const secret = decryptTOTPSecret(admin.totpSecret);
-    if (verifyTOTP(trimmed, secret)) {
-      // 与资金操作共用同一重放命名空间：同一验证码不能先在资金操作使用、
-      // 再用于换取 step-up 凭证（反之亦然）。
-      const replayKey = `totp:${adminId}:${trimmed}`;
-      if (!(await consumeAccessTokenOnce(replayKey))) {
-        return totpError("TOTP_INVALID", "验证码已被使用，请等待下一次刷新");
-      }
-      return null;
-    }
-  } catch (err) {
-    apiConsole.warn("[AdminTotp] 新鲜 TOTP 密钥解密失败:", err);
-  }
-
-  if (admin.totpBackupCodes) {
-    try {
-      const consumed = await consumeAdminBackupCode(adminId, trimmed, admin.totpBackupCodes);
-      if (consumed.ok) return null;
-    } catch (err) {
-      apiConsole.warn("[AdminTotp] 新鲜 TOTP 备用码消费失败（fail-closed）:", err);
-    }
-  }
-
-  return totpError("TOTP_INVALID", "二次验证码错误");
+  return verifyTotpCode(adminId, code);
 }
 
 function totpError(code: AdminTotpErrorCode, message: string): NextResponse {

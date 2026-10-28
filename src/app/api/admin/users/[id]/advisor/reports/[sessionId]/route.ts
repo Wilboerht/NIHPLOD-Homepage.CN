@@ -4,7 +4,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { advisorRequest } from "@/lib/advisor-internal";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLogStrict } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import type { AdvisorReportDetail } from "@/types/advisor-report";
 
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
     }
 
-    await createAuditLog({
+    await createAuditLogStrict({
       action: "advisor_report_view",
       targetType: "user",
       targetId: id,

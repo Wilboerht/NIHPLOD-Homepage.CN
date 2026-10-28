@@ -131,6 +131,12 @@ function AdminSpentAdjustmentsContent() {
   const canReadSpent = canAdmin("spent:read");
   const canReview = canAdmin("spent:review");
   const canRequestApproval = canAdmin("approvals:request");
+  const claimedAmount = detail?.amountClaimed ?? 0;
+  const typedReviewAmount = Number(reviewAmount);
+  const approvalReviewAmount =
+    Number.isFinite(typedReviewAmount) && typedReviewAmount > 0 ? typedReviewAmount : claimedAmount;
+  const approvalThresholdReached =
+    Math.max(claimedAmount, approvalReviewAmount) >= APPROVAL_THRESHOLDS.spentReviewApprove;
   const { requireTotp, totpModal } = useTotpConfirm();
 
   const isReviewDirty =
@@ -651,21 +657,25 @@ function AdminSpentAdjustmentsContent() {
               >
                 取消
               </Button>
-              <Button
-                onClick={handleReview}
-                loading={saving}
-                className={decision === "reject" ? "bg-red-500 hover:bg-red-600" : undefined}
-              >
-                {decision === "approve" ? "确认通过并入账" : "确认驳回"}
-              </Button>
-              {!isOwnerActor &&
+              {/* 非 owner 且达到审批阈值（按申报/核实较大值）时，不允许直接审核入账 */}
+              {!(decision === "approve" && !isOwnerActor && approvalThresholdReached) && (
+                <Button
+                  onClick={handleReview}
+                  loading={saving}
+                  className={decision === "reject" ? "bg-red-500 hover:bg-red-600" : undefined}
+                >
+                  {decision === "approve" ? "确认通过并入账" : "确认驳回"}
+                </Button>
+              )}
+              {decision === "approve" &&
+                !isOwnerActor &&
                 canRequestApproval &&
-                (detail.amountClaimed ?? 0) >= APPROVAL_THRESHOLDS.spentReviewApprove && (
+                approvalThresholdReached && (
                   <ApprovalRequestAction
                     policyKey="spent.review.approve"
                     initialValues={{
                       applicationId: detail.id,
-                      reviewAmount: detail.amountClaimed ?? undefined,
+                      reviewAmount: approvalReviewAmount,
                     }}
                     label="申请通过审批"
                   />
@@ -689,13 +699,13 @@ function AdminSpentAdjustmentsContent() {
           ) : detail &&
             canRequestApproval &&
             detail.status === "PENDING" &&
-            (detail.amountClaimed ?? 0) >= APPROVAL_THRESHOLDS.spentReviewApprove ? (
+            approvalThresholdReached ? (
             <div className="flex justify-end">
               <ApprovalRequestAction
                 policyKey="spent.review.approve"
                 initialValues={{
                   applicationId: detail.id,
-                  reviewAmount: detail.amountClaimed ?? undefined,
+                  reviewAmount: approvalReviewAmount,
                 }}
                 label="申请通过审批"
               />

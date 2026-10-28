@@ -266,6 +266,7 @@ window.location.href = authUrl.toString();
 // 3. 在回调页面中，用授权码换取 token
 // ⚠️ 浏览器端仅适用于 Public Client：不要携带 client_secret；
 //    Confidential Client 的 token 交换必须放在服务端（带 client_secret）
+const urlParams = new URLSearchParams(window.location.search);
 const tokenRes = await fetch("${baseUrl}/api/oauth/token", {
   method: "POST",
   headers: { "Content-Type": "application/x-www-form-urlencoded" },

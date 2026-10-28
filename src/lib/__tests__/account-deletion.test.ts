@@ -41,6 +41,10 @@ const mockDeleteOSSFiles = vi.fn();
 const mockDeleteSpentProofFile = vi.fn();
 const mockSpentProofFindMany = vi.fn();
 const mockQuiesce = vi.fn();
+const mockDispatchStatusWebhook = vi.fn();
+const mockRunAfterResponse = vi.fn((task: () => Promise<void>) => {
+  void task();
+});
 const mockCreateAuditLog = vi.fn();
 const mockSendReceipt = vi.fn();
 const mockSendReminder = vi.fn();
@@ -83,6 +87,19 @@ vi.mock("@/lib/spent-adjustment-files", () => ({
 
 vi.mock("@/lib/user-status", () => ({
   quiesceUserSessions: (...args: unknown[]) => mockQuiesce(...args),
+}));
+
+vi.mock("@/lib/webhook", () => ({
+  dispatchStatusChangeWebhook: (...args: unknown[]) => mockDispatchStatusWebhook(...args),
+  getStatusChangeWebhookTargets: () => [
+    { url: "https://sub.example.com/hook", clientId: "sub", clientName: "sub" },
+  ],
+  toWebhookStatus: (status: string) => status,
+}));
+
+vi.mock("@/lib/alert-notify", () => ({
+  runAfterResponse: (...args: unknown[]) =>
+    (mockRunAfterResponse as (...args: unknown[]) => unknown)(...args),
 }));
 
 vi.mock("@/lib/audit", () => ({
@@ -153,6 +170,7 @@ function mockTxSuccess() {
       pointBalance: {
         findUnique: mockTxPointBalanceFindUnique,
         updateMany: mockTxPointBalanceUpdateMany,
+        upsert: vi.fn().mockResolvedValue({}),
       },
       pointLedger: { create: mockTxPointLedgerCreate },
       spentImportRow: { updateMany: mockTxSpentImportRowUpdateMany },
@@ -183,6 +201,7 @@ describe("executeAccountDeletion", () => {
     mockTxSuccess();
     mockRequestUpdate.mockResolvedValue({ attempts: 1 });
     mockCreateAuditLog.mockResolvedValue(true);
+    mockDispatchStatusWebhook.mockResolvedValue(undefined);
   });
 
   it("抢占失败（已撤回/已完成/并发被抢）：返回 skipped，不执行任何副作用", async () => {
@@ -285,6 +304,16 @@ describe("executeAccountDeletion", () => {
     );
     const auditDetail = mockCreateAuditLog.mock.calls[0][0].detail;
     expect(JSON.stringify(auditDetail)).not.toContain("13800138000");
+
+    expect(mockDispatchStatusWebhook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        oldStatus: "ACTIVE",
+        newStatus: "deleted",
+        source: "self_service",
+      }),
+      expect.any(Array)
+    );
   });
 
   it("H1 回归：同一手机号被复用后两个用户先后注销，占位值不同且均成功（不再 P2002）", async () => {

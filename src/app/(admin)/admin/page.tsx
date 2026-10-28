@@ -125,7 +125,7 @@ export default async function AdminDashboard() {
         key: "redemptions",
         label: "积分兑换待履约",
         count: stats.pendingRedemptions,
-        href: "/admin/point-gifts?status=PENDING",
+        href: "/admin/point-gifts?view=redemptions&tab=PENDING",
         icon: Gift,
         oldestAt: stats.pendingRedemptionsOldestAt,
       });

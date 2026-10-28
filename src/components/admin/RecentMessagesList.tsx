@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { formatRelativeTime } from "@/lib/format";
+import { apiPatch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 export interface RecentMessageItem {
@@ -31,6 +32,19 @@ export function RecentMessagesList({ messages }: RecentMessagesListProps) {
 
   const close = () => setSelected(null);
 
+  const openMessage = (message: RecentMessageItem) => {
+    setSelected(message);
+    // 与留言管理页一致：打开详情即标记已读，并刷新侧边栏未读红点
+    if (!message.read) {
+      void apiPatch(`/api/admin/messages/${message.id}`, { read: true })
+        .then(() => {
+          window.dispatchEvent(new Event("admin:nav-counts-refresh"));
+          router.refresh();
+        })
+        .catch(() => undefined);
+    }
+  };
+
   return (
     <>
       <div className="divide-y divide-brand-charcoal/[0.06]">
@@ -38,7 +52,7 @@ export function RecentMessagesList({ messages }: RecentMessagesListProps) {
           <button
             key={message.id}
             type="button"
-            onClick={() => setSelected(message)}
+            onClick={() => openMessage(message)}
             aria-label={`查看 ${message.name} 的留言`}
             className="flex w-full items-center gap-3 px-1 py-2.5 text-left transition-colors hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
           >

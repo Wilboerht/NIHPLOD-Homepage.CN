@@ -52,6 +52,7 @@ function IntegrityContent() {
   const toast = useToast();
   const [data, setData] = useState<IntegrityData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [verifying, setVerifying] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -59,7 +60,9 @@ function IntegrityContent() {
     try {
       const result = await apiGet<IntegrityData>("/api/admin/audit-integrity");
       setData(result);
+      setLoadError(false);
     } catch {
+      setLoadError(true);
       toast.error("加载审计完整性失败");
     } finally {
       setLoading(false);
@@ -224,7 +227,14 @@ function IntegrityContent() {
         </div>
       </div>
 
-      {data ? (
+      {loadError ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-brand-charcoal/10 bg-white py-12">
+          <p className="text-sm text-red-500">加载失败，请检查服务状态后重试</p>
+          <Button variant="outline" size="sm" onClick={load}>
+            重新加载
+          </Button>
+        </div>
+      ) : data ? (
         <DataTable
           columns={columns}
           data={data.anchors}

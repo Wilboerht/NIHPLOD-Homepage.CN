@@ -28,8 +28,8 @@ const patchSchema = z
     folderId: z.string().min(1).optional().nullable(),
     /** 乐观锁：只有当前状态匹配时才更新，防止并发覆盖 */
     expectedStatus: statusSchema.optional(),
-    /** 乐观锁：备注/其他字段保存前的 updatedAt */
-    expectedUpdatedAt: z.string().datetime().optional(),
+    /** 乐观锁：保存前的 updatedAt（必填，防止并发覆盖丢更新） */
+    expectedUpdatedAt: z.string().datetime(),
   })
   .refine((data) => !data.expectedStatus || data.status, {
     message: "expectedStatus 必须与 status 一起使用",
@@ -241,7 +241,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         where: {
           id,
           ...(expectedStatus ? { status: expectedStatus } : {}),
-          ...(expectedUpdatedAt ? { updatedAt: new Date(expectedUpdatedAt) } : {}),
+          updatedAt: new Date(expectedUpdatedAt),
         },
         data: updateData,
       });

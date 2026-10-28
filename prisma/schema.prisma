@@ -575,6 +575,7 @@ model WebhookDeliveryFailure {
   id          String   @id @default(cuid())
   userId      String
   clientId    String
+  targetUrl   String? // 状态 webhook 重投目标；null 时回退按 clientId 查 OAuthClient.webhookUri
   payload     Json // 重投所需数据（事件名 + 资料快照）
   attempts    Int      @default(0) // 已重投次数
   nextRetryAt DateTime // 下一次重投时间

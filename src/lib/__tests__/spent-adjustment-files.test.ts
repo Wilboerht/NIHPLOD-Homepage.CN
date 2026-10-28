@@ -26,6 +26,7 @@ vi.mock("@/lib/upload", () => ({
   validateUploadServer: mocks.validateUploadServer,
   validateFileBuffer: mocks.validateFileBuffer,
   processImageToWebp: mocks.processImageToWebp,
+  deleteUploadedFile: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/ali-oss", () => ({

@@ -25,6 +25,7 @@ vi.mock("@/lib/spent-order", () => ({
 
 vi.mock("@/lib/points", () => ({
   applyExternalSpentSync: vi.fn(),
+  SpentReversalExceedsBalanceError: class SpentReversalExceedsBalanceError extends Error {},
 }));
 
 vi.mock("@/lib/sms", () => ({
@@ -91,6 +92,7 @@ describe("reviewApplication", () => {
         reference: expect.stringContaining("manual:app-1:"),
         orderNo: "ORDER123",
         source: "SPENT_ADJUSTMENT",
+        requireActiveUser: true,
         note: expect.stringContaining("ORDER123"),
       },
       expect.anything()
@@ -225,6 +227,7 @@ describe("undoApplication", () => {
         userId: "user-1",
         spentDelta: -1280,
         reference: expect.stringContaining("manual-undo:app-1:"),
+        allowNegativeClamp: false,
         note: expect.stringContaining("撤销"),
       },
       expect.anything()

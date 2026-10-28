@@ -353,8 +353,16 @@ if (dbIsLocal) {
 // 补录凭证存储：未配置私有 bucket 时生产上传 fail-closed（凭证含 PII）
 const privateBucket = process.env.ALI_OSS_PRIVATE_BUCKET;
 const allowPublicProof = process.env.ALLOW_PUBLIC_SPENT_PROOF_STORAGE === "true";
+const allowLocalProof = process.env.ALLOW_LOCAL_SPENT_PROOF_STORAGE === "true";
 if (privateBucket) {
   check({ status: "PASS", name: "ALI_OSS_PRIVATE_BUCKET", message: "已配置私有凭证 bucket" });
+} else if (allowLocalProof) {
+  check({
+    status: "PASS",
+    name: "ALI_OSS_PRIVATE_BUCKET",
+    message:
+      "未配置私有 OSS，使用本地 private/spent-adjustments（单实例 + 持久盘 + 已备份）",
+  });
 } else if (allowPublicProof) {
   check({
     status: "SKIP",
@@ -642,6 +650,39 @@ if (!mpClientsRaw || mpClientsRaw.trim() === "") {
       status: "PASS",
       name: "MINIPROGRAM_CLIENTS",
       message: `已配置 ${entries.length} 个小程序客户端：${entries.map((e) => e.clientId).join(", ")}`,
+    });
+  }
+}
+
+// OAuth 积分兑礼白名单：代码默认拒绝（空配置时 H5/积分小程序兑换均 403）
+const redeemAllowedClients = (process.env.OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const requiredRedeemClients = ["wechat-mp-points", "q6n4aitms0wgn2sz1nj96au5"];
+if (redeemAllowedClients.length === 0) {
+  check({
+    status: "FAIL",
+    name: "OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS",
+    message: "未配置：OAuth 积分兑礼默认拒绝，H5 与积分小程序兑换都会返回 403",
+    fix: "配置 OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS=wechat-mp-points,q6n4aitms0wgn2sz1nj96au5",
+  });
+} else {
+  const missingRedeemClients = requiredRedeemClients.filter(
+    (clientId) => !redeemAllowedClients.includes(clientId)
+  );
+  if (missingRedeemClients.length > 0) {
+    check({
+      status: "FAIL",
+      name: "OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS",
+      message: `白名单缺少官方 client：${missingRedeemClients.join(", ")}（对应端兑换会 403）`,
+      fix: "同时加入 wechat-mp-points 与 q6n4aitms0wgn2sz1nj96au5",
+    });
+  } else {
+    check({
+      status: "PASS",
+      name: "OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS",
+      message: `已配置 ${redeemAllowedClients.length} 个客户端，包含 H5 与积分小程序`,
     });
   }
 }

@@ -95,7 +95,8 @@ export async function GET(request: NextRequest) {
     });
     const actorType = params.actorType === "ALL" ? undefined : params.actorType;
 
-    const canViewSensitive = hasAdminPermission(admin, "audit:sensitive:read");
+    // 列表始终脱敏：完整 IP/UA/邮箱仅在详情/导出接口按 audit:sensitive:read + step-up 展示，
+    // 避免仅凭列表权限批量拉取敏感审计字段。
     const startDate = params.startDate
       ? (parseUtc8DateBoundary(params.startDate, false) ?? undefined)
       : undefined;
@@ -141,28 +142,14 @@ export async function GET(request: NextRequest) {
       void detail;
       return {
         ...rest,
-        targetLabel: canViewSensitive
-          ? rest.targetLabel
-          : rest.targetLabel
-            ? maskAuditText(rest.targetLabel)
-            : null,
-        actorEmail: canViewSensitive
-          ? rest.actorEmail
-          : rest.actorEmail
-            ? maskIdentifier(rest.actorEmail)
-            : null,
-        ipAddress: canViewSensitive
-          ? rest.ipAddress
-          : rest.ipAddress
-            ? maskIp(rest.ipAddress)
-            : null,
-        userAgent: canViewSensitive ? rest.userAgent : null,
+        targetLabel: rest.targetLabel ? maskAuditText(rest.targetLabel) : null,
+        actorEmail: rest.actorEmail ? maskIdentifier(rest.actorEmail) : null,
+        ipAddress: rest.ipAddress ? maskIp(rest.ipAddress) : null,
+        userAgent: null,
         admin: rest.admin
           ? {
               ...rest.admin,
-              email: canViewSensitive
-                ? rest.admin.email
-                : (maskIdentifier(rest.admin.email) ?? "-"),
+              email: maskIdentifier(rest.admin.email) ?? "-",
             }
           : null,
       };

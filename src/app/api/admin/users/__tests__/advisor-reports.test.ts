@@ -12,7 +12,10 @@ vi.mock("@/lib/auth", () => ({
   checkAdminRateLimit: vi.fn().mockResolvedValue(null),
 }));
 vi.mock("@/lib/advisor-internal", () => ({ advisorRequest: mocks.advisorRequest }));
-vi.mock("@/lib/audit", () => ({ createAuditLog: mocks.audit }));
+vi.mock("@/lib/audit", () => ({
+  createAuditLog: mocks.audit,
+  createAuditLogStrict: mocks.audit,
+}));
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));

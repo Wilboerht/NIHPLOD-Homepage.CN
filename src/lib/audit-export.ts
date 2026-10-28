@@ -17,6 +17,7 @@ import { AUDIT_ACTION_LABELS, AUDIT_TARGET_TYPE_LABELS } from "./audit-labels";
 import { maskAuditDetail, maskAuditText, redactSensitiveAuditDetail } from "./audit-sanitize";
 import { maskIdentifier, maskIp } from "./mask-phone";
 import { escapeCSV } from "./csv";
+import { notifyAuditExportFailure } from "./admin-alert";
 
 export type ExportFormat = "csv" | "jsonl";
 export type ExportStream = "audit" | "sso";
@@ -445,6 +446,14 @@ async function processOneJob(jobId: string): Promise<void> {
       },
     });
     await unlink(temporaryPath).catch(() => {});
+    notifyAuditExportFailure({
+      jobId: job.id,
+      stream: job.stream,
+      format,
+      adminName: job.adminName,
+      adminEmail: job.adminEmail,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 

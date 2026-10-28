@@ -21,7 +21,7 @@ interface WecomBotMessage {
   };
 }
 
-export type WecomNotificationType = "admin" | "contact" | "job" | "points" | "redemption";
+export type WecomNotificationType = "admin" | "contact" | "job" | "points" | "redemption" | "ops";
 
 const TYPE_LABELS: Record<WecomNotificationType, string> = {
   admin: "管理端",
@@ -29,10 +29,16 @@ const TYPE_LABELS: Record<WecomNotificationType, string> = {
   job: "招聘",
   points: "积分申请",
   redemption: "兑换申请",
+  ops: "运营",
 };
 
 /** 运营群接收的业务通知类型 */
-const OPS_TYPES: ReadonlySet<WecomNotificationType> = new Set(["contact", "points", "redemption"]);
+const OPS_TYPES: ReadonlySet<WecomNotificationType> = new Set([
+  "contact",
+  "points",
+  "redemption",
+  "ops",
+]);
 
 /** 解析某类通知应投递的全部 webhook（综合管理群始终包含，其余按类型追加并去重） */
 export function resolveWecomWebhookUrls(type: WecomNotificationType): string[] {

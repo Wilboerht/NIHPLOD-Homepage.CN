@@ -554,6 +554,17 @@ function OAuthConsentsPage() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={canWrite ? 9 : 8} />
               ))
+            ) : loadError ? (
+              <tr>
+                <td colSpan={canWrite ? 9 : 8}>
+                  <div className="flex flex-col items-center justify-center gap-3 py-10">
+                    <p className="text-sm text-red-500">加载失败，请稍后重试</p>
+                    <Button variant="outline" size="sm" onClick={fetchConsents}>
+                      重新加载
+                    </Button>
+                  </div>
+                </td>
+              </tr>
             ) : consents.length === 0 ? (
               <tr>
                 <td colSpan={canWrite ? 9 : 8}>

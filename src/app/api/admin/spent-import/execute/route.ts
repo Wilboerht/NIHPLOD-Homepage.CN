@@ -12,6 +12,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { maskPhone } from "@/lib/mask-phone";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import {
@@ -45,6 +46,21 @@ export async function POST(request: NextRequest) {
     if (!hasAdminPermission(admin, "spent:import")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：消费记录导入" } },
+        { status: 403 }
+      );
+    }
+
+    // 资金类批量写操作：非 owner 必须先发起审批，避免 finance 角色绕过 owner 直接导入。
+    if (isAdminApprovalEnforced() && admin.role !== "owner") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "消费记录导入需要 owner 审批，请在导入预览页提交审批申请",
+            details: { policyKey: "spent.import.execute" },
+          },
+        },
         { status: 403 }
       );
     }

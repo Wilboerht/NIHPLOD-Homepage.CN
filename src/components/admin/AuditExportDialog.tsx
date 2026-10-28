@@ -46,9 +46,18 @@ export function AuditExportDialog({
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
+  const handleClose = useCallback(() => {
+    if (creating) return;
+    stopPolling();
+    setJob(null);
+    onClose();
+  }, [creating, stopPolling, onClose]);
+
   const createJob = async () => {
     setCreating(true);
     try {
+      stopPolling();
+      setJob(null);
       const payload = { stream: "audit", format, filters, reason: "后台审计导出" };
       let created: { id: string };
       try {
@@ -58,6 +67,9 @@ export function AuditExportDialog({
           const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
           if (!verified) {
             // 取消二次验证即取消导出操作，关闭导出配置弹窗，避免残留操作界面。
+            setCreating(false);
+            stopPolling();
+            setJob(null);
             onClose();
             return;
           }
@@ -112,13 +124,17 @@ export function AuditExportDialog({
       if (isTotpRequired(error) || message.includes("二次验证") || message.includes("TOTP")) {
         const verified = await requireTotp("TOTP_REQUIRED");
         if (!verified) {
-          onClose();
+          handleClose();
           return;
         }
-        await downloadFromUrl(
-          `/api/admin/audit-logs/exports/${job.id}/download`,
-          `audit-export-${job.id}.${job.format}`
-        );
+        try {
+          await downloadFromUrl(
+            `/api/admin/audit-logs/exports/${job.id}/download`,
+            `audit-export-${job.id}.${job.format}`
+          );
+        } catch (retryError) {
+          toast.error(retryError instanceof Error ? retryError.message : "下载失败");
+        }
         return;
       }
       toast.error(message || "下载失败");
@@ -127,7 +143,7 @@ export function AuditExportDialog({
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="导出审计日志" size="md">
+      <Modal open={open} onClose={handleClose} title="导出审计日志" size="md">
         <div className="space-y-4">
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
             导出会生成独立文件，创建和下载都需要二次验证。文件 24 小时后失效。
@@ -174,7 +190,7 @@ export function AuditExportDialog({
             </div>
           ) : null}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>
+            <Button variant="outline" size="sm" onClick={handleClose}>
               关闭
             </Button>
             <Button

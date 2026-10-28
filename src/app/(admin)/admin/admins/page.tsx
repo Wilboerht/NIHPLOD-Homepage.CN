@@ -159,7 +159,13 @@ function AdminAdminsContent() {
   const [deleteReason, setDeleteReason] = useState("");
   const [batchDeleteReason, setBatchDeleteReason] = useState("");
   const [emailHistory, setEmailHistory] = useState<
-    { id: string; email: string; changedAt: string; changedBy: string | null; reason: string | null }[]
+    {
+      id: string;
+      email: string;
+      changedAt: string;
+      changedBy: string | null;
+      reason: string | null;
+    }[]
   >([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -429,6 +435,10 @@ function AdminAdminsContent() {
 
   const handleBatchDelete = async () => {
     if (selection.selectedCount === 0) return;
+    if (!isOwnerActor) {
+      error("批量删除管理员需要 owner 审批，请逐个提交删除申请");
+      return;
+    }
     const ids = Array.from(selection.selectedIds);
     setBatchDeleting(true);
     try {
@@ -498,7 +508,7 @@ function AdminAdminsContent() {
               className="pl-10"
             />
           </div>
-          {canManage && selection.selectedCount > 0 && (
+          {canManage && isOwnerActor && selection.selectedCount > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-brand-charcoal/65">
                 已选 {selection.selectedCount} 项

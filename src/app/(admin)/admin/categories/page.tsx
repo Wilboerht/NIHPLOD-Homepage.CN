@@ -36,6 +36,7 @@ function AdminCategoriesContent() {
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -51,11 +52,14 @@ function AdminCategoriesContent() {
 
   // 获取分类列表
   const fetchCategories = useCallback(async () => {
+    setLoading(true);
     try {
       const data = await apiGet<CategoryItem[]>("/api/admin/categories");
       setCategories(data);
+      setLoadError(false);
     } catch (error) {
       apiConsole.error("获取分类失败:", error);
+      setLoadError(true);
       showError("加载失败，请刷新重试");
     } finally {
       setLoading(false);
@@ -181,20 +185,29 @@ function AdminCategoriesContent() {
       />
 
       {/* 分类列表 */}
-      <CategoriesTable
-        categories={categories}
-        loading={loading}
-        canWrite={canWrite}
-        canDelete={canDelete}
-        togglingId={togglingId}
-        savingOrder={savingOrder}
-        onEdit={handleEdit}
-        onDelete={(category) => setDeleteConfirm({ open: true, category })}
-        onToggleVisible={handleToggleVisible}
-        onMove={moveCategory}
-        onReorder={handleReorder}
-        onCreate={handleAdd}
-      />
+      {loadError ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-brand-charcoal/10 bg-white py-12">
+          <p className="text-sm text-red-500">分类加载失败，请检查网络后重试</p>
+          <Button variant="outline" size="sm" onClick={fetchCategories}>
+            重新加载
+          </Button>
+        </div>
+      ) : (
+        <CategoriesTable
+          categories={categories}
+          loading={loading}
+          canWrite={canWrite}
+          canDelete={canDelete}
+          togglingId={togglingId}
+          savingOrder={savingOrder}
+          onEdit={handleEdit}
+          onDelete={(category) => setDeleteConfirm({ open: true, category })}
+          onToggleVisible={handleToggleVisible}
+          onMove={moveCategory}
+          onReorder={handleReorder}
+          onCreate={handleAdd}
+        />
+      )}
 
       {/* 分类表单弹窗 */}
       <CategoryForm

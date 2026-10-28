@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { postPublicHttps } from "@/lib/outbound-http";
+import { notifyWebhookFailureDrop } from "@/lib/admin-alert";
 
 const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "::"]);
 const PRIVATE_IP_PATTERNS = [
@@ -433,6 +434,13 @@ export async function retryFailedBackchannelLogouts(
           clientId: failure.clientId,
           success: false,
           detail: { reason: "max_retries_exceeded", attempts },
+        });
+        notifyWebhookFailureDrop({
+          kind: "backchannel_logout",
+          clientId: failure.clientId,
+          userId: failure.userId,
+          attempts,
+          error: err instanceof Error ? err.message : String(err),
         });
       } else {
         const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);

@@ -13,7 +13,12 @@ import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import { dirname, resolve, sep } from "path";
 import { prisma } from "@/lib/prisma";
-import { processImageToWebp, validateUploadServer, validateFileBuffer } from "@/lib/upload";
+import {
+  deleteUploadedFile,
+  processImageToWebp,
+  validateUploadServer,
+  validateFileBuffer,
+} from "@/lib/upload";
 import {
   deletePrivateOSSObject,
   isPrivateBucketConfigured,
@@ -330,6 +335,12 @@ export async function deleteSpentProofFile(key: string, userId: string): Promise
     return deletePrivateOSSObject(key);
   }
 
-  // 公开 /uploads/... 或未知 key：不删除，避免任意文件删除。
+  // 历史公开 /uploads/... 凭证：仅当该路径确实记录在当前用户的申请图片中才删除，
+  // 避免任意文件删除；未知 key 仍然拒绝。
+  if (key.startsWith("/uploads/spent-adjustments/")) {
+    if (!(await hasApplicationImage(userId, key))) return false;
+    return deleteUploadedFile(key);
+  }
+
   return false;
 }

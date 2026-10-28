@@ -124,6 +124,8 @@ function AdminPointGiftsContent() {
   const [pointsTotal, setPointsTotal] = useState(0);
   const [redemptionLoading, setRedemptionLoading] = useState(false);
   const [redemptionsError, setRedemptionsError] = useState(false);
+  const [piiRevealed, setPiiRevealed] = useState(false);
+  const [revealingPii, setRevealingPii] = useState(false);
   const [redemptionsTotal, setRedemptionsTotal] = useState(0);
   const [redemptionSearch, setRedemptionSearch] = useState(redemptionSearchParam);
   const [prevRedemptionSearch, setPrevRedemptionSearch] = useState(redemptionSearchParam);
@@ -186,22 +188,47 @@ function AdminPointGiftsContent() {
     const isLatest = takeLatestRedemptions();
     setRedemptionLoading(true);
     try {
-      const data = await apiGet<{
-        redemptions: RedemptionItem[];
-        counts: Record<string, number>;
-        pointsTotal: number;
-        pagination: { page: number; total: number };
-      }>("/api/admin/point-redemptions", {
-        page,
-        pageSize: 10,
-        status: tab === "ALL" ? undefined : tab,
-        search: redemptionSearchParam || undefined,
-      });
+      const query = () =>
+        apiGet<{
+          piiRevealed?: boolean;
+          redemptions: RedemptionItem[];
+          counts: Record<string, number>;
+          pointsTotal: number;
+          pagination: { page: number; total: number };
+        }>("/api/admin/point-redemptions", {
+          page,
+          pageSize: 10,
+          status: tab === "ALL" ? undefined : tab,
+          search: redemptionSearchParam || undefined,
+          reveal: piiRevealed ? "1" : undefined,
+        });
+
+      let data: Awaited<ReturnType<typeof query>>;
+      try {
+        data = await query();
+      } catch (error) {
+        // step-up 过期时自动回退到脱敏列表，避免整页报错
+        if (!(piiRevealed && isTotpRequired(error))) throw error;
+        setPiiRevealed(false);
+        data = await apiGet<{
+          piiRevealed?: boolean;
+          redemptions: RedemptionItem[];
+          counts: Record<string, number>;
+          pointsTotal: number;
+          pagination: { page: number; total: number };
+        }>("/api/admin/point-redemptions", {
+          page,
+          pageSize: 10,
+          status: tab === "ALL" ? undefined : tab,
+          search: redemptionSearchParam || undefined,
+        });
+      }
       if (!isLatest()) return;
       setRedemptions(data.redemptions);
       setCounts(data.counts);
       setPointsTotal(data.pointsTotal);
       setRedemptionsTotal(data.pagination.total);
+      setPiiRevealed(Boolean(data.piiRevealed));
       setRedemptionsError(false);
     } catch {
       if (!isLatest()) return;
@@ -210,7 +237,56 @@ function AdminPointGiftsContent() {
     } finally {
       if (isLatest()) setRedemptionLoading(false);
     }
-  }, [page, tab, redemptionSearchParam, showError, canRedeemRead, takeLatestRedemptions]);
+  }, [
+    page,
+    tab,
+    redemptionSearchParam,
+    showError,
+    canRedeemRead,
+    takeLatestRedemptions,
+    piiRevealed,
+  ]);
+
+  const handleRevealPii = async () => {
+    if (!canFulfill || revealingPii) return;
+    setRevealingPii(true);
+    try {
+      const submit = () =>
+        apiGet<{
+          piiRevealed?: boolean;
+          redemptions: RedemptionItem[];
+          counts: Record<string, number>;
+          pointsTotal: number;
+          pagination: { page: number; total: number };
+        }>("/api/admin/point-redemptions", {
+          page,
+          pageSize: 10,
+          status: tab === "ALL" ? undefined : tab,
+          search: redemptionSearchParam || undefined,
+          reveal: "1",
+        });
+
+      let data: Awaited<ReturnType<typeof submit>>;
+      try {
+        data = await submit();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        data = await submit();
+      }
+      setRedemptions(data.redemptions);
+      setCounts(data.counts);
+      setPointsTotal(data.pointsTotal);
+      setRedemptionsTotal(data.pagination.total);
+      setPiiRevealed(Boolean(data.piiRevealed));
+      setRedemptionsError(false);
+    } catch (error) {
+      showError(error instanceof ApiError ? error.message : "查看完整收件信息失败");
+    } finally {
+      setRevealingPii(false);
+    }
+  };
 
   // 两个数据集独立请求，避免任一筛选变化重复拉取全部数据
   useEffect(() => {
@@ -249,11 +325,20 @@ function AdminPointGiftsContent() {
   const handleToggle = async (p: RedeemableProductItem) => {
     setTogglingId(p.id);
     try {
-      await apiPatch("/api/admin/point-gifts", {
-        productId: p.id,
-        pointRedeemable: !p.pointRedeemable,
-      });
-      success(p.pointRedeemable ? "已取消积分可兑" : "已设为积分可兑");
+      const submit = () =>
+        apiPatch("/api/admin/point-gifts", {
+          productId: p.id,
+          pointRedeemable: !p.pointRedeemable,
+        });
+      try {
+        await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
+      success(p.pointRedeemable ? "已取消该产品积分可兑" : "已设为积分可兑");
       fetchProducts();
     } catch (e) {
       showError(e instanceof ApiError ? e.message : "操作失败");
@@ -273,16 +358,25 @@ function AdminPointGiftsContent() {
     }
     setSavingStock(true);
     try {
-      await apiPatch("/api/admin/point-gifts", {
-        productId: p.id,
-        pointRedeemable: p.pointRedeemable,
-        redeemStock: stock,
-      });
+      // 只提交库存字段，避免把列表快照中的 pointRedeemable 旧值覆盖回去
+      const submit = () =>
+        apiPatch("/api/admin/point-gifts", {
+          productId: p.id,
+          redeemStock: stock,
+        });
+      try {
+        await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
       success("兑换库存已更新");
       setStockEdit(null);
       fetchProducts();
     } catch (e) {
-      showError(e instanceof ApiError ? e.message : "操作失败");
+      showError(e instanceof ApiError ? e.message : "保存失败");
     } finally {
       setSavingStock(false);
     }
@@ -410,14 +504,21 @@ function AdminPointGiftsContent() {
             : "从产品库启用积分兑换，并维护礼品库存。"
         }
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={view === "redemptions" ? fetchRedemptions : fetchProducts}
-          >
-            <RefreshCw className="mr-1.5 h-4 w-4" />
-            刷新
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {view === "redemptions" && canFulfill && !piiRevealed && (
+              <Button variant="outline" size="sm" loading={revealingPii} onClick={handleRevealPii}>
+                验证并显示完整收件信息
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={view === "redemptions" ? fetchRedemptions : fetchProducts}
+            >
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+              刷新
+            </Button>
+          </div>
         }
       />
 

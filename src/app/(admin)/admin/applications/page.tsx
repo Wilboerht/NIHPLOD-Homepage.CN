@@ -273,8 +273,9 @@ function AdminApplicationsContent() {
     try {
       const updated = await apiPatch<Application>(`/api/admin/applications/${application.id}`, {
         status: newStatus,
-        // 乐观锁：如果其他管理员已改过状态，拒绝静默覆盖
+        // 手动传入当前状态：若已被改过状态，后端拒绝，避免静默覆盖
         expectedStatus: application.status,
+        expectedUpdatedAt: application.updatedAt,
       });
       success(toastMsg || "状态已更新");
       window.dispatchEvent(new Event("admin:nav-counts-refresh"));
@@ -399,6 +400,7 @@ function AdminApplicationsContent() {
       const updated = await apiPatch<Application>(`/api/admin/applications/${application.id}`, {
         status: "reviewed",
         expectedStatus: application.status,
+        expectedUpdatedAt: application.updatedAt,
       });
       window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       setDetailApplication((prev) =>
@@ -538,6 +540,7 @@ function AdminApplicationsContent() {
     try {
       const updated = await apiPatch<Application>(`/api/admin/applications/${application.id}`, {
         folderId,
+        expectedUpdatedAt: application.updatedAt,
       });
       success("分类已更新");
       fetchApplications();

@@ -21,6 +21,7 @@ import {
   type ApprovalPolicyKey,
 } from "./admin-approval-policy";
 import { executeApprovalPolicy, type ApprovalExecutorResult } from "./admin-approval-executors";
+import { verifyImportPreviewToken } from "./spent-import";
 
 const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
 const EXECUTING_TIMEOUT_MS = 30 * 60 * 1000;
@@ -166,7 +167,65 @@ async function resolveApprovalTarget(
         },
         approvalRequired:
           policy.key === "spent.review.undo" ||
-          isSpentReviewApprovalRequired(Number(payload.reviewAmount)),
+          isSpentReviewApprovalRequired(Number(payload.reviewAmount), application.amountClaimed),
+      };
+    }
+    case "spent.import.execute": {
+      const previewToken = String(payload.previewToken);
+      const verified = verifyImportPreviewToken(previewToken, requester.id);
+      if (!verified.ok) {
+        throw new AdminApprovalError(
+          verified.code,
+          verified.message,
+          verified.code === "TOKEN_EXPIRED" ? 410 : 400
+        );
+      }
+      return {
+        targetType: "spent_import",
+        targetId: null,
+        targetLabel: verified.payload.fileName,
+        targetSnapshot: {
+          fileHash: verified.payload.fileHash,
+          rowCount: verified.payload.rows.length,
+          previewExpiresAt: new Date(verified.payload.exp).toISOString(),
+        },
+        approvalRequired: true,
+      };
+    }
+    case "spent.import.undo": {
+      const batchId = String(payload.batchId);
+      const batch = await prisma.spentImportBatch.findUnique({
+        where: { id: batchId },
+        select: {
+          id: true,
+          fileName: true,
+          status: true,
+          undoneAt: true,
+          totalRows: true,
+          successRows: true,
+          totalAmount: true,
+        },
+      });
+      if (!batch) {
+        throw new AdminApprovalError("TARGET_NOT_FOUND", "导入批次不存在", 404);
+      }
+      if (batch.undoneAt) {
+        throw new AdminApprovalError("ALREADY_UNDONE", "该批次已撤销", 409);
+      }
+      if (batch.status === "PROCESSING") {
+        throw new AdminApprovalError("TARGET_NOT_COMPLETED", "该批次仍在处理中，暂不可撤销", 409);
+      }
+      return {
+        targetType: "spent_import",
+        targetId: batch.id,
+        targetLabel: batch.fileName,
+        targetSnapshot: {
+          status: batch.status,
+          totalRows: batch.totalRows,
+          successRows: batch.successRows,
+          totalAmount: batch.totalAmount,
+        },
+        approvalRequired: true,
       };
     }
     case "admin.delete": {
@@ -364,38 +423,46 @@ export async function createApprovalRequest(input: CreateApprovalRequestInput) {
 
   const expiresAt = new Date(Date.now() + APPROVAL_TTL_MS);
   const payloadHash = hashPayload(payload);
-  const duplicate = await prisma.adminApprovalRequest.findFirst({
-    where: {
-      requesterId: input.admin.id,
-      policyKey: policy.key,
-      targetId: target.targetId,
-      payloadHash,
-      status: "PENDING",
-      expiresAt: { gt: new Date() },
-    },
-    select: { id: true },
-  });
-  if (duplicate) {
-    throw new AdminApprovalError("DUPLICATE_REQUEST", "已有相同的待审批申请", 409);
-  }
-  const request = await prisma.adminApprovalRequest.create({
-    data: {
-      policyKey: policy.key,
-      action: policy.action,
-      executionMode: policy.executionMode,
-      targetType: target.targetType,
-      targetId: target.targetId,
-      targetLabel: target.targetLabel,
-      targetSnapshot: toInputJson(targetSnapshot),
-      payload: toInputJson(payload)!,
-      payloadHash,
-      reason,
-      requesterId: input.admin.id,
-      requesterEmail: input.admin.email,
-      requesterName: input.admin.name,
-      requesterRole: input.admin.role,
-      expiresAt,
-    },
+  // 去重必须覆盖“所有申请人”，且必须与创建在同一把 advisory lock 内完成：
+  // 否则两名管理员（或同一管理员并发双击）可以各创建一条相同申请，
+  // owner 分别批准后资金类操作（尤其是积分调整）会被执行两次。
+  const dedupeKey = `${policy.key}:${target.targetId ?? ""}:${payloadHash}`;
+  const request = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`approval-create:${dedupeKey}`}))`;
+
+    const duplicate = await tx.adminApprovalRequest.findFirst({
+      where: {
+        policyKey: policy.key,
+        targetId: target.targetId,
+        payloadHash,
+        status: "PENDING",
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      throw new AdminApprovalError("DUPLICATE_REQUEST", "已有相同的待审批申请", 409);
+    }
+
+    return tx.adminApprovalRequest.create({
+      data: {
+        policyKey: policy.key,
+        action: policy.action,
+        executionMode: policy.executionMode,
+        targetType: target.targetType,
+        targetId: target.targetId,
+        targetLabel: target.targetLabel,
+        targetSnapshot: toInputJson(targetSnapshot),
+        payload: toInputJson(payload)!,
+        payloadHash,
+        reason,
+        requesterId: input.admin.id,
+        requesterEmail: input.admin.email,
+        requesterName: input.admin.name,
+        requesterRole: input.admin.role,
+        expiresAt,
+      },
+    });
   });
 
   await createAuditLog({
@@ -720,6 +787,9 @@ export async function approveApprovalRequest(input: ApprovalDecisionInput) {
     await markExpired(request);
     throw new AdminApprovalError("EXPIRED", "审批申请已过期", 409);
   }
+  if (request.requesterId === input.admin.id) {
+    throw new AdminApprovalError("SELF_APPROVAL_FORBIDDEN", "不能批准自己发起的申请", 400);
+  }
   if (
     request.targetId === input.admin.id &&
     (request.policyKey === "admin.delete" || request.policyKey === "totp.recovery.issue")
@@ -793,6 +863,13 @@ export async function rejectApprovalRequest(input: ApprovalDecisionInput) {
   if (!request) throw new AdminApprovalError("NOT_FOUND", "审批申请不存在", 404);
   if (request.status !== "PENDING") {
     throw new AdminApprovalError("INVALID_STATUS", "审批申请已处理", 409);
+  }
+  if (request.expiresAt.getTime() <= Date.now()) {
+    await markExpired(request);
+    throw new AdminApprovalError("EXPIRED", "审批申请已过期", 409);
+  }
+  if (request.requesterId === input.admin.id) {
+    throw new AdminApprovalError("SELF_APPROVAL_FORBIDDEN", "不能处理自己发起的申请", 400);
   }
   const decisionNote = input.note?.trim() ?? "";
   if (decisionNote.length < 2) {
@@ -910,6 +987,43 @@ export async function executeRequesterApproval(admin: AdminUser, id: string, tot
     execution,
     secret: execution.secret ?? null,
   };
+}
+
+/**
+ * 补偿“审批已通过但执行前进程崩溃”的 AUTO 申请：
+ * owner 批准时先写 APPROVED，再调用执行器；若进程在两步之间退出，
+ * 申请会永久停在 APPROVED（retry 只接受 EXECUTION_FAILED）。
+ * 定时任务扫描停留超过 1 分钟的 APPROVED AUTO 申请并重新执行。
+ */
+export async function reconcileStaleApprovedApprovals(now = new Date()): Promise<number> {
+  const staleBefore = new Date(now.getTime() - 60 * 1000);
+  const stale = await prisma.adminApprovalRequest.findMany({
+    where: {
+      status: "APPROVED",
+      executionMode: "AUTO",
+      approvedAt: { lt: staleBefore },
+      expiresAt: { gt: now },
+    },
+    select: { id: true },
+    orderBy: { approvedAt: "asc" },
+    take: 20,
+  });
+
+  let executed = 0;
+  for (const request of stale) {
+    try {
+      const outcome = await executeApprovedRequest(request.id);
+      if (outcome.ok) executed += 1;
+    } catch (error) {
+      // 并发下可能已被其他任务/请求执行；记录后继续处理下一条
+      apiConsole.warn(
+        "[AdminApproval] 补偿执行 APPROVED 申请失败:",
+        request.id,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+  return executed;
 }
 
 export async function expirePendingApprovals(now = new Date()): Promise<number> {

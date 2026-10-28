@@ -32,6 +32,9 @@ interface MockTx {
     upsert: ReturnType<typeof vi.fn>;
     findUnique: ReturnType<typeof vi.fn>;
   };
+  user: {
+    findUnique: ReturnType<typeof vi.fn>;
+  };
 }
 
 function createMockTx(): MockTx {
@@ -45,6 +48,9 @@ function createMockTx(): MockTx {
     pointBalance: {
       upsert: vi.fn().mockResolvedValue({}),
       findUnique: vi.fn().mockResolvedValue(null),
+    },
+    user: {
+      findUnique: vi.fn().mockResolvedValue({ status: "ACTIVE" }),
     },
   };
 }

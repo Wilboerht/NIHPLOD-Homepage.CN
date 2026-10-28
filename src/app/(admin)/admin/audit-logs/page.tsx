@@ -230,12 +230,19 @@ function AuditLogsContent() {
   const [exportOpen, setExportOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
-  const [searchDraft, setSearchDraft] = useState(searchParams.get("search") || "");
+  const searchParam = searchParams.get("search") || "";
+  const [searchDraft, setSearchDraft] = useState(searchParam);
+  const [prevSearchParam, setPrevSearchParam] = useState(searchParam);
+  if (prevSearchParam !== searchParam) {
+    setPrevSearchParam(searchParam);
+    setSearchDraft(searchParam);
+  }
   const [detail, setDetail] = useState<AuditLogItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const page = parseInt(searchParams.get("page") || "1");
+  const rawPage = Number(searchParams.get("page") || "1");
+  const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.min(1000, Math.trunc(rawPage)) : 1;
   const actorType = resolveActorTypeFilter(searchParams.get("actorType"));
   const action = searchParams.get("action") || "";
   const targetType = searchParams.get("targetType") || "";
@@ -627,6 +634,7 @@ function AuditLogsContent() {
             </div>
             <div className="w-full sm:w-44">
               <Input
+                key={`target-${targetId}`}
                 aria-label="目标 ID"
                 placeholder="目标 ID"
                 defaultValue={targetId}
@@ -637,6 +645,7 @@ function AuditLogsContent() {
             </div>
             <div className="w-full sm:w-48">
               <Input
+                key={`request-${requestId}`}
                 aria-label="请求 ID"
                 placeholder="请求 ID / CF-Ray"
                 defaultValue={requestId}
@@ -647,6 +656,7 @@ function AuditLogsContent() {
             </div>
             <div className="w-full sm:w-44">
               <Input
+                key={`user-${userId}`}
                 aria-label="用户 ID"
                 placeholder="用户 ID"
                 defaultValue={userId}

@@ -47,6 +47,12 @@ vi.mock("@/lib/password", () => ({
   verifyPassword: mocks.verifyPassword,
 }));
 
+vi.mock("@/lib/auth-security", () => ({
+  checkAccountLockout: vi.fn().mockResolvedValue({ locked: false, remainingMinutes: 0 }),
+  recordLoginAttempt: vi.fn().mockResolvedValue(undefined),
+  clearLoginAttempts: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/totp", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/totp")>();
   return {

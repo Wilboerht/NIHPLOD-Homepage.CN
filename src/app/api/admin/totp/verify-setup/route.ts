@@ -14,6 +14,9 @@ import { z } from "zod";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { revokeAllAdminStepUpGrants } from "@/lib/admin-step-up";
+import { rateLimit } from "@/lib/ratelimit";
+import { signToken } from "@/lib/jwt";
+import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 
 const verifySchema = z.object({
   code: z.string().length(6, "请输入6位验证码"),
@@ -61,6 +64,14 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       );
     }
 
+    const totpLimit = await rateLimit(`admin-totp-verify-setup:${admin.id}`, "admin-totp");
+    if (!totpLimit.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "TOTP_RATE_LIMITED", message: "验证尝试过于频繁，请稍后再试" } },
+        { status: 429 }
+      );
+    }
+
     const secret = decryptTOTPSecret(admin.totpSecret);
     if (!verifyTOTP(result.data.code, secret)) {
       return NextResponse.json(
@@ -105,10 +116,17 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       );
     }
 
-    await prisma.admin
+    // 启用 TOTP 时递增 tokenVersion：使启用前窃取的旧会话立即失效，
+    // 避免旧会话绕过“本会话是否完成过 TOTP”直接使用 SSO 等能力。
+    const updatedAdmin = await prisma.admin
       .update({
         where: { id: admin.id },
-        data: { totpEnabled: true, totpEnabledAt: new Date() },
+        data: {
+          totpEnabled: true,
+          totpEnabledAt: new Date(),
+          tokenVersion: { increment: 1 },
+        },
+        select: { tokenVersion: true },
       })
       .catch(async (error) => {
         await finishAuditLog(auditId, "FAILURE", { action: "totp_enabled" });
@@ -120,7 +138,17 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
 
     await finishAuditLog(auditId, "SUCCESS", { action: "totp_enabled" });
 
-    return NextResponse.json({ success: true, data: { message: "二次验证已启用" } });
+    // 重新签发当前会话，避免管理员在启用 2FA 后被动退出；其他旧会话已因版本递增失效。
+    const token = await signToken({
+      id: admin.id,
+      email: admin.email,
+      name: adminPayload.name,
+      role: adminPayload.role,
+      ver: updatedAdmin.tokenVersion,
+    });
+    const response = NextResponse.json({ success: true, data: { message: "二次验证已启用" } });
+    response.cookies.set(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS);
+    return response;
   } catch (error) {
     apiConsole.error("[TOTP Verify Setup] 异常:", error);
     return NextResponse.json(

@@ -92,7 +92,8 @@ function downloadCsv(filename: string, csv: string) {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  // Safari/旧内核在点击后立即 revoke 可能取消下载
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function ImportBatchDetailModal({
@@ -111,6 +112,7 @@ export function ImportBatchDetailModal({
   const [loadError, setLoadError] = useState("");
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [page, setPage] = useState(1);
+  const [reloadToken, setReloadToken] = useState(0);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -134,7 +136,7 @@ export function ImportBatchDetailModal({
       .finally(() => {
         if (isLatest()) setLoading(false);
       });
-  }, [batchId, open, page, status, takeLatest]);
+  }, [batchId, open, page, status, reloadToken, takeLatest]);
 
   const changeStatus = (next: StatusFilter) => {
     setStatus(next);
@@ -142,6 +144,8 @@ export function ImportBatchDetailModal({
     setLoading(true);
     setLoadError("");
     setPayload(null);
+    // 点击当前筛选/错误重试时 page/status 不变，用 reloadToken 强制重新请求
+    setReloadToken((value) => value + 1);
   };
 
   const changePage = (next: number) => {
@@ -149,6 +153,7 @@ export function ImportBatchDetailModal({
     setLoading(true);
     setLoadError("");
     setPayload(null);
+    setReloadToken((value) => value + 1);
   };
 
   const exportIssues = async () => {

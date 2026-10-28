@@ -12,6 +12,7 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { undoImportBatch } from "@/lib/spent-import";
 
@@ -35,6 +36,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!hasAdminPermission(admin, "spent:import")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：撤销导入" } },
+        { status: 403 }
+      );
+    }
+
+    if (isAdminApprovalEnforced() && admin.role !== "owner") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "撤销消费导入需要 owner 审批，请提交审批申请",
+            details: { policyKey: "spent.import.undo" },
+          },
+        },
         { status: 403 }
       );
     }
@@ -104,6 +119,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         ALREADY_UNDONE: 409,
         NOTHING_TO_UNDO: 400,
         NOT_COMPLETED: 409,
+        REVERSAL_EXCEEDS_BALANCE: 409,
       };
       return NextResponse.json(
         { success: false, error: { code: result.code, message: result.message } },

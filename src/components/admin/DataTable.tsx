@@ -317,6 +317,9 @@ export function DataTable<T extends object>({
                     }}
                     onClick={(e) => {
                       rowOnClick?.(e);
+                      // 操作按钮/链接/表单控件不应同时触发行点击（否则会重复打开详情）
+                      const target = e.target as HTMLElement | null;
+                      if (target?.closest("button,a,input,select,textarea,label")) return;
                       if (!e.defaultPrevented) onRowClick?.(record);
                     }}
                     className={cn(

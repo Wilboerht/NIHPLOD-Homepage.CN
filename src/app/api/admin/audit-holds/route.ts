@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       { status: 401 }
     );
   }
-  if (!hasAdminPermission(admin, "audit:hold")) {
+  if (admin.role !== "owner" || !hasAdminPermission(admin, "audit:hold")) {
     return NextResponse.json(
       { success: false, error: { code: "FORBIDDEN", message: "仅 owner 可查看法律保留" } },
       { status: 403 }
@@ -87,6 +87,12 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = createSchema.parse(await request.json());
+    if (body.expiresAt && new Date(body.expiresAt).getTime() <= Date.now()) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "到期时间必须晚于当前时间" } },
+        { status: 400 }
+      );
+    }
     const totp = await requireFreshAdminTotp(admin.id, body.totpCode);
     if (totp) return totp;
 

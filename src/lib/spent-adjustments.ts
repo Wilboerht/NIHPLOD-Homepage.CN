@@ -6,7 +6,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
-import { applyExternalSpentSync } from "@/lib/points";
+import { applyExternalSpentSync, SpentReversalExceedsBalanceError } from "@/lib/points";
 import {
   normalizeOrderNo,
   releaseSpentOrderClaim,
@@ -131,8 +131,7 @@ export async function reviewApplication(params: {
           where: { id: application.userId },
           select: { status: true },
         });
-        if (!user || user.status === "DELETED")
-          throw new Error("SPENT_ADJUSTMENT_USER_UNAVAILABLE");
+        if (!user || user.status !== "ACTIVE") throw new Error("SPENT_ADJUSTMENT_USER_UNAVAILABLE");
         const result = await applyExternalSpentSync(
           {
             userId: application.userId,
@@ -140,6 +139,7 @@ export async function reviewApplication(params: {
             reference: reviewReference(applicationId),
             orderNo: application.orderNo,
             source: "SPENT_ADJUSTMENT",
+            requireActiveUser: true,
             note: `消费补录：${SPENT_CHANNEL_LABELS[application.channel]} ${application.orderNo}`,
           },
           tx
@@ -238,6 +238,7 @@ export async function undoApplication(params: {
           userId: application.userId,
           spentDelta: -(application.reviewAmount ?? 0),
           reference: `manual-undo:${applicationId}:${Date.now()}`,
+          allowNegativeClamp: false,
           note: `撤销消费补录审核：${applicationId}（管理员 ${adminId}）`,
         },
         tx
@@ -264,6 +265,13 @@ export async function undoApplication(params: {
     apiConsole.info(`[SpentAdjustment] 撤销审核完成：applicationId=${applicationId}`);
     return { ok: true, status: "PENDING" };
   } catch (error) {
+    if (error instanceof SpentReversalExceedsBalanceError) {
+      return {
+        ok: false,
+        code: "REVERSAL_EXCEEDS_BALANCE",
+        message: "用户当前累计消费不足以完整冲正，已取消撤销；请核对退款/导入记录后人工处理",
+      };
+    }
     apiConsole.error("[SpentAdjustment] 撤销审核异常:", error);
     return { ok: false, code: "INTERNAL_ERROR", message: "服务器错误" };
   }

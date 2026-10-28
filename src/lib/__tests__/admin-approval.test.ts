@@ -5,6 +5,8 @@ import { stableStringify } from "@/lib/audit-chain";
 const { prismaMock, createAuditLogMock, sendWecomMock, executeApprovalPolicyMock } = vi.hoisted(
   () => ({
     prismaMock: {
+      $transaction: vi.fn(),
+      $executeRaw: vi.fn().mockResolvedValue(0),
       user: { findUnique: vi.fn() },
       admin: { findUnique: vi.fn(), findMany: vi.fn() },
       pointRedemption: { findUnique: vi.fn() },
@@ -45,6 +47,12 @@ import {
   retryApprovalRequest,
 } from "@/lib/admin-approval";
 import { AdminApprovalError } from "@/lib/admin-approval-errors";
+
+beforeEach(() => {
+  prismaMock.$transaction.mockImplementation(
+    async (fn: (tx: typeof prismaMock) => Promise<unknown>) => fn(prismaMock)
+  );
+});
 
 const OPS = {
   id: "admin-1",

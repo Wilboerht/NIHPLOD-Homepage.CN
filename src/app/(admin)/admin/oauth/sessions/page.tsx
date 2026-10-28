@@ -519,6 +519,17 @@ function OAuthSessionsPage() {
           <tbody className="divide-y divide-brand-charcoal/10">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
+            ) : loadError ? (
+              <tr>
+                <td colSpan={6}>
+                  <div className="flex flex-col items-center justify-center gap-3 py-10">
+                    <p className="text-sm text-red-500">加载失败，请稍后重试</p>
+                    <Button variant="outline" size="sm" onClick={fetchSessions}>
+                      重新加载
+                    </Button>
+                  </div>
+                </td>
+              </tr>
             ) : sessions.length === 0 ? (
               <tr>
                 <td colSpan={6}>

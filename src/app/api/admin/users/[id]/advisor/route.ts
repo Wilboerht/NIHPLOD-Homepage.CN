@@ -6,7 +6,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { advisorRequest } from "@/lib/advisor-internal";
-import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLogStrict, finishAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { apiConsole } from "@/lib/logger";
 import type {
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         select: { id: true },
       });
       if (!recentView) {
-        await createAuditLog({
+        await createAuditLogStrict({
           action: "advisor_user_view",
           targetType: "user",
           targetId: id,

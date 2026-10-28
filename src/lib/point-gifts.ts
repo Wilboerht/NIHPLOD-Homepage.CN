@@ -155,11 +155,7 @@ export async function redeemGiftForUser(params: {
         if (!product) {
           return { ok: false, code: "PRODUCT_NOT_FOUND", message: "产品不存在" };
         }
-        if (
-          !product.pointRedeemable ||
-          !product.published ||
-          product.category?.visible === false
-        ) {
+        if (!product.pointRedeemable || !product.published || product.category?.visible === false) {
           return { ok: false, code: "PRODUCT_NOT_REDEEMABLE", message: "该产品暂不支持积分兑换" };
         }
 
@@ -427,15 +423,23 @@ export async function updateRedemptionWaybill(params: {
 }
 
 /**
- * Cron���Զ�ȡ����ʱδ��Լ�Ķһ������˻����ֲ��ͷ�������档
- * Ĭ�� 30 �죬��ͨ�� POINT_REDEMPTION_PENDING_DAYS ��������Ϊ 0 �ɹرա�
+ * Cron 自动取消超时未履约的兑换，退还积分并释放限量库存。
+ * 默认 30 天，可通过 POINT_REDEMPTION_PENDING_DAYS 调整；设为 0 可关闭。
  */
 export async function expirePendingRedemptions(
   options: { days?: number; limit?: number } = {}
-): Promise<{ scanned: number; cancelled: number; skipped: number; failed: number }> {
+): Promise<{
+  scanned: number;
+  cancelled: number;
+  skipped: number;
+  failed: number;
+  refundedPoints: number;
+}> {
   const configuredDays = options.days ?? Number(process.env.POINT_REDEMPTION_PENDING_DAYS ?? "30");
   const days = Number.isFinite(configuredDays) ? configuredDays : 30;
-  if (days <= 0) return { scanned: 0, cancelled: 0, skipped: 0, failed: 0 };
+  if (days <= 0) {
+    return { scanned: 0, cancelled: 0, skipped: 0, failed: 0, refundedPoints: 0 };
+  }
   const limit = Math.min(500, Math.max(1, options.limit ?? 200));
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -449,6 +453,7 @@ export async function expirePendingRedemptions(
   let cancelled = 0;
   let skipped = 0;
   let failed = 0;
+  let refundedPoints = 0;
   for (const redemption of pending) {
     const auditId = await beginAuditLog({
       action: "point_redemption_auto_cancel",
@@ -473,10 +478,11 @@ export async function expirePendingRedemptions(
     try {
       const result = await cancelRedemption({
         redemptionId: redemption.id,
-        note: `��ʱ ${days} ��δ��Լ�Զ�ȡ��`,
+        note: `超时 ${days} 天未履约自动取消`,
       });
       if (result.ok) {
         cancelled += 1;
+        refundedPoints += result.points ?? 0;
         await finishAuditLog(auditId, "SUCCESS", {
           refundedPoints: result.points ?? 0,
         });
@@ -489,10 +495,10 @@ export async function expirePendingRedemptions(
       }
     } catch (error) {
       failed += 1;
-      apiConsole.error(`[PointRedemptionTimeout] ȡ��ʧ�� id=${redemption.id}:`, error);
+      apiConsole.error(`[PointRedemptionTimeout] 取消失败 id=${redemption.id}:`, error);
       await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
     }
   }
 
-  return { scanned: pending.length, cancelled, skipped, failed };
+  return { scanned: pending.length, cancelled, skipped, failed, refundedPoints };
 }

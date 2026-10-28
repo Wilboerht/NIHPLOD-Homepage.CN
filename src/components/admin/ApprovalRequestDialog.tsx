@@ -67,7 +67,11 @@ export function ApprovalRequestDialog({
   const policy = APPROVAL_POLICIES[policyKey];
 
   const policyOptions = useMemo(
-    () => APPROVAL_POLICY_LIST.map((item) => ({ value: item.key, label: item.label })),
+    () =>
+      APPROVAL_POLICY_LIST.filter((item) => !item.hidden).map((item) => ({
+        value: item.key,
+        label: item.label,
+      })),
     []
   );
 

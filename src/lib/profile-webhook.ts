@@ -18,6 +18,7 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { isSafeBackchannelUrl } from "@/lib/backchannel-logout";
 import { postPublicHttps } from "@/lib/outbound-http";
 import { resolveSsoAvatar } from "@/lib/default-avatar";
+import { notifyWebhookFailureDrop } from "@/lib/admin-alert";
 
 /** profile_update 事件标识（events claim 的 key） */
 export const PROFILE_UPDATE_EVENT_URI = "https://nihplod.cn/event/profile_update";
@@ -379,6 +380,13 @@ export async function retryFailedWebhookDeliveries(
           clientId: failure.clientId,
           success: false,
           detail: { reason: "max_retries_exceeded", attempts },
+        });
+        notifyWebhookFailureDrop({
+          kind: "profile_update",
+          clientId: failure.clientId,
+          userId: failure.userId,
+          attempts,
+          error: err instanceof Error ? err.message : String(err),
         });
       } else {
         const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);

@@ -17,7 +17,7 @@ import { Worker } from "node:worker_threads";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
-import { applyExternalSpentSync } from "@/lib/points";
+import { applyExternalSpentSync, SpentReversalExceedsBalanceError } from "@/lib/points";
 import {
   SPENT_CHANNEL_LABELS,
   SPENT_CHANNELS,
@@ -38,7 +38,15 @@ export const IMPORT_MAX_AMOUNT = 1_000_000; // 单行金额绝对值上限（元
 export const IMPORT_MAX_ORDER_NO_LENGTH = 64;
 export const IMPORT_MAX_NOTE_LENGTH = 500;
 export const IMPORT_ALLOWED_EXTENSIONS = [".xlsx", ".xls", ".csv"];
-export const IMPORT_PREVIEW_TTL_MS = 30 * 60 * 1000;
+// 单用户单日 Excel 导入消费额上限（元）。防止一次大批量导入绕过补录单笔审批阈值。
+// 可通过 SPENT_IMPORT_DAILY_LIMIT_YUAN 调整；非正数表示关闭该限制。
+const parsedImportDailyLimit = Number(process.env.SPENT_IMPORT_DAILY_LIMIT_YUAN);
+export const IMPORT_DAILY_LIMIT_YUAN =
+  Number.isFinite(parsedImportDailyLimit) && parsedImportDailyLimit > 0
+    ? Math.trunc(parsedImportDailyLimit)
+    : 1_000_000;
+// 2 小时：审批流程中 owner 可能不会立即处理，令牌绑定申请人且为加密快照，适当放宽。
+export const IMPORT_PREVIEW_TTL_MS = 2 * 60 * 60 * 1000;
 export const IMPORT_PREVIEW_TOKEN_MAX_LENGTH = 2_000_000;
 
 export const IMPORT_HEADERS = [
@@ -1115,9 +1123,15 @@ export async function executeImportBatch(params: {
 
         const markDuplicate = async (): Promise<ExecuteRowResult> => {
           const message = "该记录已入账过（幂等跳过）";
+          // 保留 userId：注销时按 userId 匿名化 phone，避免重复行残留明文手机号。
           await prisma.spentImportRow.update({
             where: { id: persisted.id },
-            data: { status: "DUPLICATE", error: message, appliedDelta: 0, userId: null },
+            data: {
+              status: "DUPLICATE",
+              error: message,
+              appliedDelta: 0,
+              userId: userIdByPhone.get(row.phone ?? "") ?? null,
+            },
           });
           return {
             rowIndex: row.rowIndex,
@@ -1203,11 +1217,13 @@ export async function executeImportBatch(params: {
                 reference: batchReference,
                 orderNo: row.orderNo,
                 source: "SPENT_IMPORT",
+                requireActiveUser: true,
                 note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
                   row.orderNo ? ` ${row.orderNo}` : ""
                 }`,
               },
-              tx
+              tx,
+              IMPORT_DAILY_LIMIT_YUAN
             );
             if (!result) throw new Error("SPENT_IMPORT_USER_MISSING");
 
@@ -1300,7 +1316,13 @@ export type UndoResult =
   | { ok: true; revertedRows: number; totalAmount: number }
   | {
       ok: false;
-      code: "NOT_FOUND" | "ALREADY_UNDONE" | "NOTHING_TO_UNDO" | "NOT_COMPLETED" | "INTERNAL_ERROR";
+      code:
+        | "NOT_FOUND"
+        | "ALREADY_UNDONE"
+        | "NOTHING_TO_UNDO"
+        | "NOT_COMPLETED"
+        | "REVERSAL_EXCEEDS_BALANCE"
+        | "INTERNAL_ERROR";
       message: string;
     };
 
@@ -1430,6 +1452,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
             userId: row.userId as string,
             spentDelta: -appliedDelta,
             reference,
+            allowNegativeClamp: false,
             note: `撤销Excel导入批次 ${batch.id}`,
           });
         }
@@ -1453,15 +1476,29 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
           where: { id: row.id },
           data: { revertedAt: new Date() },
         });
-        return true;
+        return "ok" as const;
       } catch (error) {
+        if (error instanceof SpentReversalExceedsBalanceError) {
+          apiConsole.warn(
+            `[SpentImport] 撤销批次 ${batch.id} 行 ${row.id} 被拒绝：用户当前累计消费不足以完整冲正`
+          );
+          return "insufficient" as const;
+        }
         apiConsole.error(`[SpentImport] 撤销批次 ${batch.id} 行 ${row.id} 冲正失败:`, error);
-        return false;
+        return "failed" as const;
       }
     }
   );
-  const failed = revertResults.filter((ok) => !ok).length;
+  const insufficient = revertResults.filter((result) => result === "insufficient").length;
+  const failed = revertResults.filter((result) => result === "failed").length;
 
+  if (insufficient > 0) {
+    return {
+      ok: false,
+      code: "REVERSAL_EXCEEDS_BALANCE",
+      message: `有 ${insufficient} 行因用户当前累计消费不足以完整冲正而停止撤销（请核对退款/导入记录后人工处理）`,
+    };
+  }
   if (failed > 0) {
     return {
       ok: false,

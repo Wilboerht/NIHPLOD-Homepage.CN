@@ -10,6 +10,7 @@ import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import {
   generateTOTPSecret,
   generateTOTPQRCodeUrl,
@@ -65,14 +66,30 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       );
     }
 
-    // 必须先验证当前密码
+    // 必须先验证当前密码；与会话改密共用账户级锁定桶，防持有会话时爆破当前密码。
+    const scopeId = `admin_password:${admin.email}`;
+    const { locked, remainingMinutes } = await checkAccountLockout(scopeId);
+    if (locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_LOCKED",
+            message: `密码错误次数过多，请在 ${remainingMinutes} 分钟后重试`,
+          },
+        },
+        { status: 429 }
+      );
+    }
     const passwordValid = await verifyPassword(password, admin.password);
     if (!passwordValid) {
+      await recordLoginAttempt(scopeId, false, request, "password_incorrect", "admin");
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PASSWORD", message: "密码错误" } },
         { status: 401 }
       );
     }
+    await clearLoginAttempts(scopeId);
 
     if (admin.totpEnabled) {
       return NextResponse.json(

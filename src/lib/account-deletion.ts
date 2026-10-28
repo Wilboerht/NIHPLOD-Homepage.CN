@@ -32,6 +32,14 @@ import { deleteUploadedFile } from "@/lib/upload";
 import { deleteSpentProofFile } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 import { DELETION_STATUS } from "@/lib/account-deletion-requests";
+import { lockPointBalance } from "@/lib/points-ledger";
+import { notifyAccountDeletionFailure } from "@/lib/admin-alert";
+import { runAfterResponse } from "@/lib/alert-notify";
+import {
+  dispatchStatusChangeWebhook,
+  getStatusChangeWebhookTargets,
+  toWebhookStatus,
+} from "@/lib/webhook";
 
 // 注销申请状态机常量与申请核心共用（src/lib/account-deletion-requests.ts），
 // 此处 re-export 保持既有引用（管理端路由/测试）不变
@@ -140,6 +148,7 @@ export async function executeAccountDeletion(
     }
 
     const originalPhone = user.phone;
+    const originalStatus = user.status;
     const placeholderPhone = anonymizedPhone(originalPhone, userId);
 
     // 2. 静默撤销全部会话（不改变 User.status、不发送 deleted webhook）：
@@ -252,6 +261,8 @@ export async function executeAccountDeletion(
       // 账号注销积分作废：写一条 ADJUST 流水后清零余额。
       // 保留流水便于财务审计；正余额记为负向作废，负余额（超兑债务）记为正向豁免，
       // 避免余额长期留在全站积分总额里虚高。账户已 DELETED，后续不可登录使用。
+      // 先锁余额行，与 adjustPoints/退款等积分写入串行化，避免读到旧余额后无条件清零。
+      await lockPointBalance(tx, userId);
       const pointBalance = await tx.pointBalance.findUnique({
         where: { userId },
         select: { available: true, frozen: true },
@@ -322,6 +333,20 @@ export async function executeAccountDeletion(
       return "skipped";
     }
 
+    runAfterResponse(
+      () =>
+        dispatchStatusChangeWebhook(
+          {
+            userId,
+            oldStatus: toWebhookStatus(originalStatus),
+            newStatus: "deleted",
+            source: "self_service",
+          },
+          getStatusChangeWebhookTargets()
+        ),
+      "AccountDeletion"
+    );
+
     if (options.notifyUser !== false) {
       try {
         await sendAccountDeletedNotification(originalPhone);
@@ -376,13 +401,19 @@ export async function executeAccountDeletion(
 
     const updated = await prisma.accountDeletionRequest.findUnique({
       where: { id: requestId },
-      select: { attempts: true },
+      select: { attempts: true, userId: true },
     });
 
     if (updated && updated.attempts >= MAX_DELETION_ATTEMPTS) {
       apiConsole.error(
-        `[AccountDeletion] 申请 ${requestId} 已连续失败 ${updated.attempts} 次，转人工处理: ${message}`
+        `[AccountDeletion] 申请 ${requestId} 连续失败 ${updated.attempts} 次，转人工处理: ${message}`
       );
+      notifyAccountDeletionFailure({
+        requestId,
+        userId: updated.userId,
+        attempts: updated.attempts,
+        error: message,
+      });
     } else {
       apiConsole.warn(`[AccountDeletion] 申请 ${requestId} 执行失败，待下次重试: ${message}`);
     }

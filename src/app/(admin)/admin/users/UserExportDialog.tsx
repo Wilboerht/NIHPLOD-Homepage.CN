@@ -16,6 +16,7 @@ interface UserExportDialogProps {
   total: number;
   canReadSensitive: boolean;
   canReadAdvisor: boolean;
+  canReadAdvisorReport: boolean;
   loading: boolean;
   onClose: () => void;
   onConfirm: (groups: UserExportGroup[]) => void;
@@ -40,9 +41,11 @@ const ADVISOR_GROUPS: UserExportGroup[] = [
   "advisorFullAnalysis",
 ];
 
-function defaultGroups(canReadAdvisor: boolean): UserExportGroup[] {
+function defaultGroups(canReadAdvisor: boolean, canReadAdvisorReport: boolean): UserExportGroup[] {
   return DEFAULT_USER_EXPORT_GROUPS.filter(
-    (group) => canReadAdvisor || !ADVISOR_EXPORT_GROUPS.includes(group)
+    (group) =>
+      (canReadAdvisor || !ADVISOR_EXPORT_GROUPS.includes(group)) &&
+      (canReadAdvisorReport || group !== "advisorFullAnalysis")
   );
 }
 
@@ -81,11 +84,15 @@ export function UserExportDialog({
   total,
   canReadSensitive,
   canReadAdvisor,
+  canReadAdvisorReport,
   loading,
   onClose,
   onConfirm,
 }: UserExportDialogProps) {
-  const defaults = useMemo(() => defaultGroups(canReadAdvisor), [canReadAdvisor]);
+  const defaults = useMemo(
+    () => defaultGroups(canReadAdvisor, canReadAdvisorReport),
+    [canReadAdvisor, canReadAdvisorReport]
+  );
   const [selected, setSelected] = useState<Set<UserExportGroup>>(new Set(defaults));
   const [prevOpen, setPrevOpen] = useState(open);
   if (prevOpen !== open) {
@@ -230,7 +237,7 @@ export function UserExportDialog({
                   key={group}
                   group={group}
                   checked={selected.has(group)}
-                  disabled={loading}
+                  disabled={loading || (group === "advisorFullAnalysis" && !canReadAdvisorReport)}
                   onChange={(checked) => toggle(group, checked)}
                 />
               ))}

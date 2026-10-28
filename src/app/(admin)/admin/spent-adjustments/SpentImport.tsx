@@ -20,6 +20,8 @@ import {
 } from "@/lib/spent-import-rows";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { ImportBatchDetailModal } from "./ImportBatchDetail";
 
 /** 浏览器端下载文本 CSV（BOM 由内容携带） */
@@ -32,7 +34,8 @@ function downloadCsv(filename: string, csv: string) {
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  // Safari/旧内核在点击后立即 revoke 可能取消下载
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 interface PreviewRowItem {
@@ -99,6 +102,8 @@ function formatDateTime(iso: string): string {
 /** 导入弹窗 */
 export function SpentImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { success, error: showError } = useToast();
+  const { role } = useAdminPermissions();
+  const isOwner = role === "owner";
   const { requireTotp, totpModal } = useTotpConfirm();
   const [step, setStep] = useState<"upload" | "preview" | "result">("upload");
   const [uploading, setUploading] = useState(false);
@@ -164,6 +169,31 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
     setImporting(true);
     try {
       const okRows = preview.rows.filter((r) => r.status === "ok");
+
+      if (!isOwner) {
+        if (trimmedReason.length < 5) {
+          showError("提交 owner 审批时，导入原因至少 5 个字符");
+          return;
+        }
+        await apiPost("/api/admin/approvals", {
+          policyKey: "spent.import.execute",
+          payload: {
+            previewToken: preview.previewToken,
+            rowIndexes: okRows.map((r) => r.rowIndex),
+            reason: trimmedReason,
+          },
+          reason: trimmedReason,
+        });
+        window.dispatchEvent(new Event("admin:nav-counts-refresh"));
+        success("已提交 owner 审批；审批通过后系统将自动执行导入");
+        if (generation !== generationRef.current) return;
+        setStep("upload");
+        setPreview(null);
+        setReason("");
+        onClose();
+        return;
+      }
+
       const submit = (totpCode?: string) =>
         apiRequest<ExecuteData>("/api/admin/spent-import/execute", {
           method: "POST",
@@ -464,6 +494,8 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
 /** 导入历史弹窗（含整批撤销） */
 export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { success, error: showError } = useToast();
+  const { role } = useAdminPermissions();
+  const isOwner = role === "owner";
   const { requireTotp, totpModal } = useTotpConfirm();
   const [batches, setBatches] = useState<ImportBatchItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -494,23 +526,27 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
     }>;
   } | null>(null);
 
+  const takeLatest = useLatestRequest();
   const fetchBatches = useCallback(async () => {
+    const isLatest = takeLatest();
     setLoading(true);
     try {
       const data = await apiGet<{
         batches: ImportBatchItem[];
         pagination: { page: number; totalPages: number };
       }>("/api/admin/spent-import", { page, pageSize: 10 });
+      if (!isLatest()) return;
       setBatches(data.batches);
       setTotalPages(data.pagination.totalPages);
       setLoadError(false);
     } catch (e) {
+      if (!isLatest()) return;
       setLoadError(true);
       showError(e instanceof ApiError ? e.message : "加载导入历史失败");
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, [page, showError]);
+  }, [page, showError, takeLatest]);
 
   useEffect(() => {
     if (open) {
@@ -557,6 +593,24 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
     }
     setUndoing(true);
     try {
+      if (!isOwner) {
+        if (trimmedReason.length < 5) {
+          showError("提交 owner 审批时，撤销原因至少 5 个字符");
+          return;
+        }
+        await apiPost("/api/admin/approvals", {
+          policyKey: "spent.import.undo",
+          payload: { batchId: undoTarget.id, reason: trimmedReason },
+          reason: trimmedReason,
+        });
+        window.dispatchEvent(new Event("admin:nav-counts-refresh"));
+        success("已提交 owner 审批；审批通过后系统将自动撤销该批次");
+        setUndoTarget(null);
+        setUndoReason("");
+        fetchBatches();
+        return;
+      }
+
       const submit = (totpCode?: string) =>
         apiPost(`/api/admin/spent-import/${undoTarget.id}/undo`, {
           totpCode,

@@ -213,14 +213,36 @@ export async function GET(request: NextRequest, context: RouteContext) {
       select: { id: true },
     });
     if (!recentView) {
-      await createAuditLog({
-        action: auditAction,
-        targetType: "user",
-        targetId: id,
-        detail: { phone: maskPhone(user.phone), sensitive: canReadSensitive },
-        adminId: admin.id,
-        request,
-      });
+      if (canReadSensitive) {
+        // 完整 PII 返回前审计必须落库；失败时拒绝返回，避免“敏感读取无审计”。
+        try {
+          await createAuditLogStrict({
+            action: auditAction,
+            targetType: "user",
+            targetId: id,
+            detail: { phone: maskPhone(user.phone), sensitive: true },
+            adminId: admin.id,
+            request,
+          });
+        } catch {
+          return NextResponse.json(
+            {
+              success: false,
+              error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝返回敏感信息" },
+            },
+            { status: 503 }
+          );
+        }
+      } else {
+        await createAuditLog({
+          action: auditAction,
+          targetType: "user",
+          targetId: id,
+          detail: { phone: maskPhone(user.phone), sensitive: false },
+          adminId: admin.id,
+          request,
+        });
+      }
     }
 
     // 外部身份来源小程序名称：metadata.mpClientId → OAuthClient.name

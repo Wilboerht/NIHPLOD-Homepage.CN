@@ -30,6 +30,16 @@ export class SpentDailyLimitError extends Error {
   readonly code = "SYNC_DAILY_LIMIT_EXCEEDED";
 }
 
+/** 冲正金额超过用户当前累计消费，严格模式拒绝部分冲正，避免账实不一致。 */
+export class SpentReversalExceedsBalanceError extends Error {
+  readonly code = "SPENT_REVERSAL_EXCEEDS_BALANCE";
+}
+
+/** 严格模式下目标用户必须为 ACTIVE（导入/补录审核等正向入账使用）。 */
+export class SpentUserNotActiveError extends Error {
+  readonly code = "SPENT_USER_NOT_ACTIVE";
+}
+
 /**
  * 根据历史消费金额计算会员等级
  * 阈值唯一来源为 lib/membership.ts LEVEL_THRESHOLDS（与前台展示同源，不会漂移）。
@@ -75,6 +85,10 @@ export async function applyExternalSpentSync(
     note?: string;
     orderNo?: string | null;
     source?: SpentOrderSource;
+    /** 默认 true（保持历史退款钳制行为）；撤销/冲正场景传 false，禁止部分冲正。 */
+    allowNegativeClamp?: boolean;
+    /** 正向入账时可要求用户当前仍为 ACTIVE，防止注销/封禁与导入并发。 */
+    requireActiveUser?: boolean;
   },
   txClient?: Prisma.TransactionClient,
   dailyLimitYuan?: number
@@ -86,6 +100,8 @@ export async function applyExternalSpentSync(
 } | null> {
   const { userId, spentDelta, reference, note, orderNo } = params;
   const source = params.source ?? "MALL_SYNC";
+  const allowNegativeClamp = params.allowNegativeClamp ?? true;
+  const requireActiveUser = params.requireActiveUser ?? false;
   // 兼容未升级的商城客户端：正向消费以 reference 作为订单号兜底；显式 orderNo 优先。
   const normalizedOrder = normalizeOptionalOrderNo(orderNo ?? (spentDelta > 0 ? reference : null));
 
@@ -106,11 +122,16 @@ export async function applyExternalSpentSync(
       }
 
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-      if (spentDelta > 0 && dailyLimitYuan && dailyLimitYuan > 0 && source === "MALL_SYNC") {
+      if (
+        spentDelta > 0 &&
+        dailyLimitYuan &&
+        dailyLimitYuan > 0 &&
+        (source === "MALL_SYNC" || source === "SPENT_IMPORT")
+      ) {
         const daily = await tx.spentSyncRecord.aggregate({
           where: {
             userId,
-            source: "MALL_SYNC",
+            source,
             createdAt: { gte: getUtc8DayStart() },
             spentDelta: { gt: 0 },
           },
@@ -137,6 +158,7 @@ export async function applyExternalSpentSync(
         const user = await tx.user.findUnique({
           where: { id: userId },
           select: {
+            status: true,
             totalSpent: true,
             membershipLevel: true,
             silverActivatedAt: true,
@@ -145,8 +167,16 @@ export async function applyExternalSpentSync(
           },
         });
         if (!user) return null;
+        if (requireActiveUser && user.status !== "ACTIVE") {
+          throw new SpentUserNotActiveError();
+        }
 
-        // 钳制下限 0：退款累计不得超过历史消费
+        // 钳制下限 0：退款累计不得超过历史消费。
+        // 撤销/冲正场景必须严格相等，否则“只冲回一部分但批次/审核被标记已撤销”，
+        // 之后重新导入/重新审核会凭空制造消费额与积分。
+        if (!allowNegativeClamp && user.totalSpent + spentDelta < 0) {
+          throw new SpentReversalExceedsBalanceError();
+        }
         const newTotalSpent = Math.max(0, user.totalSpent + spentDelta);
         // 实际生效 delta（负数被 0 下限钳制时可能小于请求的 |spentDelta|）。
         // 积分、等级轨迹、导入批次与撤销都必须使用该值，避免撤销时放大消费额。

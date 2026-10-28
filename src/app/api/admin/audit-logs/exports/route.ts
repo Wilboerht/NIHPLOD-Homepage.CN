@@ -98,6 +98,12 @@ export async function POST(request: NextRequest) {
     if (stepUp) return stepUp;
 
     const body = createSchema.parse(await request.json());
+    if (body.stream === "sso" && !hasAdminPermission(admin, "sso:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 审计查看" } },
+        { status: 403, headers: NO_STORE_HEADERS }
+      );
+    }
     const filters = {
       ...body.filters,
       canViewSensitive: hasAdminPermission(admin, "audit:sensitive:read"),

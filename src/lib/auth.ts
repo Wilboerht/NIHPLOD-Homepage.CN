@@ -190,6 +190,8 @@ async function verifyAuthCore(request: NextRequest): Promise<AdminJWTPayload | n
     name: admin.name,
     role: admin.role,
     ver: admin.tokenVersion,
+    // jti 必须透传：step-up 凭证按会话绑定/撤销，审计也依赖它区分会话。
+    jti: payload.jti,
     permissionOverrides: admin.permissions ?? [],
   };
 }

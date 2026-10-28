@@ -38,6 +38,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         { status: 404 }
       );
     }
+    if (job.stream === "sso" && !hasAdminPermission(admin, "sso:read")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 审计查看" } },
+        { status: 403 }
+      );
+    }
     const filters = job.filters as { canViewSensitive?: boolean };
     if (filters.canViewSensitive && !hasAdminPermission(admin, "audit:sensitive:read")) {
       return NextResponse.json(

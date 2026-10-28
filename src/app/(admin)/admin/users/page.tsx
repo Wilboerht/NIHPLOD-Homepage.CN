@@ -423,8 +423,10 @@ function AdminUsersContent() {
   const [loadError, setLoadError] = useState("");
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
 
-  const page = parseInt(searchParams.get("page") || "1");
-  const pageSize = parseInt(searchParams.get("pageSize") || "20");
+  const rawPage = Number(searchParams.get("page") || "1");
+  const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.min(1000, Math.trunc(rawPage)) : 1;
+  const rawPageSize = Number(searchParams.get("pageSize") || "20");
+  const pageSize = [10, 20, 50, 100].includes(rawPageSize) ? rawPageSize : 20;
   const search = searchParams.get("search") || "";
   const status = searchParams.get("status") || "";
   const level = searchParams.get("level") || "";
@@ -489,6 +491,7 @@ function AdminUsersContent() {
   const canAdjustPoints = canAdmin("points:adjust");
   const canRevealPhone = canAdmin("users:sensitive:read");
   const canReadAdvisorProfile = canAdmin("advisor:users:read");
+  const canReadAdvisorReport = canAdmin("advisor:report:read");
   const canRequestApproval = canAdmin("approvals:request");
   const [approvalTarget, setApprovalTarget] = useState<{
     policyKey: ApprovalPolicyKey;
@@ -898,6 +901,10 @@ function AdminUsersContent() {
 
   const confirmBatchChange = async () => {
     if (!batchTarget || selectedIds.size === 0) return;
+    if (!isOwnerActor) {
+      toast.error("批量修改用户状态需要 owner 审批，请到详情页逐条提交申请");
+      return;
+    }
     const { status: targetStatus } = batchTarget;
     setBatchLoading(true);
     try {
@@ -1136,7 +1143,7 @@ function AdminUsersContent() {
                 onClick={() => setExportOpen(true)}
                 loading={exporting}
               >
-                {exporting ? "预检�?.." : "导出用户数据"}
+                {exporting ? "预检中..." : "导出用户数据"}
               </Button>
             )}
             <Button
@@ -1229,7 +1236,7 @@ function AdminUsersContent() {
       </div>
 
       {/* 批量操作独立一行，避免勾选后把筛选器挤到第二行 */}
-      {canWriteUsers && selectedIds.size > 0 && (
+      {canWriteUsers && isOwnerActor && selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand-primary/15 bg-brand-primary/[0.03] px-4 py-3">
           <span className="mr-1 text-sm font-medium text-brand-charcoal">
             已选 {selectedCount} 项
@@ -1345,7 +1352,7 @@ function AdminUsersContent() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {canDeleteUsers && (
+                        {canDeleteUsers && isOwnerActor && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1461,7 +1468,7 @@ function AdminUsersContent() {
                           <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {canDeleteUsers && (
+                          {canDeleteUsers && isOwnerActor && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1739,7 +1746,9 @@ function AdminUsersContent() {
                         <div className="flex flex-wrap items-center gap-2">
                           <span>
                             {detailUser.birthday
-                              ? new Date(detailUser.birthday).toLocaleDateString("zh-CN")
+                              ? new Date(detailUser.birthday).toLocaleDateString("zh-CN", {
+                                  timeZone: "UTC",
+                                })
                               : "未设置"}
                           </span>
                           {detailUser.birthdayLocked && (
@@ -2400,7 +2409,7 @@ function AdminUsersContent() {
             value={birthdayInput}
             min="1900-01-01"
             // 生日不能晚于今天，避免未来日期影响生日积分发放
-            max={new Date().toISOString().slice(0, 10)}
+            max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`}
             onChange={(e) => setBirthdayInput(e.target.value)}
           />
         </div>
@@ -2548,6 +2557,7 @@ function AdminUsersContent() {
         total={pagination.total}
         canReadSensitive={canRevealPhone}
         canReadAdvisor={canReadAdvisorProfile}
+        canReadAdvisorReport={canReadAdvisorReport}
         loading={exporting}
         onClose={() => setExportOpen(false)}
         onConfirm={startExport}

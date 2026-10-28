@@ -47,7 +47,7 @@ const mockStore = vi.hoisted(() => ({
 // 统一 mock 外部依赖
 // ============================================
 
-// === Prisma：内存化授权码记录，使 create/consume 能自�?===
+// === Prisma：内存化授权码记录，使 create/consume 能自洽 ===
 vi.mock("@/lib/prisma", () => {
   const _flowPrismaClient = {
     oAuthAuthorizationCode: {

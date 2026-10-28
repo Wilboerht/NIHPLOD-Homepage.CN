@@ -17,6 +17,9 @@ const tx = vi.hoisted(() => ({
   product: {
     updateMany: vi.fn(),
   },
+  user: {
+    findUnique: vi.fn(),
+  },
   auditLog: {
     findFirst: vi.fn(),
     create: vi.fn(),
@@ -72,12 +75,19 @@ describe("expirePendingRedemptions", () => {
     tx.pointLedger.findMany.mockResolvedValue([]);
     tx.pointLedger.create.mockResolvedValue({});
     tx.product.updateMany.mockResolvedValue({ count: 1 });
+    tx.user.findUnique.mockResolvedValue({ status: "ACTIVE" });
   });
 
   it("超时 PENDING 自动取消、退分并写审计", async () => {
     const result = await expirePendingRedemptions({ days: 30 });
 
-    expect(result).toEqual({ scanned: 1, cancelled: 1, skipped: 0, failed: 0 });
+    expect(result).toEqual({
+      scanned: 1,
+      cancelled: 1,
+      skipped: 0,
+      failed: 0,
+      refundedPoints: 100,
+    });
     expect(tx.pointRedemption.updateMany).toHaveBeenCalledWith({
       where: { id: "redemption-1", status: "PENDING" },
       data: expect.objectContaining({ status: "CANCELLED" }),

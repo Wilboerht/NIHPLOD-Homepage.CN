@@ -11,6 +11,7 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { isSafeBackchannelUrl } from "@/lib/backchannel-logout";
 import { postPublicHttps } from "@/lib/outbound-http";
 import type { UserStatus } from "@/generated/prisma/client";
+import { notifyWebhookFailureDrop } from "@/lib/admin-alert";
 
 // 状态值约定（与商城侧 zod 校验对齐）：发送 User.status 原始大写枚举 ACTIVE/SUSPENDED/BANNED；
 // 删除事件 newStatus 固定为小写 "deleted"（商城侧按此约定映射为禁用账户）
@@ -194,6 +195,7 @@ export async function dispatchStatusChangeWebhook(
           data: {
             userId: change.userId,
             clientId: target.clientId,
+            targetUrl: target.url,
             payload,
             nextRetryAt: new Date(Date.now() + 60_000),
           },
@@ -224,6 +226,28 @@ export interface ManualStatusWebhookRetryResult {
   attempts?: number;
 }
 
+async function resolveStatusWebhookRetryTarget(
+  failure: { clientId: string; targetUrl?: string | null },
+  options?: { requireActiveClient?: boolean }
+): Promise<WebhookTarget | null> {
+  if (failure.targetUrl && isSafeBackchannelUrl(failure.targetUrl)) {
+    return {
+      clientId: failure.clientId,
+      clientName: failure.clientId,
+      url: failure.targetUrl,
+    };
+  }
+  if (failure.targetUrl) return null;
+
+  const client = await prisma.oAuthClient.findUnique({
+    where: { clientId: failure.clientId },
+    select: { clientId: true, name: true, webhookUri: true, isActive: true },
+  });
+  if (!client?.webhookUri || !isSafeBackchannelUrl(client.webhookUri)) return null;
+  if (options?.requireActiveClient && !client.isActive) return null;
+  return { clientId: client.clientId, clientName: client.name, url: client.webhookUri };
+}
+
 /**
  * 管理端手动重投单条“账户状态变更”Webhook。
  *
@@ -248,36 +272,30 @@ export async function retryStatusWebhookFailureById(
   });
   if (claimed.count === 0) return { ok: false, status: "not_found" };
 
-  const client = await prisma.oAuthClient.findUnique({
-    where: { clientId: failure.clientId },
-    select: { clientId: true, name: true, webhookUri: true, isActive: true },
+  const target = await resolveStatusWebhookRetryTarget(failure, {
+    requireActiveClient: true,
   });
-  const uri = client?.webhookUri;
-  if (!client?.isActive || !uri || !isSafeBackchannelUrl(uri)) {
+  if (!target) {
     await prisma.webhookDeliveryFailure.delete({ where: { id } }).catch(() => undefined);
     recordSsoEvent({
       event: "status_change",
       userId: failure.userId,
       clientId: failure.clientId,
-      clientName: client?.name,
+      clientName: failure.clientId,
       success: false,
       detail: { reason: "target_unavailable", manual: true },
     });
     return { ok: true, status: "dropped", attempts: failure.attempts };
   }
 
-  const success = await sendWebhook(
-    { clientId: client.clientId, clientName: client.name, url: uri },
-    payload,
-    0
-  );
+  const success = await sendWebhook(target, payload, 0);
   if (success) {
     await prisma.webhookDeliveryFailure.delete({ where: { id } });
     recordSsoEvent({
       event: "status_change",
       userId: failure.userId,
       clientId: failure.clientId,
-      clientName: client.name,
+      clientName: target.clientName,
       success: true,
       detail: { manual: true, attempts: failure.attempts },
     });
@@ -291,7 +309,7 @@ export async function retryStatusWebhookFailureById(
       event: "status_change",
       userId: failure.userId,
       clientId: failure.clientId,
-      clientName: client.name,
+      clientName: target.clientName,
       success: false,
       detail: { reason: "max_attempts_reached", manual: true, attempts },
     });
@@ -326,20 +344,13 @@ export async function retryFailedStatusWebhooks(limit = 50): Promise<number> {
     });
     if (claimed.count === 0) continue;
 
-    const client = await prisma.oAuthClient.findUnique({
-      where: { clientId: failure.clientId },
-      select: { clientId: true, name: true, webhookUri: true },
-    });
-    if (!client?.webhookUri) {
+    const target = await resolveStatusWebhookRetryTarget(failure);
+    if (!target) {
       await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
       continue;
     }
     const payload = failure.payload as Record<string, unknown>;
-    const success = await sendWebhook(
-      { clientId: client.clientId, clientName: client.name, url: client.webhookUri },
-      payload,
-      0
-    );
+    const success = await sendWebhook(target, payload, 0);
     if (success) {
       delivered += 1;
       await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
@@ -349,6 +360,13 @@ export async function retryFailedStatusWebhooks(limit = 50): Promise<number> {
     const attempts = failure.attempts + 1;
     if (attempts >= 8) {
       await prisma.webhookDeliveryFailure.delete({ where: { id: failure.id } });
+      notifyWebhookFailureDrop({
+        kind: "account_status_change",
+        clientId: failure.clientId,
+        userId: failure.userId,
+        attempts,
+        error: "达到最大重试次数",
+      });
     } else {
       await prisma.webhookDeliveryFailure.update({
         where: { id: failure.id },

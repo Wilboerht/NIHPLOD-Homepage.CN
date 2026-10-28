@@ -57,7 +57,7 @@ export async function scanAuditAlerts(now = new Date()): Promise<void> {
   const authFailures = await prisma.auditLog.groupBy({
     by: ["actorEmail", "ipAddress"],
     where: {
-      action: { in: ["admin_login_failed", "admin_totp_failed"] },
+      action: { in: ["admin_login_failed", "admin_totp_failed", "step_up_failed"] },
       createdAt: { gte: since },
     },
     _count: { _all: true },
@@ -134,7 +134,17 @@ export async function scanAuditAlerts(now = new Date()): Promise<void> {
 
 export async function sendAuditDailyDigest(now = new Date()): Promise<void> {
   const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const [total, failures, highRisk, topActions] = await Promise.all([
+  const sensitiveActions = [
+    "application_detail_view",
+    "application_list_view",
+    "resume_download",
+    "point_redemption_pii_view",
+    "spent_receipt_view",
+    "user_detail_sensitive_view",
+    "message_sensitive_view",
+    "amap_config_view",
+  ];
+  const [total, failures, highRisk, topActions, sensitiveViews] = await Promise.all([
     prisma.auditLog.count({ where: { createdAt: { gte: since } } }),
     prisma.auditLog.count({ where: { createdAt: { gte: since }, outcome: "FAILURE" } }),
     prisma.auditLog.count({
@@ -147,7 +157,14 @@ export async function sendAuditDailyDigest(now = new Date()): Promise<void> {
       orderBy: { _count: { action: "desc" } },
       take: 5,
     }),
+    prisma.auditLog.groupBy({
+      by: ["action"],
+      where: { createdAt: { gte: since }, action: { in: sensitiveActions } },
+      _count: { _all: true },
+      orderBy: { _count: { action: "desc" } },
+    }),
   ]);
+  const sensitiveTotal = sensitiveViews.reduce((sum, row) => sum + row._count._all, 0);
 
   await notify("审计日报（近 24 小时）", [
     `- 总操作：${total}`,
@@ -156,6 +173,11 @@ export async function sendAuditDailyDigest(now = new Date()): Promise<void> {
     "",
     "Top actions：",
     ...topActions.map(
+      (row) => `- ${AUDIT_ACTION_LABELS[row.action] ?? row.action}：${row._count._all}`
+    ),
+    "",
+    `敏感信息查看：${sensitiveTotal}`,
+    ...sensitiveViews.map(
       (row) => `- ${AUDIT_ACTION_LABELS[row.action] ?? row.action}：${row._count._all}`
     ),
   ]);

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LogOut, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { apiPost } from "@/lib/api-client";
+import { useToast } from "@/components/ui/Toast";
 import { apiConsole } from "@/lib/logger";
 
 function buildReasonText(site: string): Record<string, string> {
@@ -20,6 +21,7 @@ function buildReasonText(site: string): Record<string, string> {
 function AdminSsoDeniedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
   const reason = searchParams.get("reason") || "forbidden";
   // 子站名由上游授权端透传，未提供时泛化展示
   const site = searchParams.get("site") || "该子站";
@@ -36,6 +38,7 @@ function AdminSsoDeniedContent() {
       router.refresh();
     } catch (error) {
       apiConsole.error("登出失败:", error);
+      toast.error("退出失败，请稍后重试");
       setLoggingOut(false);
     }
   };

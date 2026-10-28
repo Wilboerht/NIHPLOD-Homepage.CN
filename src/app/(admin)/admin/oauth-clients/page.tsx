@@ -320,11 +320,13 @@ function ClientActions({
       </Tooltip>
       {canWrite && (
         <>
-          <Tooltip content="在线测试" side="top">
-            <IconButton label={`在线测试 ${client.name}`} onClick={onTest}>
-              <Shield className="h-4 w-4" />
-            </IconButton>
-          </Tooltip>
+          {!client.isPublic && (
+            <Tooltip content="在线测试" side="top">
+              <IconButton label={`在线测试 ${client.name}`} onClick={onTest}>
+                <Shield className="h-4 w-4" />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip content="编辑" side="top">
             <IconButton label={`编辑 ${client.name}`} onClick={onEdit}>
               <Pencil className="h-4 w-4" />

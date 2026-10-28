@@ -20,6 +20,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { cn } from "@/lib/utils";
 
 type DeletionStatus = "PENDING" | "RUNNING" | "CANCELLED" | "COMPLETED" | "FAILED";
@@ -95,7 +96,8 @@ export default function AdminAccountDeletionsPage() {
 function AdminAccountDeletionsContent() {
   const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
-  const { can: canAdmin } = useAdminPermissions();
+  const { can: canAdmin, role } = useAdminPermissions();
+  const isOwnerActor = role === "owner";
   const { requireTotp, totpModal } = useTotpConfirm();
   const canRetry = canAdmin("users:delete");
   const statusParam = get("status", "FAILED");
@@ -111,26 +113,33 @@ function AdminAccountDeletionsContent() {
   const [retryTarget, setRetryTarget] = useState<DeletionItem | null>(null);
   const [forceRetry, setForceRetry] = useState(false);
 
-  const fetchItems = useCallback(async (targetStatus: DeletionStatus, targetPage: number) => {
-    setLoading(true);
-    try {
-      const data = await apiGet<{
-        items: DeletionItem[];
-        pagination: { totalPages: number };
-      }>("/api/admin/account-deletions", {
-        status: targetStatus,
-        page: targetPage,
-        pageSize: 20,
-      });
-      setItems(data.items);
-      setTotalPages(data.pagination.totalPages);
-      setLoadError(false);
-    } catch {
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const takeLatest = useLatestRequest();
+  const fetchItems = useCallback(
+    async (targetStatus: DeletionStatus, targetPage: number) => {
+      const isLatest = takeLatest();
+      setLoading(true);
+      try {
+        const data = await apiGet<{
+          items: DeletionItem[];
+          pagination: { totalPages: number };
+        }>("/api/admin/account-deletions", {
+          status: targetStatus,
+          page: targetPage,
+          pageSize: 20,
+        });
+        if (!isLatest()) return;
+        setItems(data.items);
+        setTotalPages(data.pagination.totalPages);
+        setLoadError(false);
+      } catch {
+        if (!isLatest()) return;
+        setLoadError(true);
+      } finally {
+        if (isLatest()) setLoading(false);
+      }
+    },
+    [takeLatest]
+  );
 
   useEffect(() => {
     deferInEffect(() => fetchItems(status, page));
@@ -145,6 +154,20 @@ function AdminAccountDeletionsContent() {
   const handleRetry = async (item: DeletionItem, force: boolean) => {
     setActioningId(item.id);
     try {
+      if (!isOwnerActor) {
+        await apiPost("/api/admin/approvals", {
+          policyKey: "user.delete",
+          payload: { userId: item.userId },
+          reason: "账号注销执行失败，申请 owner 审批重新执行",
+        });
+        window.dispatchEvent(new Event("admin:nav-counts-refresh"));
+        success("已提交 owner 审批；审批通过后系统将重新执行注销");
+        setRetryTarget(null);
+        setForceRetry(false);
+        fetchItems(status, page);
+        return;
+      }
+
       const submit = () =>
         apiPost<{ status: string; message: string }>("/api/admin/account-deletions", {
           id: item.id,

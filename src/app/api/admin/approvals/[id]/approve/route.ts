@@ -7,6 +7,8 @@ import { approveApprovalRequest } from "@/lib/admin-approval";
 import { approvalErrorResponse } from "@/lib/admin-approval-http";
 
 export const dynamic = "force-dynamic";
+// 审批可能触发 Excel 批量导入（最多 500 行），与导入执行接口保持相同超时上限
+export const maxDuration = 300;
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, private",

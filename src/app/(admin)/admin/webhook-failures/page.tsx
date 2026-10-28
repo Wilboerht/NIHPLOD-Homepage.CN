@@ -19,6 +19,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { cn } from "@/lib/utils";
 
 type Kind = "webhook" | "backchannel";
@@ -93,28 +94,35 @@ function AdminWebhookFailuresContent() {
   const [retryTarget, setRetryTarget] = useState<FailureItem | null>(null);
   const [dropTarget, setDropTarget] = useState<FailureItem | null>(null);
 
-  const fetchItems = useCallback(async (targetKind: Kind, targetPage: number) => {
-    setLoading(true);
-    try {
-      const data = await apiGet<{
-        items: FailureItem[];
-        pagination: { totalPages: number };
-        counts: Record<Kind, number>;
-      }>("/api/admin/webhook-failures", {
-        kind: targetKind,
-        page: targetPage,
-        pageSize: 20,
-      });
-      setItems(data.items);
-      setTotalPages(data.pagination.totalPages);
-      setCounts(data.counts);
-      setLoadError(false);
-    } catch {
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const takeLatest = useLatestRequest();
+  const fetchItems = useCallback(
+    async (targetKind: Kind, targetPage: number) => {
+      const isLatest = takeLatest();
+      setLoading(true);
+      try {
+        const data = await apiGet<{
+          items: FailureItem[];
+          pagination: { totalPages: number };
+          counts: Record<Kind, number>;
+        }>("/api/admin/webhook-failures", {
+          kind: targetKind,
+          page: targetPage,
+          pageSize: 20,
+        });
+        if (!isLatest()) return;
+        setItems(data.items);
+        setTotalPages(data.pagination.totalPages);
+        setCounts(data.counts);
+        setLoadError(false);
+      } catch {
+        if (!isLatest()) return;
+        setLoadError(true);
+      } finally {
+        if (isLatest()) setLoading(false);
+      }
+    },
+    [takeLatest]
+  );
 
   useEffect(() => {
     deferInEffect(() => fetchItems(kind, page));

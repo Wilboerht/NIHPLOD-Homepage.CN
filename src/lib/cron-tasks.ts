@@ -30,10 +30,10 @@ import { executeDueAccountDeletions } from "./account-deletion";
 import { anonymizeDeletedAdmins } from "./admin-retention";
 import { cleanupExpiredAdminStepUpGrants } from "./admin-step-up";
 import { cleanupExpiredAdminTotpRecoveries } from "./admin-totp-recovery";
-import { anchorMissingAuditDays } from "./audit-integrity";
+import { anchorMissingAuditDays, verifyRecentAuditDays } from "./audit-integrity";
 import { archiveAuditDay } from "./audit-archive";
 import { expireAuditExportJobs, processAuditExportJobs } from "./audit-export";
-import { expirePendingApprovals } from "./admin-approval";
+import { expirePendingApprovals, reconcileStaleApprovedApprovals } from "./admin-approval";
 import { reapStalePendingAuditLogs } from "./audit";
 import {
   scanAuditAlerts,
@@ -43,13 +43,28 @@ import {
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
 import { acquireCronLock, releaseCronLock, startCronLockHeartbeat } from "./cron-lock";
+import {
+  notifyAuditIntegrityFailure,
+  notifyCronFailure,
+  notifyPointInvariantIssues,
+  scanWebhookFailureQueues,
+} from "./admin-alert";
+import {
+  notifyRedemptionAutoCancelled,
+  notifySpentOrderConflicts,
+  notifyStaleSpentImportBatches,
+  sendOpsDailyDigest,
+  sendRedemptionExpiryReminders,
+} from "./ops-alert";
 
 interface ScheduledTask {
   name: string;
   cronExpression: string;
   handler: () => Promise<void>;
-  /** 清理类任务标记：供外部调度器端点 /api/cron/run 批量触发 */
+  /** 清理类任务（供外部调度器 /api/cron/run 批量执行） */
   isCleanup?: boolean;
+  /** 任务内部已发送专用告警，跳过通用「定时任务失败」通知 */
+  suppressFailureAlert?: boolean;
 }
 
 /** 定时任务运行记录的保留上限（超出后由 runTask 顺带清理） */
@@ -302,6 +317,45 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
+    name: "Verify Audit Integrity",
+    cronExpression: "10 3 * * *", // 归档完成后校验前一日审计链
+    suppressFailureAlert: true,
+    handler: async () => {
+      let notified = false;
+      try {
+        const result = await verifyRecentAuditDays();
+        if (result.failed.length > 0) {
+          notified = true;
+          notifyAuditIntegrityFailure(
+            result.failed.map((row) => ({
+              stream: row.stream,
+              day: row.day,
+              error: row.error,
+            }))
+          );
+          throw new Error(
+            `审计链完整性校验失败: ${result.failed
+              .map((row) => `${row.stream}/${row.day}(${row.error ?? "UNKNOWN"})`)
+              .join(", ")}`
+          );
+        }
+        apiConsole.info(`[Cron] 审计链完整性校验通过: ${result.day}`);
+      } catch (error) {
+        if (!notified) {
+          notifyAuditIntegrityFailure([
+            {
+              stream: "audit+sso",
+              day: "-",
+              error: error instanceof Error ? error.message : String(error),
+            },
+          ]);
+        }
+        apiConsole.error("[Cron] 审计链完整性校验失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
     name: "Reap Stale Pending Audit Logs",
     cronExpression: "*/15 * * * *",
     isCleanup: true,
@@ -398,6 +452,11 @@ const tasks: ScheduledTask[] = [
         if (statusDelivered > 0) {
           apiConsole.info(`[Cron] 账户状态 Webhook 补偿成功 ${statusDelivered} 条`);
         }
+        try {
+          await scanWebhookFailureQueues();
+        } catch (alertError) {
+          apiConsole.warn("[Cron] Webhook 失败队列告警检查异常:", alertError);
+        }
       } catch (error) {
         apiConsole.error("[Cron] 资料变更 Webhook 重投任务失败:", error);
         throw error;
@@ -428,9 +487,12 @@ const tasks: ScheduledTask[] = [
     handler: async () => {
       try {
         const result = await expirePendingRedemptions();
+        if (result.scanned > 0) {
+          notifyRedemptionAutoCancelled(result);
+        }
         if (result.cancelled > 0 || result.failed > 0) {
           apiConsole.warn(
-            `[Cron] 超时兑换处理: 扫描 ${result.scanned}，取消 ${result.cancelled}，跳过 ${result.skipped}，失败 ${result.failed}`
+            `[Cron] 超时兑换处理: 扫描 ${result.scanned}，取消 ${result.cancelled}，退还 ${result.refundedPoints} 积分，跳过 ${result.skipped}，失败 ${result.failed}`
           );
         }
         if (result.failed > 0) {
@@ -467,11 +529,13 @@ const tasks: ScheduledTask[] = [
         if (result.negativeBalances > 0) {
           apiConsole.warn(`[Cron] 存在 ${result.negativeBalances} 个负积分余额账户`);
         }
-        if (result.issues.length > 0) {
-          apiConsole.error(
-            `[Cron] 积分账本对账发现 ${result.issues.length} 个异常，请运行 npm run points:check-invariants 查看详情`
+        if (result.issues.length > 0 || result.negativeBalances > 0) {
+          notifyPointInvariantIssues(result);
+        }
+        if (result.issues.length > 0 || result.negativeBalances > 0) {
+          throw new Error(
+            `积分账本对账发现 ${result.issues.length} 个异常、${result.negativeBalances} 个负余额账户`
           );
-          throw new Error(`积分账本对账发现 ${result.issues.length} 个异常`);
         }
       } catch (error) {
         apiConsole.error("[Cron] 积分账本对账失败:", error);
@@ -490,6 +554,7 @@ const tasks: ScheduledTask[] = [
         const count = await failStaleImportBatches(30);
         if (count > 0) {
           apiConsole.warn(`[Cron] 已标记 ${count} 个超时消费导入批次为 FAILED`);
+          notifyStaleSpentImportBatches(count);
         }
       } catch (error) {
         apiConsole.error("[Cron] 清理超时消费导入批次失败:", error);
@@ -506,6 +571,7 @@ const tasks: ScheduledTask[] = [
       try {
         const result = await findSpentOrderConflicts({ sinceDays: 90, limit: 20 });
         if (result.count > 0) {
+          notifySpentOrderConflicts(result);
           apiConsole.error(
             `[Cron] 发现 ${result.count} 个消费订单跨来源冲突: ${result.items
               .slice(0, 5)
@@ -515,7 +581,7 @@ const tasks: ScheduledTask[] = [
           throw new Error(`发现 ${result.count} 个消费订单存在跨来源重复入账，请人工核对`);
         }
       } catch (error) {
-        apiConsole.error("[Cron] 消费订单冲突检查失败:", error);
+        apiConsole.error("[Cron] 消费订单冲突检测失败:", error);
         throw error;
       }
     },
@@ -561,6 +627,32 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
+    name: "Ops Daily Digest",
+    // 每天 09:05：运营待办、积压、礼品库存摘要（综合管理群 + 运营群）
+    cronExpression: "5 9 * * *",
+    handler: async () => {
+      try {
+        await sendOpsDailyDigest();
+      } catch (error) {
+        apiConsole.error("[Cron] 运营日报发送失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Send Redemption Expiry Reminders",
+    // 每天 09:10：兑换待履约临期 T-7 / T-1 提醒（运营群）
+    cronExpression: "10 9 * * *",
+    handler: async () => {
+      try {
+        await sendRedemptionExpiryReminders();
+      } catch (error) {
+        apiConsole.error("[Cron] 兑换临期提醒失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
     name: "Send Retest Reminders",
     // 每天 10 点：向「上次测肤完成满 30 天」的用户发送测肤小程序复测提醒
     // （子站内部接口出名单 + 微信订阅消息，全程 fail-soft，详见 lib/retest-reminder.ts）
@@ -585,6 +677,23 @@ const tasks: ScheduledTask[] = [
     isCleanup: true,
     handler: async () => {
       await processMediaDeletionTasks();
+    },
+  },
+  {
+    name: "Reconcile Stale Approved Admin Approvals",
+    // 补偿“已批准但执行前进程崩溃”的 AUTO 审批（尤其 Excel 导入）
+    cronExpression: "*/5 * * * *",
+    isCleanup: true,
+    handler: async () => {
+      try {
+        const count = await reconcileStaleApprovedApprovals();
+        if (count > 0) {
+          apiConsole.info(`[Cron] 补偿执行停留 APPROVED 的审批: ${count} 条`);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 补偿执行审批失败:", error);
+        throw error;
+      }
     },
   },
   {
@@ -680,6 +789,9 @@ export async function runCronTask(
         },
       })
       .catch((err) => apiConsole.warn("[Cron] 运行记录写入失败:", err));
+    if (!task.suppressFailureAlert) {
+      notifyCronFailure(taskName, trigger, message);
+    }
     return { ok: false, error: message };
   } finally {
     await heartbeat.stop();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { requireFreshAdminTotp } from "@/lib/admin-totp";
@@ -31,6 +31,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     );
   }
   if (!validateCSRFToken(request)) return csrfForbiddenResponse();
+
+  const rateLimitResponse = await checkAdminRateLimit(request, "audit-hold:release", admin.id);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const body = schema.parse(await request.json());

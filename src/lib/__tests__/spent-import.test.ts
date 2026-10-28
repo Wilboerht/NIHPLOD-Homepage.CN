@@ -28,6 +28,7 @@ vi.mock("@/lib/prisma", () => {
 
 vi.mock("@/lib/points", () => ({
   applyExternalSpentSync: vi.fn(),
+  SpentReversalExceedsBalanceError: class SpentReversalExceedsBalanceError extends Error {},
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -655,6 +656,7 @@ describe("undoImportBatch", () => {
       userId: "user-1",
       spentDelta: -1000,
       reference: "import-undo:batch-1:row-1",
+      allowNegativeClamp: false,
       note: expect.stringContaining("batch-1"),
     });
     // 标记原始记录已撤销（保留审计，不物理删除）

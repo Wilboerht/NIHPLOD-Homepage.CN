@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Clock, Copy, Plus, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -169,9 +169,17 @@ function ApprovalsContent() {
   };
 
   const isRequester = selected?.requesterId === currentAdminId;
+  const displayPayload = useMemo(() => {
+    const payload = selected?.payload;
+    if (!payload) return payload;
+    // Excel 导入预览令牌可能很大，审批页只展示摘要，避免整段密文占用 DOM
+    if (typeof payload.previewToken === "string") {
+      return { ...payload, previewToken: "（加密预览令牌已隐藏）" };
+    }
+    return payload;
+  }, [selected?.payload]);
   const requesterPermission = selected?.targetSnapshot?.requesterPermission as
-    | { actionPermission?: string; hadActionPermission?: boolean }
-    | undefined;
+    { actionPermission?: string; hadActionPermission?: boolean } | undefined;
   const lacksActionPermission =
     selected?.status === "PENDING" && requesterPermission?.hadActionPermission === false;
   const canRetry =
@@ -515,7 +523,7 @@ function ApprovalsContent() {
               <div>
                 <p className="mb-1 text-xs font-medium text-brand-charcoal/65">申请参数</p>
                 <pre className="max-h-52 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-xs">
-                  {JSON.stringify(selected.payload, null, 2)}
+                  {JSON.stringify(displayPayload, null, 2)}
                 </pre>
               </div>
               <div>
@@ -587,8 +595,8 @@ function ApprovalsContent() {
                       onChange={(event) => setRiskAcknowledged(event.target.checked)}
                     />
                     <span>
-                      我确认申请人原本不具备{" "}
-                      {requesterPermission?.actionPermission || "该动作"} 权限，仍批准代其执行
+                      我确认申请人原本不具备 {requesterPermission?.actionPermission || "该动作"}{" "}
+                      权限，仍批准代其执行
                     </span>
                   </label>
                 )}

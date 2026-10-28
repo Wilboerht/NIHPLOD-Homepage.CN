@@ -9,6 +9,7 @@ import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { verifyTOTP, decryptTOTPSecret } from "@/lib/totp";
 import { consumeAdminBackupCode } from "@/lib/admin-backup-code";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
@@ -75,13 +76,29 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       );
     }
 
+    const scopeId = `admin_password:${adminPayload.email}`;
+    const { locked, remainingMinutes } = await checkAccountLockout(scopeId);
+    if (locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_LOCKED",
+            message: `密码错误次数过多，请在 ${remainingMinutes} 分钟后重试`,
+          },
+        },
+        { status: 429 }
+      );
+    }
     const passwordValid = await verifyPassword(result.data.password, admin.password);
     if (!passwordValid) {
+      await recordLoginAttempt(scopeId, false, request, "password_incorrect", "admin");
       return NextResponse.json(
         { success: false, error: { code: "PASSWORD_INVALID", message: "密码错误" } },
         { status: 401 }
       );
     }
+    await clearLoginAttempts(scopeId);
 
     // 必须验证 TOTP 码或备用码，防止仅有密码（非完整 2FA）即可关闭 2FA
     const totpCode = result.data.totpCode;

@@ -61,7 +61,7 @@ function getBirthdayWindow(now: Date = new Date()): Map<string, number> {
  * 避免兑礼（余额→流水）与退款/过期（流水→余额）互相死锁。
  * 行不存在时顺手创建（0 余额），保证并发首次入账也能串行化。
  */
-async function lockPointBalance(tx: PointTx, userId: string): Promise<void> {
+export async function lockPointBalance(tx: PointTx, userId: string): Promise<void> {
   await tx.pointBalance.upsert({
     where: { userId },
     create: { userId },
@@ -443,12 +443,19 @@ export async function adjustPoints(
   }
 
   await lockPointBalance(tx, userId);
+
+  // 注销后的用户不可再被补分/退分，避免已清零账户出现新的正余额。
+  const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } });
+  if (!user || user.status === "DELETED") {
+    throw new Error("POINT_USER_DELETED");
+  }
+
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
   if (existing) return { duplicated: true };
 
-  // 先物化过期并锁余额行：负向调整与退款同一口径，不能因 cron 时序而“少扣”债务
+  // 物化到期不可用积分，保证本次调整与过期回收同一口径（避免 cron 时区错位少扣/债务）
   await materializePoints(tx, userId);
   if (amount < 0) {
     await consumeGrantsFifo(tx, userId, -amount, { onlyUnexpired: true });

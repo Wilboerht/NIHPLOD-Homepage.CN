@@ -3,6 +3,12 @@ import { createAuditLog, createAuditLogTx, type AuditAction, type AuditTargetTyp
 import { adjustPoints } from "./points-ledger";
 import { cancelRedemption } from "./point-gifts";
 import { reviewApplication, undoApplication } from "./spent-adjustments";
+import {
+  executeImportBatch,
+  undoImportBatch,
+  verifyImportPreviewToken,
+  type ExecuteRowInput,
+} from "./spent-import";
 import { deleteAdminsSafely } from "./admin-safety";
 import { changeUserStatus } from "./user-status";
 import { DELETION_LEASE_MS, DELETION_STATUS, executeAccountDeletion } from "./account-deletion";
@@ -15,6 +21,8 @@ import {
   adminDeletePayloadSchema,
   pointsAdjustPayloadSchema,
   redemptionCancelPayloadSchema,
+  spentImportExecutePayloadSchema,
+  spentImportUndoPayloadSchema,
   spentReviewApprovePayloadSchema,
   spentReviewUndoPayloadSchema,
   totpRecoveryPayloadSchema,
@@ -276,6 +284,122 @@ async function executeSpentReviewUndo(
   });
 
   return { resultMeta: { status: result.status } };
+}
+
+async function executeSpentImport(ctx: ApprovalExecutorContext): Promise<ApprovalExecutorResult> {
+  const payload = spentImportExecutePayloadSchema.parse(ctx.payload);
+  // 预览令牌由申请人会话签发：审批由 owner 完成，但导入仍必须以申请人身份校验令牌。
+  const verified = verifyImportPreviewToken(payload.previewToken, ctx.requester.id);
+  if (!verified.ok) {
+    throw new AdminApprovalError(
+      verified.code,
+      verified.message,
+      verified.code === "TOKEN_EXPIRED" ? 410 : 400
+    );
+  }
+
+  const { fileName, fileHash, rows } = verified.payload;
+  const selectedIndexes = payload.rowIndexes ? new Set(payload.rowIndexes) : null;
+  const selectedRows = selectedIndexes
+    ? rows.filter((row) => selectedIndexes.has(row.rowIndex))
+    : rows;
+  if (selectedIndexes && selectedRows.length !== selectedIndexes.size) {
+    throw new AdminApprovalError("INVALID_ROW_INDEX", "审批申请包含不存在的导入行", 400);
+  }
+  if (selectedRows.some((row) => row.error || !row.phone || row.amount === null)) {
+    throw new AdminApprovalError("INVALID_ROWS", "审批申请包含未通过预览校验的行", 400);
+  }
+
+  const resolvedRows: ExecuteRowInput[] = selectedRows.map((row) => ({
+    phone: row.phone as string,
+    amount: row.amount as number,
+    channel: row.channel,
+    orderNo: row.orderNo,
+    purchasedAt: row.purchasedAt,
+    note: row.note,
+  }));
+  if (resolvedRows.length === 0) {
+    throw new AdminApprovalError("NO_ROWS", "审批申请没有可导入的行", 400);
+  }
+
+  const result = await executeImportBatch({
+    rows: resolvedRows,
+    fileName,
+    fileHash,
+    reason: payload.reason,
+    adminId: ctx.requester.id,
+  });
+
+  await writeExecutorAudit({
+    ctx,
+    action: "import_spent_records",
+    targetType: "spent_import",
+    targetId: result.batchId,
+    detail: {
+      fileName,
+      fileHash,
+      rowCount: resolvedRows.length,
+      reason: payload.reason,
+      totalRows: result.totalRows,
+      successRows: result.successRows,
+      duplicateRows: result.duplicateRows,
+      errorRows: result.errorRows,
+      totalAmount: result.totalAmount,
+    },
+  });
+
+  return {
+    resultMeta: {
+      batchId: result.batchId,
+      totalRows: result.totalRows,
+      successRows: result.successRows,
+      duplicateRows: result.duplicateRows,
+      errorRows: result.errorRows,
+      totalAmount: result.totalAmount,
+    },
+  };
+}
+
+async function executeSpentImportUndo(
+  ctx: ApprovalExecutorContext
+): Promise<ApprovalExecutorResult> {
+  const payload = spentImportUndoPayloadSchema.parse(ctx.payload);
+  const batch = await prisma.spentImportBatch.findUnique({
+    where: { id: payload.batchId },
+    select: { id: true, fileName: true, status: true, undoneAt: true, successRows: true },
+  });
+  if (!batch) throw new AdminApprovalError("TARGET_NOT_FOUND", "导入批次不存在", 404);
+  if (batch.undoneAt) throw new AdminApprovalError("STALE", "该批次已撤销", 409);
+  if (batch.status === "PROCESSING") {
+    throw new AdminApprovalError("STALE", "该批次仍在处理中，暂不可撤销", 409);
+  }
+  assertSnapshot(ctx, { status: batch.status });
+
+  const result = await undoImportBatch(payload.batchId);
+  if (!result.ok) {
+    throw new AdminApprovalError(
+      result.code === "REVERSAL_EXCEEDS_BALANCE" ? "STALE" : "EXECUTION_FAILED",
+      result.message,
+      result.code === "REVERSAL_EXCEEDS_BALANCE" ? 409 : 400
+    );
+  }
+
+  await writeExecutorAudit({
+    ctx,
+    action: "undo_spent_import",
+    targetType: "spent_import",
+    targetId: batch.id,
+    targetLabel: batch.fileName,
+    detail: {
+      revertedRows: result.revertedRows,
+      totalAmount: result.totalAmount,
+      reason: payload.reason,
+    },
+  });
+
+  return {
+    resultMeta: { revertedRows: result.revertedRows, totalAmount: result.totalAmount },
+  };
 }
 
 async function executeAdminDelete(ctx: ApprovalExecutorContext): Promise<ApprovalExecutorResult> {
@@ -546,6 +670,10 @@ export async function executeApprovalPolicy(
       return executeSpentReviewApprove(ctx);
     case "spent.review.undo":
       return executeSpentReviewUndo(ctx);
+    case "spent.import.execute":
+      return executeSpentImport(ctx);
+    case "spent.import.undo":
+      return executeSpentImportUndo(ctx);
     case "admin.delete":
       return executeAdminDelete(ctx);
     case "user.status":

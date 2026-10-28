@@ -69,6 +69,29 @@ export function normalizeRateLimitIdentifier(identifier: string): string {
 }
 
 /**
+ * 归一化代理头中的单条地址：
+ * - 去掉 IPv4/IPv6 的端口后缀（`1.2.3.4:1234`、`[::1]:443`），
+ *   否则攻击者可轮换端口制造大量不同限流桶；
+ * - 只接受合法 IP，拒绝任意字符串。
+ */
+function normalizeIpEntry(value: string): string | null {
+  let candidate = value.trim();
+  if (!candidate) return null;
+
+  if (candidate.startsWith("[")) {
+    const end = candidate.indexOf("]");
+    if (end <= 0) return null;
+    candidate = candidate.slice(1, end);
+  } else {
+    // IPv4:port（IPv6 裸地址包含多个冒号，不会进入此分支）
+    const ipv4WithPort = /^(\d{1,3}(?:\.\d{1,3}){3}):(\d+)$/.exec(candidate);
+    if (ipv4WithPort) candidate = ipv4WithPort[1];
+  }
+
+  return isIP(candidate) === 4 || isIP(candidate) === 6 ? candidate : null;
+}
+
+/**
  * 获取客户端真实 IP 地址
  */
 export function getClientIP(
@@ -94,8 +117,8 @@ export function getClientIP(
   if (forwardedFor) {
     const ips = forwardedFor
       .split(",")
-      .map((ip) => ip.trim())
-      .filter((ip) => ip && /^[\d.:a-fA-F]+$/.test(ip));
+      .map((ip) => normalizeIpEntry(ip))
+      .filter((ip): ip is string => ip !== null);
 
     if (ips.length === 0) return "unknown";
 
@@ -115,8 +138,9 @@ export function getClientIP(
   }
 
   const realIP = headers.get("x-real-ip");
-  if (realIP && /^[\d.:a-fA-F]+$/.test(realIP)) {
-    return realIP.trim();
+  if (realIP) {
+    const normalized = normalizeIpEntry(realIP);
+    if (normalized) return normalized;
   }
 
   return "unknown";

@@ -33,6 +33,7 @@ vi.mock("@/lib/admin-totp", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: mocks.createAuditLog,
+  createAuditLogStrict: mocks.createAuditLog,
   beginAuditLog: mocks.beginAuditLog,
   finishAuditLog: mocks.finishAuditLog,
 }));

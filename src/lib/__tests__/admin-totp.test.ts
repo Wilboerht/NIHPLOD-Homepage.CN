@@ -35,6 +35,15 @@ vi.mock("@/lib/admin-step-up", () => ({
   verifyAdminStepUpGrant: vi.fn(),
 }));
 
+vi.mock("@/lib/ratelimit", () => ({
+  rateLimit: vi.fn().mockResolvedValue({
+    success: true,
+    remaining: 2,
+    reset: Date.now() + 1000,
+    limit: 3,
+  }),
+}));
+
 import { isMoneyOperationTotpEnforced, requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { prisma } from "@/lib/prisma";
 import { verifyTOTP, verifyBackupCode } from "@/lib/totp";

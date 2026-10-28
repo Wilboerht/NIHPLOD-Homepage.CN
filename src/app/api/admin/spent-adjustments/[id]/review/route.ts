@@ -16,6 +16,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { prisma } from "@/lib/prisma";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { isSpentReviewApprovalRequired } from "@/lib/admin-approval-policy";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
@@ -91,11 +92,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const { decision, reviewAmount, reviewNote, totpCode } = parsed.data;
 
+    const claimed = await prisma.spentAdjustmentApplication.findUnique({
+      where: { id },
+      select: { amountClaimed: true },
+    });
+    if (!claimed) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "消费补录不存在" } },
+        { status: 404 }
+      );
+    }
+
     if (
       isAdminApprovalEnforced() &&
       admin.role !== "owner" &&
       decision === "approve" &&
-      isSpentReviewApprovalRequired(reviewAmount ?? 0)
+      isSpentReviewApprovalRequired(reviewAmount ?? 0, claimed.amountClaimed)
     ) {
       return NextResponse.json(
         {

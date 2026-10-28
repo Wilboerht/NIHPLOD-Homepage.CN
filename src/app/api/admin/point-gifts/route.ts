@@ -22,7 +22,8 @@ const querySchema = z.object({
 
 const updateSchema = z.object({
   productId: z.string().cuid(),
-  pointRedeemable: z.boolean(),
+  // 不传则保持当前值（库存保存不改开关，避免覆盖他人刚修改的状态）
+  pointRedeemable: z.boolean().optional(),
   // 兑换库存：null = 不限量；不传则保持不变
   redeemStock: z
     .number()
@@ -166,7 +167,7 @@ export async function PATCH(request: NextRequest) {
 
     const existing = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true, name: true, published: true },
+      select: { id: true, name: true, published: true, pointRedeemable: true },
     });
     if (!existing) {
       return NextResponse.json(
@@ -174,7 +175,7 @@ export async function PATCH(request: NextRequest) {
         { status: 404 }
       );
     }
-    if (pointRedeemable && !existing.published) {
+    if ((pointRedeemable ?? existing.pointRedeemable) && !existing.published) {
       return NextResponse.json(
         {
           success: false,
@@ -186,7 +187,7 @@ export async function PATCH(request: NextRequest) {
 
     const auditDetail = {
       productName: existing.name,
-      pointRedeemable,
+      ...(pointRedeemable !== undefined ? { pointRedeemable } : {}),
       ...(redeemStock !== undefined ? { redeemStock } : {}),
     };
     const auditId = await beginAuditLog({
@@ -211,7 +212,7 @@ export async function PATCH(request: NextRequest) {
       .update({
         where: { id: productId },
         data: {
-          pointRedeemable,
+          ...(pointRedeemable !== undefined ? { pointRedeemable } : {}),
           ...(redeemStock !== undefined ? { redeemStock } : {}),
         },
         select: { id: true, name: true, pointRedeemable: true, redeemStock: true },

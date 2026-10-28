@@ -56,6 +56,7 @@ vi.mock("@/lib/audit", () => ({
 
 vi.mock("@/lib/admin-totp", () => ({
   requireMoneyOperationTotp: vi.fn(),
+  requireSecurityOperationTotp: vi.fn(),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -65,7 +66,7 @@ vi.mock("@/lib/logger", () => ({
 import { PUT } from "../route";
 import { prisma } from "@/lib/prisma";
 import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
-import { requireMoneyOperationTotp } from "@/lib/admin-totp";
+import { requireSecurityOperationTotp } from "@/lib/admin-totp";
 import bcrypt from "bcryptjs";
 
 const ADMIN = {
@@ -83,7 +84,7 @@ const mockClearAttempts = clearLoginAttempts as ReturnType<typeof vi.fn>;
 const mockCompare = bcrypt.compare as ReturnType<typeof vi.fn>;
 const mockFindUnique = prisma.admin.findUnique as ReturnType<typeof vi.fn>;
 const mockUpdate = prisma.admin.update as ReturnType<typeof vi.fn>;
-const mockRequireTotp = requireMoneyOperationTotp as ReturnType<typeof vi.fn>;
+const mockRequireTotp = requireSecurityOperationTotp as ReturnType<typeof vi.fn>;
 
 function createRequest(body: unknown) {
   return new NextRequest("http://localhost/api/admin/me", {

@@ -170,7 +170,11 @@ describe("管理端简历列表/详情/更新", () => {
     });
 
     const response = await detailPATCH(
-      patchRequest({ status: "reviewed", expectedStatus: "pending" }),
+      patchRequest({
+        status: "reviewed",
+        expectedStatus: "pending",
+        expectedUpdatedAt: "2026-10-01T00:00:00.000Z",
+      }),
       context
     );
 
@@ -213,7 +217,11 @@ describe("管理端简历列表/详情/更新", () => {
     });
 
     const response = await detailPATCH(
-      patchRequest({ status: "reviewed", expectedStatus: "pending" }),
+      patchRequest({
+        status: "reviewed",
+        expectedStatus: "pending",
+        expectedUpdatedAt: "2026-10-02T00:00:00.000Z",
+      }),
       context
     );
 

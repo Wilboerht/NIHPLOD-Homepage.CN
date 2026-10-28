@@ -6,6 +6,8 @@ export const APPROVAL_POLICY_KEYS = [
   "redemption.cancel",
   "spent.review.approve",
   "spent.review.undo",
+  "spent.import.execute",
+  "spent.import.undo",
   "admin.delete",
   "user.status",
   "user.delete",
@@ -27,6 +29,8 @@ export interface ApprovalPolicy {
   actionPermission: AdminPermission;
   payloadSchema: z.ZodTypeAny;
   summary: string;
+  /** 仅供专用入口发起，不在通用“发起审批”下拉框中展示 */
+  hidden?: boolean;
 }
 
 export const APPROVAL_THRESHOLDS = {
@@ -58,6 +62,18 @@ export const spentReviewApprovePayloadSchema = z.object({
 
 export const spentReviewUndoPayloadSchema = z.object({
   applicationId: z.string().cuid(),
+});
+
+/** Excel 导入预览令牌由服务端加密签发，内含行快照；审批单只保存密文 */
+export const spentImportExecutePayloadSchema = z.object({
+  previewToken: z.string().min(1).max(2_000_000),
+  rowIndexes: z.array(z.number().int().positive()).max(500).optional(),
+  reason: z.string().trim().min(2, "请填写导入原因或工单号").max(200),
+});
+
+export const spentImportUndoPayloadSchema = z.object({
+  batchId: z.string().cuid(),
+  reason: z.string().trim().min(2, "请填写撤销原因或工单号").max(200),
 });
 
 export const adminDeletePayloadSchema = z.object({
@@ -122,6 +138,31 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     actionPermission: "spent:review",
     payloadSchema: spentReviewUndoPayloadSchema,
     summary: "非 owner 撤销已通过的消费补录需要 owner 审批",
+  },
+  "spent.import.execute": {
+    key: "spent.import.execute",
+    label: "消费记录 Excel 导入",
+    action: "import_spent_records",
+    targetType: "spent_import",
+    // 预览令牌绑定申请人；owner 批准后由执行器以申请人身份消费令牌
+    executionMode: "AUTO",
+    requestPermission: "spent:import",
+    actionPermission: "spent:import",
+    payloadSchema: spentImportExecutePayloadSchema,
+    summary: "非 owner 执行消费记录 Excel 导入（资金类写操作）需要 owner 审批",
+    hidden: true,
+  },
+  "spent.import.undo": {
+    key: "spent.import.undo",
+    label: "撤销消费记录 Excel 导入",
+    action: "undo_spent_import",
+    targetType: "spent_import",
+    executionMode: "AUTO",
+    requestPermission: "spent:import",
+    actionPermission: "spent:import",
+    payloadSchema: spentImportUndoPayloadSchema,
+    summary: "非 owner 撤销消费记录 Excel 导入（资金类写操作）需要 owner 审批",
+    hidden: true,
   },
   "admin.delete": {
     key: "admin.delete",
@@ -190,6 +231,10 @@ export function isRedemptionCancelApprovalRequired(points: number): boolean {
   return points >= APPROVAL_THRESHOLDS.redemptionCancel;
 }
 
-export function isSpentReviewApprovalRequired(reviewAmount: number): boolean {
-  return reviewAmount >= APPROVAL_THRESHOLDS.spentReviewApprove;
+export function isSpentReviewApprovalRequired(
+  reviewAmount: number,
+  amountClaimed?: number | null
+): boolean {
+  // 取申报金额与核实金额的较大值：否则“申报 100 万、核实填 4,999”可绕过 owner 审批。
+  return Math.max(reviewAmount, amountClaimed ?? 0) >= APPROVAL_THRESHOLDS.spentReviewApprove;
 }

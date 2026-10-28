@@ -10,6 +10,7 @@ import { withAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import prisma from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+import { checkAccountLockout, recordLoginAttempt, clearLoginAttempts } from "@/lib/auth-security";
 import { verifyTOTP, decryptTOTPSecret, generateBackupCodes, hashBackupCode } from "@/lib/totp";
 import { consumeAdminBackupCode } from "@/lib/admin-backup-code";
 import { consumeAccessTokenOnce } from "@/lib/token-blacklist";
@@ -72,13 +73,29 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
       );
     }
 
+    const scopeId = `admin_password:${adminPayload.email}`;
+    const { locked, remainingMinutes } = await checkAccountLockout(scopeId);
+    if (locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ACCOUNT_LOCKED",
+            message: `密码错误次数过多，请在 ${remainingMinutes} 分钟后重试`,
+          },
+        },
+        { status: 429 }
+      );
+    }
     const passwordValid = await verifyPassword(result.data.password, admin.password);
     if (!passwordValid) {
+      await recordLoginAttempt(scopeId, false, request, "password_incorrect", "admin");
       return NextResponse.json(
         { success: false, error: { code: "PASSWORD_INVALID", message: "密码错误" } },
         { status: 401 }
       );
     }
+    await clearLoginAttempts(scopeId);
 
     // TOTP 专用速率限制（与登录口 admin-totp 桶同档），防结合密码验证穷举动态码
     const totpLimit = await rateLimit(`admin-totp-backup-codes:${admin.id}`, "admin-totp");

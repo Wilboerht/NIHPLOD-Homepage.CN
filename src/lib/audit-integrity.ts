@@ -438,4 +438,21 @@ export async function verifyAuditLogAnchor(day: string): Promise<boolean> {
   return result.verified;
 }
 
+export interface RecentAuditVerifyResult {
+  day: string;
+  results: VerifyAuditDayResult[];
+  failed: VerifyAuditDayResult[];
+}
+
+/** 校验昨日（UTC+8）两个审计流的摘要、签名与归档/备份 */
+export async function verifyRecentAuditDays(now = new Date()): Promise<RecentAuditVerifyResult> {
+  const day = getUtc8DayRange(new Date(now.getTime() - DAY_MS)).day;
+  const results = await Promise.all([verifyAuditDay("audit", day), verifyAuditDay("sso", day)]);
+  return {
+    day,
+    results,
+    failed: results.filter((result) => !result.verified),
+  };
+}
+
 export { previousUtc8Day };

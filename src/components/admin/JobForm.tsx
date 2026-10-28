@@ -10,6 +10,7 @@ import { apiPost, apiPatch } from "@/lib/api-client";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AmapLocationPicker } from "@/components/admin/AmapLocationPicker";
 import { FormActions } from "@/components/admin/FormActions";
 import { FormSection } from "@/components/admin/FormSection";
@@ -230,10 +231,17 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
     }
   };
 
+  const [draftConfirmOpen, setDraftConfirmOpen] = useState(false);
+
   const handleSave = async (publish: boolean) => {
     if (submitting) return;
     if (!validateForm()) {
-      showError("请检查表单填写");
+      showError("请完善必填内容");
+      return;
+    }
+    // 已发布职位保存草稿会直接下架，二次确认避免误触
+    if (!publish && isEdit && formData.published) {
+      setDraftConfirmOpen(true);
       return;
     }
     await doSave(publish);
@@ -369,6 +377,20 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           保存并发布
         </Button>
       </FormActions>
+
+      <ConfirmDialog
+        open={draftConfirmOpen}
+        onClose={() => setDraftConfirmOpen(false)}
+        onConfirm={() => {
+          setDraftConfirmOpen(false);
+          void doSave(false);
+        }}
+        title="保存为草稿并下架？"
+        description="该职位当前已发布。保存为草稿会立即从招聘页下架，用户将无法继续查看或投递。"
+        type="warning"
+        confirmText="确认下架并保存"
+        loading={submitting === "draft"}
+      />
     </form>
   );
 }

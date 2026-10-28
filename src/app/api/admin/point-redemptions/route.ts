@@ -10,7 +10,8 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone, maskAddress } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLogStrict } from "@/lib/audit";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -65,9 +66,15 @@ export async function GET(request: NextRequest) {
         { user: { nickname: { contains: search, mode: "insensitive" } } },
       ];
     }
-    // PII 最小化：仅具备"兑换履约"权限的管理员可见完整收件人手机号/地址，
-    // 仅查看权限（redemptions:read）时脱敏，减少数据导出面。
+    // PII 最小化：列表默认脱敏；履约管理员需显式 reveal=1 并完成 step-up，
+    // 才返回完整收件人手机号/地址，且严格审计失败时拒绝返回明文。
     const canFulfill = hasAdminPermission(admin, "redemptions:fulfill");
+    const wantsReveal = searchParams.get("reveal") === "1";
+    const canViewPii = canFulfill && wantsReveal;
+    if (canViewPii) {
+      const stepUp = await requireAdminStepUp(request, admin);
+      if (stepUp) return stepUp;
+    }
 
     const [redemptions, total, statusCounts, pointsAgg] = await Promise.all([
       prisma.pointRedemption.findMany({
@@ -102,24 +109,16 @@ export async function GET(request: NextRequest) {
       counts[row.status] = row._count;
     }
 
-    if (canFulfill && redemptions.length > 0) {
-      const recentView = await prisma.auditLog.findFirst({
-        where: {
-          action: "point_redemption_pii_view",
-          adminId: admin.id,
-          createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
-        },
-        select: { id: true },
-      });
-      if (!recentView) {
-        await createAuditLog({
+    if (canViewPii && redemptions.length > 0) {
+      try {
+        await createAuditLogStrict({
           action: "point_redemption_pii_view",
           targetType: "point_redemption",
           actorType: "ADMIN",
           actorEmail: admin.email,
           actorName: admin.name,
           actorRole: admin.role,
-          authMethod: "session",
+          authMethod: "step_up",
           sessionJti: admin.jti ?? null,
           source: "WEB",
           detail: {
@@ -132,42 +131,58 @@ export async function GET(request: NextRequest) {
           adminId: admin.id,
           request,
         });
+      } catch {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝返回完整收件信息" },
+          },
+          { status: 503 }
+        );
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        redemptions: redemptions.map((r) => ({
-          id: r.id,
-          productName: r.productName,
-          priceYuan: Number(r.priceYuan),
-          points: r.points,
-          status: r.status,
-          // PII 最小化：仅履约权限可见完整收件人姓名
-          recipient: canFulfill ? r.recipient : r.recipient ? `${r.recipient.slice(0, 1)}**` : null,
-          phone: canFulfill ? r.phone : r.phone ? maskPhone(r.phone) : null,
-          address: canFulfill ? r.address : maskAddress(r.address),
-          carrier: r.carrier,
-          waybillNo: r.waybillNo,
-          createdAt: r.createdAt.toISOString(),
-          fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
-          user: {
-            id: r.user.id,
-            phone: maskPhone(r.user.phone),
-            nickname: r.user.nickname,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          piiRevealed: canViewPii,
+          redemptions: redemptions.map((r) => ({
+            id: r.id,
+            productName: r.productName,
+            priceYuan: Number(r.priceYuan),
+            points: r.points,
+            status: r.status,
+            // PII 最小化：仅显式 reveal + step-up 后可见完整收件信息
+            recipient: canViewPii
+              ? r.recipient
+              : r.recipient
+                ? `${r.recipient.slice(0, 1)}**`
+                : null,
+            phone: canViewPii ? r.phone : r.phone ? maskPhone(r.phone) : null,
+            address: canViewPii ? r.address : maskAddress(r.address),
+            carrier: r.carrier,
+            waybillNo: r.waybillNo,
+            createdAt: r.createdAt.toISOString(),
+            fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
+            user: {
+              id: r.user.id,
+              phone: maskPhone(r.user.phone),
+              nickname: r.user.nickname,
+            },
+          })),
+          counts,
+          pointsTotal: pointsAgg._sum.available ?? 0,
+          pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages: Math.ceil(total / pageSize),
           },
-        })),
-        counts,
-        pointsTotal: pointsAgg._sum.available ?? 0,
-        pagination: {
-          page,
-          pageSize,
-          total,
-          totalPages: Math.ceil(total / pageSize),
         },
       },
-    });
+      { headers: { "Cache-Control": "no-store, private" } }
+    );
   } catch (error) {
     apiConsole.error("[AdminPointRedemptions] 查询失败:", error);
     return NextResponse.json(

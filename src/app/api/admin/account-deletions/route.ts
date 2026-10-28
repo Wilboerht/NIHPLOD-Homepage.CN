@@ -17,6 +17,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { maskPhone } from "@/lib/mask-phone";
 import {
@@ -189,6 +190,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "注销申请不存在" } },
         { status: 404 }
+      );
+    }
+
+    // 与 users/[id] DELETE 保持同一口径：审批开启时非 owner 不得直接执行不可逆注销。
+    if (isAdminApprovalEnforced() && admin.role !== "owner") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "APPROVAL_REQUIRED",
+            message: "账号注销重试需要 owner 审批，请前往审批中心提交删除用户申请",
+            details: { policyKey: "user.delete", userId: deletionRequest.userId },
+          },
+        },
+        { status: 403 }
       );
     }
 

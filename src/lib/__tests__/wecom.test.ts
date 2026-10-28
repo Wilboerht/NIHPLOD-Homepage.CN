@@ -36,7 +36,14 @@ describe("resolveWecomWebhookUrls", () => {
   it("综合管理群接收全部类型；未配置运营/招聘群时不追加", () => {
     stubWebhooks({ boss: BOSS });
 
-    const types: WecomNotificationType[] = ["admin", "contact", "job", "points", "redemption"];
+    const types: WecomNotificationType[] = [
+      "admin",
+      "contact",
+      "job",
+      "points",
+      "redemption",
+      "ops",
+    ];
     for (const type of types) {
       expect(resolveWecomWebhookUrls(type)).toEqual([BOSS]);
     }
@@ -48,6 +55,7 @@ describe("resolveWecomWebhookUrls", () => {
     expect(resolveWecomWebhookUrls("contact")).toEqual([BOSS, OPS]);
     expect(resolveWecomWebhookUrls("points")).toEqual([BOSS, OPS]);
     expect(resolveWecomWebhookUrls("redemption")).toEqual([BOSS, OPS]);
+    expect(resolveWecomWebhookUrls("ops")).toEqual([BOSS, OPS]);
     expect(resolveWecomWebhookUrls("admin")).toEqual([BOSS]);
     expect(resolveWecomWebhookUrls("job")).toEqual([BOSS]);
   });

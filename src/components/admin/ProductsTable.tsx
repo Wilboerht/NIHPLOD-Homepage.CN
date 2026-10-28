@@ -152,11 +152,11 @@ export function ProductsTable({
       } else {
         onRefresh();
       }
+      setDeleteConfirm({ open: false });
     } catch {
       showError("删除失败，请重试");
     } finally {
       setActionLoading(null);
-      setDeleteConfirm({ open: false });
     }
   };
 

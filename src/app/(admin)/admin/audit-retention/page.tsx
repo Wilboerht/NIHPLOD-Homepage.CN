@@ -106,8 +106,11 @@ function RetentionContent() {
   const [releaseReason, setReleaseReason] = useState("");
   const [releaseCode, setReleaseCode] = useState("");
 
+  const [loadError, setLoadError] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [preview, jobData, holdData] = await Promise.all([
         apiGet<PreviewResponse>("/api/admin/audit-retention/preview"),
@@ -120,6 +123,7 @@ function RetentionContent() {
       setJobs(jobData.items);
       setHolds(holdData.items);
     } catch {
+      setLoadError(true);
       toast.error("加载审计保留信息失败");
     } finally {
       setLoading(false);
@@ -221,17 +225,19 @@ function RetentionContent() {
     }
   };
 
-  const disabledReason = !data
-    ? "加载中"
-    : !data.enabled
-      ? "AUDIT_RETENTION_ENABLED 未开启"
-      : !data.allowLocalOnly
-        ? "未确认本地唯一副本"
-        : data.preview.expectedCount === 0
-          ? "当前没有到期数据"
-          : !isOwner
-            ? "仅 owner 可执行"
-            : "";
+  const disabledReason = loadError
+    ? "加载失败，请先重试"
+    : !data
+      ? "加载中"
+      : !data.enabled
+        ? "AUDIT_RETENTION_ENABLED 未开启"
+        : !data.allowLocalOnly
+          ? "未确认本地唯一副本"
+          : data.preview.expectedCount === 0
+            ? "当前没有到期数据"
+            : !isOwner
+              ? "仅 owner 可执行"
+              : "";
 
   return (
     <div className="flex flex-col gap-6">
@@ -335,6 +341,17 @@ function RetentionContent() {
                 <tr>
                   <td colSpan={8} className="py-6 text-center text-brand-charcoal/60">
                     加载中...
+                  </td>
+                </tr>
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={8} className="py-6 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <p className="text-sm text-red-500">加载失败，请检查服务状态后重试</p>
+                      <Button variant="outline" size="sm" onClick={load}>
+                        重新加载
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ) : data && data.preview.buckets.length > 0 ? (

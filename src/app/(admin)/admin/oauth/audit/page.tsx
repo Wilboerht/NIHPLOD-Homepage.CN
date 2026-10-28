@@ -441,6 +441,17 @@ function OAuthAuditPage() {
           <tbody className="divide-y divide-brand-charcoal/10">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={7} />)
+            ) : loadError ? (
+              <tr>
+                <td colSpan={7}>
+                  <div className="flex flex-col items-center justify-center gap-3 py-10">
+                    <p className="text-sm text-red-500">加载失败，请稍后重试</p>
+                    <Button variant="outline" size="sm" onClick={fetchAudit}>
+                      重新加载
+                    </Button>
+                  </div>
+                </td>
+              </tr>
             ) : entries.length === 0 ? (
               <tr>
                 <td colSpan={7}>

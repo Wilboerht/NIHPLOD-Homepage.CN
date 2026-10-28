@@ -36,6 +36,19 @@ vi.mock("@/lib/spent-adjustments", () => ({
   },
 }));
 
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    spentAdjustmentApplication: {
+      findUnique: vi.fn().mockResolvedValue({ amountClaimed: 1000 }),
+    },
+  },
+  default: {
+    spentAdjustmentApplication: {
+      findUnique: vi.fn().mockResolvedValue({ amountClaimed: 1000 }),
+    },
+  },
+}));
+
 vi.mock("@/lib/audit", () => ({
   beginAuditLog: vi.fn().mockResolvedValue("audit-1"),
   finishAuditLog: vi.fn().mockResolvedValue(true),

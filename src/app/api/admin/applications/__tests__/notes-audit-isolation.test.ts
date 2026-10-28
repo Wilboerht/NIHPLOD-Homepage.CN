@@ -63,9 +63,16 @@ describe("PATCH /api/admin/applications/[id] 候选人备注审计隔离", () =>
 
   it("备注原文不进入审计 detail，只记录变更标记与长度", async () => {
     const notes = "候选人张三，手机 13800138000，期望薪资 30k";
-    const response = await PATCH(createRequest({ status: "reviewed", notes }), {
-      params: Promise.resolve({ id: "app-1" }),
-    });
+    const response = await PATCH(
+      createRequest({
+        status: "reviewed",
+        notes,
+        expectedUpdatedAt: "2026-10-01T00:00:00.000Z",
+      }),
+      {
+        params: Promise.resolve({ id: "app-1" }),
+      }
+    );
 
     expect(response.status).toBe(200);
     expect(auditMock.beginAuditLog).toHaveBeenCalledTimes(1);
