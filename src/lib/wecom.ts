@@ -155,7 +155,7 @@ export function formatContactToWecom(data: {
 
   lines.push(`> **时间**: ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`);
 
-  return `### 📢 NIHPLOD 新留言通知
+  return `### 留言通知
 ${lines.join("\n")}
 
 **留言内容**:
@@ -170,7 +170,7 @@ export function formatJobApplicationToWecom(data: {
   phone: string;
   position: string;
 }) {
-  return `### 💼 NIHPLOD 新求职申请
+  return `### 求职申请
 > **申请人**: ${escapeWecomMarkdown(data.name)}
 > **应聘职位**: ${escapeWecomMarkdown(data.position)}
 > **手机号**: ${escapeWecomMarkdown(data.phone)}
@@ -210,7 +210,7 @@ export function formatSpentApplicationToWecom(data: {
     lines.push("", "**备注**:", escapeWecomMarkdown(data.note));
   }
 
-  return `### 🧾 NIHPLOD 新积分申请（消费补录）
+  return `### 积分申请
 ${lines.join("\n")}`;
 }
 
@@ -224,7 +224,7 @@ export function formatRedemptionToWecom(data: {
   levelLabel: string;
   submittedAt: Date;
 }) {
-  return `### 🎁 NIHPLOD 新积分兑换申请
+  return `### 兑换申请
 > **用户**: ${escapeWecomMarkdown(data.userLabel)}
 > **礼品**: ${escapeWecomMarkdown(data.productName)}
 > **扣减积分**: ${data.points}

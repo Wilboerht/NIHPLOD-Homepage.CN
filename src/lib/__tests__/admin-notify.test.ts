@@ -45,7 +45,7 @@ describe("admin-notify", () => {
     await vi.waitFor(() => expect(mockSend).toHaveBeenCalledTimes(1));
     const content = mockSend.mock.calls[0][0] as string;
     expect(mockSend).toHaveBeenCalledWith(expect.any(String), "points");
-    expect(content).toContain("新积分申请（消费补录）");
+    expect(content).toContain("### 积分申请");
     expect(content).toContain("138\\*\\*\\*\\*8000");
     expect(content).toContain("天猫国际");
     expect(content).toContain("ORDER\\-1");
@@ -68,7 +68,7 @@ describe("admin-notify", () => {
     await vi.waitFor(() => expect(mockSend).toHaveBeenCalledTimes(1));
     const content = mockSend.mock.calls[0][0] as string;
     expect(mockSend).toHaveBeenCalledWith(expect.any(String), "redemption");
-    expect(content).toContain("新积分兑换申请");
+    expect(content).toContain("### 兑换申请");
     expect(content).toContain("小N");
     expect(content).toContain("面霜小样");
     expect(content).toContain("230");

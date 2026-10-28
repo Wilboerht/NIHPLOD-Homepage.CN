@@ -102,7 +102,7 @@ export async function sendWechatTemplateMessage(
         color: "#6b7280",
       },
       remark: {
-        value: "👉 点击本卡片立即查看您的详细数字分析大屏及抗老护肤建议。",
+        value: "点击本卡片立即查看您的详细数字分析大屏及抗老护肤建议。",
         color: "#059669",
       },
     },
