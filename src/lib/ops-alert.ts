@@ -159,14 +159,45 @@ export function notifySpentOrderConflicts(result: SpentOrderConflictResult): voi
   });
 }
 
-/** 运营日报：新增、待办、积压、礼品库存 */
+/** 礼品库存预警：单独告警，不混入运营日报；同一状态 12 小时内只提醒一次 */
+export async function sendGiftLowStockAlert(now = new Date()): Promise<void> {
+  const threshold = lowStockThreshold();
+  const products = await prisma.product.findMany({
+    where: {
+      pointRedeemable: true,
+      published: true,
+      category: { visible: true },
+      redeemStock: { not: null, lte: threshold },
+    },
+    orderBy: { redeemStock: "asc" },
+    take: 20,
+    select: { name: true, redeemStock: true },
+  });
+
+  if (products.length === 0) return;
+
+  notifyWithCooldown({
+    ruleKey: "gift-low-stock",
+    count: products.length,
+    cooldownMs: 12 * HOUR,
+    type: "ops",
+    title: `礼品库存预警（≤${threshold}）`,
+    lines: [
+      `- 触发时间：${nowText(now)}`,
+      ...products.map((product) => `- ${product.name}：剩余 ${product.redeemStock ?? 0}`),
+      products.length >= 20 ? "- 仅显示前 20 个，请前往「积分礼品」查看全部" : "",
+      "- 请及时补充库存或调整可兑状态",
+    ].filter(Boolean),
+  });
+}
+
+/** 运营日报：新增、待办、积压（cron 每天 23:55 发送；礼品库存单独预警） */
 export async function sendOpsDailyDigest(now = new Date()): Promise<void> {
   const { day, fromAt } = getUtc8DayRange(now);
 
   const dayAgo = new Date(now.getTime() - DAY);
   const twoDaysAgo = new Date(now.getTime() - 2 * DAY);
   const threeDaysAgo = new Date(now.getTime() - 3 * DAY);
-  const threshold = lowStockThreshold();
 
   const [
     messagesToday,
@@ -181,7 +212,6 @@ export async function sendOpsDailyDigest(now = new Date()): Promise<void> {
     agedApplications,
     agedSpent,
     agedRedemptions,
-    lowStockProducts,
   ] = await Promise.all([
     prisma.contactMessage.count({ where: { createdAt: { gte: fromAt } } }),
     prisma.jobApplication.count({ where: { createdAt: { gte: fromAt } } }),
@@ -216,27 +246,14 @@ export async function sendOpsDailyDigest(now = new Date()): Promise<void> {
     prisma.pointRedemption.count({
       where: { status: "PENDING", createdAt: { lt: twoDaysAgo } },
     }),
-    prisma.product.findMany({
-      where: {
-        pointRedeemable: true,
-        published: true,
-        redeemStock: { not: null, lte: threshold },
-      },
-      orderBy: { redeemStock: "asc" },
-      take: 10,
-      select: { name: true, redeemStock: true },
-    }),
   ]);
-
-  const stockLines =
-    lowStockProducts.length > 0
-      ? lowStockProducts.map((product) => `- ${product.name}：剩余 ${product.redeemStock ?? 0}`)
-      : ["- 无低库存礼品"];
 
   // 查询成功后再占位，避免瞬时数据库错误导致当天日报被去重跳过
   if (!(await claimAlert(`ops-digest:${day}`, 1, 12 * HOUR, now))) return;
 
   sendAlert("ops", `运营日报（${day}）`, [
+    `- 统计截止：${nowText(now)}`,
+    "",
     "**今日新增**",
     `- 留言：${messagesToday}`,
     `- 简历：${applicationsToday}`,
@@ -262,9 +279,6 @@ export async function sendOpsDailyDigest(now = new Date()): Promise<void> {
     `- 简历待处理 >3d：${agedApplications}`,
     `- 积分申请待审 >24h：${agedSpent}`,
     `- 兑换待履约 >48h：${agedRedemptions}`,
-    "",
-    `**礼品库存（≤${threshold}）**`,
-    ...stockLines,
   ]);
 
   apiConsole.info(`[OpsDigest] 运营日报已生成: ${day}`);

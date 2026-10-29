@@ -53,6 +53,7 @@ import {
   notifyRedemptionAutoCancelled,
   notifySpentOrderConflicts,
   notifyStaleSpentImportBatches,
+  sendGiftLowStockAlert,
   sendOpsDailyDigest,
   sendRedemptionExpiryReminders,
 } from "./ops-alert";
@@ -628,13 +629,28 @@ const tasks: ScheduledTask[] = [
   },
   {
     name: "Ops Daily Digest",
-    // 每天 09:05：运营待办、积压、礼品库存摘要（综合管理群 + 运营群）
-    cronExpression: "5 9 * * *",
+    // 每天 23:55：运营当日新增、待办、积压摘要（综合管理群 + 运营群）。
+    // 不放在 23:59:59：cron/DB 稍有延迟就会跨天，dayKey 变成次日并发出错误日报。
+    cronExpression: "55 23 * * *",
     handler: async () => {
       try {
         await sendOpsDailyDigest();
       } catch (error) {
         apiConsole.error("[Cron] 运营日报发送失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Gift Low Stock Alert",
+    // 每 6 小时检查一次；同一库存状态 12 小时内只提醒一次（运营群 + 综合管理群）
+    cronExpression: "0 */6 * * *",
+    isCleanup: true,
+    handler: async () => {
+      try {
+        await sendGiftLowStockAlert();
+      } catch (error) {
+        apiConsole.error("[Cron] 礼品库存预警发送失败:", error);
         throw error;
       }
     },

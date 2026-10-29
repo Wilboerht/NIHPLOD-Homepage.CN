@@ -49,6 +49,7 @@ vi.mock("@/lib/wecom", async (importOriginal) => {
 
 import {
   notifyRedemptionAutoCancelled,
+  sendGiftLowStockAlert,
   sendOpsDailyDigest,
   sendRedemptionExpiryReminders,
 } from "@/lib/ops-alert";
@@ -124,7 +125,6 @@ describe("ops-alert", () => {
       _count: 2,
       _min: { createdAt: oldest },
     });
-    prismaMock.product.findMany.mockResolvedValue([{ name: "面霜小样", redeemStock: 0 }]);
 
     await sendOpsDailyDigest(NOW);
 
@@ -138,6 +138,28 @@ describe("ops-alert", () => {
     expect(content).toContain("兑换申请：1");
     expect(content).toContain("申报 ¥5000");
     expect(content).toContain("留言未读 >24h：2");
+    expect(content).not.toContain("礼品库存");
+  });
+
+  it("礼品低库存单独预警，且无低库存时不发送", async () => {
+    prismaMock.product.findMany.mockResolvedValueOnce([
+      { name: "面霜小样", redeemStock: 0 },
+      { name: "精华小样", redeemStock: 1 },
+    ]);
+
+    await sendGiftLowStockAlert(NOW);
+
+    await vi.waitFor(() => expect(mockSend).toHaveBeenCalledTimes(1));
+    const content = mockSend.mock.calls[0][0] as string;
+    expect(mockSend.mock.calls[0][1]).toBe("ops");
+    expect(content).toContain("## 礼品库存预警（≤2）");
     expect(content).toContain("面霜小样：剩余 0");
+    expect(content).toContain("精华小样：剩余 1");
+    expect(content).not.toContain("无低库存礼品");
+
+    mockSend.mockClear();
+    prismaMock.product.findMany.mockResolvedValueOnce([]);
+    await sendGiftLowStockAlert(NOW);
+    expect(mockSend).not.toHaveBeenCalled();
   });
 });
