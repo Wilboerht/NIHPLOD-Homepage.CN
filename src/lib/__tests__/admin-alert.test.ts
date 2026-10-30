@@ -48,7 +48,6 @@ vi.mock("@/lib/wecom", async (importOriginal) => {
 import {
   notifyAccountDeletionFailure,
   notifyCronFailure,
-  notifyRefreshTokenReuse,
   notifyWebhookFailureDrop,
   scanWebhookFailureQueues,
 } from "@/lib/admin-alert";
@@ -126,19 +125,4 @@ describe("admin-alert", () => {
     expect(content).toContain("5 次");
   });
 
-  it("Refresh Token 重用发送脱敏安全告警", async () => {
-    notifyRefreshTokenReuse({
-      userId: "user-1",
-      phone: "13800138000",
-      reason: "revoked",
-      ip: "1.2.3.4",
-      channel: "web",
-    });
-
-    await vi.waitFor(() => expect(mockSend).toHaveBeenCalledTimes(1));
-    const content = mockSend.mock.calls[0][0] as string;
-    expect(content).toContain("## 检测到 Refresh Token 重用");
-    expect(content).toContain("138****8000");
-    expect(content).toContain("1.2.3.*");
-  });
 });

@@ -21,7 +21,6 @@ import {
 import { checkUserStatus } from "./auth";
 import { prisma } from "./prisma";
 import { logAuthEvent } from "./auth-logger";
-import { notifyRefreshTokenReuse } from "./admin-alert";
 
 export interface RefreshUserSessionOptions {
   /** 审计日志的调用方 IP */
@@ -178,13 +177,6 @@ export async function refreshUserSession(
         reason: rotation.reason,
         ip,
         channel,
-      });
-      notifyRefreshTokenReuse({
-        userId: payload.id,
-        phone: userPhone ?? "",
-        reason: rotation.reason,
-        ip: ip ?? "",
-        channel: channel ?? "unknown",
       });
       // 仅撤销内部（非 OAuth）token 家族：本函数只处理内部 refresh token，
       // 不应把用户在所有子站的 OAuth 授权一并吊销（第三方授权有独立的重用检测与撤销路径）

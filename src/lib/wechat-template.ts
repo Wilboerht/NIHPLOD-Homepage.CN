@@ -264,3 +264,93 @@ export async function sendSpentAdjustmentReviewMessage(
     };
   }
 }
+
+/**
+ * 客服代客提交消费补录后通知用户（仅已绑定微信的用户生效）。
+ * 模板 ID 通过 WECHAT_TEMPLATE_ID_SPENT_SUBMITTED 配置；
+ * 未配置时优雅降级（返回 sent: false），不阻断提交主流程。
+ */
+export async function sendSpentAdjustmentSubmittedMessage(input: {
+  userId: string;
+  orderNo: string;
+}): Promise<SendTemplateMessageResult> {
+  const { userId, orderNo } = input;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { wechatOpenId: true, status: true },
+  });
+
+  if (!user?.wechatOpenId) {
+    return { success: true, sent: false, reason: "用户未绑定微信" };
+  }
+  if (user.status !== "ACTIVE") {
+    return { success: true, sent: false, reason: "用户账户不可用" };
+  }
+
+  const templateId = process.env.WECHAT_TEMPLATE_ID_SPENT_SUBMITTED;
+  if (!templateId) {
+    apiConsole.warn("[SpentAdjustment] WECHAT_TEMPLATE_ID_SPENT_SUBMITTED 未配置，跳过微信通知");
+    return { success: true, sent: false, reason: "代提交模板未配置" };
+  }
+
+  let accessToken: string;
+  try {
+    accessToken = await getWechatAccessToken();
+  } catch (error) {
+    apiConsole.error("[SpentAdjustment] 获取 AccessToken 失败:", error);
+    return {
+      success: false,
+      sent: false,
+      error: { code: "WECHAT_TOKEN_ERROR", message: "获取微信 AccessToken 失败" },
+    };
+  }
+
+  const payload = {
+    touser: user.wechatOpenId,
+    template_id: templateId,
+    topcolor: "#171717",
+    data: {
+      result: { value: "已提交待审核", color: "#d97706" },
+      orderNo: { value: orderNo.slice(0, 20), color: "#171717" },
+      remark: { value: "客服已代您提交，请等待审核结果。", color: "#6b7280" },
+    },
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const wxResponse = await fetch(
+      `https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=${accessToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeout);
+
+    const wxData = await wxResponse.json();
+    if (wxData.errcode === 0) {
+      apiConsole.info(`[SpentAdjustment] 代提交模板消息发送成功: userId=${userId}`);
+      return { success: true, sent: true };
+    }
+
+    apiConsole.error("[SpentAdjustment] 代提交微信模板消息发送失败:", wxData);
+    return {
+      success: false,
+      sent: false,
+      error: { code: "WECHAT_API_ERROR", message: wxData.errmsg || "发送失败" },
+    };
+  } catch (error) {
+    clearTimeout(timeout);
+    apiConsole.error("[SpentAdjustment] 代提交微信请求异常:", error);
+    return {
+      success: false,
+      sent: false,
+      error: { code: "WECHAT_REQUEST_ERROR", message: "微信请求超时或失败" },
+    };
+  }
+}

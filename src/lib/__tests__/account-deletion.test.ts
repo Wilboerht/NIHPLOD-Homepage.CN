@@ -199,6 +199,7 @@ describe("executeAccountDeletion", () => {
     mockTxPointBalanceFindUnique.mockResolvedValue({ available: 0, frozen: 0 });
     mockTxPointBalanceUpdateMany.mockResolvedValue({ count: 1 });
     mockTxPointLedgerCreate.mockResolvedValue({});
+    mockTxSpentAdjustmentUpdateMany.mockResolvedValue({ count: 0 });
     mockTxSuccess();
     mockRequestUpdate.mockResolvedValue({ attempts: 1 });
     mockCreateAuditLog.mockResolvedValue(true);
@@ -232,6 +233,7 @@ describe("executeAccountDeletion", () => {
   });
 
   it("成功路径：会话撤销 → 子站 purge → 事务匿名化 → COMPLETED + 回执短信 + 审计", async () => {
+    mockTxSpentAdjustmentUpdateMany.mockResolvedValue({ count: 2 });
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
@@ -318,6 +320,7 @@ describe("executeAccountDeletion", () => {
       })
     );
     const auditDetail = mockCreateAuditLog.mock.calls[0][0].detail;
+    expect(auditDetail.pendingSpentAdjustmentsClosed).toBe(2);
     expect(JSON.stringify(auditDetail)).not.toContain("13800138000");
 
     expect(mockDispatchStatusWebhook).toHaveBeenCalledWith(

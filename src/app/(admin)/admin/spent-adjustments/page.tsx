@@ -67,10 +67,13 @@ interface ApplicationItem {
   note: string | null;
   status: AdjustmentStatus;
   statusLabel: string;
+  source: "USER" | "ADMIN";
+  sourceLabel: string;
   reviewAmount: number | null;
   reviewNote: string | null;
   reviewedAt: string | null;
   reviewedBy: { name: string; email: string } | null;
+  createdByAdmin: { name: string; email: string } | null;
   createdAt: string;
   user: {
     id: string;
@@ -510,6 +513,11 @@ function AdminSpentAdjustmentsContent() {
                   </Badge>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
+                  {a.source === "ADMIN" && (
+                    <span className="col-span-2 inline-flex w-fit items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                      客服代填{a.createdByAdmin ? ` · ${a.createdByAdmin.name}` : ""}
+                    </span>
+                  )}
                   <span className="col-span-2 truncate">
                     订单：<span className="font-mono">{a.orderNo}</span>
                   </span>
@@ -626,6 +634,11 @@ function AdminSpentAdjustmentsContent() {
                           {a.user.nickname || "未设置昵称"}
                         </p>
                         <p className="text-xs text-brand-charcoal/65">{a.user.phone}</p>
+                        {a.source === "ADMIN" && (
+                          <span className="mt-1 inline-flex rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                            客服代填{a.createdByAdmin ? ` · ${a.createdByAdmin.name}` : ""}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -795,6 +808,13 @@ function AdminSpentAdjustmentsContent() {
                   <p className="text-xs text-brand-charcoal/65">当前等级</p>
                   <p className="mt-0.5 text-brand-charcoal/70">
                     {levelDisplay(detail.user.membershipLevel)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-brand-charcoal/65">提交来源</p>
+                  <p className="mt-0.5 text-brand-charcoal/70">
+                    {detail.sourceLabel}
+                    {detail.createdByAdmin ? `（${detail.createdByAdmin.name}）` : ""}
                   </p>
                 </div>
                 <div>

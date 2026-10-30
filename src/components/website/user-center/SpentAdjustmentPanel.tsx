@@ -34,6 +34,7 @@ import { localDateStr } from "@/lib/local-date";
 import {
   SPENT_CHANNELS,
   SPENT_CHANNEL_LABELS,
+  SPENT_SOURCE_LABELS,
   SPENT_STATUS_LABELS,
   MAX_PENDING_PER_USER,
   MAX_IMAGES,
@@ -53,6 +54,7 @@ interface ApplicationItem {
   images: string[];
   note: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  source: "USER" | "ADMIN";
   reviewAmount: number | null;
   reviewNote: string | null;
   createdAt: string;
@@ -255,10 +257,7 @@ export function SpentAdjustmentPanel({
         images,
         note: note.trim(),
       });
-      if (
-        requestIdRef.current &&
-        requestIdSignatureRef.current !== requestSignature
-      ) {
+      if (requestIdRef.current && requestIdSignatureRef.current !== requestSignature) {
         requestIdRef.current = null;
       }
       if (!requestIdRef.current) {
@@ -617,6 +616,11 @@ export function SpentAdjustmentPanel({
                           {SPENT_STATUS_LABELS[a.status]}
                         </span>
                         <span className="truncate text-sm text-stone-700">{a.orderNo}</span>
+                        {a.source === "ADMIN" && (
+                          <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">
+                            {SPENT_SOURCE_LABELS.ADMIN}
+                          </span>
+                        )}
                       </div>
                       <span className="shrink-0 text-[11px] text-stone-400">
                         {formatDate(a.createdAt)}

@@ -69,7 +69,11 @@ import {
   type ApprovalInitialValues,
 } from "@/components/admin/ApprovalRequestDialog";
 import type { ApprovalPolicyKey } from "@/lib/admin-approval-policy";
-import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
+import {
+  SPENT_CHANNEL_LABELS,
+  SPENT_SOURCE_LABELS,
+  SPENT_STATUS_LABELS,
+} from "@/lib/spent-adjustment-meta";
 import type { UserExportGroup } from "@/lib/user-export";
 import { UserExportDialog } from "./UserExportDialog";
 
@@ -330,6 +334,8 @@ interface SpentAdjustmentItem {
   orderNo: string;
   amountClaimed: number | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  source: "USER" | "ADMIN";
+  createdByAdminName: string | null;
   reviewAmount: number | null;
   reviewNote: string | null;
   createdAt: string;
@@ -2097,6 +2103,12 @@ function AdminUsersContent() {
                                     a.channel as keyof typeof SPENT_CHANNEL_LABELS
                                   ] ?? a.channel}
                                 </span>
+                                {a.source === "ADMIN" && (
+                                  <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                                    {SPENT_SOURCE_LABELS.ADMIN}
+                                    {a.createdByAdminName ? ` · ${a.createdByAdminName}` : ""}
+                                  </span>
+                                )}
                               </div>
                               <span
                                 className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${

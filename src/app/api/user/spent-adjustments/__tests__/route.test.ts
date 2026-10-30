@@ -14,6 +14,8 @@ const prismaMock = vi.hoisted(() => {
       count: vi.fn(),
       create: vi.fn(),
     },
+    spentImportRow: { findFirst: vi.fn() },
+    spentOrderClaim: { findUnique: vi.fn() },
     $queryRaw: vi.fn().mockResolvedValue([]),
     // 事务透传：直接以 mock 自身作为 tx 执行回调
     $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(m)),
@@ -109,6 +111,8 @@ describe("POST /api/user/spent-adjustments", () => {
     (prismaMock.spentAdjustmentApplication.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(
       null
     );
+    (prismaMock.spentImportRow.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prismaMock.spentOrderClaim.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     mockCount.mockResolvedValue(0);
     mockCreate.mockResolvedValue({
       id: "app-new",
@@ -196,6 +200,32 @@ describe("POST /api/user/spent-adjustments", () => {
 
     expect(res.status).toBe(400);
     expect(data.error.code).toBe("INVALID_PARAMS");
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("订单号已成功导入返回 409 ORDER_ALREADY_IMPORTED", async () => {
+    (prismaMock.spentImportRow.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "row-1",
+    });
+
+    const res = await POST(createRequest("POST", { channel: "TMALL", orderNo: "ORDER123" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(data.error.code).toBe("ORDER_ALREADY_IMPORTED");
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("订单号已被其他来源占用返回 409 ORDER_CONFLICT", async () => {
+    (prismaMock.spentOrderClaim.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      userId: "user-2",
+    });
+
+    const res = await POST(createRequest("POST", { channel: "TMALL", orderNo: "ORDER123" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(data.error.code).toBe("ORDER_CONFLICT");
     expect(mockCreate).not.toHaveBeenCalled();
   });
 

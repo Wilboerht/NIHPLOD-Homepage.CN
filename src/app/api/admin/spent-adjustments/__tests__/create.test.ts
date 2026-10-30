@@ -211,6 +211,26 @@ describe("POST /api/admin/spent-adjustments", () => {
     expect(data.error.code).toBe("ORDER_NO_DUPLICATE");
   });
 
+  it("订单号已成功导入返回 409 ORDER_ALREADY_IMPORTED", async () => {
+    mockCreate.mockResolvedValue({ ok: false, kind: "order_imported" });
+
+    const res = await POST(createRequest(validBody));
+
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error.code).toBe("ORDER_ALREADY_IMPORTED");
+  });
+
+  it("订单号已被其他来源占用返回 409 ORDER_CONFLICT", async () => {
+    mockCreate.mockResolvedValue({ ok: false, kind: "order_claimed" });
+
+    const res = await POST(createRequest(validBody));
+
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error.code).toBe("ORDER_CONFLICT");
+  });
+
   it("目标用户待审核数量达到上限返回 400", async () => {
     mockCreate.mockResolvedValue({ ok: false, kind: "pending_limit" });
 

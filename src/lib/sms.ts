@@ -157,6 +157,7 @@ export type SMSTemplate =
   | "LOGIN_CODE"
   | "PASSWORD_RESET"
   | "SPENT_REVIEW"
+  | "SPENT_SUBMITTED"
   | "ADMIN_PASSWORD_RESET"
   | "PHONE_CHANGED"
   | "ACCOUNT_DELETED"
@@ -345,6 +346,7 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
     LOGIN_CODE: process.env.SMS_TEMPLATE_CODE_LOGIN,
     PASSWORD_RESET: process.env.SMS_TEMPLATE_CODE_PASSWORD_RESET,
     SPENT_REVIEW: process.env.SMS_TEMPLATE_CODE_SPENT_REVIEW,
+    SPENT_SUBMITTED: process.env.SMS_TEMPLATE_CODE_SPENT_SUBMITTED,
     ADMIN_PASSWORD_RESET: process.env.SMS_TEMPLATE_CODE_ADMIN_PASSWORD_RESET,
     PHONE_CHANGED: process.env.SMS_TEMPLATE_CODE_PHONE_CHANGED,
     ACCOUNT_DELETED: process.env.SMS_TEMPLATE_CODE_ACCOUNT_DELETED,
@@ -370,6 +372,7 @@ const TENCENT_TEMPLATE_PARAM_KEYS: Record<SMSTemplate, string[]> = {
   LOGIN_CODE: ["code"],
   PASSWORD_RESET: ["time"],
   SPENT_REVIEW: ["result"],
+  SPENT_SUBMITTED: ["orderNo"],
   ADMIN_PASSWORD_RESET: ["time"],
   PHONE_CHANGED: ["time"],
   ACCOUNT_DELETED: ["time"],
@@ -463,6 +466,7 @@ function getTencentTemplateId(template: SMSTemplate): string | null {
     LOGIN_CODE: process.env.TENCENT_SMS_TEMPLATE_ID_LOGIN,
     PASSWORD_RESET: process.env.TENCENT_SMS_TEMPLATE_ID_PASSWORD_RESET,
     SPENT_REVIEW: process.env.TENCENT_SMS_TEMPLATE_ID_SPENT_REVIEW,
+    SPENT_SUBMITTED: process.env.TENCENT_SMS_TEMPLATE_ID_SPENT_SUBMITTED,
     ADMIN_PASSWORD_RESET: process.env.TENCENT_SMS_TEMPLATE_ID_ADMIN_PASSWORD_RESET,
     PHONE_CHANGED: process.env.TENCENT_SMS_TEMPLATE_ID_PHONE_CHANGED,
     ACCOUNT_DELETED: process.env.TENCENT_SMS_TEMPLATE_ID_ACCOUNT_DELETED,
@@ -559,8 +563,30 @@ export async function sendSpentReviewNotification(phone: string, result: string)
 }
 
 /**
- * 发送账号注销完成回执（注销执行任务匿名化后，发往注销前留存的手机号）
- * 模板未配置或发送失败仅记日志，不影响注销主流程（fail-soft）
+ * 客服代客提交消费补录后通知用户（fail-soft）。
+ * 模板：SPENT_SUBMITTED，参数 {1}=订单号。
+ */
+export async function sendSpentSubmittedNotification(
+  phone: string,
+  orderNo: string
+): Promise<void> {
+  try {
+    const result = await sendSMS({
+      phone,
+      template: "SPENT_SUBMITTED",
+      params: { orderNo },
+    });
+    if (!result.success) {
+      apiConsole.error("[SpentSubmittedNotification] 短信发送失败:", result.error);
+    }
+  } catch (error) {
+    apiConsole.error("[SpentSubmittedNotification] 短信异常:", error);
+  }
+}
+
+/**
+ * 发送账号注销完成或执行注销失败通知（发送到注销前的手机号，
+ * 模板未配置或用户失败仅记录日志，不影响注销主流程，fail-soft）。
  */
 export async function sendAccountDeletedNotification(phone: string): Promise<void> {
   try {

@@ -5,7 +5,7 @@
  */
 import { prisma } from "./prisma";
 import { apiConsole } from "./logger";
-import { maskIp, maskPhone } from "./mask-phone";
+import { maskPhone } from "./mask-phone";
 import { claimAlert, notifyWithCooldown, sendAlert } from "./alert-notify";
 import type { PointInvariantResult } from "./points-invariants";
 
@@ -168,31 +168,6 @@ export function notifyAuditExportFailure(params: {
       `- 申请人：${params.adminName || params.adminEmail || "-"}`,
       `- 错误：${truncate(params.error)}`,
       `- 时间：${nowText()}`,
-    ],
-  });
-}
-
-/** Refresh Token 重用：疑似令牌泄露 */
-export function notifyRefreshTokenReuse(params: {
-  userId: string;
-  phone: string;
-  reason: string;
-  ip: string;
-  channel: string;
-}): void {
-  notifyWithCooldown({
-    ruleKey: `refresh-reuse:${params.userId}`,
-    count: 1,
-    cooldownMs: 10 * MINUTE,
-    type: "admin",
-    title: "检测到 Refresh Token 重用",
-    lines: [
-      `- 用户：${params.phone ? maskPhone(params.phone) : params.userId}`,
-      `- 原因：${params.reason}`,
-      `- 来源 IP：${maskIp(params.ip)}`,
-      `- 通道：${params.channel}`,
-      `- 时间：${nowText()}`,
-      "- 系统已撤销该用户的 Refresh Token，请关注账号安全",
     ],
   });
 }

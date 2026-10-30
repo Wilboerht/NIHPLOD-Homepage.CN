@@ -167,6 +167,27 @@ export async function notifyPointsSpentReview(params: {
 }
 
 /**
+ * 客服代客提交消费补录后通知小程序用户。
+ * 模板：MP_POINTS_TEMPLATE_SPENT_SUBMITTED（date1=提交时间 / thing2=状态）。
+ * 未配置模板或用户无小程序身份时静默跳过。
+ */
+export async function notifyPointsSpentSubmitted(params: { userId: string }): Promise<void> {
+  const { userId } = params;
+
+  await sendMiniprogramNotify({
+    userId,
+    mpClientId: POINTS_MP_CLIENT_ID,
+    templateId: process.env.MP_POINTS_TEMPLATE_SPENT_SUBMITTED,
+    page: "pages/spent-adjustments/spent-adjustments",
+    context: "代客录入提交通知",
+    data: {
+      date1: { value: formatWxDate(new Date()) },
+      thing2: { value: "已提交待审核" },
+    },
+  });
+}
+
+/**
  * 测肤报告完成通知（测肤子站 analyze 完成后经内部 API 转发触发）。
  *
  * 模板：公共模板库「检测报告生成提醒」（美妆类目）→ 选用关键词（按此顺序）：

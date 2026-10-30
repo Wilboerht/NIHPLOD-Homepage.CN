@@ -32,6 +32,7 @@ export {
   LEGACY_SPENT_CHANNELS,
   ALL_SPENT_CHANNELS,
   SPENT_STATUS_LABELS,
+  SPENT_SOURCE_LABELS,
 } from "@/lib/spent-adjustment-meta";
 
 export type ReviewDecision = "approve" | "reject";

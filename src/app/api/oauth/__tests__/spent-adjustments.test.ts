@@ -58,6 +58,8 @@ const prismaMock = vi.hoisted(() => {
       count: vi.fn(),
       create: vi.fn(),
     },
+    spentImportRow: { findFirst: vi.fn() },
+    spentOrderClaim: { findUnique: vi.fn() },
     $queryRaw: vi.fn().mockResolvedValue([]),
     $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(m)),
   };
@@ -94,6 +96,8 @@ describe("/api/oauth/spent-adjustments", () => {
     prismaMock.$transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(prismaMock));
     prismaMock.$queryRaw.mockResolvedValue([]);
     prismaMock.spentAdjustmentApplication.findFirst.mockResolvedValue(null);
+    prismaMock.spentImportRow.findFirst.mockResolvedValue(null);
+    prismaMock.spentOrderClaim.findUnique.mockResolvedValue(null);
   });
 
   it("缺少 Authorization header 返回 401", async () => {
@@ -165,6 +169,38 @@ describe("/api/oauth/spent-adjustments", () => {
     expect(body.data.application.id).toBe("app-new");
     expect(body.data.application.statusLabel).toBe("待审核");
     expect(mockNotifyNewSpentApplication).toHaveBeenCalledWith("app-new");
+  });
+
+  it("POST 订单号已成功导入返回 409 ORDER_ALREADY_IMPORTED", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid membership",
+    });
+    prismaMock.user.findUnique.mockResolvedValue({ status: "ACTIVE" });
+    prismaMock.spentImportRow.findFirst.mockResolvedValue({ id: "row-1" });
+
+    const res = await POST(makeRequest("POST", { channel: "TMALL", orderNo: "ORDER123" }));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error.code).toBe("ORDER_ALREADY_IMPORTED");
+    expect(prismaMock.spentAdjustmentApplication.create).not.toHaveBeenCalled();
+  });
+
+  it("POST 订单号已被其他来源占用返回 409 ORDER_CONFLICT", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid membership",
+    });
+    prismaMock.user.findUnique.mockResolvedValue({ status: "ACTIVE" });
+    prismaMock.spentOrderClaim.findUnique.mockResolvedValue({ userId: "user-2" });
+
+    const res = await POST(makeRequest("POST", { channel: "TMALL", orderNo: "ORDER123" }));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error.code).toBe("ORDER_CONFLICT");
+    expect(prismaMock.spentAdjustmentApplication.create).not.toHaveBeenCalled();
   });
 
   it("POST 同一 requestId 重试返回已有申请且不重复创建", async () => {

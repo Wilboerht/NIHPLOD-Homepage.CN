@@ -30,6 +30,7 @@
     "compare:advisor-products": "tsx scripts/compare-advisor-products.ts",
     "products:sync-advisor": "tsx scripts/push-advisor-products.ts",
     "spent:check-conflicts": "tsx scripts/check-spent-order-conflicts.ts",
+    "spent:purge-orphan-proofs": "tsx scripts/purge-orphan-spent-proofs.ts",
     "points:check-invariants": "tsx scripts/check-point-invariants.ts"
   },
   "prisma": {

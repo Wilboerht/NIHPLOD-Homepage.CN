@@ -132,6 +132,7 @@ export type AuditAction =
   | "amap_config_view"
   | "spent_receipt_view"
   | "spent_proof_public_purge"
+  | "spent_proof_orphan_purge"
   | "spent_import_preview"
   | "point_redemption_pii_view"
   | "application_list_view"
@@ -296,6 +297,7 @@ export const AUDIT_ACTIONS = [
   "amap_config_view",
   "spent_receipt_view",
   "spent_proof_public_purge",
+  "spent_proof_orphan_purge",
   "spent_import_preview",
   "point_redemption_pii_view",
   "application_list_view",

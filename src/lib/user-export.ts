@@ -143,6 +143,11 @@ export const SPENT_STATUS_LABELS: Record<string, string> = {
   REJECTED: "已驳回",
 };
 
+export const SPENT_SOURCE_LABELS: Record<string, string> = {
+  USER: "用户提交",
+  ADMIN: "客服代填",
+};
+
 export const LOGIN_TYPE_LABELS: Record<string, string> = {
   password: "密码登录",
   sms: "验证码登录",

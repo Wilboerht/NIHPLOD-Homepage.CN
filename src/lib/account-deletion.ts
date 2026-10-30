@@ -195,6 +195,7 @@ export async function executeAccountDeletion(
 
     // 5. 事务：解绑第三方身份 + 匿名化 User + 清理 PII 衍生数据
     // 注意：User 行只 update 不 delete（财务表 Restrict 外键 + 法定留存）
+    let closedPendingSpentAdjustments = 0;
     await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
       // 第三方身份全量解绑（防止注销后被第三方回调重新定位/激活）
@@ -225,7 +226,7 @@ export async function executeAccountDeletion(
       });
       // 待审核补录申请自动关闭：用户已注销，无法再审核入账，
       // 避免申请永久占用审核队列（已通过记录保留用于财务审计）。
-      await tx.spentAdjustmentApplication.updateMany({
+      const closedPending = await tx.spentAdjustmentApplication.updateMany({
         where: { userId, status: "PENDING" },
         data: {
           status: "REJECTED",
@@ -233,6 +234,7 @@ export async function executeAccountDeletion(
           reviewedAt: new Date(),
         },
       });
+      closedPendingSpentAdjustments = closedPending.count;
       // SSO 授权同意全量撤销（与管理端删除路径同口径）
       await tx.userConsent.updateMany({
         where: { userId, revokedAt: null },
@@ -377,6 +379,8 @@ export async function executeAccountDeletion(
         // OSS 清理失败需人工补删，纳入审计留痕（不含明文手机号/URL 之外的 PII）
         ...(avatarPurgeFailed ? { avatarPurgeFailed: true } : {}),
         ...(proofPurgeFailed ? { proofPurgeFailed: true } : {}),
+        // 注销时自动关闭的待审核补录申请数（逐条 reviewNote 保留在申请记录中）
+        pendingSpentAdjustmentsClosed: closedPendingSpentAdjustments,
       },
     });
 

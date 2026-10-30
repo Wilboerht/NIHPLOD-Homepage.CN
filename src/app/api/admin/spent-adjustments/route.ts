@@ -16,7 +16,11 @@ import { validateCUID } from "@/lib/validation";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
-import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
+import {
+  SPENT_CHANNEL_LABELS,
+  SPENT_SOURCE_LABELS,
+  SPENT_STATUS_LABELS,
+} from "@/lib/spent-adjustments";
 import {
   createSpentApplication,
   createSpentApplicationSchema,
@@ -93,12 +97,14 @@ export async function GET(request: NextRequest) {
           images: true,
           note: true,
           status: true,
+          source: true,
           reviewAmount: true,
           reviewNote: true,
           reviewedAt: true,
           createdAt: true,
           user: { select: { id: true, phone: true, nickname: true, membershipLevel: true } },
           reviewedBy: { select: { name: true, email: true } },
+          createdByAdmin: { select: { name: true, email: true } },
         },
       }),
       prisma.spentAdjustmentApplication.count({ where }),
@@ -120,6 +126,7 @@ export async function GET(request: NextRequest) {
           ...a,
           channelLabel: SPENT_CHANNEL_LABELS[a.channel],
           statusLabel: SPENT_STATUS_LABELS[a.status],
+          sourceLabel: SPENT_SOURCE_LABELS[a.source],
           user: {
             id: a.user.id,
             phone: maskPhone(a.user.phone),
@@ -288,6 +295,30 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { success: false, error: { code: "INVALID_IMAGE", message: "凭证图片无效" } },
           { status: 400 }
+        );
+      }
+      if (result.kind === "order_imported") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "ORDER_ALREADY_IMPORTED",
+              message: "该订单号已通过消费记录导入入账，请勿重复提交",
+            },
+          },
+          { status: 409 }
+        );
+      }
+      if (result.kind === "order_claimed") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "ORDER_CONFLICT",
+              message: "该订单号已在其他渠道入账，请核对后重试",
+            },
+          },
+          { status: 409 }
         );
       }
       if (result.kind === "pending_limit") {

@@ -226,6 +226,7 @@ function setupData() {
       images: ["spent-adjustments/proof-1.jpg"],
       note: "消费补录",
       status: "APPROVED",
+      source: "ADMIN",
       reviewAmount: 500,
       reviewNote: "通过",
       reviewedAt: NOW,

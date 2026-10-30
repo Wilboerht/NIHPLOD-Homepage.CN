@@ -25,6 +25,7 @@ import { checkPointInvariants } from "./points-invariants";
 import { expirePointsCron } from "./points-ledger";
 import { failStaleImportBatches } from "./spent-import";
 import { findSpentOrderConflicts } from "./spent-order-conflicts";
+import { purgeOrphanSpentProofs } from "./spent-proof-orphans";
 import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { anonymizeDeletedAdmins } from "./admin-retention";
@@ -153,6 +154,25 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 过期验证码记录清理失败:", error);
         markCleanupFailed("过期验证码记录");
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Purge Orphan Spent Proofs",
+    cronExpression: "30 4 * * *", // 每天凌晨 4:30 执行
+    isCleanup: true,
+    handler: async () => {
+      try {
+        apiConsole.info("[Cron] 开始清理孤儿消费凭证...");
+        const result = await purgeOrphanSpentProofs({ apply: true });
+        apiConsole.info(
+          `[Cron] 孤儿消费凭证清理完成: 删除 ${result.deleted} / 扫描 ${result.scanned}（候选 ${result.candidates}）`
+        );
+        markCleanupOk("孤儿消费凭证");
+      } catch (error) {
+        apiConsole.error("[Cron] 孤儿消费凭证清理失败:", error);
+        markCleanupFailed("孤儿消费凭证");
         throw error;
       }
     },

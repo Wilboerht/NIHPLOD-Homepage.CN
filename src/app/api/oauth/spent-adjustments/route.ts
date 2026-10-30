@@ -152,6 +152,30 @@ export async function POST(request: NextRequest) {
           400
         );
       }
+      if (result.kind === "order_imported") {
+        return resJson(
+          {
+            success: false,
+            error: {
+              code: "ORDER_ALREADY_IMPORTED",
+              message: "该订单号已通过消费记录导入入账，请勿重复提交",
+            },
+          },
+          409
+        );
+      }
+      if (result.kind === "order_claimed") {
+        return resJson(
+          {
+            success: false,
+            error: {
+              code: "ORDER_CONFLICT",
+              message: "该订单号已在其他渠道入账，请核对后重试",
+            },
+          },
+          409
+        );
+      }
       if (result.kind === "pending_limit") {
         return resJson(
           {

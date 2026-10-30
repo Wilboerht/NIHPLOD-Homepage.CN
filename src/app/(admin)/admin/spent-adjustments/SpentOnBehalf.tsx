@@ -142,10 +142,10 @@ export function SpentOnBehalfModal({
       const isLatest = takeLatestSearch();
       setSearching(true);
       try {
-        const result = await apiGet<{ users: AdminUserOption[] }>("/api/admin/users", {
-          search: keyword,
-          pageSize: 8,
-        });
+        const result = await apiGet<{ users: AdminUserOption[] }>(
+          "/api/admin/spent-adjustments/users",
+          { search: keyword }
+        );
         if (!isLatest()) return;
         setSearchResults(result.users);
         setSearchError(null);

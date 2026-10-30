@@ -873,6 +873,12 @@ enum SpentAdjustmentStatus {
   REJECTED
 }
 
+// 补录来源：用户自主提交 / 管理员代客填写
+enum SpentAdjustmentSource {
+  USER
+  ADMIN
+}
+
 // 消费补录申请：用户提交全渠道消费凭证，管理员审核通过后手动累加历史消费金额（提升会员等级）
 model SpentAdjustmentApplication {
   id            String                 @id @default(cuid())
@@ -885,6 +891,8 @@ model SpentAdjustmentApplication {
   images        String[] // 凭证截图 URL（选填，最多 3 张）
   note          String?                @db.Text // 备注
   requestId     String? // 客户端幂等键：同一用户同一 requestId 只创建一条申请
+  source        SpentAdjustmentSource  @default(USER) // 提交来源：用户自主 / 客服代填
+  createdByAdminId String? // 代客填写的管理员（source=ADMIN 时记录）
   status        SpentAdjustmentStatus  @default(PENDING)
   reviewAmount  Int? // 审核核实金额（元，以人工核实为准）
   reviewNote    String?                @db.Text // 驳回原因/审核备注
@@ -893,8 +901,9 @@ model SpentAdjustmentApplication {
   createdAt     DateTime               @default(now())
   updatedAt     DateTime               @default(now()) @updatedAt
 
-  user       User   @relation(fields: [userId], references: [id], onDelete: Restrict)
-  reviewedBy Admin? @relation("SpentAdjustmentReview", fields: [reviewedById], references: [id], onDelete: SetNull)
+  user           User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  reviewedBy     Admin? @relation("SpentAdjustmentReview", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdByAdmin Admin? @relation("SpentAdjustmentCreatedBy", fields: [createdByAdminId], references: [id], onDelete: SetNull)
 
   @@unique([userId, requestId])
   @@index([userId, createdAt(sort: Desc)])
@@ -1195,6 +1204,7 @@ model Admin {
 
   auditLogs                AuditLog[] // 审计日志关联
   spentAdjustmentReviews   SpentAdjustmentApplication[] @relation("SpentAdjustmentReview")
+  spentAdjustmentCreations SpentAdjustmentApplication[] @relation("SpentAdjustmentCreatedBy")
   spentImportBatches       SpentImportBatch[]
   adminSsoCodes            AdminSsoCode[]
   adminStepUpGrants        AdminStepUpGrant[]

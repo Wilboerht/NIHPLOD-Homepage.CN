@@ -55,6 +55,12 @@ export const SPENT_STATUS_LABELS: Record<SpentAdjustmentStatus, string> = {
   REJECTED: "已驳回",
 };
 
+// 提交来源展示文案（用户端只展示“客服代填”，不暴露具体管理员）
+export const SPENT_SOURCE_LABELS = {
+  USER: "用户提交",
+  ADMIN: "客服代填",
+} as const;
+
 /**
  * 凭证图片取值规则：
  * - 以 http(s):// 或 / 开头的值是公开可直接访问的 URL（OSS 公开 / 本地存储）；

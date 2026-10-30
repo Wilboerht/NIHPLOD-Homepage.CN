@@ -10,6 +10,8 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { notifyNewSpentApplication } from "@/lib/admin-notify";
+import { notifySpentApplicationSubmittedByAdmin } from "@/lib/spent-adjustment-notify";
+import { normalizeOrderNo } from "@/lib/spent-order";
 import {
   SPENT_CHANNELS,
   SPENT_CHANNEL_LABELS,
@@ -79,6 +81,7 @@ export async function listSpentApplications(userId: string) {
       images: true,
       note: true,
       status: true,
+      source: true,
       reviewAmount: true,
       reviewNote: true,
       createdAt: true,
@@ -93,7 +96,10 @@ export type CreateSpentApplicationResult =
       application: { id: string; status: string; statusLabel: string };
       idempotent?: boolean;
     }
-  | { ok: false; kind: "pending_limit" | "duplicate" | "invalid_image" };
+  | {
+      ok: false;
+      kind: "pending_limit" | "duplicate" | "invalid_image" | "order_imported" | "order_claimed";
+    };
 
 /** 管理员代客提交时的操作者信息（用于审计与通知区分来源） */
 export interface SpentApplicationActor {
@@ -129,7 +135,9 @@ export async function createSpentApplication(params: {
     | { kind: "ok"; application: { id: string; status: string } }
     | { kind: "replay"; application: { id: string; status: string } }
     | { kind: "limit" }
-    | { kind: "duplicate" };
+    | { kind: "duplicate" }
+    | { kind: "order_imported" }
+    | { kind: "order_claimed" };
 
   let claim: ClaimResult;
   try {
@@ -157,6 +165,27 @@ export async function createSpentApplication(params: {
       });
       if (duplicate) return { kind: "duplicate" };
 
+      // 跨来源预检：订单号已在 Excel 导入成功或被商城/其它来源占用时，
+      // 即使创建成功也会在审核入账阶段失败，提前拒绝避免客服白填。
+      const orderNoKey = normalizeOrderNo(orderNo);
+      const [importedRow, orderClaim] = await Promise.all([
+        tx.spentImportRow.findFirst({
+          where: {
+            userId,
+            orderNo: { equals: orderNo, mode: "insensitive" },
+            status: "SUCCESS",
+            revertedAt: null,
+          },
+          select: { id: true },
+        }),
+        tx.spentOrderClaim.findUnique({
+          where: { orderNoKey },
+          select: { userId: true },
+        }),
+      ]);
+      if (importedRow) return { kind: "order_imported" };
+      if (orderClaim) return { kind: "order_claimed" };
+
       const pendingCount = await tx.spentAdjustmentApplication.count({
         where: { userId, status: "PENDING" },
       });
@@ -174,6 +203,8 @@ export async function createSpentApplication(params: {
           images: images ?? [],
           note: note || null,
           requestId: requestId ?? null,
+          source: actor ? "ADMIN" : "USER",
+          createdByAdminId: actor?.adminId ?? null,
         },
       });
       return { kind: "ok", application };
@@ -205,6 +236,12 @@ export async function createSpentApplication(params: {
 
   if (claim.kind === "duplicate") {
     return { ok: false, kind: "duplicate" };
+  }
+  if (claim.kind === "order_imported") {
+    return { ok: false, kind: "order_imported" };
+  }
+  if (claim.kind === "order_claimed") {
+    return { ok: false, kind: "order_claimed" };
   }
   if (claim.kind === "limit") {
     return { ok: false, kind: "pending_limit" };
@@ -262,6 +299,8 @@ export async function createSpentApplication(params: {
     notifyNewSpentApplication(application.id, {
       onBehalfByName: actor.adminName || actor.adminEmail,
     });
+    // 通知用户本人：客服已代其提交，等待审核
+    notifySpentApplicationSubmittedByAdmin(application.id);
   } else {
     notifyNewSpentApplication(application.id);
   }

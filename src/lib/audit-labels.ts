@@ -114,6 +114,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   amap_config_view: "查看高德地图密钥",
   spent_receipt_view: "查看消费凭证图片",
   spent_proof_public_purge: "清理公开消费凭证",
+  spent_proof_orphan_purge: "清理孤儿消费凭证",
   spent_import_preview: "预览消费记录导入",
   point_redemption_pii_view: "查看积分兑换完整收货信息",
   application_list_view: "查看简历列表（PII）",
