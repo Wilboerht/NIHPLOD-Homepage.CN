@@ -1,6 +1,7 @@
 /**
  * 消费补录审核 API（管理端）
- * GET /api/admin/spent-adjustments - 补录申请列表（按状态筛选 + 分页）
+ * GET  /api/admin/spent-adjustments - 补录申请列表（按状态筛选 + 分页）
+ * POST /api/admin/spent-adjustments - 代客提交补录申请（需 spent:create）
  *
  * 审核操作见 [id]/review 路由。
  */
@@ -10,9 +11,17 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { validateCUID } from "@/lib/validation";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
+import {
+  createSpentApplication,
+  createSpentApplicationSchema,
+} from "@/lib/spent-adjustment-applications";
+import { MAX_PENDING_PER_USER } from "@/lib/spent-adjustment-meta";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -132,6 +141,203 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     apiConsole.error("[AdminSpentAdjustment] 查询失败:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 代客提交消费补录申请。
+ *
+ * 仅创建 PENDING 申请，不直接入账；能否审核仍由 spent:review 权限决定。
+ * 拥有 spent:review 的管理员可在提交后自行审核，仅有 spent:create 的客服
+ * 需由其他有审核权限的管理员处理，保持资金操作分离。
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const admin = await verifyAuth(request);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED", message: "未授权" } },
+        { status: 401 }
+      );
+    }
+
+    if (!hasAdminPermission(admin, "spent:create")) {
+      return NextResponse.json(
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：消费补录代客填写" } },
+        { status: 403 }
+      );
+    }
+
+    if (!validateCSRFToken(request)) {
+      return csrfForbiddenResponse();
+    }
+
+    const rateLimitResponse = await checkAdminRateLimit(request, "spent-adjust:create", admin.id);
+    if (rateLimitResponse) return rateLimitResponse;
+
+    let body: Record<string, unknown>;
+    try {
+      const parsedBody = await request.json();
+      if (!parsedBody || typeof parsedBody !== "object" || Array.isArray(parsedBody)) {
+        throw new Error("invalid body");
+      }
+      body = parsedBody as Record<string, unknown>;
+    } catch {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+        { status: 400 }
+      );
+    }
+
+    const { userId, ...inputRaw } = body;
+    if (typeof userId !== "string" || !validateCUID(userId)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "请选择有效的用户" } },
+        { status: 400 }
+      );
+    }
+
+    const parsed = createSpentApplicationSchema.safeParse(inputRaw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: parsed.error.issues[0]?.message || "参数错误" },
+        },
+        { status: 400 }
+      );
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    });
+    if (!targetUser) {
+      return NextResponse.json(
+        { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
+        { status: 404 }
+      );
+    }
+    if (targetUser.status !== "ACTIVE") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "USER_INACTIVE", message: "该用户当前状态不可提交消费补录" },
+        },
+        { status: 409 }
+      );
+    }
+
+    // 资金类记录由管理员代填：审计预写失败则拒绝创建（与审核/导入口径一致）
+    // finishAuditLog 会整体替换 detail，因此失败/成功分支都需要带上完整上下文。
+    const auditDetail = {
+      targetUserId: userId,
+      channel: SPENT_CHANNEL_LABELS[parsed.data.channel],
+      orderNo: parsed.data.orderNo,
+      dealerName: parsed.data.channel === "DEALER" ? parsed.data.dealerName : undefined,
+      amountClaimed: parsed.data.amountClaimed,
+    };
+    const auditId = await beginAuditLog({
+      action: "admin_create_spent_adjustment",
+      targetType: "spent_adjustment",
+      detail: auditDetail,
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+    });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof createSpentApplication>>;
+    try {
+      result = await createSpentApplication({
+        userId,
+        input: parsed.data,
+        request,
+        actor: {
+          adminId: admin.id,
+          adminName: admin.name,
+          adminEmail: admin.email,
+          adminRole: admin.role,
+        },
+        skipAudit: true,
+      });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", { ...auditDetail, error: "EXCEPTION" });
+      throw error;
+    }
+
+    if (!result.ok) {
+      await finishAuditLog(auditId, "FAILURE", { ...auditDetail, code: result.kind });
+      if (result.kind === "invalid_image") {
+        return NextResponse.json(
+          { success: false, error: { code: "INVALID_IMAGE", message: "凭证图片无效" } },
+          { status: 400 }
+        );
+      }
+      if (result.kind === "pending_limit") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "PENDING_LIMIT",
+              message: `该用户最多同时有 ${MAX_PENDING_PER_USER} 条待审核申请，请等待审核完成后再提交`,
+            },
+          },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "ORDER_NO_DUPLICATE",
+            message: "该用户已有相同订单号待审核或已通过的申请，请勿重复提交",
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    await finishAuditLog(
+      auditId,
+      "SUCCESS",
+      {
+        ...auditDetail,
+        applicationId: result.application.id,
+        idempotent: result.idempotent ?? false,
+      },
+      result.application.id
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        application: {
+          id: result.application.id,
+          status: result.application.status,
+          statusLabel: result.application.statusLabel,
+        },
+        idempotent: result.idempotent ?? false,
+      },
+    });
+  } catch (error) {
+    apiConsole.error("[AdminSpentAdjustment] 代客提交失败:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },
       { status: 500 }

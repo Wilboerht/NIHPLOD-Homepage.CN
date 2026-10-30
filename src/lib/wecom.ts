@@ -194,12 +194,17 @@ export function formatSpentApplicationToWecom(data: {
   purchasedAt?: Date | null;
   submittedAt: Date;
   note?: string | null;
+  /** 管理员代客填写时显示操作管理员，便于审核人识别来源 */
+  onBehalfByName?: string | null;
 }) {
   const lines = [
     `> **用户**: ${escapeWecomMarkdown(data.userLabel)}`,
     `> **渠道**: ${escapeWecomMarkdown(data.channel)}`,
     `> **订单号**: ${escapeWecomMarkdown(data.orderNo)}`,
   ];
+  if (data.onBehalfByName) {
+    lines.unshift(`> **提交方式**: 管理员代填（${escapeWecomMarkdown(data.onBehalfByName)}）`);
+  }
 
   if (data.amountClaimed) {
     lines.push(`> **申报金额**: ¥${data.amountClaimed.toLocaleString("zh-CN")}`);

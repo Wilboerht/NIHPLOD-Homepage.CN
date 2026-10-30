@@ -22,6 +22,7 @@ const EXACT_LIMITS: ReadonlyArray<[string, number]> = [
   ["/api/careers/apply", BODY_LIMITS.resumeUpload],
   ["/api/admin/spent-import/upload", BODY_LIMITS.spentImportUpload],
   ["/api/admin/spent-import/execute", BODY_LIMITS.spentImportExecute],
+  ["/api/admin/spent-adjustments/upload", BODY_LIMITS.imageUpload],
   ["/api/admin/upload", BODY_LIMITS.imageUpload],
   ["/api/upload", BODY_LIMITS.imageUpload],
   ["/api/user/profile", BODY_LIMITS.imageUpload],

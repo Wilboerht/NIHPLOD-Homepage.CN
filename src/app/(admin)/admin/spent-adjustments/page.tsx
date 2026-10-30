@@ -3,7 +3,8 @@
 /**
  * 消费补录审核后台页面
  * 审核用户提交的全渠道消费凭证，通过后以核实金额累加历史消费（自动重算会员等级）。
- * 权限：查看需 spent:read，审核/撤销需 spent:review，Excel 导入需 spent:import；操作写入审计日志。
+ * 权限：查看需 spent:read，代客填写需 spent:create，审核/撤销需 spent:review，
+ * Excel 导入需 spent:import；操作写入审计日志。
  */
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -16,6 +17,7 @@ import {
   RefreshCw,
   Search,
   Undo2,
+  UserPlus,
   X,
   XCircle,
 } from "lucide-react";
@@ -48,6 +50,7 @@ import {
 import { receiptImageSrc } from "@/lib/spent-adjustment-meta";
 import { levelDisplay } from "@/lib/membership";
 import { SpentImportModal, ImportHistoryModal } from "./SpentImport";
+import { SpentOnBehalfModal } from "./SpentOnBehalf";
 
 type AdjustmentStatus = "PENDING" | "APPROVED" | "REJECTED";
 type StatusFilter = "ALL" | AdjustmentStatus;
@@ -122,6 +125,9 @@ function AdminSpentAdjustmentsContent() {
   const [undoing, setUndoing] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [onBehalfOpen, setOnBehalfOpen] = useState(false);
+  // 每次打开代客补录递增 key，让弹窗以全新表单状态挂载
+  const [onBehalfSession, setOnBehalfSession] = useState(0);
   const { success, error: showError } = useToast();
 
   // 权限：Excel 导入/撤销导入需要 spent:import（与 API 层一致）
@@ -129,6 +135,7 @@ function AdminSpentAdjustmentsContent() {
   const isOwnerActor = role === "owner";
   const canImport = canAdmin("spent:import");
   const canReadSpent = canAdmin("spent:read");
+  const canCreate = canAdmin("spent:create");
   const canReview = canAdmin("spent:review");
   const canRequestApproval = canAdmin("approvals:request");
   const claimedAmount = detail?.amountClaimed ?? 0;
@@ -253,6 +260,28 @@ function AdminSpentAdjustmentsContent() {
     }
   };
 
+  const openOnBehalf = () => {
+    setOnBehalfSession((session) => session + 1);
+    setOnBehalfOpen(true);
+  };
+
+  const handleOnBehalfCreated = () => {
+    setOnBehalfOpen(false);
+    window.dispatchEvent(new Event("admin:nav-counts-refresh"));
+    success(
+      canReview
+        ? "代客补录已提交，可在待审核列表中审核"
+        : "代客补录已提交，等待有审核权限的同事处理"
+    );
+    if (!canReadSpent) return;
+    if (tab !== "PENDING" || page !== 1 || searchParam) {
+      // 清空搜索，避免新建记录被当前筛选条件隐藏
+      update({ status: "PENDING", page: "1", search: null });
+    } else {
+      fetchData();
+    }
+  };
+
   const handleUndo = async () => {
     if (!undoTarget) return;
     setUndoing(true);
@@ -291,29 +320,53 @@ function AdminSpentAdjustmentsContent() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title="消费记录审核"
-          description="当前账号仅有 Excel 导入权限"
+          description="当前账号无补录查看权限"
           actions={
             <>
-              <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
-                <History className="mr-1.5 h-4 w-4" />
-                导入历史
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
-                Excel 导入
-              </Button>
+              {canCreate && (
+                <Button variant="outline" size="sm" onClick={openOnBehalf}>
+                  <UserPlus className="mr-1.5 h-4 w-4" />
+                  代客补录
+                </Button>
+              )}
+              {canImport && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
+                    <History className="mr-1.5 h-4 w-4" />
+                    导入历史
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                    <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+                    Excel 导入
+                  </Button>
+                </>
+              )}
             </>
           }
         />
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6 text-sm text-brand-charcoal/65">
-          你可以导入消费记录；查看和审核申请需要「消费补录查看」权限。
+          {canCreate && "你可以代客填写消费补录；"}
+          {canImport && "你可以导入消费记录；"}
+          查看和审核申请需要「消费补录查看」权限。
         </div>
-        <SpentImportModal open={importOpen} onClose={() => setImportOpen(false)} />
-        <ImportHistoryModal
-          key={historyOpen ? "open" : "closed"}
-          open={historyOpen}
-          onClose={() => setHistoryOpen(false)}
-        />
+        {canImport && (
+          <>
+            <SpentImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+            <ImportHistoryModal
+              key={historyOpen ? "open" : "closed"}
+              open={historyOpen}
+              onClose={() => setHistoryOpen(false)}
+            />
+          </>
+        )}
+        {canCreate && (
+          <SpentOnBehalfModal
+            key={onBehalfSession}
+            open={onBehalfOpen}
+            onClose={() => setOnBehalfOpen(false)}
+            onCreated={handleOnBehalfCreated}
+          />
+        )}
         {totpModal}
       </div>
     );
@@ -328,6 +381,12 @@ function AdminSpentAdjustmentsContent() {
         description="审核用户提交的全渠道消费凭证，通过后按核实金额累加历史消费并自动重算会员等级"
         actions={
           <>
+            {canCreate && (
+              <Button variant="outline" size="sm" onClick={openOnBehalf}>
+                <UserPlus className="mr-1.5 h-4 w-4" />
+                代客补录
+              </Button>
+            )}
             {canImport && (
               <>
                 <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>
@@ -950,6 +1009,16 @@ function AdminSpentAdjustmentsContent() {
         </>
       )}
 
+      {/* 代客补录（需要 spent:create 权限） */}
+      {canCreate && (
+        <SpentOnBehalfModal
+          key={onBehalfSession}
+          open={onBehalfOpen}
+          onClose={() => setOnBehalfOpen(false)}
+          onCreated={handleOnBehalfCreated}
+        />
+      )}
+
       {/* 资金类操作二次验证 */}
       {totpModal}
     </div>
@@ -958,7 +1027,7 @@ function AdminSpentAdjustmentsContent() {
 
 export default function AdminSpentAdjustmentsPage() {
   return (
-    <RequirePermission permissions={["spent:read", "spent:import"]}>
+    <RequirePermission permissions={["spent:read", "spent:import", "spent:create"]}>
       <AdminSpentAdjustmentsContent />
     </RequirePermission>
   );

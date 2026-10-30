@@ -35,7 +35,10 @@ async function send(content: string, type: "points" | "redemption"): Promise<voi
   }
 }
 
-export function notifyNewSpentApplication(applicationId: string): void {
+export function notifyNewSpentApplication(
+  applicationId: string,
+  options?: { onBehalfByName?: string | null }
+): void {
   notifyAfterResponse(async () => {
     const application = await prisma.spentAdjustmentApplication.findUnique({
       where: { id: applicationId },
@@ -60,6 +63,7 @@ export function notifyNewSpentApplication(applicationId: string): void {
         purchasedAt: application.purchasedAt,
         submittedAt: application.createdAt,
         note: application.note,
+        onBehalfByName: options?.onBehalfByName,
       }),
       "points"
     );

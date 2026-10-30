@@ -85,6 +85,7 @@ export type AuditAction =
   | "update_vip_benefit"
   | "reset_vip_benefit"
   | "submit_spent_adjustment"
+  | "admin_create_spent_adjustment"
   | "approve_spent_adjustment"
   | "reject_spent_adjustment"
   | "undo_spent_adjustment"
@@ -246,6 +247,7 @@ export const AUDIT_ACTIONS = [
   "update_vip_benefit",
   "reset_vip_benefit",
   "submit_spent_adjustment",
+  "admin_create_spent_adjustment",
   "approve_spent_adjustment",
   "reject_spent_adjustment",
   "undo_spent_adjustment",

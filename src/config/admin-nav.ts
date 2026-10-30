@@ -82,7 +82,7 @@ export const adminNavGroups: NavGroup[] = [
         title: "消费审核",
         href: "/admin/spent-adjustments",
         icon: ReceiptText,
-        permissionsAny: ["spent:read", "spent:import"],
+        permissionsAny: ["spent:read", "spent:import", "spent:create"],
         countKey: "spentAdjustments",
       },
       {

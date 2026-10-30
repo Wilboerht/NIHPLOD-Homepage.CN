@@ -45,6 +45,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   update_vip_benefit: "更新会员权益",
   reset_vip_benefit: "恢复会员权益默认配置",
   submit_spent_adjustment: "提交消费记录",
+  admin_create_spent_adjustment: "代客提交消费记录",
   approve_spent_adjustment: "通过消费记录",
   reject_spent_adjustment: "驳回消费记录",
   undo_spent_adjustment: "撤销消费记录",

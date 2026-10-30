@@ -20,6 +20,10 @@ const ALLOWLIST = new Map<string, string>([
   ["src/app/api/admin/approvals/[id]/execute/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
   ["src/app/api/admin/approvals/[id]/reject/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
   ["src/app/api/admin/approvals/[id]/retry/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
+  [
+    "src/app/api/admin/spent-adjustments/upload/route.ts",
+    "凭证上传仅暂存文件，最终提交由 POST /api/admin/spent-adjustments 写入严格审计",
+  ],
 ]);
 
 function walk(dir: string): string[] {

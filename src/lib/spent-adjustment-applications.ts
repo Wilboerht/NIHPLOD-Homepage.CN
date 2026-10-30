@@ -95,6 +95,14 @@ export type CreateSpentApplicationResult =
     }
   | { ok: false; kind: "pending_limit" | "duplicate" | "invalid_image" };
 
+/** 管理员代客提交时的操作者信息（用于审计与通知区分来源） */
+export interface SpentApplicationActor {
+  adminId: string;
+  adminName?: string;
+  adminEmail?: string;
+  adminRole?: string;
+}
+
 /**
  * 提交补录申请：事务内对用户行 SELECT FOR UPDATE 串行化同一用户的并发提交，
  * 防止并发绕过待审上限；订单号唯一约束冲突（P2002）映射为 duplicate。
@@ -103,8 +111,12 @@ export async function createSpentApplication(params: {
   userId: string;
   input: CreateSpentApplicationInput;
   request?: NextRequest;
+  /** 传入时表示管理员代客填写，审计记录管理员身份与目标用户 */
+  actor?: SpentApplicationActor;
+  /** 调用方已在路由层完成严格审计时置 true，避免重复写入 */
+  skipAudit?: boolean;
 }): Promise<CreateSpentApplicationResult> {
-  const { userId, input, request } = params;
+  const { userId, input, request, actor, skipAudit } = params;
   const { requestId, channel, orderNo, dealerName, amountClaimed, purchasedAt, images, note } =
     input;
 
@@ -211,23 +223,48 @@ export async function createSpentApplication(params: {
   }
   const application = claim.application;
 
-  // 审计（用户侧提交，记录 userId 便于追溯）
-  await createAuditLog({
-    action: "submit_spent_adjustment",
-    targetType: "spent_adjustment",
-    targetId: application.id,
-    userId,
-    detail: {
-      channel: SPENT_CHANNEL_LABELS[channel],
-      orderNo,
-      dealerName: channel === "DEALER" ? dealerName : undefined,
-      amountClaimed,
-    },
-    request,
-  });
+  // 审计：管理员代填与用户自主提交使用不同 action，便于区分来源与追责
+  const auditDetail = {
+    channel: SPENT_CHANNEL_LABELS[channel],
+    orderNo,
+    dealerName: channel === "DEALER" ? dealerName : undefined,
+    amountClaimed,
+  };
+  if (!skipAudit) {
+    if (actor) {
+      await createAuditLog({
+        action: "admin_create_spent_adjustment",
+        targetType: "spent_adjustment",
+        targetId: application.id,
+        detail: { ...auditDetail, targetUserId: userId },
+        actorType: "ADMIN",
+        actorEmail: actor.adminEmail,
+        actorName: actor.adminName,
+        actorRole: actor.adminRole,
+        authMethod: "session",
+        adminId: actor.adminId,
+        request,
+      });
+    } else {
+      await createAuditLog({
+        action: "submit_spent_adjustment",
+        targetType: "spent_adjustment",
+        targetId: application.id,
+        userId,
+        detail: auditDetail,
+        request,
+      });
+    }
+  }
 
   // 管理端企业微信群通知（响应返回后异步发送）
-  notifyNewSpentApplication(application.id);
+  if (actor) {
+    notifyNewSpentApplication(application.id, {
+      onBehalfByName: actor.adminName || actor.adminEmail,
+    });
+  } else {
+    notifyNewSpentApplication(application.id);
+  }
 
   return {
     ok: true,

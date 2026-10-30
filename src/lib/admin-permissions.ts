@@ -46,6 +46,7 @@ export const ADMIN_PERMISSIONS = [
   "messages:delete",
 
   "spent:read",
+  "spent:create",
   "spent:review",
   "spent:import",
 
@@ -150,6 +151,7 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
     group: "消费与积分",
     permissions: [
       "spent:read",
+      "spent:create",
       "spent:review",
       "spent:import",
       "gifts:read",
@@ -224,6 +226,7 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "messages:write": "留言备注/标记",
   "messages:delete": "留言删除",
   "spent:read": "消费补录查看（含凭证）",
+  "spent:create": "消费补录代客填写（客服代提交）",
   "spent:review": "消费补录审核/撤销（资金类）",
   "spent:import": "消费记录 Excel 导入/撤销（资金类）",
   "gifts:read": "积分礼品查看",
@@ -304,6 +307,7 @@ export const ROLE_TEMPLATES: Record<
     "messages:write",
     "messages:delete",
     "spent:read",
+    "spent:create",
     "spent:review",
     "gifts:read",
     "redemptions:read",
@@ -325,6 +329,7 @@ export const ROLE_TEMPLATES: Record<
     "categories:write",
     "categories:delete",
     "spent:read",
+    "spent:create",
     "spent:review",
     "gifts:read",
     "gifts:write",
@@ -346,6 +351,7 @@ export const ROLE_TEMPLATES: Record<
     "messages:read",
     "messages:write",
     "spent:read",
+    "spent:create",
     "gifts:read",
     "redemptions:read",
     "redemptions:fulfill",
