@@ -223,6 +223,16 @@ export async function executeAccountDeletion(
         where: { userId },
         data: { images: [], note: null },
       });
+      // 待审核补录申请自动关闭：用户已注销，无法再审核入账，
+      // 避免申请永久占用审核队列（已通过记录保留用于财务审计）。
+      await tx.spentAdjustmentApplication.updateMany({
+        where: { userId, status: "PENDING" },
+        data: {
+          status: "REJECTED",
+          reviewNote: "用户账号已注销，申请自动关闭",
+          reviewedAt: new Date(),
+        },
+      });
       // SSO 授权同意全量撤销（与管理端删除路径同口径）
       await tx.userConsent.updateMany({
         where: { userId, revokedAt: null },

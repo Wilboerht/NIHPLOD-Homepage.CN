@@ -31,6 +31,7 @@ const mockTxUserConsentUpdateMany = vi.fn();
 const mockTxPointRedemptionUpdateMany = vi.fn();
 const mockTxPointRedemptionFindMany = vi.fn();
 const mockTxSpentImportRowUpdateMany = vi.fn();
+const mockTxSpentAdjustmentUpdateMany = vi.fn().mockResolvedValue({ count: 0 });
 const mockTxUserUpdate = vi.fn();
 const mockTxPointBalanceFindUnique = vi.fn();
 const mockTxPointBalanceUpdateMany = vi.fn();
@@ -174,7 +175,7 @@ function mockTxSuccess() {
       },
       pointLedger: { create: mockTxPointLedgerCreate },
       spentImportRow: { updateMany: mockTxSpentImportRowUpdateMany },
-      spentAdjustmentApplication: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      spentAdjustmentApplication: { updateMany: mockTxSpentAdjustmentUpdateMany },
       product: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "user-1" }]),
       user: { update: mockTxUserUpdate },
@@ -287,6 +288,20 @@ describe("executeAccountDeletion", () => {
     expect(mockTxSpentImportRowUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1" },
       data: { phone: expectedPlaceholder("13800138000", "user-1") },
+    });
+
+    // 补录凭证/备注脱敏 + 待审核申请自动关闭（避免注销用户长期占用审核队列）
+    expect(mockTxSpentAdjustmentUpdateMany).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      data: { images: [], note: null },
+    });
+    expect(mockTxSpentAdjustmentUpdateMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", status: "PENDING" },
+      data: {
+        status: "REJECTED",
+        reviewNote: "用户账号已注销，申请自动关闭",
+        reviewedAt: expect.any(Date),
+      },
     });
 
     // 收尾：COMPLETED + 回执短信发往注销前号码 + 审计不含明文手机号

@@ -59,7 +59,7 @@ const pendingApp = {
   userId: "user-1",
   channel: "TMALL",
   orderNo: "ORDER123",
-  user: { phone: "13800138000" },
+  user: { phone: "13800138000", status: "ACTIVE" },
 };
 
 describe("reviewApplication", () => {
@@ -115,6 +115,24 @@ describe("reviewApplication", () => {
     expect(result).toEqual({ ok: true, status: "REJECTED" });
     expect(mockApplySync).not.toHaveBeenCalled();
     expect(sendSpentReviewNotification).toHaveBeenCalledWith("13800138000", "未通过");
+  });
+
+  it("用户非 ACTIVE：通过审核返回 USER_INACTIVE，不发起 CAS 与入账", async () => {
+    mockFindUnique.mockResolvedValue({
+      ...pendingApp,
+      user: { phone: "13800138000", status: "SUSPENDED" },
+    });
+
+    const result = await reviewApplication({
+      applicationId: "app-1",
+      decision: "approve",
+      adminId: "admin-1",
+      reviewAmount: 100,
+    });
+
+    expect(result).toMatchObject({ ok: false, code: "USER_INACTIVE" });
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+    expect(mockApplySync).not.toHaveBeenCalled();
   });
 
   it("前置校验：已处理申请返回 ALREADY_REVIEWED（不发起 CAS）", async () => {

@@ -77,7 +77,7 @@ export async function reviewApplication(params: {
       userId: true,
       channel: true,
       orderNo: true,
-      user: { select: { phone: true } },
+      user: { select: { phone: true, status: true } },
     },
   });
 
@@ -90,6 +90,16 @@ export async function reviewApplication(params: {
       ok: false,
       code: "ALREADY_REVIEWED",
       message: `该申请已处理（${SPENT_STATUS_LABELS[application.status]}），请勿重复审核`,
+    };
+  }
+
+  // 用户已被冻结/封禁/注销时不允许通过入账；返回明确错误，避免拖到事务内
+  // 抛异常后统一映射成 500（管理员可改为驳回，或先恢复用户状态）。
+  if (approved && application.user.status !== "ACTIVE") {
+    return {
+      ok: false,
+      code: "USER_INACTIVE",
+      message: "用户当前状态不可入账，请驳回该申请或先恢复用户状态",
     };
   }
 

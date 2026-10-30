@@ -185,6 +185,20 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
     );
   });
 
+  it("用户状态不可入账（USER_INACTIVE）返回 409", async () => {
+    mockReview.mockResolvedValue({
+      ok: false,
+      code: "USER_INACTIVE",
+      message: "用户当前状态不可入账",
+    });
+
+    const res = await POST(createRequest({ decision: "approve", reviewAmount: 100 }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
+
+    expect(res.status).toBe(409);
+  });
+
   it("已被处理（ALREADY_REVIEWED）返回 409", async () => {
     mockReview.mockResolvedValue({
       ok: false,
