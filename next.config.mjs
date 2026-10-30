@@ -40,6 +40,14 @@ const securityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+
+  // 构建时跳过类型检查：本项目 1200+ 个 TS 文件（含 Prisma 7 生成的 .ts 客户端），
+  // 在 2 核 4G 的部署机上冷启动 tsc 全量检查会卡 10 分钟以上甚至 OOM。
+  // 类型安全由 `npm run typecheck` 在本地 / CI 保证。
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   ...(process.env.REDIS_URL
     ? {
         cacheHandler: require.resolve("./src/lib/next-cache-handler.ts"),
