@@ -1,9 +1,11 @@
+import { cache } from "react";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
 import { resolveProductFaqs } from "@/lib/product-faqs";
+import { getProductNicknames } from "@/config/product-nicknames";
 import { mockProducts } from "../mock-data";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
 
@@ -41,124 +43,12 @@ type PageProps = {
 };
 
 /**
- * 生成静态参数
- * 在构建时尝试预渲染产品页面，如果数据库不可用则返回空数组
- */
-export async function generateStaticParams() {
-  if (isDev) {
-    return mockProducts.map((p) => ({ slug: p.slug }));
-  }
-
-  try {
-    const products = await prisma.product.findMany({
-      where: { published: true, category: { visible: true } },
-      select: { slug: true },
-    });
-
-    return products.map((product) => ({
-      slug: product.slug,
-    }));
-  } catch (error) {
-    console.error("generateStaticParams 获取产品列表失败:", error);
-    // 返回空数组，页面将在运行时动态生成
-    return [];
-  }
-}
-
-/**
- * 生成页面元数据
- */
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
-
-  if (isDev) {
-    const mockProduct = mockProducts.find((p) => p.slug === slug);
-    if (!mockProduct) {
-      return { title: "产品未找到" };
-    }
-    const mockDescription = toMetaDescription(
-      mockProduct.description,
-      "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。"
-    );
-    const mockOgImageUrl = toOgImageUrl(mockProduct.images[0]?.url);
-    return {
-      title: mockProduct.name,
-      description: mockDescription,
-      keywords: [mockProduct.name, mockProduct.nameEn, "NIHPLOD", "旎柏", ...mockProduct.benefits],
-      alternates: { canonical: `/products/${slug}` },
-      openGraph: {
-        title: `${mockProduct.name} | NIHPLOD 旎柏`,
-        description: mockDescription,
-        images: [{ url: mockOgImageUrl, alt: mockProduct.name }],
-      },
-      twitter: {
-        card: "summary_large_image",
-        title: `${mockProduct.name} | NIHPLOD 旎柏`,
-        description: mockDescription,
-        images: [mockOgImageUrl],
-      },
-    };
-  }
-
-  const product = await prisma.product.findFirst({
-    where: { slug, published: true, category: { visible: true } },
-    select: {
-      name: true,
-      nameEn: true,
-      description: true,
-      benefits: true,
-      images: { take: 1, orderBy: { order: "asc" }, select: { url: true } },
-    },
-  });
-
-  if (!product) {
-    return {
-      title: "产品未找到",
-    };
-  }
-
-  const description = toMetaDescription(
-    product.description,
-    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。"
-  );
-  const productKeywords = [
-    product.name,
-    product.nameEn,
-    "NIHPLOD",
-    "旎柏",
-    ...(product.benefits || []),
-    "高端护肤",
-    "摩纳哥护肤",
-    "脂质体护肤",
-  ];
-
-  const ogImageUrl = toOgImageUrl(product.images[0]?.url);
-
-  return {
-    title: product.name,
-    description: description,
-    keywords: productKeywords,
-    alternates: {
-      canonical: `/products/${slug}`,
-    },
-    openGraph: {
-      title: `${product.name} | NIHPLOD 旎柏`,
-      description: description,
-      images: [{ url: ogImageUrl, alt: product.name }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${product.name} | NIHPLOD 旎柏`,
-      description: description,
-      images: [ogImageUrl],
-    },
-  };
-}
-
-/**
  * 获取产品详情
+ *
+ * 使用 React.cache 在 generateMetadata 与页面渲染之间复用同一份查询，
+ * 避免一次请求内重复查询数据库。
  */
-async function getProduct(slug: string) {
+const getProduct = cache(async (slug: string) => {
   if (isDev) {
     const product = mockProducts.find((p) => p.slug === slug);
     if (!product) return null;
@@ -201,24 +91,139 @@ async function getProduct(slug: string) {
     price: Number(product.price),
     origin: product.origin,
   };
+});
+
+/**
+ * 生成静态参数
+ * 在构建时尝试预渲染产品页面，如果数据库不可用则返回空数组
+ */
+export async function generateStaticParams() {
+  if (isDev) {
+    return mockProducts.map((p) => ({ slug: p.slug }));
+  }
+
+  try {
+    const products = await prisma.product.findMany({
+      where: { published: true, category: { visible: true } },
+      select: { slug: true },
+    });
+
+    return products.map((product) => ({
+      slug: product.slug,
+    }));
+  } catch (error) {
+    console.error("generateStaticParams 获取产品列表失败:", error);
+    // 返回空数组，页面将在运行时动态生成
+    return [];
+  }
 }
 
 /**
- * 获取相关产品（同分类）
+ * 生成页面元数据
+ *
+ * 注意：产品不存在时必须在 generateMetadata 阶段 notFound()，
+ * 否则 loading.tsx 的 Suspense 边界会先输出 200 shell，
+ * 后续 page 里的 notFound() 只能渲染 404 UI 而无法修改状态码（软 404）。
+ */
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProduct(slug);
+
+  if (!product) {
+    notFound();
+  }
+
+  const description = toMetaDescription(
+    product.description,
+    "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。"
+  );
+  const productKeywords = [
+    product.name,
+    product.nameEn,
+    ...getProductNicknames(product.slug),
+    "NIHPLOD",
+    "旎柏",
+    ...(product.benefits || []),
+    "高端护肤",
+    "摩纳哥护肤",
+    "脂质体护肤",
+  ];
+
+  const hasProductImage = Boolean(product.images[0]?.url);
+  const ogImageUrl = toOgImageUrl(product.images[0]?.url);
+  const ogImage = hasProductImage
+    ? { url: ogImageUrl, alt: product.name }
+    : { url: ogImageUrl, width: 1200, height: 630, alt: product.name };
+  const pagePath = `/products/${slug}`;
+
+  return {
+    title: product.name,
+    description,
+    keywords: productKeywords,
+    alternates: {
+      canonical: pagePath,
+      languages: {
+        "zh-CN": pagePath,
+      },
+    },
+    openGraph: {
+      type: "website",
+      locale: "zh_CN",
+      url: pagePath,
+      siteName: "NIHPLOD 旎柏",
+      title: `${product.name} | NIHPLOD 旎柏`,
+      description,
+      images: [ogImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      site: "@nihplod",
+      creator: "@nihplod",
+      title: `${product.name} | NIHPLOD 旎柏`,
+      description,
+      images: [ogImageUrl],
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
+
+/**
+ * 获取相关产品
+ *
+ * 优先同分类；同分类不足 4 个时用其他分类补齐，
+ * 避免“一个分类只有一个产品”时相关推荐为空，保证详情页有站内链接出口。
  */
 async function getRelatedProducts(categoryId: string, currentProductId: string) {
   if (isDev) {
-    return mockProducts
+    const sameCategory = mockProducts
       .filter((p) => p.categoryId === categoryId && p.id !== currentProductId)
-      .slice(0, 4)
-      .map((p) => ({
-        ...p,
-        category: { name: p.category.name },
-        images: p.images.slice(0, 2),
-      }));
+      .slice(0, 4);
+    const fill = mockProducts
+      .filter((p) => p.id !== currentProductId && !sameCategory.some((item) => item.id === p.id))
+      .slice(0, 4 - sameCategory.length);
+
+    return [...sameCategory, ...fill].map((p) => ({
+      ...p,
+      category: { name: p.category.name },
+      images: p.images.slice(0, 2),
+    }));
   }
 
-  const products = await prisma.product.findMany({
+  const include = {
+    category: {
+      select: { name: true },
+    },
+    images: {
+      take: 2,
+      orderBy: { order: "asc" as const },
+      select: { url: true, alt: true },
+    },
+  };
+
+  const sameCategory = await prisma.product.findMany({
     where: {
       published: true,
       categoryId,
@@ -227,17 +232,24 @@ async function getRelatedProducts(categoryId: string, currentProductId: string) 
     },
     take: 4,
     orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    include: {
-      category: {
-        select: { name: true },
-      },
-      images: {
-        take: 2,
-        orderBy: { order: "asc" },
-        select: { url: true, alt: true },
-      },
-    },
+    include,
   });
+
+  let products = sameCategory;
+  if (products.length < 4) {
+    const excludeIds = [currentProductId, ...products.map((item) => item.id)];
+    const fill = await prisma.product.findMany({
+      where: {
+        published: true,
+        category: { visible: true },
+        id: { notIn: excludeIds },
+      },
+      take: 4 - products.length,
+      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      include,
+    });
+    products = [...products, ...fill];
+  }
 
   return products.map((p) => ({
     ...p,
@@ -261,8 +273,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const relatedProducts = await getRelatedProducts(product.categoryId, product.id);
 
-  // 面包屑导航数据
-  const breadcrumbs = [{ name: "产品", url: "/products" }, { name: product.category.name }];
+  // 面包屑导航数据：仅使用真实存在的页面层级，最后一项为当前产品（无 item URL）
+  const breadcrumbs = [
+    { name: "首页", url: "/" },
+    { name: "产品系列", url: "/products" },
+    { name: product.name },
+  ];
 
   // 可见 FAQ、FAQPage 结构化数据与 llms 文档共用同一份问答
   const productFaqs = resolveProductFaqs({

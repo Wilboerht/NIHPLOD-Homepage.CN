@@ -56,6 +56,8 @@ export function ProductFaq({ faqs, title = "常见问题", className }: ProductF
                 className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left lg:py-6"
               >
                 <span
+                  role="heading"
+                  aria-level={3}
                   className={cn(
                     "flex-1 text-[14px] font-light leading-snug tracking-[0.08em] text-brand-charcoal transition-colors duration-300 lg:text-[16px] lg:leading-normal",
                     isOpen ? "text-brand-charcoal" : "group-hover:text-brand-charcoal"

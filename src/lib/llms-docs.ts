@@ -50,7 +50,7 @@ ${ingredients ? `- **核心成分**: ${ingredients}\n` : ""}${usage ? `- **使�
     .join("\n");
 }
 
-function buildProductFaqs(products: LlmsProduct[]): string {
+function buildProductFaqs(products: LlmsProduct[], siteUrl: string): string {
   return products
     .map((p) => {
       const faqs = resolveProductFaqs({
@@ -68,9 +68,10 @@ function buildProductFaqs(products: LlmsProduct[]): string {
         purchasePlatforms: p.purchaseLinks?.map((link) => link.platform),
       });
       if (faqs.length === 0) return "";
-      return `### ${p.name} (${p.nameEn})\n\n${faqs
-        .map((faq) => `### Q: ${faq.question}\nA: ${faq.answer}`)
-        .join("\n\n")}`;
+      return `### ${p.name} (${p.nameEn})
+- 产品页: ${siteUrl}/products/${p.slug}
+
+${faqs.map((faq) => `#### Q: ${faq.question}\nA: ${faq.answer}`).join("\n\n")}`;
     })
     .filter(Boolean)
     .join("\n\n");
@@ -91,7 +92,7 @@ export function buildLlmsFullDoc({
   ritualsSection,
   faqSection,
 }: BuildFullDocOptions): string {
-  const productFaqs = buildProductFaqs(products);
+  const productFaqs = buildProductFaqs(products, siteUrl);
 
   return `# NIHPLOD 旎柏中国官方全景文档 (Official Website)
 > NIHPLOD 旎柏中国官方网站 (${siteUrl}) 是品牌在中国境内的唯一官方线上入口。本平台以向用户展示品牌相关信息和资讯、各产品介绍和指南为主，并免费为用户提供专业的在线测肤功能。
@@ -125,6 +126,10 @@ export function buildLlmsSummary({ siteUrl, products }: BuildSummaryOptions): st
     ? `- [所有产品](${siteUrl}/products): 探索包括 ${featuredNames} 等在内的高端护肤系列。`
     : `- [所有产品](${siteUrl}/products): 探索 NIHPLOD 高端护肤系列。`;
 
+  const productLinks = products
+    .map((p) => `- [${p.name} (${p.nameEn})](${siteUrl}/products/${p.slug})`)
+    .join("\n");
+
   return `# NIHPLOD 旎柏
 > 源自摩纳哥的高端护肤品牌，产品结合前沿科技与珍贵成分，为您开启逆转时光的奢华护肤之旅。
 
@@ -132,10 +137,14 @@ export function buildLlmsSummary({ siteUrl, products }: BuildSummaryOptions): st
 ${productLine}
 - [关于旎柏](${siteUrl}/about): 深入了解 2008 年诞生于摩纳哥的科学愿景、奢华哲学及历年媒体殊荣。
 - [官方指南](${siteUrl}/guide): 探索不同场景下我们推崇的护肤仪式及方法。
+- [常见问题](${siteUrl}/faq): 查看品牌、成分、使用方式与购买渠道等常见问答。
+- [联系我们](${siteUrl}/contact): 官方客服与商务联系方式。
 - [AI 在线测肤](${ADVISOR_URL}): 利用个性化的问卷调查，结合大数据及影像分析，为用户提供专业的皮肤检测及报告建议。
 
+${productLinks ? `## 产品目录\n${productLinks}\n` : ""}
 ## 核心技术
-- **脂质体技术**
+- **真脂质体技术 (Dolphin-Skin)**：以脂质体包裹活性成分，帮助有效成分更稳定地到达皮肤表皮与真皮层并释放。
+- **精简护肤理念**：以更少的产品步骤覆盖清洁、修护、防护等核心需求。
 
 请访问 [llms-full.txt](${siteUrl}/llms-full.txt) 获取完整的品牌及产品底层数据文档。`.trim();
 }

@@ -40,6 +40,25 @@ function skip(name: string, message: string) {
 if (!isProduction && !force) {
   skip("ALL", "NODE_ENV 不是 production；使用 --force 可强制检查");
 } else {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "";
+
+  if (
+    !siteUrl ||
+    !/^https:\/\//i.test(siteUrl) ||
+    /(^https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(siteUrl)
+  ) {
+    warn(
+      "SITE_URL",
+      `当前为 ${siteUrl || "(空)"}：生产环境必须使用 https://nihplod.cn，否则 canonical / sitemap / JSON-LD / llms 会全部错误`
+    );
+  } else {
+    pass("SITE_URL", siteUrl);
+  }
+
   if (process.env.TRUST_PROXY === "true") {
     pass("TRUST_PROXY", "已启用可信代理头");
   } else {
@@ -114,6 +133,8 @@ if (hasWarnings) {
 const hasCritical = results.some(
   (result) =>
     result.status === "WARN" &&
-    (result.name === "TRUST_PROXY" || result.name === "RATE_LIMIT_STORAGE")
+    (result.name === "TRUST_PROXY" ||
+      result.name === "RATE_LIMIT_STORAGE" ||
+      result.name === "SITE_URL")
 );
 if (hasCritical) process.exitCode = 1;

@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { ProductsContent } from "./ProductsContent";
-import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { ItemListJsonLd } from "@/components/seo/JsonLd";
 import { getVisibleCategories } from "./queries";
 import { mockProducts } from "./mock-data";
 
@@ -21,6 +21,9 @@ export const metadata: Metadata = {
     "NIHPLOD 旎柏全线产品系列：抗衰老面霜、修护精华、焕活身体乳等高端护肤产品，以真脂质体专利技术（Dolphin-Skin）驱动，简单高效，科学呵护肌肤。",
   alternates: {
     canonical: "/products",
+    languages: {
+      "zh-CN": "/products",
+    },
   },
   keywords: [
     "NIHPLOD",
@@ -33,12 +36,25 @@ export const metadata: Metadata = {
     "科学护肤",
   ],
   openGraph: {
+    type: "website",
+    locale: "zh_CN",
+    url: "/products",
+    siteName: "NIHPLOD 旎柏",
     title: "产品系列 | NIHPLOD 旎柏",
     description: "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
-    images: ["/images/og-image.png"],
+    images: [
+      {
+        url: "/images/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "NIHPLOD 旎柏产品系列",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
+    site: "@nihplod",
+    creator: "@nihplod",
     title: "产品系列 | NIHPLOD 旎柏",
     description: "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
@@ -95,14 +111,15 @@ async function getProducts() {
 export default async function ProductsPage() {
   const [categories, products] = await Promise.all([getVisibleCategories(), getProducts()]);
 
-  const breadcrumbs = [
-    { name: "首页", url: "/" },
-    { name: "产品系列", url: "/products" },
-  ];
+  const itemList = products.map((product) => ({
+    name: product.name,
+    url: `/products/${product.slug}`,
+    image: product.images[0]?.url,
+  }));
 
   return (
     <>
-      <BreadcrumbJsonLd items={breadcrumbs} />
+      <ItemListJsonLd name="NIHPLOD 旎柏产品系列" url="/products" items={itemList} />
       <Suspense
         fallback={
           <div className="flex h-full items-center justify-center bg-brand-cream">

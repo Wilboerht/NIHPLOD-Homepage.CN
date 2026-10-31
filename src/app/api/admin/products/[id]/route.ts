@@ -165,6 +165,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (validated.published !== undefined || validated.order !== undefined) {
         pushSearchEngines(["/products", `/products/${product.slug}`]);
       }
+    } else {
+      // 下架后同步刷新旧详情页，避免缓存继续展示已下架产品
+      revalidatePath(`/products/${product.slug}`);
     }
 
     // 排序不影响测肤子站，只有上下架变化才需要推送
@@ -406,6 +409,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     if (fullProduct?.slug) {
       revalidatePath(`/products/${fullProduct.slug}`);
+    }
+    // slug 变更后旧路径也应立即失效，避免旧页面继续以缓存形式存在
+    if (existing.slug && existing.slug !== fullProduct?.slug) {
+      revalidatePath(`/products/${existing.slug}`);
     }
     if (fullProduct?.published) {
       pushSearchEngines(["/products", `/products/${fullProduct.slug}`]);

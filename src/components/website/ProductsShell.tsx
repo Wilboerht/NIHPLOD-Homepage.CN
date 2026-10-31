@@ -141,6 +141,24 @@ export function ProductsShell({
     if (isDetail) navigateToList();
   }, [isDetail, navigateToList]);
 
+  const handleListNavClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    navigateToList();
+  };
+
+  const handleAllProductsClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    showAllProducts();
+  };
+
+  const handleCategoryNavClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    navigateToProduct(slug);
+  };
+
   const switchMobileView = useCallback((view: MobileView) => {
     setMobileView(view);
     listScrollTopRef.current = 0;
@@ -216,15 +234,15 @@ export function ProductsShell({
           <div className="relative flex h-[88px] w-full shrink-0 items-center justify-center bg-brand-cream/95 px-6 lg:hidden">
             <div className="texture-overlay absolute inset-0 z-[-1]" />
             {isDetail && (
-              <button
-                type="button"
-                onClick={navigateToList}
+              <Link
+                href="/products"
+                onClick={handleListNavClick}
                 className="absolute left-4 flex h-10 items-center gap-0.5 text-[13px] font-light tracking-[0.04em] text-brand-charcoal/60 transition-colors active:text-brand-charcoal"
                 aria-label="返回产品列表"
               >
                 <ChevronLeft size={16} strokeWidth={1.5} />
                 返回
-              </button>
+              </Link>
             )}
             <Link href="/" className="flex items-center justify-center">
               <div className="relative h-[28px] w-[100px]">
@@ -254,9 +272,9 @@ export function ProductsShell({
             </Link>
 
             <div className="flex items-center justify-center gap-3 whitespace-nowrap xl:gap-6">
-              <button
-                type="button"
-                onClick={showAllProducts}
+              <Link
+                href="/products"
+                onClick={handleAllProductsClick}
                 className={cn(
                   "group relative py-1 text-[13px] font-light tracking-[0.08em] transition-colors xl:text-[15px] xl:tracking-[0.15em]",
                   allActive ? "text-brand-primary" : "text-brand-charcoal"
@@ -270,43 +288,40 @@ export function ProductsShell({
                     allActive ? "w-full" : "w-0 group-hover:w-full"
                   )}
                 />
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    if (cat.productSlug) navigateToProduct(cat.productSlug);
-                  }}
-                  disabled={!cat.productSlug}
-                  className={cn(
-                    "group relative py-1 text-[13px] font-light tracking-[0.08em] transition-all xl:text-[15px] xl:tracking-[0.15em]",
-                    cat.productSlug
-                      ? "text-brand-charcoal hover:opacity-80"
-                      : "cursor-not-allowed text-brand-charcoal/35"
-                  )}
-                >
-                  {cat.name}
+              </Link>
+              {categories.map((cat) =>
+                cat.productSlug ? (
+                  <Link
+                    key={cat.id}
+                    href={`/products/${cat.productSlug}`}
+                    onClick={(e) => handleCategoryNavClick(e, cat.productSlug!)}
+                    className="group relative py-1 text-[13px] font-light tracking-[0.08em] text-brand-charcoal transition-all hover:opacity-80 xl:text-[15px] xl:tracking-[0.15em]"
+                  >
+                    {cat.name}
+                    <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-primary transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:w-full" />
+                  </Link>
+                ) : (
                   <span
-                    className={cn(
-                      "absolute bottom-0 left-0 h-px bg-brand-primary transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                      cat.productSlug ? "w-0 group-hover:w-full" : "w-0"
-                    )}
-                  />
-                </button>
-              ))}
+                    key={cat.id}
+                    className="group relative cursor-not-allowed py-1 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/35 transition-all xl:text-[15px] xl:tracking-[0.15em]"
+                  >
+                    {cat.name}
+                    <span className="absolute bottom-0 left-0 h-px w-0 bg-brand-primary" />
+                  </span>
+                )
+              )}
             </div>
 
             <div className="flex justify-end">
               {isDetail && (
-                <button
-                  type="button"
-                  onClick={navigateToList}
+                <Link
+                  href="/products"
+                  onClick={handleListNavClick}
                   className="group inline-flex items-center gap-1.5 py-1 text-[13px] font-light tracking-[0.08em] text-brand-charcoal transition-opacity hover:opacity-70 xl:text-[15px] xl:tracking-[0.12em]"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   返回产品列表
-                </button>
+                </Link>
               )}
             </div>
           </nav>
@@ -315,7 +330,7 @@ export function ProductsShell({
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <m.div
               key={pathname}
-              initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
+              initial={false}
               animate={{ opacity: isNavigating ? 0 : 1 }}
               transition={{
                 duration: prefersReducedMotion ? 0 : isNavigating ? 0.18 : 0.28,

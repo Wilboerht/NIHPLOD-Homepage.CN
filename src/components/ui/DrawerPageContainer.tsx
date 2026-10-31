@@ -123,7 +123,7 @@ export function DrawerPageContainer({
   return (
     <m.div className={cn("safe-area-content", wrapperClassName)} transition={TRANSITION}>
       <m.div
-        initial={{ opacity: 0, scale: 0.98 }}
+        initial={false}
         animate={{ opacity: 1, scale: 1 }}
         transition={TRANSITION}
         className="pointer-events-none h-full"

@@ -5,6 +5,7 @@
 
 import { getNonce } from "@/lib/nonce";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
+import { getProductNicknames } from "@/config/product-nicknames";
 
 /**
  * 获取 N 天后的 ISO 日期字符串（yyyy-MM-dd）
@@ -141,6 +142,9 @@ interface ProductJsonLdProps {
     description: string;
     price: number;
     capacity?: string | null;
+    origin?: string | null;
+    usage?: string | null;
+    updatedAt?: Date | string | null;
     images: { url: string; alt?: string | null }[];
     category: { name: string };
     benefits: string[];
@@ -150,12 +154,31 @@ interface ProductJsonLdProps {
 export async function ProductJsonLd({ product }: ProductJsonLdProps) {
   const productUrl = `${baseUrl}/products/${product.slug}`;
 
+  const additionalProperty: {
+    "@type": "PropertyValue";
+    name: string;
+    value: string;
+  }[] = [];
+
+  if (product.capacity) {
+    additionalProperty.push({ "@type": "PropertyValue", name: "容量", value: product.capacity });
+  }
+  if (product.origin) {
+    additionalProperty.push({ "@type": "PropertyValue", name: "产地", value: product.origin });
+  }
+  if (product.usage) {
+    const usage = stripHtml(product.usage);
+    if (usage) {
+      additionalProperty.push({ "@type": "PropertyValue", name: "使用方法", value: usage });
+    }
+  }
+
   const data = {
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `${productUrl}#product`,
     name: product.name,
-    alternateName: product.nameEn,
+    alternateName: [product.nameEn, ...getProductNicknames(product.slug)],
     description: stripHtml(product.description),
     url: productUrl,
     image: product.images.map((img) => toAbsoluteUrl(img.url)),
@@ -165,8 +188,17 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
       name: "NIHPLOD 旎柏",
     },
     category: product.category.name,
-    // 产品功效作为关键词
-    keywords: product.benefits.join(", "),
+    // 产品功效与社媒昵称作为关键词
+    keywords: [...product.benefits, ...getProductNicknames(product.slug)].join(", "),
+    ...(product.updatedAt && {
+      dateModified: new Date(product.updatedAt).toISOString(),
+    }),
+    ...(product.origin && {
+      countryOfOrigin: {
+        "@type": "Country",
+        name: product.origin,
+      },
+    }),
     // 关联产品页 FAQPage，帮助搜索引擎/LLM 识别问答归属
     subjectOf: {
       "@type": "FAQPage",
@@ -179,21 +211,16 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
         url: productUrl,
         price: product.price,
         priceCurrency: "CNY",
+        priceValidUntil: isoDateDaysFromNow(365),
+        itemCondition: "https://schema.org/NewCondition",
         availability: "https://schema.org/InStock",
         seller: {
-          "@type": "Organization",
-          name: "NIHPLOD 旎柏",
+          "@id": `${baseUrl}/#organization`,
         },
       },
     }),
     // 产品规格
-    ...(product.capacity && {
-      additionalProperty: {
-        "@type": "PropertyValue",
-        name: "容量",
-        value: product.capacity,
-      },
-    }),
+    ...(additionalProperty.length > 0 && { additionalProperty }),
   };
 
   return <JsonLdScript data={data} />;
@@ -255,6 +282,35 @@ export async function FAQJsonLd({ items, id, inLanguage }: FAQJsonLdProps) {
         "@type": "Answer",
         text: item.answer,
       },
+    })),
+  };
+
+  return <JsonLdScript data={data} />;
+}
+
+/**
+ * ItemList Schema - 产品集合
+ * 帮助搜索引擎与 AI 理解产品列表页的集合结构。
+ */
+interface ItemListJsonLdProps {
+  name: string;
+  url: string;
+  items: { name: string; url: string; image?: string | null }[];
+}
+
+export async function ItemListJsonLd({ name, url, items }: ItemListJsonLdProps) {
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    url: toAbsoluteUrl(url),
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: toAbsoluteUrl(item.url),
+      name: item.name,
+      ...(item.image ? { image: toAbsoluteUrl(item.image) } : {}),
     })),
   };
 

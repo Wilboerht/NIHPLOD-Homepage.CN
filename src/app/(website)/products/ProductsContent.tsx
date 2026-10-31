@@ -63,11 +63,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products.length]);
 
-  // 挑选主推的3个产品
-  const featuredProducts = products.slice(0, 3);
+  // 首屏始终渲染全部产品，仅通过 CSS 隐藏“当季热卖”之外的产品，
+  // 保证不执行 JS 的爬虫也能从列表页发现所有产品详情链接。
   const listTitle = activeTab === "featured" ? "当季热卖" : "全部产品";
   const productTabLabel = listTitle;
-  const visibleProducts = activeTab === "featured" ? featuredProducts : products;
+  const visibleProducts = products;
 
   // 上下渐隐遮罩状态评估：滚动中/触底/内容不溢出均正确
   const updateFadeMasks = () => {
@@ -158,6 +158,38 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     e.preventDefault();
     navigateToProduct(productSlug);
   };
+
+  const renderCategoryContent = (cat: ProductsCategory) => (
+    <>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center">
+        {getCategoryIconPath(cat.name) ? (
+          <Image
+            src={getCategoryIconPath(cat.name)!}
+            alt={cat.name}
+            width={32}
+            height={32}
+            className="h-8 w-8"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-lg bg-brand-beige/30" />
+        )}
+      </div>
+      <span className="flex-1 truncate text-[14px] font-light leading-[1.6] tracking-[0.04em] text-brand-primary">
+        {cat.name}
+      </span>
+      {cat.productSlug ? (
+        <ChevronRight
+          size={16}
+          strokeWidth={1.5}
+          className="shrink-0 text-brand-primary/40"
+        />
+      ) : (
+        <span className="shrink-0 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/40">
+          敬请期待
+        </span>
+      )}
+    </>
+  );
 
   /**
    * 移动端展示层 - 抽屉内 drill-down 模式（与 FAQ 一致）
@@ -263,7 +295,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 id="mobile-tabpanel-products"
                 role="tabpanel"
                 aria-labelledby="mobile-tab-products"
-                initial={{ opacity: 0, x: -20 }}
+                initial={false}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
@@ -282,10 +314,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   {visibleProducts.map((product, idx) => (
                     <m.div
                       key={product.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={false}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
-                      className="flex flex-col border border-brand-charcoal/[0.06] bg-[#FFFDF9]"
+                      className={cn(
+                        "flex flex-col border border-brand-charcoal/[0.06] bg-[#FFFDF9]",
+                        activeTab === "featured" && idx >= 3 && "hidden"
+                      )}
                     >
                       <NextLink
                         href={`/products/${product.slug}`}
@@ -301,7 +336,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           )}
                           <Image
                             src={product.images[0]?.url || ""}
-                            alt={product.name}
+                            alt={
+                              product.images[0]?.alt
+                                ? `${product.name} - ${product.images[0].alt}`
+                                : product.name
+                            }
                             fill
                             className="object-cover transition-transform duration-500 group-active:scale-105"
                             sizes="100vw"
@@ -342,7 +381,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                 id="mobile-tabpanel-categories"
                 role="tabpanel"
                 aria-labelledby="mobile-tab-categories"
-                initial={{ opacity: 0, x: 20 }}
+                initial={false}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
@@ -365,50 +404,25 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   >
                     全部产品
                   </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => {
-                        if (cat.productSlug) navigateToProduct(cat.productSlug);
-                      }}
-                      disabled={!cat.productSlug}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-200",
-                        cat.productSlug
-                          ? "active:bg-brand-charcoal/[0.03]"
-                          : "cursor-not-allowed opacity-40"
-                      )}
-                    >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center">
-                        {getCategoryIconPath(cat.name) ? (
-                          <Image
-                            src={getCategoryIconPath(cat.name)!}
-                            alt={cat.name}
-                            width={32}
-                            height={32}
-                            className="h-8 w-8"
-                          />
-                        ) : (
-                          <div className="h-8 w-8 rounded-lg bg-brand-beige/30" />
-                        )}
-                      </div>
-                      <span className="flex-1 truncate text-[14px] font-light leading-[1.6] tracking-[0.04em] text-brand-primary">
-                        {cat.name}
+                  {categories.map((cat) =>
+                    cat.productSlug ? (
+                      <NextLink
+                        key={cat.id}
+                        href={`/products/${cat.productSlug}`}
+                        onClick={(e) => handleProductLinkClick(e, cat.productSlug!)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-4 text-left transition-colors duration-200 active:bg-brand-charcoal/[0.03]"
+                      >
+                        {renderCategoryContent(cat)}
+                      </NextLink>
+                    ) : (
+                      <span
+                        key={cat.id}
+                        className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-4 text-left opacity-40"
+                      >
+                        {renderCategoryContent(cat)}
                       </span>
-                      {cat.productSlug ? (
-                        <ChevronRight
-                          size={16}
-                          strokeWidth={1.5}
-                          className="shrink-0 text-brand-primary/40"
-                        />
-                      ) : (
-                        <span className="shrink-0 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/40">
-                          敬请期待
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                    )
+                  )}
                 </div>
 
                 {/* Copyright */}
@@ -427,6 +441,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
   return (
     <>
+      {/* 页面主标题：移动端/桌面端各自有视觉标题，这里提供唯一的 H1 */}
+      <h1 className="sr-only">NIHPLOD 旎柏产品系列</h1>
+
       {/* 移动端展示层 */}
       {renderMobileShowcase()}
 
@@ -436,14 +453,14 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
           <div className="flex h-full flex-col">
             <div className="flex flex-1 flex-col justify-center">
               <m.header
-                initial={{ opacity: 0, y: 20 }}
+                initial={false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
                 className="flex-shrink-0"
               >
-                <h1 className="mb-6 text-2xl font-light tracking-[0.15em] text-brand-charcoal [@media(max-height:700px)]:mb-3">
+                <h2 className="mb-6 text-2xl font-light tracking-[0.15em] text-brand-charcoal [@media(max-height:700px)]:mb-3">
                   {listTitle}
-                </h1>
+                </h2>
               </m.header>
 
               <section
@@ -458,11 +475,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     onClick={(e) => handleProductLinkClick(e, product.slug)}
                     className={cn(
                       "group relative flex cursor-pointer flex-col",
-                      index === 1 && "mt-12 [@media(max-height:700px)]:mt-6"
+                      index === 1 && "mt-12 [@media(max-height:700px)]:mt-6",
+                      activeTab === "featured" && index >= 3 && "hidden"
                     )}
                   >
                     <m.div
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={false}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{
                         duration: 0.8,
@@ -482,7 +500,11 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         {product.images[0] && (
                           <Image
                             src={product.images[0].url}
-                            alt={product.name}
+                            alt={
+                              product.images[0].alt
+                                ? `${product.name} - ${product.images[0].alt}`
+                                : product.name
+                            }
                             fill
                             className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
                             sizes="33vw"

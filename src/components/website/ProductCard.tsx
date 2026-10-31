@@ -142,7 +142,7 @@ export function ProductCard({ product, onClick, priority = false, className }: P
         "focus-within:ring-2 focus-within:ring-brand-primary focus-within:ring-offset-2",
         className
       )}
-      initial={{ opacity: 0, y: 30 }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.5, ease: "easeOut" }}
@@ -172,7 +172,7 @@ export function ProductCard({ product, onClick, priority = false, className }: P
             >
               <Image
                 src={currentImage.url}
-                alt={currentImage.alt || name}
+                alt={currentImage.alt ? `${name} - ${currentImage.alt}` : name}
                 fill
                 priority={priority}
                 className={cn(

@@ -93,11 +93,7 @@ export function ProductDetailContent({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [faqOpen, setFaqOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const faqScrollRef = useRef<HTMLDivElement>(null);
-  const faqButtonRef = useRef<HTMLButtonElement>(null);
-  const faqBackRef = useRef<HTMLButtonElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [prevProductId, setPrevProductId] = useState(product.id);
   if (prevProductId !== product.id) {
@@ -105,7 +101,6 @@ export function ProductDetailContent({
     setCurrentImageIndex(0);
     setActiveTab("description");
     setLightboxOpen(false);
-    setFaqOpen(false);
   }
 
   useEffect(() => {
@@ -332,21 +327,6 @@ export function ProductDetailContent({
     }
   }, [product.name, success]);
 
-  const openFaq = useCallback(() => {
-    setFaqOpen(true);
-    requestAnimationFrame(() => {
-      faqScrollRef.current?.scrollTo({ top: 0 });
-      faqBackRef.current?.focus();
-    });
-  }, []);
-
-  const closeFaq = useCallback(() => {
-    setFaqOpen(false);
-    requestAnimationFrame(() => {
-      faqButtonRef.current?.focus();
-    });
-  }, []);
-
   const handleRelatedClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
       return;
@@ -354,6 +334,17 @@ export function ProductDetailContent({
     e.preventDefault();
     navigateToProduct(slug);
   };
+
+  const handleListLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      return;
+    }
+    e.preventDefault();
+    navigateToList();
+  };
+
+  const getImageAlt = (img: ProductImage, index: number) =>
+    img.alt ? `${product.name} - ${img.alt}` : `${product.name} 产品图 ${index + 1}`;
 
   const renderThumbnails = (orientation: "horizontal" | "vertical") => (
     <div
@@ -379,7 +370,7 @@ export function ProductDetailContent({
         >
           <Image
             src={img.url}
-            alt={img.alt || `${product.name} 缩略图 ${index + 1}`}
+            alt={getImageAlt(img, index)}
             fill
             className="object-cover"
             sizes="80px"
@@ -410,29 +401,26 @@ export function ProductDetailContent({
 
   return (
     <div data-product-detail className="relative h-full min-h-0">
-      <div
-        aria-hidden={faqOpen}
-        inert={faqOpen}
-        className={cn(
-          "scrollbar-hide h-full overflow-y-auto overscroll-contain transition-opacity duration-300",
-          faqOpen ? "pointer-events-none opacity-0" : "opacity-100"
-        )}
-      >
+      <div className="scrollbar-hide h-full overflow-y-auto overscroll-contain">
         <div className="mx-auto w-full max-w-[1920px] px-6 pb-6 pt-6 lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]">
           <nav
             aria-label="面包屑"
             className="mb-5 flex flex-wrap items-center gap-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50"
           >
-            <button
-              type="button"
-              onClick={navigateToList}
+            <NextLink href="/" className="transition-colors hover:text-brand-charcoal">
+              首页
+            </NextLink>
+            <ChevronRight className="h-3 w-3 opacity-50" aria-hidden="true" />
+            <NextLink
+              href="/products"
+              onClick={handleListLinkClick}
               className="transition-colors hover:text-brand-charcoal"
             >
-              产品
-            </button>
+              产品系列
+            </NextLink>
             <ChevronRight className="h-3 w-3 opacity-50" aria-hidden="true" />
             <span aria-current="page" className="text-brand-charcoal/70">
-              {product.category.name}
+              {product.name}
             </span>
           </nav>
 
@@ -462,7 +450,7 @@ export function ProductDetailContent({
                       <m.div
                         className="flex h-full"
                         style={{ x }}
-                        initial={{ opacity: 0 }}
+                        initial={false}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.4 }}
                       >
@@ -476,7 +464,7 @@ export function ProductDetailContent({
                           >
                             <Image
                               src={img.url}
-                              alt={img.alt || `${product.name} 图片 ${index + 1}`}
+                              alt={getImageAlt(img, index)}
                               fill
                               priority={index === 0}
                               loading={index === 0 ? undefined : "lazy"}
@@ -540,7 +528,7 @@ export function ProductDetailContent({
             <div className="pt-8 lg:min-w-0 lg:pt-0">
               <div className="mx-auto max-w-2xl lg:mx-0">
                 <m.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
                 >
@@ -550,16 +538,14 @@ export function ProductDetailContent({
                     </h1>
                     <div className="flex items-center gap-1">
                       {faqs.length > 0 && (
-                        <button
-                          ref={faqButtonRef}
-                          type="button"
-                          onClick={openFaq}
+                        <a
+                          href="#faq"
                           className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal md:h-11 md:w-11"
-                          aria-label="常见问题"
+                          aria-label="查看常见问题"
                           title="常见问题"
                         >
                           <HelpCircle className="h-5 w-5" />
-                        </button>
+                        </a>
                       )}
                       <button
                         type="button"
@@ -670,6 +656,7 @@ export function ProductDetailContent({
                             isActive ? "opacity-100" : "pointer-events-none invisible opacity-0"
                           )}
                         >
+                          <h2 className="sr-only">{tab.label}</h2>
                           {tabContent[tab.key] ? (
                             <div
                               className="text-left text-[14px] font-normal leading-[1.85] tracking-[0.02em] text-brand-charcoal/90 [&_a]:text-brand-primary [&_a]:underline [&_a]:underline-offset-2 [&_li+_li]:mt-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-4 [&_strong]:font-medium [&_strong]:text-brand-charcoal [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5"
@@ -732,6 +719,14 @@ export function ProductDetailContent({
             </section>
           )}
 
+          {faqs.length > 0 && (
+            <ProductFaq
+              faqs={faqs}
+              title={`${product.category.name} · 为您解答`}
+              className="mx-auto mt-10 w-full max-w-4xl border-t border-brand-beige px-0 pb-8 pt-8"
+            />
+          )}
+
           <footer className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige/70 pt-6 text-center">
             <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
@@ -739,37 +734,6 @@ export function ProductDetailContent({
           </footer>
         </div>
       </div>
-
-      {faqs.length > 0 && (
-        <div
-          ref={faqScrollRef}
-          aria-hidden={!faqOpen}
-          inert={!faqOpen}
-          className={cn(
-            "scrollbar-hide absolute inset-0 z-20 h-full overflow-y-auto overscroll-contain bg-brand-cream transition-opacity duration-300",
-            faqOpen ? "opacity-100" : "pointer-events-none opacity-0"
-          )}
-        >
-          <div className="mx-auto w-full max-w-[1920px] px-6 pb-6 pt-6 lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]">
-            <div className="mb-2 flex items-center">
-              <button
-                ref={faqBackRef}
-                type="button"
-                onClick={closeFaq}
-                className="inline-flex items-center gap-1.5 py-2 text-[13px] font-normal tracking-[0.04em] text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                返回产品详情
-              </button>
-            </div>
-            <ProductFaq
-              faqs={faqs}
-              title={`${product.category.name} · 为您解答`}
-              className="mt-2 w-full border-t-0 px-0 pb-0 pt-0"
-            />
-          </div>
-        </div>
-      )}
 
       {mounted &&
         createPortal(
@@ -814,7 +778,9 @@ function ImageLightbox({
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < images.length - 1;
-  const imgAlt = currentImage.alt || `${productName} 图片 ${currentIndex + 1}`;
+  const imgAlt = currentImage.alt
+    ? `${productName} - ${currentImage.alt}`
+    : `${productName} 图片 ${currentIndex + 1}`;
 
   return (
     <m.div
