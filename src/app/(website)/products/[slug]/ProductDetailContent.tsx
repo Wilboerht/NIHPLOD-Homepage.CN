@@ -9,10 +9,11 @@ import { m, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { ChevronLeft, ChevronRight, HelpCircle, Share2, X } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useMounted } from "@/hooks/useMounted";
-import { ProductCard, PlatformIcon, XiaohongshuLink, AdvisorCTA } from "@/components/website";
+import { PlatformIcon, XiaohongshuLink, AdvisorCTA } from "@/components/website";
 import { ProductFaq } from "@/components/website/ProductFaq";
 import { useProductsShell } from "@/components/website/ProductsShell";
 import { cn } from "@/lib/utils";
+import { productImageAlt } from "@/lib/image-alt";
 import { trackEvent } from "@/lib/analytics";
 import { useToast } from "@/components/ui/Toast";
 
@@ -46,32 +47,16 @@ interface Product {
   origin?: string | null;
 }
 
-interface RelatedProduct {
-  id: string;
-  name: string;
-  nameEn: string;
-  slug: string;
-  price: number;
-  capacity: string | null;
-  category: { name: string };
-  images: { url: string; alt: string | null }[];
-}
-
 interface ProductDetailContentProps {
   product: Product;
-  relatedProducts: RelatedProduct[];
   faqs: { question: string; answer: string }[];
 }
 
 type TabType = "description" | "ingredients" | "usage";
 
-export function ProductDetailContent({
-  product,
-  relatedProducts,
-  faqs,
-}: ProductDetailContentProps) {
+export function ProductDetailContent({ product, faqs }: ProductDetailContentProps) {
   const { success } = useToast();
-  const { navigateToList, navigateToProduct } = useProductsShell();
+  const { navigateToList } = useProductsShell();
   const mounted = useMounted();
 
   useEffect(() => {
@@ -93,7 +78,11 @@ export function ProductDetailContent({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const faqScrollRef = useRef<HTMLDivElement>(null);
+  const faqButtonRef = useRef<HTMLButtonElement>(null);
+  const faqBackRef = useRef<HTMLButtonElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [prevProductId, setPrevProductId] = useState(product.id);
   if (prevProductId !== product.id) {
@@ -101,6 +90,7 @@ export function ProductDetailContent({
     setCurrentImageIndex(0);
     setActiveTab("description");
     setLightboxOpen(false);
+    setFaqOpen(false);
   }
 
   useEffect(() => {
@@ -327,13 +317,20 @@ export function ProductDetailContent({
     }
   }, [product.name, success]);
 
-  const handleRelatedClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
-      return;
-    }
-    e.preventDefault();
-    navigateToProduct(slug);
-  };
+  const openFaq = useCallback(() => {
+    setFaqOpen(true);
+    requestAnimationFrame(() => {
+      faqScrollRef.current?.scrollTo({ top: 0 });
+      faqBackRef.current?.focus();
+    });
+  }, []);
+
+  const closeFaq = useCallback(() => {
+    setFaqOpen(false);
+    requestAnimationFrame(() => {
+      faqButtonRef.current?.focus();
+    });
+  }, []);
 
   const handleListLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
@@ -344,7 +341,7 @@ export function ProductDetailContent({
   };
 
   const getImageAlt = (img: ProductImage, index: number) =>
-    img.alt ? `${product.name} - ${img.alt}` : `${product.name} 产品图 ${index + 1}`;
+    productImageAlt(product.name, img.alt, index);
 
   const renderThumbnails = (orientation: "horizontal" | "vertical") => (
     <div
@@ -401,7 +398,14 @@ export function ProductDetailContent({
 
   return (
     <div data-product-detail className="relative h-full min-h-0">
-      <div className="scrollbar-hide h-full overflow-y-auto overscroll-contain">
+      <div
+        aria-hidden={faqOpen}
+        inert={faqOpen}
+        className={cn(
+          "scrollbar-hide h-full overflow-y-auto overscroll-contain transition-opacity duration-300",
+          faqOpen ? "pointer-events-none opacity-0" : "opacity-100"
+        )}
+      >
         <div className="mx-auto w-full max-w-[1920px] px-6 pb-6 pt-6 lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]">
           <nav
             aria-label="面包屑"
@@ -538,14 +542,16 @@ export function ProductDetailContent({
                     </h1>
                     <div className="flex items-center gap-1">
                       {faqs.length > 0 && (
-                        <a
-                          href="#faq"
+                        <button
+                          ref={faqButtonRef}
+                          type="button"
+                          onClick={openFaq}
                           className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal md:h-11 md:w-11"
-                          aria-label="查看常见问题"
+                          aria-label="常见问题"
                           title="常见问题"
                         >
                           <HelpCircle className="h-5 w-5" />
-                        </a>
+                        </button>
                       )}
                       <button
                         type="button"
@@ -686,47 +692,6 @@ export function ProductDetailContent({
             </div>
           </div>
 
-          {relatedProducts.length > 0 && (
-            <section className="mx-auto mt-10 w-full max-w-4xl border-t border-brand-beige pt-8">
-              <h2 className="mb-6 text-center font-serif text-xl text-brand-charcoal max-lg:font-light max-lg:tracking-[0.15em]">
-                相关推荐
-              </h2>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {relatedProducts.map((rp) => (
-                  <NextLink
-                    key={rp.id}
-                    href={`/products/${rp.slug}`}
-                    onClick={(e) => handleRelatedClick(e, rp.slug)}
-                  >
-                    <ProductCard
-                      product={{
-                        id: rp.id,
-                        name: rp.name,
-                        nameEn: rp.nameEn,
-                        slug: rp.slug,
-                        price: rp.price,
-                        capacity: rp.capacity || undefined,
-                        images: rp.images.map((img) => ({
-                          url: img.url,
-                          alt: img.alt || undefined,
-                        })),
-                        category: { name: rp.category.name },
-                      }}
-                    />
-                  </NextLink>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {faqs.length > 0 && (
-            <ProductFaq
-              faqs={faqs}
-              title={`${product.category.name} · 为您解答`}
-              className="mx-auto mt-10 w-full max-w-4xl border-t border-brand-beige px-0 pb-8 pt-8"
-            />
-          )}
-
           <footer className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige/70 pt-6 text-center">
             <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
@@ -734,6 +699,37 @@ export function ProductDetailContent({
           </footer>
         </div>
       </div>
+
+      {faqs.length > 0 && (
+        <div
+          ref={faqScrollRef}
+          aria-hidden={!faqOpen}
+          inert={!faqOpen}
+          className={cn(
+            "scrollbar-hide absolute inset-0 z-20 h-full overflow-y-auto overscroll-contain bg-brand-cream transition-opacity duration-300",
+            faqOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          )}
+        >
+          <div className="mx-auto w-full max-w-[1920px] px-6 pb-6 pt-6 lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]">
+            <div className="mb-2 flex items-center">
+              <button
+                ref={faqBackRef}
+                type="button"
+                onClick={closeFaq}
+                className="inline-flex items-center gap-1.5 py-2 text-[13px] font-normal tracking-[0.04em] text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                返回产品详情
+              </button>
+            </div>
+            <ProductFaq
+              faqs={faqs}
+              title={`${product.category.name} · 常见问答`}
+              className="mt-2 w-full border-t-0 px-0 pb-0 pt-0"
+            />
+          </div>
+        </div>
+      )}
 
       {mounted &&
         createPortal(
@@ -778,9 +774,7 @@ function ImageLightbox({
 
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < images.length - 1;
-  const imgAlt = currentImage.alt
-    ? `${productName} - ${currentImage.alt}`
-    : `${productName} 图片 ${currentIndex + 1}`;
+  const imgAlt = productImageAlt(productName, currentImage.alt, currentIndex);
 
   return (
     <m.div

@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { cn, formatPrice } from "@/lib/utils";
+import { productImageAlt } from "@/lib/image-alt";
 
 /**
  * 产品图片类型
@@ -165,14 +166,14 @@ export function ProductCard({ product, onClick, priority = false, className }: P
             <m.div
               key={currentImageIndex}
               className="absolute inset-0"
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
               <Image
                 src={currentImage.url}
-                alt={currentImage.alt ? `${name} - ${currentImage.alt}` : name}
+                alt={productImageAlt(name, currentImage.alt, currentImageIndex)}
                 fill
                 priority={priority}
                 className={cn(

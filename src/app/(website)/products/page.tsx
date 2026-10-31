@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
@@ -120,15 +119,7 @@ export default async function ProductsPage() {
   return (
     <>
       <ItemListJsonLd name="NIHPLOD 旎柏产品系列" url="/products" items={itemList} />
-      <Suspense
-        fallback={
-          <div className="flex h-full items-center justify-center bg-brand-cream">
-            <div className="text-brand-charcoal/50">加载中...</div>
-          </div>
-        }
-      >
-        <ProductsContent categories={categories} products={products} />
-      </Suspense>
+      <ProductsContent categories={categories} products={products} />
     </>
   );
 }

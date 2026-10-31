@@ -130,7 +130,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const product = await getProduct(slug);
 
   if (!product) {
-    notFound();
+    // 不在这里 notFound()：metadata 阶段的 404 会落到通用错误页。
+    // 返回 noindex 元数据，让 page 的 notFound() 渲染品牌 404 页面并返回 404 状态。
+    return {
+      title: "产品未找到",
+      robots: { index: false, follow: false },
+    };
   }
 
   const description = toMetaDescription(
@@ -191,73 +196,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 /**
- * 获取相关产品
- *
- * 优先同分类；同分类不足 4 个时用其他分类补齐，
- * 避免“一个分类只有一个产品”时相关推荐为空，保证详情页有站内链接出口。
- */
-async function getRelatedProducts(categoryId: string, currentProductId: string) {
-  if (isDev) {
-    const sameCategory = mockProducts
-      .filter((p) => p.categoryId === categoryId && p.id !== currentProductId)
-      .slice(0, 4);
-    const fill = mockProducts
-      .filter((p) => p.id !== currentProductId && !sameCategory.some((item) => item.id === p.id))
-      .slice(0, 4 - sameCategory.length);
-
-    return [...sameCategory, ...fill].map((p) => ({
-      ...p,
-      category: { name: p.category.name },
-      images: p.images.slice(0, 2),
-    }));
-  }
-
-  const include = {
-    category: {
-      select: { name: true },
-    },
-    images: {
-      take: 2,
-      orderBy: { order: "asc" as const },
-      select: { url: true, alt: true },
-    },
-  };
-
-  const sameCategory = await prisma.product.findMany({
-    where: {
-      published: true,
-      categoryId,
-      category: { visible: true },
-      id: { not: currentProductId },
-    },
-    take: 4,
-    orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-    include,
-  });
-
-  let products = sameCategory;
-  if (products.length < 4) {
-    const excludeIds = [currentProductId, ...products.map((item) => item.id)];
-    const fill = await prisma.product.findMany({
-      where: {
-        published: true,
-        category: { visible: true },
-        id: { notIn: excludeIds },
-      },
-      take: 4 - products.length,
-      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-      include,
-    });
-    products = [...products, ...fill];
-  }
-
-  return products.map((p) => ({
-    ...p,
-    price: Number(p.price),
-  }));
-}
-
-/**
  * 产品详情页
  * 抽屉容器与顶部导航由 products/layout.tsx 中的 ProductsShell 提供，
  * 本页只负责数据、SEO 和详情内容本身。
@@ -270,8 +208,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
   if (!product) {
     notFound();
   }
-
-  const relatedProducts = await getRelatedProducts(product.categoryId, product.id);
 
   // 面包屑导航数据：仅使用真实存在的页面层级，最后一项为当前产品（无 item URL）
   const breadcrumbs = [
@@ -303,11 +239,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <BreadcrumbJsonLd items={breadcrumbs} />
       <FAQJsonLd items={productFaqs} id={`${baseUrl}/products/${slug}#faq`} inLanguage="zh-CN" />
 
-      <ProductDetailContent
-        product={product}
-        relatedProducts={relatedProducts}
-        faqs={productFaqs}
-      />
+      <ProductDetailContent product={product} faqs={productFaqs} />
     </>
   );
 }

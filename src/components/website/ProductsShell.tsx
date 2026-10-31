@@ -33,7 +33,6 @@ type MobileView = "products" | "categories";
 interface ProductsShellContextValue {
   activeTab: ProductsTab;
   mobileView: MobileView;
-  showAllProducts: () => void;
   switchMobileView: (view: MobileView) => void;
   navigateToProduct: (slug: string) => void;
   navigateToList: () => void;
@@ -68,7 +67,7 @@ export function ProductsShell({
   const prefersReducedMotion = useReducedMotion();
 
   const isDetail = pathname.startsWith("/products/");
-  const [activeTab, setActiveTab] = useState<ProductsTab>("featured");
+  const [activeTab] = useState<ProductsTab>("featured");
   const [mobileView, setMobileView] = useState<MobileView>("products");
   const [navigationState, setNavigationState] = useState<{
     pathname: string;
@@ -134,23 +133,10 @@ export function ProductsShell({
     navigate("/products");
   }, [navigate]);
 
-  const showAllProducts = useCallback(() => {
-    setActiveTab("all");
-    setMobileView("products");
-    listScrollTopRef.current = 0;
-    if (isDetail) navigateToList();
-  }, [isDetail, navigateToList]);
-
   const handleListNavClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     navigateToList();
-  };
-
-  const handleAllProductsClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    showAllProducts();
   };
 
   const handleCategoryNavClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
@@ -175,16 +161,13 @@ export function ProductsShell({
     () => ({
       activeTab,
       mobileView,
-      showAllProducts,
       switchMobileView,
       navigateToProduct,
       navigateToList,
       listScrollTopRef,
     }),
-    [activeTab, mobileView, showAllProducts, switchMobileView, navigateToProduct, navigateToList]
+    [activeTab, mobileView, switchMobileView, navigateToProduct, navigateToList]
   );
-
-  const allActive = activeTab === "all";
 
   return (
     <ProductsShellContext.Provider value={contextValue}>
@@ -272,23 +255,6 @@ export function ProductsShell({
             </Link>
 
             <div className="flex items-center justify-center gap-3 whitespace-nowrap xl:gap-6">
-              <Link
-                href="/products"
-                onClick={handleAllProductsClick}
-                className={cn(
-                  "group relative py-1 text-[13px] font-light tracking-[0.08em] transition-colors xl:text-[15px] xl:tracking-[0.15em]",
-                  allActive ? "text-brand-primary" : "text-brand-charcoal"
-                )}
-                aria-current={allActive ? "true" : undefined}
-              >
-                全部产品
-                <span
-                  className={cn(
-                    "absolute bottom-0 left-0 h-px bg-brand-primary transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                    allActive ? "w-full" : "w-0 group-hover:w-full"
-                  )}
-                />
-              </Link>
               {categories.map((cat) =>
                 cat.productSlug ? (
                   <Link

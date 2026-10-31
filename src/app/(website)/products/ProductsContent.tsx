@@ -6,6 +6,7 @@ import NextLink from "next/link";
 import { m, AnimatePresence } from "framer-motion";
 import { ChevronRight, ShoppingBag, LayoutGrid } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
+import { productImageAlt } from "@/lib/image-alt";
 import { getCategoryIconPath } from "@/lib/product-icons";
 import { trackEvent } from "@/lib/analytics";
 import { useProductsShell, type ProductsCategory } from "@/components/website/ProductsShell";
@@ -33,7 +34,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   const {
     activeTab,
     mobileView,
-    showAllProducts,
     switchMobileView,
     navigateToProduct,
     listScrollTopRef,
@@ -336,11 +336,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                           )}
                           <Image
                             src={product.images[0]?.url || ""}
-                            alt={
-                              product.images[0]?.alt
-                                ? `${product.name} - ${product.images[0].alt}`
-                                : product.name
-                            }
+                            alt={productImageAlt(product.name, product.images[0]?.alt)}
                             fill
                             className="object-cover transition-transform duration-500 group-active:scale-105"
                             sizes="100vw"
@@ -397,13 +393,6 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
                 {/* Category List - 与 FAQ 问题列表一致 */}
                 <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    onClick={showAllProducts}
-                    className="px-3 py-4 text-left text-brand-primary"
-                  >
-                    全部产品
-                  </button>
                   {categories.map((cat) =>
                     cat.productSlug ? (
                       <NextLink
@@ -500,11 +489,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                         {product.images[0] && (
                           <Image
                             src={product.images[0].url}
-                            alt={
-                              product.images[0].alt
-                                ? `${product.name} - ${product.images[0].alt}`
-                                : product.name
-                            }
+                            alt={productImageAlt(product.name, product.images[0].alt)}
                             fill
                             className="object-cover object-center transition-transform duration-[1.2s] ease-[cubic-bezier(0.19,1,0.22,1)] group-hover:scale-[1.05]"
                             sizes="33vw"
