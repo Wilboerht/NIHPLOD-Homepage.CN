@@ -15,7 +15,7 @@ import { cn, isBottomNavHiddenRoute } from "@/lib/utils";
  *
  * 全局唯一的 <main> 容器。
  * 仅在当前路由显示 BottomNavBar 时保留底部 padding（pb-28 lg:pb-24），
- * 避免产品详情页等隐藏导航的页面底部露出全局 Kinetic 背景。
+ * 避免独立全屏页面等隐藏导航的页面底部露出全局 Kinetic 背景。
  */
 export function MainContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();

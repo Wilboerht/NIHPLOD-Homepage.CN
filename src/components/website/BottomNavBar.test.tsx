@@ -156,11 +156,11 @@ describe("BottomNavBar", () => {
     expect(container.querySelector("nav")).not.toBeInTheDocument();
   });
 
-  it("hides the navigation on product detail pages", () => {
+  it("shows the navigation on product detail pages when the drawer is collapsed", () => {
     setupMocks("/products/123");
     const { container } = render(<BottomNavBar />);
 
-    expect(container.querySelector("nav")).not.toBeInTheDocument();
+    expect(container.querySelector("nav")).toBeInTheDocument();
   });
 
   it("hides the navigation on standalone pages like services", () => {

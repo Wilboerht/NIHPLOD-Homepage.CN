@@ -4,7 +4,8 @@ import prisma from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { ProductsContent } from "./ProductsContent";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
-import { mockCategories, mockProducts } from "./mock-data";
+import { getVisibleCategories } from "./queries";
+import { mockProducts } from "./mock-data";
 
 // ISR: 产品列表页每60秒重新验证一次
 export const revalidate = 60;
@@ -45,34 +46,6 @@ export const metadata: Metadata = {
 };
 
 /**
- * 获取所有可见的分类
- */
-async function getCategories() {
-  if (isDev) {
-    apiConsole.info("[Products] DEV 使用 Mock 分类数据");
-    return mockCategories;
-  }
-
-  try {
-    const categories = await prisma.category.findMany({
-      where: { visible: true }, // 只获取在前台展示的分类
-      orderBy: { order: "asc" },
-      select: {
-        id: true,
-        name: true,
-        nameEn: true,
-        slug: true,
-        icon: true,
-      },
-    });
-    return categories;
-  } catch (error) {
-    apiConsole.error("获取分类列表失败:", error);
-    throw error;
-  }
-}
-
-/**
  * 获取已发布的产品
  */
 async function getProducts() {
@@ -87,24 +60,19 @@ async function getProducts() {
       where: { published: true, category: { visible: true } },
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
       take: 200,
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        capacity: true,
         category: {
-          select: { id: true, name: true, nameEn: true, slug: true },
+          select: { name: true },
         },
         images: {
           orderBy: { order: "asc" },
+          take: 1,
           select: { url: true, alt: true },
-        },
-        purchaseLinks: {
-          orderBy: { order: "asc" },
-          select: {
-            id: true,
-            platform: true,
-            platformKey: true,
-            url: true,
-            miniProgramShortLink: true,
-            miniProgramPath: true,
-          },
         },
       },
     });
@@ -125,7 +93,7 @@ async function getProducts() {
  * Server Component - 数据获取
  */
 export default async function ProductsPage() {
-  const [categories, products] = await Promise.all([getCategories(), getProducts()]);
+  const [categories, products] = await Promise.all([getVisibleCategories(), getProducts()]);
 
   const breadcrumbs = [
     { name: "首页", url: "/" },
@@ -137,7 +105,7 @@ export default async function ProductsPage() {
       <BreadcrumbJsonLd items={breadcrumbs} />
       <Suspense
         fallback={
-          <div className="flex h-dvh items-center justify-center bg-brand-cream">
+          <div className="flex h-full items-center justify-center bg-brand-cream">
             <div className="text-brand-charcoal/50">加载中...</div>
           </div>
         }

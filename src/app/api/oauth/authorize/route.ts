@@ -136,14 +136,15 @@ async function ensureUserConsent(
   // 应用层生成 cuid 主键；consent.scopes 必须精确等于本次批准的 scope 集合。
   // 不能用 array_cat 并集：撤销后仅用 openid 重新授权会“复活”历史 profile/birthday 等权限。
   const id = generateConsentId();
+  const grantedAt = new Date();
   await prisma.$executeRaw`
     INSERT INTO "UserConsent" ("id", "userId", "clientId", "scopes", "grantedAt")
-    VALUES (${id}, ${userId}, ${clientId}, ${scopes}::text[], NOW())
+    VALUES (${id}, ${userId}, ${clientId}, ${scopes}::text[], ${grantedAt})
     ON CONFLICT ("userId", "clientId")
     DO UPDATE SET
       "scopes" = ${scopes}::text[],
       "revokedAt" = NULL,
-      "grantedAt" = NOW()
+      "grantedAt" = ${grantedAt}
   `;
 }
 

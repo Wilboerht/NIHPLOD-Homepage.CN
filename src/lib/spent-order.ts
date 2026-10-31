@@ -67,14 +67,15 @@ export async function claimSpentOrder(
   }
 
   const inserted = await tx.$executeRaw`
-    INSERT INTO "SpentOrderClaim" ("id", "userId", "orderNo", "orderNoKey", "source", "reference")
+    INSERT INTO "SpentOrderClaim" ("id", "userId", "orderNo", "orderNoKey", "source", "reference", "createdAt")
     VALUES (
       ${randomUUID()},
       ${params.userId},
       ${params.orderNo},
       ${params.orderNoKey},
       ${params.source}::"SpentOrderSource",
-      ${params.reference}
+      ${params.reference},
+      ${new Date()}
     )
     ON CONFLICT ("orderNoKey") DO NOTHING
   `;

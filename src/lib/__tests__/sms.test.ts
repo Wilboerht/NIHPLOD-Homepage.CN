@@ -205,6 +205,34 @@ describe("verifySmsCodeWithLimit（原子尝试上限）", () => {
       false
     );
   });
+
+  it("错误验证码达到尝试上限时作废验证码", async () => {
+    const storedHash = hashVerifyCode(TEST_PHONE, TEST_CODE, TEST_TYPE);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ codeHash: storedHash }] as never);
+    mockUpdateMany.mockResolvedValue({ count: 1 });
+
+    await expect(verifySmsCodeWithLimit(TEST_PHONE, "654321", TEST_TYPE, "sms-1")).resolves.toBe(
+      false
+    );
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: { id: "sms-1", used: false, attempts: { gte: SMS_CODE_MAX_ATTEMPTS } },
+      data: { used: true },
+    });
+  });
+
+  it("过期判断传入应用侧 Date 参数，不依赖数据库会话时区", async () => {
+    const storedHash = hashVerifyCode(TEST_PHONE, TEST_CODE, TEST_TYPE);
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{ codeHash: storedHash }] as never);
+
+    await verifySmsCodeWithLimit(TEST_PHONE, TEST_CODE, TEST_TYPE, "sms-1");
+
+    const [strings, ...values] = vi.mocked(prisma.$queryRaw).mock.calls[0] as unknown as [
+      TemplateStringsArray,
+      ...unknown[],
+    ];
+    expect(strings.join("?")).not.toContain("NOW()");
+    expect(values.some((value) => value instanceof Date)).toBe(true);
+  });
 });
 
 describe("recordFakeSmsThrottleEntry（假发送限流占位记录）", () => {

@@ -35,6 +35,13 @@ function formatPrice(value: ProductFaqSource["price"]): string {
   return `￥${numeric.toFixed(2).replace(/\.00$/, "")}`;
 }
 
+function ensureSentenceEnd(value: string): string {
+  const text = value.trim();
+  if (!text) return "";
+  if (/[。！？!?…]$/u.test(text)) return text;
+  return `${text.replace(/[，,、；;：:]+$/u, "")}。`;
+}
+
 function formatList(values: string[] | null | undefined): string[] {
   if (!Array.isArray(values)) return [];
   const seen = new Set<string>();
@@ -50,7 +57,7 @@ function formatList(values: string[] | null | undefined): string[] {
 
 export function generateProductFaqs(product: ProductFaqSource): GeneratedFaq[] {
   const name = product.name.trim();
-  const categoryName = product.categoryName.trim() || "护肤";
+  const categoryName = product.categoryName.trim() || "护肤产品";
   const benefits = formatList(product.benefits);
   const description = truncateText(stripHtmlToText(product.description), 120);
   const ingredients = truncateText(stripHtmlToText(product.ingredients), 160);
@@ -67,8 +74,8 @@ export function generateProductFaqs(product: ProductFaqSource): GeneratedFaq[] {
     : "具体功效以商品页标注为准";
   faqs.push({
     question: `NIHPLOD ${name}的核心功效是什么？`,
-    answer: `NIHPLOD ${name}是一款${categoryName}护理产品，${benefitText}。${
-      description ? `产品定位：${description}。` : ""
+    answer: `NIHPLOD ${name}是一款${categoryName}，${benefitText}。${
+      description ? `产品说明：${ensureSentenceEnd(description)}` : ""
     }建议结合自身肤质与护肤目标选择使用。`,
   });
 
@@ -80,14 +87,14 @@ export function generateProductFaqs(product: ProductFaqSource): GeneratedFaq[] {
   if (ingredients) {
     faqs.push({
       question: `NIHPLOD ${name}的核心成分有哪些？`,
-      answer: `NIHPLOD ${name}配方中的核心成分包括：${ingredients}。完整成分表与功效说明请以商品页标注为准。`,
+      answer: `NIHPLOD ${name}配方中的核心成分包括：${ensureSentenceEnd(ingredients)}完整成分表与功效说明请以商品页标注为准。`,
     });
   }
 
   if (usage) {
     faqs.push({
       question: `NIHPLOD ${name}应该怎么使用？`,
-      answer: `官方建议的使用方法：${usage}。具体使用步骤与搭配建议可参考产品页说明。`,
+      answer: `官方建议的使用方法：${ensureSentenceEnd(usage)}具体使用步骤与搭配建议可参考产品页说明。`,
     });
   }
 

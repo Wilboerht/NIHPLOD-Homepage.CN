@@ -204,7 +204,7 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
  */
 interface BreadcrumbItem {
   name: string;
-  url: string;
+  url?: string;
 }
 
 interface BreadcrumbJsonLdProps {
@@ -219,7 +219,9 @@ export async function BreadcrumbJsonLd({ items }: BreadcrumbJsonLdProps) {
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: item.url.startsWith("http") ? item.url : `${baseUrl}${item.url}`,
+      ...(item.url
+        ? { item: item.url.startsWith("http") ? item.url : `${baseUrl}${item.url}` }
+        : {}),
     })),
   };
 

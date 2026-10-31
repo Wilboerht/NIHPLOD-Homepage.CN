@@ -3,10 +3,8 @@ import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
-import { ProductFaq } from "@/components/website/ProductFaq";
-import { Breadcrumbs } from "@/components/website/Breadcrumbs";
 import { resolveProductFaqs } from "@/lib/product-faqs";
-import { mockCategories, mockProducts } from "../mock-data";
+import { mockProducts } from "../mock-data";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
 
 // ISR: 产品详情页每60秒重新验证一次
@@ -248,44 +246,9 @@ async function getRelatedProducts(categoryId: string, currentProductId: string) 
 }
 
 /**
- * 获取分类列表（供顶部导航使用）
- */
-async function getCategories() {
-  if (isDev) {
-    return mockCategories;
-  }
-  try {
-    return await prisma.category.findMany({
-      where: { visible: true },
-      orderBy: { order: "asc" },
-      select: { id: true, name: true, nameEn: true, slug: true, icon: true },
-    });
-  } catch {
-    return [];
-  }
-}
-
-/**
- * 获取所有产品（供分类导航使用）
- */
-async function getNavProducts() {
-  if (isDev) {
-    return mockProducts;
-  }
-  try {
-    const products = await prisma.product.findMany({
-      where: { published: true, category: { visible: true } },
-      orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-      select: { id: true, slug: true, categoryId: true },
-    });
-    return products;
-  } catch {
-    return [];
-  }
-}
-
-/**
  * 产品详情页
+ * 抽屉容器与顶部导航由 products/layout.tsx 中的 ProductsShell 提供，
+ * 本页只负责数据、SEO 和详情内容本身。
  */
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params;
@@ -296,19 +259,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const [relatedProducts, categories, navProducts] = await Promise.all([
-    getRelatedProducts(product.categoryId, product.id),
-    getCategories(),
-    getNavProducts(),
-  ]);
+  const relatedProducts = await getRelatedProducts(product.categoryId, product.id);
 
   // 面包屑导航数据
-  const breadcrumbs = [
-    { name: "首页", url: "/" },
-    { name: "产品", url: "/products" },
-    { name: product.category.name, url: `/products?category=${product.category.slug}` },
-    { name: product.name, url: `/products/${product.slug}` },
-  ];
+  const breadcrumbs = [{ name: "产品", url: "/products" }, { name: product.category.name }];
 
   // 可见 FAQ、FAQPage 结构化数据与 llms 文档共用同一份问答
   const productFaqs = resolveProductFaqs({
@@ -333,16 +287,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <BreadcrumbJsonLd items={breadcrumbs} />
       <FAQJsonLd items={productFaqs} id={`${baseUrl}/products/${slug}#faq`} inLanguage="zh-CN" />
 
-      <Breadcrumbs items={breadcrumbs} className="mx-auto w-full max-w-7xl px-6 pt-6 lg:px-10" />
-
       <ProductDetailContent
         product={product}
         relatedProducts={relatedProducts}
-        categories={categories}
-        navProducts={navProducts}
+        faqs={productFaqs}
       />
-
-      <ProductFaq faqs={productFaqs} />
     </>
   );
 }

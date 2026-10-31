@@ -51,7 +51,7 @@ describe("admin-notify", () => {
     expect(content).toContain("ORDER\\-1");
     expect(content).toContain("¥1,000");
     expect(content).toContain("需要\\*加急\\*");
-    expect(content).not.toContain("/admin/");
+    expect(content).toContain("/admin/spent-adjustments?status=PENDING");
   });
 
   it("新积分兑换申请发送礼品、扣分与等级", async () => {
@@ -73,7 +73,7 @@ describe("admin-notify", () => {
     expect(content).toContain("面霜小样");
     expect(content).toContain("230");
     expect(content).toContain("金卡会员");
-    expect(content).not.toContain("/admin/");
+    expect(content).toContain("/admin/point-gifts?status=PENDING");
   });
 
   it("记录不存在时不发送", async () => {

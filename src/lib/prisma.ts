@@ -41,8 +41,10 @@ const poolConfig: pg.PoolConfig = {
   connectionTimeoutMillis: 30000,
   // statement_timeout 通过连接启动参数下发（PG options），
   // 替代 pool.on("connect") + client.query 的写法——后者会触发 pg 的
-  // "client.query() when the client is already executing a query" 弃用警告
-  options: "-c statement_timeout=30000",
+  // "client.query() when the client is already executing a query" 弃用警告。
+  // timezone=UTC：Prisma 的 DateTime 统一按 UTC 写入 timestamp(3)，会话时区若与 UTC 不同，
+  // 原生 SQL 的 NOW()/CURRENT_TIMESTAMP 与 timestamp 列比较会被隐式换算而偏移数小时。
+  options: "-c statement_timeout=30000 -c timezone=UTC",
 };
 
 const pool = globalForPrisma.pool ?? new pg.Pool(poolConfig);

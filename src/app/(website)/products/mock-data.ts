@@ -137,9 +137,9 @@ const pid = (slug: string) => `mock-prod-${slug}`;
 const plid = (idx: number) => `mock-link-${idx}`;
 
 const defaultImages = [
-  { url: "/images/ritual-step-1.webp", alt: "产品图 1" },
-  { url: "/images/ritual-step-2.webp", alt: "产品图 2" },
-  { url: "/images/ritual-step-3.webp", alt: "产品图 3" },
+  { url: "/images/ritual-step-cleanse.webp", alt: "产品图 1" },
+  { url: "/images/ritual-step-nourish.webp", alt: "产品图 2" },
+  { url: "/images/ritual-step-protect.webp", alt: "产品图 3" },
 ];
 
 const purchaseLinks = [

@@ -31,7 +31,7 @@ function auditHoldExclusionSql(): string {
   return `NOT EXISTS (
     SELECT 1 FROM "AuditLegalHold" h
     WHERE h."active" = true
-      AND (h."expiresAt" IS NULL OR h."expiresAt" > now())
+      AND (h."expiresAt" IS NULL OR h."expiresAt" > (now() AT TIME ZONE 'UTC'))
       AND (
         (h."targetType" IS NOT NULL AND h."targetId" IS NOT NULL
           AND h."targetType" = t."targetType" AND h."targetId" = t."targetId")
@@ -45,7 +45,7 @@ function ssoHoldExclusionSql(): string {
   return `NOT EXISTS (
     SELECT 1 FROM "AuditLegalHold" h
     WHERE h."active" = true
-      AND (h."expiresAt" IS NULL OR h."expiresAt" > now())
+      AND (h."expiresAt" IS NULL OR h."expiresAt" > (now() AT TIME ZONE 'UTC'))
       AND h."userId" IS NOT NULL
       AND h."userId" = t."userId"
   )`;
@@ -62,7 +62,7 @@ async function deleteAuditStream(
       `DELETE FROM "AuditLog" AS a
        WHERE a."id" IN (
          SELECT t."id" FROM "AuditLog" AS t
-         WHERE t."createdAt" < $1 AND ${auditHoldExclusionSql()}
+         WHERE t."createdAt" < ($1::timestamptz AT TIME ZONE 'UTC') AND ${auditHoldExclusionSql()}
          LIMIT $2
        )`,
       [cutoff, BATCH_SIZE]
@@ -86,7 +86,7 @@ async function deleteSsoStream(
       `DELETE FROM "SsoAuditEvent" AS a
        WHERE a."id" IN (
          SELECT t."id" FROM "SsoAuditEvent" AS t
-         WHERE t."createdAt" < $1 AND ${ssoHoldExclusionSql()}
+         WHERE t."createdAt" < ($1::timestamptz AT TIME ZONE 'UTC') AND ${ssoHoldExclusionSql()}
          LIMIT $2
        )`,
       [cutoff, BATCH_SIZE]
@@ -165,7 +165,7 @@ async function insertRetentionSummary(
       "integrityKeyVersion", "chainSeq", "prevHash", "entryHash", "finalizedAt", "createdAt"
     ) VALUES (
       $1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-      $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31
+      $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30::timestamp,$31::timestamp
     )`,
     [
       id,
@@ -197,8 +197,8 @@ async function insertRetentionSummary(
       chainSeq,
       prevHash,
       entryHash,
-      now,
-      now,
+      now.toISOString(),
+      now.toISOString(),
     ]
   );
 }
@@ -251,7 +251,10 @@ async function processOne(jobId: string): Promise<void> {
     if (!preview.ready) return fail(`预览未就绪: ${preview.warnings.join("; ")}`);
     if (preview.expectedCount !== job.expectedCount) return fail("可删数量变化");
 
-    const client = new pg.Client({ connectionString: retentionConnectionString() });
+    const client = new pg.Client({
+      connectionString: retentionConnectionString(),
+      options: "-c timezone=UTC",
+    });
     await client.connect();
     try {
       await client.query("BEGIN");
@@ -307,7 +310,8 @@ async function processOne(jobId: string): Promise<void> {
       await client.query(
         `UPDATE "AuditRetentionJob"
          SET "status" = 'SUCCEEDED', "deletedCount" = $1, "deletedBytes" = $2,
-             "holdsExcluded" = $3, "archiveManifests" = $4::jsonb, "finishedAt" = now()
+             "holdsExcluded" = $3, "archiveManifests" = $4::jsonb,
+             "finishedAt" = (now() AT TIME ZONE 'UTC')
          WHERE "id" = $5`,
         [deleted, deletedBytes, holdsExcluded, JSON.stringify(archiveManifests), job.id]
       );

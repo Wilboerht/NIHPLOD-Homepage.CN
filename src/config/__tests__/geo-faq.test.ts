@@ -58,4 +58,15 @@ describe("generateProductFaqs", () => {
       expect(faq.answer.length).toBeLessThanOrEqual(MAX_GEO_FAQ_ANSWER_LENGTH);
     }
   });
+
+  it("字段自带句号时不产生重复标点", () => {
+    const faqs = generateProductFaqs({
+      ...product,
+      description: "<p>面向初老肌肤的面霜。</p>",
+      ingredients: "<p>玻色因、神经酰胺 NP。</p>",
+      usage: "<p>早晚洁面后使用。</p>",
+    });
+    const answers = faqs.map((faq) => faq.answer).join("");
+    expect(answers).not.toMatch(/。。/);
+  });
 });

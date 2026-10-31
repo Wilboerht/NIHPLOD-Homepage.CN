@@ -68,14 +68,15 @@ export async function rateLimitDB(
   // 由 ON CONFLICT 原子自增，避免"每请求一个 windowStart"导致并发重置额度
   const bucketStartMs = Math.floor(Date.now() / windowMs) * windowMs;
   const bucketStart = new Date(bucketStartMs);
+  const now = new Date();
   const reset = bucketStartMs + windowMs;
 
   try {
     const rows = await prisma.$queryRaw<{ count: number }[]>`
       INSERT INTO "RateLimitRecord" ("id", "key", "windowStart", "count", "createdAt", "updatedAt")
-      VALUES (${randomUUID()}, ${identifier}, ${bucketStart}, 1, NOW(), NOW())
+      VALUES (${randomUUID()}, ${identifier}, ${bucketStart}, 1, ${now}, ${now})
       ON CONFLICT ("key", "windowStart")
-      DO UPDATE SET "count" = "RateLimitRecord"."count" + 1, "updatedAt" = NOW()
+      DO UPDATE SET "count" = "RateLimitRecord"."count" + 1, "updatedAt" = ${now}
       RETURNING "count"
     `;
 

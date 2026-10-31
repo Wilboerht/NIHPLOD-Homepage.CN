@@ -94,17 +94,23 @@ export async function verifySmsCodeWithLimit(
 ): Promise<boolean> {
   const rows = await prisma.$queryRaw<{ codeHash: string }[]>`
     UPDATE "SmsCode"
-    SET "attempts" = "attempts" + 1,
-        "used" = CASE WHEN "attempts" + 1 >= ${SMS_CODE_MAX_ATTEMPTS} THEN true ELSE "used" END
+    SET "attempts" = "attempts" + 1
     WHERE "id" = ${smsCodeId}
       AND "used" = false
       AND "attempts" < ${SMS_CODE_MAX_ATTEMPTS}
-      AND "expiresAt" > NOW()
+      AND "expiresAt" > ${new Date()}
     RETURNING "codeHash"
   `;
   const storedCodeHash = rows[0]?.codeHash;
   if (!storedCodeHash) return false;
-  return verifyCode(phone, code, type, storedCodeHash);
+  if (!verifyCode(phone, code, type, storedCodeHash)) {
+    await prisma.smsCode.updateMany({
+      where: { id: smsCodeId, used: false, attempts: { gte: SMS_CODE_MAX_ATTEMPTS } },
+      data: { used: true },
+    });
+    return false;
+  }
+  return true;
 }
 
 /**

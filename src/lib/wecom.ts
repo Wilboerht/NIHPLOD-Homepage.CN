@@ -8,6 +8,7 @@
  * 同一 webhook 配置多次时自动去重，避免重复推送。
  */
 import { apiConsole } from "@/lib/logger";
+import { SITE_URL } from "@/lib/site-url";
 
 interface WecomBotMessage {
   msgtype: "markdown" | "text";
@@ -215,7 +216,8 @@ export function formatSpentApplicationToWecom(data: {
     );
   }
   lines.push(
-    `> **提交时间**: ${data.submittedAt.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`
+    `> **提交时间**: ${data.submittedAt.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
+    `> **审核链接**: [前往消费审核](${SITE_URL}/admin/spent-adjustments?status=PENDING)`
   );
   if (data.note) {
     lines.push("", "**备注**:", escapeWecomMarkdown(data.note));
@@ -240,5 +242,6 @@ export function formatRedemptionToWecom(data: {
 > **礼品**: ${escapeWecomMarkdown(data.productName)}
 > **扣减积分**: ${data.points}
 > **会员等级**: ${escapeWecomMarkdown(data.levelLabel)}
-> **提交时间**: ${data.submittedAt.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`;
+> **提交时间**: ${data.submittedAt.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
+> **履约链接**: [前往积分礼品](${SITE_URL}/admin/point-gifts?status=PENDING)`;
 }

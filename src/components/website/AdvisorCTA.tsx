@@ -29,7 +29,7 @@ export function AdvisorCTA({ variant = "discover", className }: AdvisorCTAProps)
         href="https://smart.nihplod.cn"
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex items-center gap-1 text-xs font-light leading-[1.8] tracking-[0.08em] text-brand-primary transition-opacity hover:opacity-70 lg:inline-flex lg:tracking-[0.12em]"
+        className="group flex items-center gap-1 text-[12px] font-normal leading-[1.8] tracking-[0.04em] text-brand-primary transition-opacity hover:opacity-70 lg:inline-flex lg:text-[13px]"
       >
         <span>{COPY[variant]}</span>
         <svg

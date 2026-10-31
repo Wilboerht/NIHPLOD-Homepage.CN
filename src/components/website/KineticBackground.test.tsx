@@ -99,4 +99,10 @@ describe("KineticBackground 便当盒", () => {
     // 背景层仍渲染
     expect(container.querySelector(".kinetic-bg-base")).not.toBeNull();
   });
+
+  it("产品详情页等子路由同样渲染便当盒卡片", () => {
+    mockPathname = "/products/face-cream";
+    const { container } = render(<KineticBackground />);
+    expect(container.querySelectorAll(".kinetic-cell")).toHaveLength(7);
+  });
 });
