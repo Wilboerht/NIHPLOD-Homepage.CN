@@ -242,52 +242,7 @@ const nextConfig = {
         destination: "/",
         permanent: true,
       },
-      // 产品昵称重定向：直接落到具体产品页，并使用永久重定向保留链接权重
-      {
-        source: "/童颜精华",
-        destination: "/products/serum",
-        permanent: true,
-      },
-      {
-        source: "/白魔法面霜",
-        destination: "/products/face-cream",
-        permanent: true,
-      },
-      {
-        source: "/绿魔法护理油",
-        destination: "/products/treatment-oil",
-        permanent: true,
-      },
-      {
-        source: "/守护面膜",
-        destination: "/products/face-mask",
-        permanent: true,
-      },
-      {
-        source: "/聚宝瓶身体乳",
-        destination: "/products/body-lotion",
-        permanent: true,
-      },
-      {
-        source: "/蛋定防晒",
-        destination: "/products/sunscreen",
-        permanent: true,
-      },
-      {
-        source: "/黑曜磨砂膏",
-        destination: "/products/face-scrub",
-        permanent: true,
-      },
-      {
-        source: "/云朵洁面",
-        destination: "/products/foam-cleanser",
-        permanent: true,
-      },
-      {
-        source: "/随身笔护手霜",
-        destination: "/products/hand-cream",
-        permanent: true,
-      },
+      // 产品昵称重定向已迁移到 src/proxy.ts（非 ASCII 路径在 next.config 中匹配不可靠）
     ];
   },
 };

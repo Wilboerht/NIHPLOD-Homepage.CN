@@ -18,6 +18,11 @@ vi.mock("@/lib/prisma", () => {
     purchaseLink: {
       findMany: vi.fn(),
     },
+    productSlugRedirect: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
   return { prisma, default: prisma };
@@ -150,6 +155,7 @@ describe("产品 GEO FAQ 持久化", () => {
       product: { update: vi.fn().mockResolvedValue(existingProduct) },
       image: { deleteMany: vi.fn(), create: vi.fn(), update: vi.fn() },
       purchaseLink: { deleteMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+      productSlugRedirect: { upsert: vi.fn(), deleteMany: vi.fn() },
     };
     (prisma.product.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(existingProduct);
     (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
@@ -168,6 +174,36 @@ describe("产品 GEO FAQ 持久化", () => {
     expect(tx.product.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ geoFaqs: Prisma.DbNull }),
+      })
+    );
+  });
+
+  it("PUT 修改 slug 时写入旧 slug 重定向", async () => {
+    const tx = {
+      product: { update: vi.fn().mockResolvedValue(existingProduct) },
+      image: { deleteMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+      purchaseLink: { deleteMany: vi.fn(), create: vi.fn(), update: vi.fn() },
+      productSlugRedirect: { upsert: vi.fn(), deleteMany: vi.fn() },
+    };
+    (prisma.product.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(existingProduct);
+    (prisma.$transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)
+    );
+
+    const res = await PUT(
+      createRequest(`http://localhost/api/admin/products/${PRODUCT_ID}`, {
+        ...basePayload,
+        slug: "test-product-v2",
+        published: true,
+      }),
+      { params: Promise.resolve({ id: PRODUCT_ID }) }
+    );
+
+    expect(res.status).toBe(200);
+    expect(tx.productSlugRedirect.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { oldSlug: existingProduct.slug },
+        create: { oldSlug: existingProduct.slug, productId: PRODUCT_ID },
       })
     );
   });

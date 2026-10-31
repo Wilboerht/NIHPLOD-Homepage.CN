@@ -1,8 +1,10 @@
 import { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import prisma from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { ProductsContent } from "./ProductsContent";
 import { ItemListJsonLd } from "@/components/seo/JsonLd";
+import { PRODUCTS_TAG } from "@/lib/cache-tags";
 import { getVisibleCategories } from "./queries";
 import { mockProducts } from "./mock-data";
 
@@ -61,9 +63,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * 获取已发布的产品
+ * 获取已发布的产品（未缓存版本）
  */
-async function getProducts() {
+async function getProductsUncached() {
   if (isDev) {
     apiConsole.info("[Products] DEV 使用 Mock 产品数据");
     return mockProducts;
@@ -102,6 +104,13 @@ async function getProducts() {
     throw error;
   }
 }
+
+const getProductsCached = unstable_cache(getProductsUncached, ["products-list"], {
+  tags: [PRODUCTS_TAG],
+  revalidate: 60,
+});
+
+const getProducts = isDev ? getProductsUncached : getProductsCached;
 
 /**
  * 产品列表页

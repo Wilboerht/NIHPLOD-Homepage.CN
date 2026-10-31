@@ -39,10 +39,22 @@ model Product {
   updatedAt       DateTime       @default(now()) @updatedAt
 
   pointRedemptions PointRedemption[]
+  slugRedirects   ProductSlugRedirect[]
 
   @@index([categoryId])
   @@index([published, order])
   @@index([pointRedeemable, published])
+}
+
+// 产品 slug 历史重定向：product 修改 slug 后，旧 slug 永久 308 到当前产品页
+model ProductSlugRedirect {
+  id        String   @id @default(cuid())
+  oldSlug   String   @unique
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 // 购买链接（支持多平台）

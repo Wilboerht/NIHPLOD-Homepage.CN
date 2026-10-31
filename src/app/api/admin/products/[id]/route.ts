@@ -15,7 +15,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
-import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
+import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
 import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
@@ -157,9 +157,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data: updateData,
     });
 
+    // 下架时清理旧 slug 重定向，避免旧链接 308 到已下架产品
+    if (validated.published === false) {
+      await prisma.productSlugRedirect.deleteMany({ where: { productId: id } });
+    }
+
     // 刷新前台缓存；发布/排序变化时主动推送搜索引擎
     revalidatePath("/products");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
+    revalidateTag(PRODUCTS_TAG, { expire: 0 });
     if (product.published) {
       revalidatePath(`/products/${product.slug}`);
       if (validated.published !== undefined || validated.order !== undefined) {
@@ -291,6 +297,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // 删除不再使用的购买链接
     const linksToDelete = existingLinkIds.filter((linkId) => !newLinkIds.includes(linkId));
 
+    const slugChanged = existing.slug !== validated.slug;
+
     // 更新产品
     await prisma.$transaction(async (tx) => {
       // 删除不再使用的图片
@@ -332,6 +340,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           geoFaqs: toGeoFaqsJson(validated.geoFaqs),
         },
       });
+
+      // slug 变更：记录旧 slug，后续以 308 永久重定向到当前产品页
+      if (slugChanged) {
+        await tx.productSlugRedirect.upsert({
+          where: { oldSlug: existing.slug },
+          create: { oldSlug: existing.slug, productId: id },
+          update: { productId: id },
+        });
+      }
+
+      // 下架产品不再保留旧 slug 重定向，避免重定向到 404
+      if (!validated.published) {
+        await tx.productSlugRedirect.deleteMany({ where: { productId: id } });
+      }
 
       // 处理图片：更新已有 + 创建新的
       for (const img of sanitized.images) {
@@ -407,6 +429,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // 重新验证前台页面缓存；已发布产品同步推送搜索引擎
     revalidatePath("/products");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
+    revalidateTag(PRODUCTS_TAG, { expire: 0 });
     if (fullProduct?.slug) {
       revalidatePath(`/products/${fullProduct.slug}`);
     }
@@ -516,6 +539,7 @@ export async function DELETE(
     revalidatePath(`/products/${existing.slug}`);
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
+    revalidateTag(PRODUCTS_TAG, { expire: 0 });
     // 已删除的 URL 不再推送，仅刷新并推送列表页
     pushSearchEngines(["/products"]);
 

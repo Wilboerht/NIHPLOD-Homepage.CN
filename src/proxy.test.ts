@@ -65,6 +65,32 @@ describe("proxy", () => {
     expect(res.headers.get("x-nonce")).toBeTruthy();
   });
 
+  it("产品昵称（中文原文）返回 308 到具体产品页", async () => {
+    const res = await proxy(new NextRequest("https://nihplod.cn/童颜精华"));
+
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("https://nihplod.cn/products/serum");
+    expect(res.headers.get("cache-control")).toContain("max-age=86400");
+  });
+
+  it("产品昵称（percent-encoded）返回 308 并保留 query", async () => {
+    const res = await proxy(
+      new NextRequest("https://nihplod.cn/%E7%AB%A5%E9%A2%9C%E7%B2%BE%E5%8D%8E?utm_source=x")
+    );
+
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe(
+      "https://nihplod.cn/products/serum?utm_source=x"
+    );
+  });
+
+  it("产品昵称尾斜杠同样返回 308", async () => {
+    const res = await proxy(new NextRequest("https://nihplod.cn/白魔法面霜/"));
+
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("https://nihplod.cn/products/face-cream");
+  });
+
   it("POST /api/cron/run 直通（由路由校验 CRON_SECRET）", async () => {
     const res = await proxy(new NextRequest("https://nihplod.cn/api/cron/run", { method: "POST" }));
 

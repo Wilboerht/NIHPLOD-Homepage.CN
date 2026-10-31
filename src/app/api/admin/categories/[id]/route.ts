@@ -10,7 +10,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
-import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
+import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
 import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
 
 // 分类更新 Schema
@@ -176,6 +176,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
+    revalidateTag(PRODUCTS_TAG, { expire: 0 });
     revalidatePath("/products");
     // 分类可见性会影响其下所有商品详情、指南页与 sitemap：
     // 关闭分类后必须让这些页面立即失效，而不是等 ISR 自然过期。
@@ -291,6 +292,7 @@ export async function DELETE(
 
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
+    revalidateTag(PRODUCTS_TAG, { expire: 0 });
     revalidatePath("/products");
     revalidatePath("/products/[slug]", "page");
     revalidatePath("/guide");

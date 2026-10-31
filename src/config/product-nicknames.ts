@@ -21,3 +21,17 @@ export const PRODUCT_NICKNAMES: Record<string, string[]> = {
 export function getProductNicknames(slug: string): string[] {
   return PRODUCT_NICKNAMES[slug] ?? [];
 }
+
+/**
+ * 通过昵称反查产品 slug。
+ * 入参可以是带前导斜杠的路径（如 "/童颜精华"），也可以是纯昵称。
+ */
+export function getProductSlugByNickname(nickname: string): string | null {
+  const normalized = nickname.replace(/^\/+|\/+$/g, "");
+  if (!normalized) return null;
+
+  for (const [slug, nicknames] of Object.entries(PRODUCT_NICKNAMES)) {
+    if (nicknames.includes(normalized)) return slug;
+  }
+  return null;
+}

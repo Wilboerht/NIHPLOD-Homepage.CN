@@ -10,7 +10,7 @@ import { enqueueMediaDeletions } from "@/lib/media-deletion";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
-import { LLMS_DOCS_TAG } from "@/lib/cache-tags";
+import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
 import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
 
 // 批量操作 Schema
@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
     );
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
+    revalidateTag(PRODUCTS_TAG, { expire: 0 });
 
     scheduleAdvisorProductSync("save");
 

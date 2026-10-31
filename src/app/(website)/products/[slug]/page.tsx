@@ -1,6 +1,7 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { ProductDetailContent } from "./ProductDetailContent";
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo/JsonLd";
@@ -8,8 +9,11 @@ import { resolveProductFaqs } from "@/lib/product-faqs";
 import { getProductNicknames } from "@/config/product-nicknames";
 import { mockProducts } from "../mock-data";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
+import { PRODUCTS_TAG } from "@/lib/cache-tags";
 
-// ISR: 产品详情页每60秒重新验证一次
+// 注意：本路由因 root layout 的 per-request CSP nonce 进入动态渲染。
+// revalidate 仅作为未来移除 nonce 后的预留；当前实际的跨请求缓存由 getProduct 的
+// unstable_cache（PRODUCTS_TAG）承担。
 export const revalidate = 60;
 
 // 允许动态生成未预渲染的路由参数
@@ -43,12 +47,12 @@ type PageProps = {
 };
 
 /**
- * 获取产品详情
+ * 获取产品详情（未缓存版本）
  *
- * 使用 React.cache 在 generateMetadata 与页面渲染之间复用同一份查询，
- * 避免一次请求内重复查询数据库。
+ * React.cache 负责一次请求内去重；unstable_cache 负责跨请求复用数据库查询结果。
+ * 页面本身因 nonce 仍为动态渲染，但可显著降低每次请求的数据库压力。
  */
-const getProduct = cache(async (slug: string) => {
+const getProductUncached = async (slug: string) => {
   if (isDev) {
     const product = mockProducts.find((p) => p.slug === slug);
     if (!product) return null;
@@ -91,6 +95,38 @@ const getProduct = cache(async (slug: string) => {
     price: Number(product.price),
     origin: product.origin,
   };
+};
+
+const getProductCached = unstable_cache(getProductUncached, ["product"], {
+  tags: [PRODUCTS_TAG],
+  revalidate: 60,
+});
+
+const getProduct = cache(isDev ? getProductUncached : getProductCached);
+
+/**
+ * 按旧 slug 查找 301/308 重定向目标。
+ * 仅在当前 slug 查不到产品时调用，目标产品必须已发布且分类可见。
+ */
+const findSlugRedirect = cache(async (slug: string) => {
+  if (isDev) return null;
+
+  const redirect = await prisma.productSlugRedirect.findUnique({
+    where: { oldSlug: slug },
+    select: {
+      product: {
+        select: {
+          slug: true,
+          published: true,
+          category: { select: { visible: true } },
+        },
+      },
+    },
+  });
+
+  const target = redirect?.product;
+  if (!target?.published || !target.category.visible) return null;
+  return `/products/${target.slug}`;
 });
 
 /**
@@ -206,6 +242,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getProduct(slug);
 
   if (!product) {
+    const redirectTo = await findSlugRedirect(slug);
+    if (redirectTo) {
+      permanentRedirect(redirectTo);
+    }
     notFound();
   }
 
