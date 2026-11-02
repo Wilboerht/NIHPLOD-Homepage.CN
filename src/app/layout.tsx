@@ -13,7 +13,7 @@ import { SITE_URL as baseUrl } from "@/lib/site-url";
 export const metadata: Metadata = {
   // 基本信息
   title: {
-    default: "NIHPLOD 旎柏",
+    default: "NIHPLOD 旎柏 | 中国官网",
     template: "%s | NIHPLOD 旎柏",
   },
   description:
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     locale: "zh_CN",
     url: baseUrl,
     siteName: "NIHPLOD 旎柏",
-    title: "NIHPLOD 旎柏",
+    title: "NIHPLOD 旎柏 | 中国官网",
     description:
       "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
     images: [
@@ -79,7 +79,7 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "NIHPLOD 旎柏",
+    title: "NIHPLOD 旎柏 | 中国官网",
     description:
       "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
@@ -87,11 +87,13 @@ export const metadata: Metadata = {
   },
 
   // 搜索引擎（Google/Bing/百度）要求 favicon 至少 48x48、大于 48 时边长须为 48 的倍数，
-  // 否则搜索结果回退为默认地球图标；故提供 96/192 高分辨率 PNG，ico 仅作旧浏览器兜底
+  // 否则搜索结果回退为默认地球图标；故提供 48/96/144/192 多档 PNG，ico 仅作旧浏览器兜底
   icons: {
     icon: [
-      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: "/favicon.ico", type: "image/x-icon", sizes: "any" },
+      { url: "/images/icons/favicon-48.png", type: "image/png", sizes: "48x48" },
       { url: "/images/icons/favicon-96.png", type: "image/png", sizes: "96x96" },
+      { url: "/images/icons/favicon-144.png", type: "image/png", sizes: "144x144" },
       { url: "/images/icons/favicon-192.png", type: "image/png", sizes: "192x192" },
     ],
     apple: [{ url: "/images/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],

@@ -8,10 +8,13 @@
  *
  * 本脚本从 NIHPLOD-logo.svg 中提取矢量 "N" 字形，按现有 favicon 的视觉规范
  * （米色 #EFECE1 圆角底 + 深藏青 #00263E "N." 字标）渲染高分辨率 PNG：
+ *   - public/images/icons/favicon-48.png   (48x48,  搜索引擎最低要求)
  *   - public/images/icons/favicon-96.png   (96x96,  48 的倍数)
+ *   - public/images/icons/favicon-144.png  (144x144, 48 的倍数)
  *   - public/images/icons/favicon-192.png  (192x192, 48 的倍数)
  *   - public/images/icons/favicon-512.png  (512x512, PWA manifest 用)
  *   - public/images/icons/apple-touch-icon.png (180x180, iOS 主屏, 直角不透明)
+ *   - public/favicon.ico                   (16/32/48, 旧浏览器与搜索引擎兜底)
  *   - public/favicon.png 覆盖为 512x512（保持 URL 稳定，提升分辨率）
  *
  * 运行：node scripts/generate-favicons.mjs
@@ -64,17 +67,92 @@ function iconSvg(size, rounded) {
 }
 
 async function render(size, out, rounded = true) {
-  await sharp(iconSvg(size, rounded), { density: 96 }).png().toFile(out);
+  await sharp(iconSvg(size, rounded)).png().toFile(out);
   console.log("✓", path.relative(root, out), `${size}x${size}`);
+}
+
+function buildIco(entries) {
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(entries.length, 4);
+
+  const directory = Buffer.alloc(entries.length * 16);
+  let offset = 6 + entries.length * 16;
+
+  entries.forEach((entry, index) => {
+    const base = index * 16;
+    directory.writeUInt8(entry.size >= 256 ? 0 : entry.size, base);
+    directory.writeUInt8(entry.size >= 256 ? 0 : entry.size, base + 1);
+    directory.writeUInt8(0, base + 2);
+    directory.writeUInt8(0, base + 3);
+    directory.writeUInt16LE(1, base + 4);
+    directory.writeUInt16LE(32, base + 6);
+    directory.writeUInt32LE(entry.data.length, base + 8);
+    directory.writeUInt32LE(offset, base + 12);
+    offset += entry.data.length;
+  });
+
+  return Buffer.concat([header, directory, ...entries.map((entry) => entry.data)]);
+}
+
+async function renderIco(sizes, out) {
+  // 使用传统 BMP/DIB 帧而非 PNG 压缩帧：Windows GDI+、资源管理器与所有浏览器均兼容
+  const entries = await Promise.all(
+    sizes.map(async (size) => {
+      const { data } = await sharp(iconSvg(size, true))
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const xorSize = size * size * 4;
+      const maskRowSize = Math.ceil(size / 8 / 4) * 4;
+      const maskSize = maskRowSize * size;
+
+      const header = Buffer.alloc(40);
+      header.writeUInt32LE(40, 0);
+      header.writeInt32LE(size, 4);
+      header.writeInt32LE(size * 2, 8);
+      header.writeUInt16LE(1, 12);
+      header.writeUInt16LE(32, 14);
+      header.writeUInt32LE(0, 16);
+      header.writeUInt32LE(xorSize + maskSize, 20);
+
+      const xor = Buffer.alloc(xorSize);
+      const mask = Buffer.alloc(maskSize, 0);
+
+      for (let y = 0; y < size; y++) {
+        const srcRow = (size - 1 - y) * size * 4;
+        for (let x = 0; x < size; x++) {
+          const src = srcRow + x * 4;
+          const dst = (y * size + x) * 4;
+          xor[dst] = data[src + 2];
+          xor[dst + 1] = data[src + 1];
+          xor[dst + 2] = data[src];
+          xor[dst + 3] = data[src + 3];
+          if (data[src + 3] === 0) {
+            mask[y * maskRowSize + (x >> 3)] |= 0x80 >> (x & 7);
+          }
+        }
+      }
+
+      return { size, data: Buffer.concat([header, xor, mask]) };
+    })
+  );
+  await fs.promises.writeFile(out, buildIco(entries));
+  console.log("✓", path.relative(root, out), sizes.map((size) => `${size}x${size}`).join("/"));
 }
 
 const iconsDir = path.join(root, "public", "images", "icons");
 fs.mkdirSync(iconsDir, { recursive: true });
 
+await render(48, path.join(iconsDir, "favicon-48.png"));
 await render(96, path.join(iconsDir, "favicon-96.png"));
+await render(144, path.join(iconsDir, "favicon-144.png"));
 await render(192, path.join(iconsDir, "favicon-192.png"));
 await render(512, path.join(iconsDir, "favicon-512.png"));
 await render(180, path.join(iconsDir, "apple-touch-icon.png"), false);
+await renderIco([16, 32, 48], path.join(root, "public", "favicon.ico"));
 // 覆盖旧 32px favicon.png，保持 URL 稳定
 await render(512, path.join(root, "public", "favicon.png"));
 
