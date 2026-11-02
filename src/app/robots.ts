@@ -36,6 +36,13 @@ const AI_TRAINING_BOTS = [
   "Amazonbot",
 ];
 
+// Content Signals 声明，与上面的分组策略保持一致：
+// 禁止训练（ai-train=no），允许搜索索引（search=yes）与 AI 搜索引用（ai-input=yes）
+// 规范见 https://contentsignals.org/
+const CONTENT_SIGNAL = {
+  "Content-Signal": "ai-train=no, search=yes, ai-input=yes",
+};
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
@@ -46,15 +53,18 @@ export default function robots(): MetadataRoute.Robots {
         // 百度系爬虫（Baiduspider / Baiduspider-render）同样适用本组规则；
         // 百度不支持 Crawl-delay，抓取压力需在百度搜索资源平台后台调整
         disallow: DISALLOW_PATHS,
+        other: CONTENT_SIGNAL,
       },
       {
         userAgent: AI_SEARCH_BOTS,
         allow: "/",
         disallow: DISALLOW_PATHS,
+        other: CONTENT_SIGNAL,
       },
       {
         userAgent: AI_TRAINING_BOTS,
         disallow: "/",
+        other: CONTENT_SIGNAL,
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

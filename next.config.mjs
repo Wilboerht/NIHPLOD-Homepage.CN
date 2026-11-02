@@ -142,6 +142,23 @@ const nextConfig = {
 
     return [
       ...productionHeaders,
+      // Agent 发现：主页通过 Link 响应头（RFC 8288）声明机器可读资源，
+      // 其中 api-catalog 指向 RFC 9727 定义的 API 目录。
+      // Next.js 对同名响应头会覆盖，因此用单个 Link 头 + 逗号分隔多个链接。
+      {
+        source: "/",
+        headers: [
+          {
+            key: "Link",
+            value: [
+              '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"',
+              '</api/oauth/docs>; rel="service-desc"; type="application/json"',
+              '</llms.txt>; rel="service-doc"; type="text/plain"',
+              '</sitemap.xml>; rel="describedby"; type="application/xml"',
+            ].join(", "),
+          },
+        ],
+      },
       // 嵌入白名单页面：第三方嵌入由 middleware 的 CSP frame-ancestors 白名单控制。
       // 置空 X-Frame-Options，避免不支持 frame-ancestors 的旧 UA 被全局
       // X-Frame-Options: SAMEORIGIN 拦截（现代浏览器以 CSP 为准）。

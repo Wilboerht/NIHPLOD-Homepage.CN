@@ -107,6 +107,7 @@ const STATIC_PATH_PREFIXES = [
   "/sitemap.xml",
   "/llms.txt",
   "/llms-full.txt",
+  "/auth.md",
 ];
 
 function isStaticPath(pathname: string): boolean {

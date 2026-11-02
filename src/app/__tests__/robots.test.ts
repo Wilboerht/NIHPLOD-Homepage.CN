@@ -5,6 +5,7 @@ type Rule = {
   userAgent: string | string[];
   allow?: string | string[];
   disallow?: string | string[];
+  other?: Record<string, string | number | Array<string | number>>;
 };
 
 function groups(): Rule[] {
@@ -44,5 +45,14 @@ describe("robots", () => {
 
   it("声明 sitemap", () => {
     expect(robots().sitemap).toMatch(/\/sitemap\.xml$/);
+  });
+
+  it("在每个 User-agent 分组声明 Content-Signal", () => {
+    const expected = "ai-train=no, search=yes, ai-input=yes";
+    for (const group of groups()) {
+      expect(group.other?.["Content-Signal"], `${group.userAgent} 缺少 Content-Signal`).toBe(
+        expected
+      );
+    }
   });
 });

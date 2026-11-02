@@ -8,6 +8,7 @@
 import type { NextRequest } from "next/server";
 import {
   authenticateOAuthResourceRequest,
+  buildBearerChallenge,
   isM2mPayload,
   type OAuthResJson,
 } from "@/lib/oauth-resource-auth";
@@ -68,7 +69,11 @@ export async function authenticateOAuthUserRequest(
       response: resJson(
         { error: "insufficient_scope", error_description: `需要 ${options.scope} scope` },
         403,
-        { "WWW-Authenticate": `Bearer error="insufficient_scope", scope="${options.scope}"` }
+        {
+          "WWW-Authenticate": buildBearerChallenge(
+            `error="insufficient_scope", scope="${options.scope}"`
+          ),
+        }
       ),
     };
   }

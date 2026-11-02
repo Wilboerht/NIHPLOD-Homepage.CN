@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>NIHPLOD System Architecture</title>
+<style>
+  :root {
+    --ink: #2b2b2b;
+    --muted: #6b6b6b;
+    --line: #3b6ea5;
+    --link: #8c8c8c;
+    --bronze: #8a6a3b;
+    --paper: #f7f5f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: #ececec;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+      "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    color: var(--ink);
+  }
+  .toolbar {
+    max-width: 1840px;
+    margin: 0 auto 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .toolbar h1 {
+    margin: 0 auto 0 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: .2px;
+  }
+  .toolbar button {
+    appearance: none;
+    border: 1px solid #c9c4b8;
+    background: #fff;
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .toolbar button:hover { background: #f3f1eb; }
+  .canvas {
+    max-width: 1840px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid #d8d3c8;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  }
+  svg { display: block; width: 100%; height: auto; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .toolbar { display: none; }
+    .canvas { max-width: none; border: none; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>NIHPLOD System Architecture</h1>
+  <button onclick="downloadSvg()">下载 SVG</button>
+  <button onclick="downloadPng()">下载 PNG</button>
+  <button onclick="copySvg()">复制 SVG 源码</button>
+  <button onclick="window.print()">打印 / 存 PDF</button>
+</div>
+
+<div class="canvas">
+<svg id="diagram" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1840 1080" role="img" aria-label="NIHPLOD system architecture diagram">
+  <title>NIHPLOD System Architecture</title>
+  <desc>Identity, commerce, AI skin analysis, AI customer service, independent authorization verification, and external platforms.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3b6ea5"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8c8c8c"/>
+    </marker>
+  </defs>
+
+  <style>
+    .layer { fill:#f7f5f0; stroke:#d8d3c8; stroke-width:1; stroke-dasharray:6 4; }
+    .layer-title { font: 600 18px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#2b2b2b; }
+    .box { fill:#ffffff; stroke:#2b2b2b; stroke-width:1.5; }
+    .box-indep { fill:#fbf9f4; stroke:#8a6a3b; stroke-width:1.5; stroke-dasharray:5 4; }
+    .box-title { font: 600 15px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#1f1f1f; text-anchor:middle; }
+    .box-sub { font: 12px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#6b6b6b; text-anchor:middle; }
+    .edge { fill:none; stroke:#3b6ea5; stroke-width:1.5; }
+    .edge-dash { fill:none; stroke:#8c8c8c; stroke-width:1.2; stroke-dasharray:5 4; }
+    .edge-double { fill:none; stroke:#3b6ea5; stroke-width:1.5; }
+    .label-bg { fill:#ffffff; stroke:none; }
+    .label { font: 11px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#3f3f3f; }
+    .note { font: 12px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#5a5a5a; }
+    .legend-title { font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#2b2b2b; }
+    .diagram-title { font: 600 16px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#2b2b2b; text-anchor:end; }
+    .group-label { font: 600 11px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#8a6a3b; text-anchor:middle; }
+    .caption { font: 12px system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill:#6b6b6b; }
+  </style>
+
+  <rect x="0" y="0" width="1840" height="1080" fill="#ffffff"/>
+  <text class="diagram-title" x="1800" y="28">NIHPLOD System Architecture</text>
+
+  <!-- ================= Layers ================= -->
+  <rect class="layer" x="40" y="40" width="1760" height="120" rx="8"/>
+  <text class="layer-title" x="60" y="66">User Layer</text>
+
+  <rect class="layer" x="40" y="220" width="1420" height="360" rx="8"/>
+  <text class="layer-title" x="60" y="246">Service Layer</text>
+
+  <rect class="layer" x="1500" y="220" width="300" height="360" rx="8"/>
+  <text class="layer-title" x="1520" y="246">Independent Systems</text>
+
+  <rect class="layer" x="40" y="640" width="1420" height="300" rx="8"/>
+  <text class="layer-title" x="60" y="666">External Platforms</text>
+
+  <!-- WeChat ecosystem bracket -->
+  <path d="M400 68 L400 62 L840 62 L840 68" fill="none" stroke="#8a6a3b" stroke-width="1.2"/>
+  <text class="group-label" x="620" y="56">WeChat Ecosystem</text>
+
+  <!-- ================= User boxes ================= -->
+  <rect class="box" x="160" y="75" width="180" height="60" rx="6"/>
+  <text class="box-title" x="250" y="102">Web Browser</text>
+  <text class="box-sub" x="250" y="122">visitor / member</text>
+
+  <rect class="box" x="400" y="75" width="180" height="60" rx="6"/>
+  <text class="box-title" x="490" y="102">Mini Program</text>
+  <text class="box-sub" x="490" y="122">client · wx.login</text>
+
+  <rect class="box" x="640" y="75" width="200" height="60" rx="6"/>
+  <text class="box-title" x="740" y="102">WeChat / WeCom User</text>
+  <text class="box-sub" x="740" y="122">KF chat · enter_session</text>
+
+  <rect class="box" x="1180" y="75" width="200" height="60" rx="6"/>
+  <text class="box-title" x="1280" y="102">Public Verify User</text>
+  <text class="box-sub" x="1280" y="122">BA /verify · no login</text>
+
+  <!-- ================= Service boxes ================= -->
+  <rect class="box" x="100" y="270" width="320" height="130" rx="6"/>
+  <text class="box-title" x="260" y="320">nihplod.cn</text>
+  <text class="box-sub" x="260" y="342">Identity &amp; Commerce Core</text>
+  <text class="box-sub" x="260" y="362">own DB · OAuth2 / OIDC provider</text>
+
+  <rect class="box" x="620" y="270" width="320" height="130" rx="6"/>
+  <text class="box-title" x="780" y="320">smart.nihplod.cn</text>
+  <text class="box-sub" x="780" y="342">AI Skin Analysis</text>
+  <text class="box-sub" x="780" y="362">own DB · Qwen / DeepSeek</text>
+
+  <rect class="box" x="1140" y="270" width="320" height="130" rx="6"/>
+  <text class="box-title" x="1300" y="320">kf.nihplod.cn</text>
+  <text class="box-sub" x="1300" y="342">AI Customer Service</text>
+  <text class="box-sub" x="1300" y="362">own session store · DeepSeek</text>
+
+  <!-- ================= Independent boxes ================= -->
+  <rect class="box-indep" x="1550" y="270" width="230" height="130" rx="6"/>
+  <text class="box-title" x="1665" y="320">ba.nihplod.cn</text>
+  <text class="box-sub" x="1665" y="342">Authorization &amp; Verification</text>
+  <text class="box-sub" x="1665" y="362">independent DB / login</text>
+
+  <rect class="box-indep" x="1550" y="440" width="230" height="90" rx="6"/>
+  <text class="box-title" x="1665" y="472">myskin.today</text>
+  <text class="box-sub" x="1665" y="494">B2B Site</text>
+  <text class="box-sub" x="1665" y="514">no integration found</text>
+
+  <!-- ================= External boxes ================= -->
+  <rect class="box" x="120" y="680" width="240" height="80" rx="6"/>
+  <text class="box-title" x="240" y="712">WeCom Group Bots</text>
+  <text class="box-sub" x="240" y="734">ops notifications</text>
+
+  <rect class="box" x="620" y="680" width="240" height="80" rx="6"/>
+  <text class="box-title" x="740" y="712">AI Models / Vision Models</text>
+  <text class="box-sub" x="740" y="734">inference</text>
+
+  <rect class="box" x="1100" y="680" width="180" height="80" rx="6"/>
+  <text class="box-title" x="1190" y="712">WeChat / WeCom</text>
+  <text class="box-sub" x="1190" y="734">login / messaging</text>
+
+  <rect class="box" x="1320" y="680" width="140" height="80" rx="6"/>
+  <text class="box-title" x="1390" y="712">E-commerce</text>
+  <text class="box-sub" x="1390" y="734">purchase links</text>
+
+  <!-- ================= Edges ================= -->
+  <!-- Web -> main -->
+  <path class="edge" d="M 220 135 L 220 270" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="228" y="190" width="86" height="18" rx="3"/>
+  <text class="label" x="232" y="203">Login / OAuth2</text>
+
+  <!-- Web -> smart -->
+  <path class="edge" d="M 300 135 L 300 190 L 780 190 L 780 270" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="455" y="181" width="90" height="18" rx="3"/>
+  <text class="label" x="459" y="194">Skin Test Web</text>
+
+  <!-- Mini Program -> main -->
+  <path class="edge" d="M 410 135 L 410 270" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="418" y="190" width="62" height="18" rx="3"/>
+  <text class="label" x="422" y="203">MP Login</text>
+
+  <!-- Mini Program -> smart -->
+  <path class="edge" d="M 540 135 L 540 230 L 660 230 L 660 270" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="535" y="221" width="92" height="18" rx="3"/>
+  <text class="label" x="539" y="234">Skin Test API</text>
+
+  <!-- WeChat/WeCom User -> kf -->
+  <path class="edge" d="M 740 135 L 740 220 L 1220 220 L 1220 270" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="870" y="211" width="70" height="18" rx="3"/>
+  <text class="label" x="874" y="224">KF session</text>
+
+  <!-- Public -> BA -->
+  <path class="edge" d="M 1280 135 L 1280 200 L 1665 200 L 1665 270" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="1420" y="191" width="52" height="18" rx="3"/>
+  <text class="label" x="1424" y="204">/verify</text>
+
+  <!-- main -> smart -->
+  <path class="edge" d="M 420 300 L 620 300" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="440" y="279" width="160" height="18" rx="3"/>
+  <text class="label" x="444" y="292">Product / User / Webhook</text>
+
+  <!-- smart -> main -->
+  <path class="edge" d="M 620 350 L 420 350" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="440" y="356" width="160" height="18" rx="3"/>
+  <text class="label" x="444" y="369">Points / Status / Reports</text>
+
+  <!-- smart -> kf -->
+  <path class="edge" d="M 940 300 L 1140 300" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="960" y="279" width="160" height="18" rx="3"/>
+  <text class="label" x="964" y="292">sessionId / kf-link</text>
+
+  <!-- kf -> smart -->
+  <path class="edge" d="M 1140 350 L 940 350" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="960" y="356" width="120" height="18" rx="3"/>
+  <text class="label" x="964" y="369">report-summary</text>
+
+  <!-- kf -> BA (link) -->
+  <path class="edge-dash" d="M 1460 320 L 1550 320" marker-end="url(#arrowGray)"/>
+  <rect class="label-bg" x="1462" y="300" width="86" height="18" rx="3"/>
+  <text class="label" x="1466" y="313">Verify link</text>
+
+  <!-- kf <-> WeChat -->
+  <path class="edge-double" d="M 1220 400 L 1220 680" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="1228" y="530" width="82" height="18" rx="3"/>
+  <text class="label" x="1232" y="543">CS messages</text>
+
+  <!-- kf -> e-commerce -->
+  <path class="edge" d="M 1400 400 L 1400 680" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="1408" y="514" width="90" height="30" rx="3"/>
+  <text class="label" x="1412" y="527">Purchase</text>
+  <text class="label" x="1412" y="541">short link 302</text>
+
+  <!-- main -> group bots -->
+  <path class="edge" d="M 260 400 L 260 680" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="268" y="510" width="170" height="30" rx="3"/>
+  <text class="label" x="272" y="523">Contact / Job / Spent</text>
+  <text class="label" x="272" y="537">Redemption alerts</text>
+
+  <!-- smart <-> AI -->
+  <path class="edge-double" d="M 780 400 L 780 680" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <rect class="label-bg" x="788" y="520" width="150" height="18" rx="3"/>
+  <text class="label" x="792" y="533">Inference request / result</text>
+
+  <!-- ================= Notes ================= -->
+  <rect x="60" y="800" width="1380" height="140" rx="6" fill="#ffffff" stroke="#e2ddd2"/>
+  <text class="note" x="80" y="822">Links (not API): nihplod.cn /services → BA · KF knowledge base → nihplod.cn official/contact</text>
+  <text class="note" x="80" y="844">BA is independent: no shared DB, SSO, or API.</text>
+  <text class="note" x="80" y="866">myskin.today is a separate B2B site; no integration found.</text>
+  <text class="note" x="80" y="888">nihplod.cn → WeChat: login / subscription messages.</text>
+  <text class="note" x="80" y="910">Mini Program ↔ WeChat: wx.login / openid; nihplod.cn exchanges the code.</text>
+  <text class="note" x="80" y="932">A WeChat user may enter via Mini Program or KF chat; sessions are separate.</text>
+
+  <!-- ================= Legend ================= -->
+  <rect x="1500" y="800" width="300" height="180" rx="6" fill="#ffffff" stroke="#e2ddd2"/>
+  <text class="legend-title" x="1520" y="826">Legend</text>
+
+  <line x1="1520" y1="850" x2="1570" y2="850" class="edge" marker-end="url(#arrow)"/>
+  <text class="note" x="1580" y="854">System call / data flow</text>
+
+  <line x1="1520" y1="880" x2="1570" y2="880" class="edge-dash" marker-end="url(#arrowGray)"/>
+  <text class="note" x="1580" y="884">Link / weak relationship</text>
+
+  <line x1="1520" y1="910" x2="1570" y2="910" class="edge-double" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="note" x="1580" y="914">Bidirectional</text>
+
+  <rect x="1520" y="933" width="22" height="14" fill="#fbf9f4" stroke="#8a6a3b" stroke-dasharray="4 3"/>
+  <text class="note" x="1580" y="944">Independent system</text>
+
+  <!-- ================= Caption ================= -->
+  <text class="caption" x="40" y="1045">Figure 1. NIHPLOD system architecture. Solid arrows: system calls / data flows; dashed arrows: links / weak relationships.</text>
+</svg>
+</div>
+
+<script>
+  function getSvgSource() {
+    return document.getElementById('diagram').outerHTML;
+  }
+
+  function downloadSvg() {
+    const blob = new Blob([getSvgSource()], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'nihplod-architecture.svg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadPng() {
+    const svg = document.getElementById('diagram');
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('width', '1840');
+    clone.setAttribute('height', '1080');
+    const source = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = function () {
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = 1840 * scale;
+      canvas.height = 1080 * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(function (pngBlob) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(pngBlob);
+        a.download = 'nihplod-architecture.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      }, 'image/png');
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      alert('PNG 导出失败，请用“下载 SVG”。');
+    };
+    img.src = url;
+  }
+
+  async function copySvg() {
+    try {
+      await navigator.clipboard.writeText(getSvgSource());
+      alert('SVG 源码已复制到剪贴板');
+    } catch (e) {
+      alert('复制失败，请用“下载 SVG”。');
+    }
+  }
+</script>
+
+</body>
+</html>

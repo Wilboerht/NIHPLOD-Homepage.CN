@@ -41,6 +41,7 @@ const FAIL_CLOSED_RATE_LIMIT_TYPES = new Set<string>([
   "account-deletion",
   "account-deletion-code",
   "account-deletion-cancel",
+  "agent-auth",
 ]);
 
 /** 速率限制结果 */
@@ -184,6 +185,8 @@ export const RATE_LIMIT_PRESETS = {
   health: { maxRequests: 10, windowMs: 60 * 1000 },
   /** OIDC Discovery 端点 - 每分钟 30 次（公开可缓存端点） */
   "oauth-discovery": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** Agent ID-JAG 注册 - 每小时 60 次（按 IP 限流） */
+  "agent-auth": { maxRequests: 60, windowMs: 60 * 60 * 1000 },
   /** OAuth post_logout_redirect_uri 校验 - 每分钟 20 次 */
   "oauth-check-post-logout-uri": { maxRequests: 20, windowMs: 60 * 1000 },
   /** VIP 会员读取 - 每分钟 30 次 */

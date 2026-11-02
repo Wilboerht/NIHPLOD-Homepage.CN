@@ -12,7 +12,18 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { validateDPoPProof, computeDPoPAth, dpopNonceHeader, getDPoPHtu } from "@/lib/dpop";
+import { getIssuer } from "@/lib/oauth-constants";
 import type { OAuthAccessTokenPayload } from "@/types/auth";
+
+export function getResourceMetadataUrl(): string {
+  return `${getIssuer()}/.well-known/oauth-protected-resource`;
+}
+
+export function buildBearerChallenge(extra?: string): string {
+  const parts = [`resource_metadata="${getResourceMetadataUrl()}"`];
+  if (extra) parts.push(extra);
+  return `Bearer ${parts.join(", ")}`;
+}
 
 /**
  * 响应工厂：统一 no-store + CORS 头。
@@ -92,7 +103,7 @@ export async function authenticateOAuthResourceRequest(
       response: resJson(
         { error: "invalid_token", error_description: "缺少 Authorization header" },
         401,
-        { "WWW-Authenticate": 'Bearer error="invalid_token"' }
+        { "WWW-Authenticate": buildBearerChallenge('error="invalid_token"') }
       ),
     };
   }
@@ -114,7 +125,7 @@ export async function authenticateOAuthResourceRequest(
       response: resJson(
         { error: "invalid_token", error_description: "Access token 无效或已过期" },
         401,
-        { "WWW-Authenticate": 'Bearer error="invalid_token"' }
+        { "WWW-Authenticate": buildBearerChallenge('error="invalid_token"') }
       ),
     };
   }
@@ -133,7 +144,9 @@ export async function authenticateOAuthResourceRequest(
     return {
       ok: false,
       response: resJson({ error: "account_disabled", error_description: "账户已被限制" }, 403, {
-        "WWW-Authenticate": 'Bearer error="account_disabled", error_description="Account disabled"',
+        "WWW-Authenticate": buildBearerChallenge(
+          'error="account_disabled", error_description="Account disabled"'
+        ),
       }),
     };
   }
@@ -148,7 +161,7 @@ export async function authenticateOAuthResourceRequest(
         response: resJson(
           { error: "invalid_dpop_proof", error_description: "此 token 需要 DPoP proof" },
           401,
-          { "WWW-Authenticate": 'Bearer error="invalid_token"' }
+          { "WWW-Authenticate": buildBearerChallenge('error="invalid_token"') }
         ),
       };
     }
@@ -165,7 +178,9 @@ export async function authenticateOAuthResourceRequest(
     );
     if (!dpopResult.valid) {
       const errorHeaders: Record<string, string> = {
-        "WWW-Authenticate": `Bearer error="invalid_token", error_description="${dpopResult.errorDescription}"`,
+        "WWW-Authenticate": buildBearerChallenge(
+          `error="invalid_token", error_description="${dpopResult.errorDescription}"`
+        ),
       };
       if (dpopResult.newNonce) {
         Object.assign(errorHeaders, dpopNonceHeader(dpopResult.newNonce));
@@ -184,7 +199,7 @@ export async function authenticateOAuthResourceRequest(
         response: resJson(
           { error: "invalid_dpop_proof", error_description: "DPoP 密钥与 token 绑定的密钥不匹配" },
           401,
-          { "WWW-Authenticate": 'Bearer error="invalid_token"' }
+          { "WWW-Authenticate": buildBearerChallenge('error="invalid_token"') }
         ),
       };
     }
