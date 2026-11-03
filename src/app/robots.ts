@@ -10,12 +10,11 @@ import { SITE_URL } from "@/lib/site-url";
 // 单独列出 /admin-login 是为了明确意图，防止将来 /admin 规则被收窄后漏拦
 const DISALLOW_PATHS = ["/admin", "/admin-login", "/api/"];
 
-// AI 搜索 / 引用类爬虫：允许抓取，内容可被 AI 搜索引用。
-// - Google-Extended 不是爬虫，而是谷歌"是否允许内容用于 Gemini/Vertex AI"的控制令牌；
-//   放开它有利于 Gemini 引用本站内容。
-// - Bytespider（字节/豆包）同时承担搜索与训练，为中文 AI 搜索曝光放开；
-//   如抓取压力大，请在 Nginx/WAF 层做频率限制，而不是用 robots 一刀切。
-const AI_SEARCH_BOTS = [
+// AI 爬虫全开：搜索、引用、训练均允许；仍屏蔽后台与 API。
+// 包含中文搜索/AI 爬虫，避免被 CDN/边缘策略误伤。
+// 其余未列出的爬虫由 "*" 组允许。
+const AI_ALLOWED_BOTS = [
+  // AI 搜索 / 引用
   "OAI-SearchBot",
   "ChatGPT-User",
   "PerplexityBot",
@@ -24,10 +23,12 @@ const AI_SEARCH_BOTS = [
   "Claude-SearchBot",
   "Google-Extended",
   "Bytespider",
-];
-
-// AI 训练类爬虫：继续屏蔽，不允许内容用于模型训练
-const AI_TRAINING_BOTS = [
+  // 中文搜索 / AI
+  "Baiduspider",
+  "Baiduspider-render",
+  "KimiBot",
+  "PetalBot",
+  // AI 训练
   "GPTBot",
   "ClaudeBot",
   "CCBot",
@@ -36,11 +37,11 @@ const AI_TRAINING_BOTS = [
   "Amazonbot",
 ];
 
-// Content Signals 声明，与上面的分组策略保持一致：
-// 禁止训练（ai-train=no），允许搜索索引（search=yes）与 AI 搜索引用（ai-input=yes）
+// Content Signals 声明，与上面的全开策略保持一致：
+// 允许训练（ai-train=yes）、搜索索引（search=yes）与 AI 搜索引用（ai-input=yes）
 // 规范见 https://contentsignals.org/
 const CONTENT_SIGNAL = {
-  "Content-Signal": "ai-train=no, search=yes, ai-input=yes",
+  "Content-Signal": "ai-train=yes, search=yes, ai-input=yes",
 };
 
 export default function robots(): MetadataRoute.Robots {
@@ -56,14 +57,9 @@ export default function robots(): MetadataRoute.Robots {
         other: CONTENT_SIGNAL,
       },
       {
-        userAgent: AI_SEARCH_BOTS,
+        userAgent: AI_ALLOWED_BOTS,
         allow: "/",
         disallow: DISALLOW_PATHS,
-        other: CONTENT_SIGNAL,
-      },
-      {
-        userAgent: AI_TRAINING_BOTS,
-        disallow: "/",
         other: CONTENT_SIGNAL,
       },
     ],

@@ -67,8 +67,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
   } catch (error) {
-    console.error("Sitemap: Failed to fetch products:", error);
-    throw error;
+    // 数据库短暂不可用时仍返回 200 + 静态页面，避免爬虫拿到 500 后降低抓取频率。
+    // 产品恢复后，下一次 revalidate 会重新把产品 URL 加回来。
+    console.error("Sitemap: Failed to fetch products, serving static pages only:", error);
   }
 
   return [...staticPages, ...productPages];
