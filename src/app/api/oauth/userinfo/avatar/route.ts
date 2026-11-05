@@ -21,6 +21,7 @@ import { BODY_LIMITS } from "@/lib/body-limits";
 import { isBodyTooLargeError, payloadTooLargeResponse, readFormDataBody } from "@/lib/request-body";
 import { processAndSaveImage, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
+import { cleanupAvatarUpload, registerPendingAvatarUpload } from "@/lib/avatar-assets";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,13 @@ export async function POST(request: NextRequest) {
     const url = result.url.startsWith("/")
       ? `${(process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "")}${result.url}`
       : result.url;
+
+    try {
+      await registerPendingAvatarUpload(payload.id, result);
+    } catch (error) {
+      await cleanupAvatarUpload(result);
+      throw error;
+    }
 
     scheduleSsoEvent({
       event: "userinfo",

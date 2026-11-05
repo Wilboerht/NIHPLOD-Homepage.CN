@@ -31,6 +31,7 @@ import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook
 import { isActiveAccount } from "@/lib/oauth-user-guard";
 import { resolveSsoAvatar } from "@/lib/default-avatar";
 import { apiConsole } from "@/lib/logger";
+import { prepareAvatarReplacement } from "@/lib/avatar-assets";
 
 export const dynamic = "force-dynamic";
 
@@ -283,22 +284,39 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
       }
     }
 
-    const user = await prisma.user.update({
-      where: { id: payload.id },
-      data: {
-        ...(nickname !== undefined && { nickname: nickname || null }),
-        ...(avatar !== undefined && { avatar: avatar || null }),
-        // 首次设置已在上方条件写认领；其余生日场景（清除 "" / 同值提交）按原语义处理
-        ...(birthday !== undefined &&
-          !settingNewBirthday && {
-            birthday: birthday === "" ? null : birthday,
-            birthdayLocked: birthday === "" ? previous.birthdayLocked : true,
-          }),
-        // 性别不锁定：null 表示清除（保密）
-        ...(gender !== undefined && { gender }),
-      },
-      select: { id: true, nickname: true, avatar: true, birthday: true, gender: true },
-    });
+    const updateData = {
+      ...(nickname !== undefined && { nickname: nickname || null }),
+      ...(avatar !== undefined && { avatar: avatar || null }),
+      // 首次设置已在上方条件写认领；其余生日场景（清除 "" / 同值提交）按原语义处理
+      ...(birthday !== undefined &&
+        !settingNewBirthday && {
+          birthday: birthday === "" ? null : birthday,
+          birthdayLocked: birthday === "" ? previous.birthdayLocked : true,
+        }),
+      // 性别不锁定：null 表示清除（保密）
+      ...(gender !== undefined && { gender }),
+    };
+    const select = {
+      id: true,
+      nickname: true,
+      avatar: true,
+      birthday: true,
+      gender: true,
+    } as const;
+    const user =
+      avatar !== undefined
+        ? await prisma.$transaction(async (tx) => {
+            await prepareAvatarReplacement(tx, {
+              userId: payload.id,
+              nextAvatar: avatar || null,
+            });
+            return tx.user.update({ where: { id: payload.id }, data: updateData, select });
+          })
+        : await prisma.user.update({
+            where: { id: payload.id },
+            data: updateData,
+            select,
+          });
 
     // 资料变更后立即失效缓存，与主站 PUT 一致：
     // 主站个人中心（unstable_cache 30s + user-profile tag）不会读到陈旧资料

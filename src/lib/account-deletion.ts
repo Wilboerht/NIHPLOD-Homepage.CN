@@ -9,7 +9,7 @@
  *   3. 子站数据删除：遍历 SUBSITE_PURGE_TARGETS 逐站 purge（HMAC 签名，强制绑定 query）；
  *      未配置密钥的目标 warn 级跳过；已配置目标失败则置 FAILED 终止，主站匿名化事务
  *      未执行，等下次 cron 重试
- *   4. 头像 OSS 对象清理（fail-soft：OSS 抖动不阻断注销，失败记入审计详情）
+ *   4. 当前及已登记头像对象清理（fail-soft：失败对象进入删除队列并记入审计详情）
  *   5. 事务：删 ExternalIdentity + 清微信旧列 + 匿名化 User（不物理删除——
  *      6 张财务表已改 Restrict，User 行必须保留）+ 清理 PII 衍生数据
  *      （含 UserConsent 撤销、sessionsInvalidatedAt 即时失效本地校验的 JWT、
@@ -27,8 +27,7 @@ import { quiesceUserSessions } from "@/lib/user-status";
 import { createAuditLog } from "@/lib/audit";
 import { sendAccountDeletedNotification, sendAccountDeletionReminder } from "@/lib/sms";
 import { hashIdentifier } from "@/lib/auth-security";
-import { deleteOSSFiles } from "@/lib/ali-oss";
-import { deleteUploadedFile } from "@/lib/upload";
+import { purgeAvatarAssets } from "@/lib/avatar-assets";
 import { deleteSpentProofFile } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 import { DELETION_STATUS } from "@/lib/account-deletion-requests";
@@ -162,18 +161,9 @@ export async function executeAccountDeletion(
       throw new Error(`subsite_purge_failed:${purge.target}:${purge.code}:${purge.message}`);
     }
 
-    // 4. 头像 OSS 对象清理（fail-soft，与子站 purge 同理先于匿名化事务）：
-    // OSS 抖动不得阻断注销权履行，失败仅告警并记入审计详情
-    let avatarPurgeFailed = false;
-    if (user.avatar) {
-      try {
-        if (user.avatar.startsWith("/uploads/")) await deleteUploadedFile(user.avatar);
-        else await deleteOSSFiles([user.avatar]);
-      } catch (ossError) {
-        avatarPurgeFailed = true;
-        apiConsole.warn("[AccountDeletion] 头像删除失败（不阻断注销）:", ossError);
-      }
-    }
+    // 4. 当前头像 + 所有已登记头像及派生对象清理；失败对象进入删除队列继续重试
+    const avatarPurge = await purgeAvatarAssets(userId, user.avatar);
+    const avatarPurgeFailed = avatarPurge.failed > 0;
 
     const proofApplications = await prisma.spentAdjustmentApplication.findMany({
       where: { userId, images: { isEmpty: false } },

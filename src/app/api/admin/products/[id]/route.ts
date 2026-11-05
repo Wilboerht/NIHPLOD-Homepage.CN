@@ -164,6 +164,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // 刷新前台缓存；发布/排序变化时主动推送搜索引擎
     revalidatePath("/products");
+    revalidatePath("/sitemap.xml");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
     if (product.published) {
@@ -428,6 +429,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // 重新验证前台页面缓存；已发布产品同步推送搜索引擎
     revalidatePath("/products");
+    revalidatePath("/sitemap.xml");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
     if (fullProduct?.slug) {
@@ -536,6 +538,7 @@ export async function DELETE(
 
     // 重新验证前台页面缓存 & 管理后台统计缓存
     revalidatePath("/products");
+    revalidatePath("/sitemap.xml");
     revalidatePath(`/products/${existing.slug}`);
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });

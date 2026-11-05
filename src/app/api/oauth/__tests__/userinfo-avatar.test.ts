@@ -48,6 +48,13 @@ vi.mock("@/lib/upload", () => ({
   processAndSaveImage: (...args: unknown[]) => mockProcessAndSaveImage(...args),
 }));
 
+const mockRegisterPendingAvatarUpload = vi.fn();
+const mockCleanupAvatarUpload = vi.fn();
+vi.mock("@/lib/avatar-assets", () => ({
+  registerPendingAvatarUpload: (...args: unknown[]) => mockRegisterPendingAvatarUpload(...args),
+  cleanupAvatarUpload: (...args: unknown[]) => mockCleanupAvatarUpload(...args),
+}));
+
 import { POST } from "../userinfo/avatar/route";
 
 function authedToken(scope = "openid profile:write") {
@@ -89,6 +96,8 @@ describe("POST /api/oauth/userinfo/avatar", () => {
       filename: "a.webp",
       size: 100,
     });
+    mockRegisterPendingAvatarUpload.mockResolvedValue(undefined);
+    mockCleanupAvatarUpload.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -173,6 +182,22 @@ describe("POST /api/oauth/userinfo/avatar", () => {
       expect.any(Buffer),
       "avatar-user-1",
       "avatars"
+    );
+    expect(mockRegisterPendingAvatarUpload).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({ url: "/uploads/avatars/a.webp" })
+    );
+  });
+
+  it("头像登记失败时补偿删除已上传文件", async () => {
+    authedToken();
+    mockRegisterPendingAvatarUpload.mockRejectedValue(new Error("db failed"));
+
+    const res = await POST(uploadRequest());
+
+    expect(res.status).toBe(500);
+    expect(mockCleanupAvatarUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "https://cdn.example.com/avatars/a.webp" })
     );
   });
 });

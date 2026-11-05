@@ -11,6 +11,7 @@ import { getIssuer } from "@/lib/oauth-constants";
 import { getBodyLimitForPath, hasRequestBody } from "@/lib/body-limits";
 import { ADMIN_PAGE_PATH_HEADER } from "@/lib/admin-page-path";
 import { getProductSlugByNickname } from "@/config/product-nicknames";
+import { getBrandRedirectTarget } from "@/config/brand-redirects";
 
 const AUTH_COOKIE_NAME = "__Host-admin_token";
 const CSRF_COOKIE_NAME = "__Host-csrf_token";
@@ -255,6 +256,15 @@ export async function proxy(request: NextRequest) {
   // 产品昵称 308 重定向：直接落到具体产品页。
   // 放在最前面，避免非 ASCII 路径进入 next.config 的 redirect 匹配（实测不可靠）。
   if (method === "GET" || method === "HEAD") {
+    const brandTarget = getBrandRedirectTarget(pathname);
+    if (brandTarget) {
+      const destination = new URL(brandTarget, request.url);
+      destination.search = request.nextUrl.search;
+      const response = NextResponse.redirect(destination, 308);
+      response.headers.set("Cache-Control", "public, max-age=86400");
+      return response;
+    }
+
     const nickname = safeDecodePathname(pathname).replace(/^\/+|\/+$/g, "");
     const slug = getProductSlugByNickname(nickname);
     if (slug) {

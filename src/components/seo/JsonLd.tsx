@@ -6,14 +6,12 @@
 import { getNonce } from "@/lib/nonce";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
 import { getProductNicknames } from "@/config/product-nicknames";
+import { OFFICIAL_SAME_AS } from "@/config/official-channels";
+import { AWARD_TITLES } from "@/config/awards";
+import { addDays, parseJobSalary, toIsoDate } from "@/lib/job-salary";
 
-/**
- * 获取 N 天后的 ISO 日期字符串（yyyy-MM-dd）
- * 包装为函数避免渲染期直接调用 Date.now（react-hooks/purity）
- */
-function isoDateDaysFromNow(days: number): string {
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-}
+const ORGANIZATION_ID = `${baseUrl}/#organization`;
+const BRAND_ID = `${baseUrl}/#brand`;
 
 function toAbsoluteUrl(url: string): string {
   if (url.startsWith("http")) return url;
@@ -52,12 +50,10 @@ export async function OrganizationJsonLd() {
   const data = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "@id": `${baseUrl}/#organization`,
+    "@id": ORGANIZATION_ID,
     name: "NIHPLOD 旎柏官方网站",
     legalName: "旎柏 (NIHPLOD) 中国",
-    // 品牌实体关联：告知搜索引擎与本站同属 NIHPLOD 品牌的其他官方渠道，
-    // 帮助知识图谱整合实体。后续开通官方社媒（Instagram / 微博等）后在此追加主页 URL
-    sameAs: ["https://www.nihplod.net"],
+    sameAs: OFFICIAL_SAME_AS,
     alternateName: [
       "旎柏",
       "NIHPLOD China",
@@ -73,7 +69,6 @@ export async function OrganizationJsonLd() {
     url: baseUrl,
     logo: {
       "@type": "ImageObject",
-      // Google logo 富结果不支持 SVG，需使用位图（≥112px）
       url: `${baseUrl}/images/NIHPLOD-logo.png`,
       width: 512,
       height: 144,
@@ -86,11 +81,35 @@ export async function OrganizationJsonLd() {
       "@type": "Place",
       name: "摩纳哥",
     },
+    founder: {
+      "@type": "Person",
+      name: "Dr. Stefan Rokem",
+      jobTitle: "创始人",
+      worksFor: { "@id": ORGANIZATION_ID },
+    },
+    award: AWARD_TITLES,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "信泰中心T3栋610室",
+      addressLocality: "上海市",
+      addressRegion: "普陀区",
+      postalCode: "200333",
+      addressCountry: "CN",
+    },
+    areaServed: {
+      "@type": "Country",
+      name: "中国",
+    },
+    brand: { "@id": BRAND_ID },
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer service",
       email: "contact@nihplod.cn",
       availableLanguage: ["Chinese", "English"],
+      areaServed: {
+        "@type": "Country",
+        name: "中国",
+      },
     },
     knowsAbout: [
       "高端护肤",
@@ -111,6 +130,29 @@ export async function OrganizationJsonLd() {
 }
 
 /**
+ * Brand Schema - 品牌实体
+ */
+export async function BrandJsonLd() {
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "Brand",
+    "@id": BRAND_ID,
+    name: "NIHPLOD 旎柏",
+    url: baseUrl,
+    logo: {
+      "@type": "ImageObject",
+      url: `${baseUrl}/images/NIHPLOD-logo.png`,
+      width: 512,
+      height: 144,
+    },
+    slogan: "逆转时光",
+    sameAs: OFFICIAL_SAME_AS,
+  };
+
+  return <JsonLdScript data={data} />;
+}
+
+/**
  * WebSite Schema - 网站信息
  * 用于根布局，定义网站搜索功能
  */
@@ -123,7 +165,7 @@ export async function WebSiteJsonLd() {
     name: "NIHPLOD 旎柏",
     description: "NIHPLOD 旎柏官方网站",
     publisher: {
-      "@id": `${baseUrl}/#organization`,
+      "@id": ORGANIZATION_ID,
     },
     inLanguage: "zh-CN",
   };
@@ -148,11 +190,16 @@ interface ProductJsonLdProps {
     images: { url: string; alt?: string | null }[];
     category: { name: string };
     benefits: string[];
+    purchaseLinks?: { url: string }[];
   };
 }
 
 export async function ProductJsonLd({ product }: ProductJsonLdProps) {
   const productUrl = `${baseUrl}/products/${product.slug}`;
+  const purchaseUrls = (product.purchaseLinks ?? [])
+    .map((link) => link.url)
+    .filter((url): url is string => Boolean(url) && url !== "#");
+  const priceValidUntil = addDays(product.updatedAt, 365);
 
   const additionalProperty: {
     "@type": "PropertyValue";
@@ -185,8 +232,10 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
     sku: product.slug,
     brand: {
       "@type": "Brand",
+      "@id": BRAND_ID,
       name: "NIHPLOD 旎柏",
     },
+    ...(purchaseUrls.length > 0 && { sameAs: purchaseUrls }),
     category: product.category.name,
     // 产品功效与社媒昵称作为关键词
     keywords: [...product.benefits, ...getProductNicknames(product.slug)].join(", "),
@@ -211,11 +260,15 @@ export async function ProductJsonLd({ product }: ProductJsonLdProps) {
         url: productUrl,
         price: product.price,
         priceCurrency: "CNY",
-        priceValidUntil: isoDateDaysFromNow(365),
+        ...(priceValidUntil && { priceValidUntil }),
         itemCondition: "https://schema.org/NewCondition",
         availability: "https://schema.org/InStock",
+        eligibleRegion: {
+          "@type": "Country",
+          name: "中国",
+        },
         seller: {
-          "@id": `${baseUrl}/#organization`,
+          "@id": ORGANIZATION_ID,
         },
       },
     }),
@@ -368,29 +421,21 @@ export async function LocalBusinessJsonLd({
  */
 interface JobPostingJsonLdProps {
   job: {
+    id: string;
     title: string;
     description: string;
     location: string;
     type: string;
     salary?: string | null;
+    createdAt: Date | string;
+    updatedAt?: Date | string | null;
   };
 }
 
 export async function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
-  const salary =
-    job.salary && !["面议", "Negotiable"].includes(job.salary) && !/\dK-\dK/i.test(job.salary)
-      ? {
-          baseSalary: {
-            "@type": "MonetaryAmount",
-            currency: "CNY",
-            value: {
-              "@type": "QuantitativeValue",
-              value: job.salary,
-              unitText: "MONTH",
-            },
-          },
-        }
-      : {};
+  const salary = parseJobSalary(job.salary);
+  const datePosted = toIsoDate(job.createdAt);
+  const validThrough = addDays(job.createdAt, 90);
 
   const cityMatch = job.location.match(/^(北京|上海|天津|重庆)/);
   const cityExtract = cityMatch
@@ -404,14 +449,15 @@ export async function JobPostingJsonLd({ job }: JobPostingJsonLdProps) {
     "@type": "JobPosting",
     title: job.title,
     description: job.description.replace(/<[^>]*>/g, ""),
-    datePosted: new Date().toISOString().split("T")[0],
-    validThrough: isoDateDaysFromNow(90),
+    ...(datePosted && { datePosted }),
+    ...(validThrough && { validThrough }),
+    directApply: true,
+    identifier: job.id,
     employmentType:
       job.type === "fulltime" ? "FULL_TIME" : job.type === "parttime" ? "PART_TIME" : "OTHER",
     hiringOrganization: {
       "@type": "Organization",
-      name: "NIHPLOD 旎柏",
-      sameAs: baseUrl,
+      "@id": ORGANIZATION_ID,
     },
     jobLocation: {
       "@type": "Place",

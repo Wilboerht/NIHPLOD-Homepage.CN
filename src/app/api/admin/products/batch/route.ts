@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
 
     // 刷新前台缓存；批量发布时主动推送搜索引擎
     revalidatePath("/products");
+    revalidatePath("/sitemap.xml");
     for (const p of affectedProducts) {
       revalidatePath(`/products/${p.slug}`);
     }

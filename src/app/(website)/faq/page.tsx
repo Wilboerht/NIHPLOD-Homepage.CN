@@ -13,8 +13,13 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "常见问题",
   description: "关于 NIHPLOD 旎柏，你想知道的都在这里。",
+  authors: [{ name: "NIHPLOD 官方" }],
   alternates: {
     canonical: "/faq",
+    languages: {
+      "zh-CN": "/faq",
+      "x-default": "/faq",
+    },
   },
   keywords: [
     "NIHPLOD",
@@ -27,9 +32,17 @@ export const metadata: Metadata = {
     "高端护肤品",
   ],
   openGraph: {
+    url: "/faq",
     title: "常见问题 | NIHPLOD 旎柏",
     description: "关于 NIHPLOD 旎柏，你想知道的都在这里。",
-    images: ["/images/og-image.png"],
+    images: [
+      {
+        url: "/images/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "NIHPLOD 旎柏常见问题",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",

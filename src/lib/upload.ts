@@ -269,75 +269,89 @@ export async function processAndSaveImage(
   }
 
   const { generateThumbnail = true, generateBlur = true } = options;
+  const createdUrls: string[] = [];
 
-  const filename = generateFilename();
+  try {
+    const filename = generateFilename();
 
-  // 使用 sharp 处理图片
-  const image = sharp(buffer);
-  const metadata = await image.metadata();
+    // 使用 sharp 处理图片
+    const image = sharp(buffer);
+    const metadata = await image.metadata();
 
-  // 计算缩放尺寸
-  let width = metadata.width || 0;
-  let height = metadata.height || 0;
+    // 计算缩放尺寸
+    let width = metadata.width || 0;
+    let height = metadata.height || 0;
 
-  if (width > uploadConfig.maxWidth) {
-    height = Math.round((uploadConfig.maxWidth / width) * height);
-    width = uploadConfig.maxWidth;
+    if (width > uploadConfig.maxWidth) {
+      height = Math.round((uploadConfig.maxWidth / width) * height);
+      width = uploadConfig.maxWidth;
+    }
+
+    if (height > uploadConfig.maxHeight) {
+      width = Math.round((uploadConfig.maxHeight / height) * width);
+      height = uploadConfig.maxHeight;
+    }
+
+    // 处理图片：调整大小、转换格式、压缩
+    const processedImage = await image
+      .resize(width, height, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({ quality: uploadConfig.quality })
+      .toBuffer();
+
+    let url: string;
+
+    if (storageMode === "oss") {
+      // 优先级 1: 阿里云 OSS
+      const objectName = `${folder}/${filename}`;
+      const result = await uploadToOSS(processedImage, objectName, "image/webp");
+      url = result.url;
+    } else {
+      // 优先级 2: 本地存储
+      const uploadDir = ensureUploadDir(folder);
+      const filepath = join(uploadDir, filename);
+      await sharp(processedImage).toFile(filepath);
+      url = `/uploads/${folder}/${filename}`;
+    }
+    createdUrls.push(url);
+
+    // 生成模糊占位符
+    let blurDataURL: string | undefined;
+    if (generateBlur) {
+      blurDataURL = await generateBlurDataURL(buffer);
+    }
+
+    // 生成缩略图
+    let thumbnailUrl: string | undefined;
+    if (generateThumbnail) {
+      const thumbnail = await generateSizedImage(buffer, "thumbnail", folder);
+      thumbnailUrl = thumbnail.url;
+      createdUrls.push(thumbnailUrl);
+    }
+
+    return {
+      url,
+      filename,
+      originalName,
+      size: processedImage.length,
+      width,
+      height,
+      format: "webp",
+      blurDataURL,
+      thumbnailUrl,
+    };
+  } catch (error) {
+    for (const url of createdUrls) {
+      try {
+        await deleteUploadedFile(url);
+      } catch (cleanupError) {
+        apiConsole.error("[Upload] 部分上传失败后的文件清理失败:", cleanupError);
+      }
+    }
+    throw error;
   }
-
-  if (height > uploadConfig.maxHeight) {
-    width = Math.round((uploadConfig.maxHeight / height) * width);
-    height = uploadConfig.maxHeight;
-  }
-
-  // 处理图片：调整大小、转换格式、压缩
-  const processedImage = await image
-    .resize(width, height, {
-      fit: "inside",
-      withoutEnlargement: true,
-    })
-    .webp({ quality: uploadConfig.quality })
-    .toBuffer();
-
-  let url: string;
-
-  if (storageMode === "oss") {
-    // 优先级 1: 阿里云 OSS
-    const objectName = `${folder}/${filename}`;
-    const result = await uploadToOSS(processedImage, objectName, "image/webp");
-    url = result.url;
-  } else {
-    // 优先级 2: 本地存储
-    const uploadDir = ensureUploadDir(folder);
-    const filepath = join(uploadDir, filename);
-    await sharp(processedImage).toFile(filepath);
-    url = `/uploads/${folder}/${filename}`;
-  }
-
-  // 生成模糊占位符
-  let blurDataURL: string | undefined;
-  if (generateBlur) {
-    blurDataURL = await generateBlurDataURL(buffer);
-  }
-
-  // 生成缩略图
-  let thumbnailUrl: string | undefined;
-  if (generateThumbnail) {
-    const thumbnail = await generateSizedImage(buffer, "thumbnail", folder);
-    thumbnailUrl = thumbnail.url;
-  }
-
-  return {
-    url,
-    filename,
-    originalName,
-    size: processedImage.length,
-    width,
-    height,
-    format: "webp",
-    blurDataURL,
-    thumbnailUrl,
-  };
 }
 
 /**

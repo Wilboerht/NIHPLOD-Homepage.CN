@@ -39,7 +39,7 @@ model Product {
   updatedAt       DateTime       @default(now()) @updatedAt
 
   pointRedemptions PointRedemption[]
-  slugRedirects   ProductSlugRedirect[]
+  slugRedirects    ProductSlugRedirect[]
 
   @@index([categoryId])
   @@index([published, order])
@@ -92,15 +92,15 @@ model Category {
 }
 
 model Image {
-  id        String   @id @default(cuid())
-  url       String // 图片路径
+  id          String   @id @default(cuid())
+  url         String // 图片路径
   derivedUrls String[] @default([]) // 缩略图等派生对象，统一纳入删除生命周期
-  alt       String? // 替代文本
-  order     Int      @default(0) // 排序
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  alt         String? // 替代文本
+  order       Int      @default(0) // 排序
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
   @@index([productId])
 }
@@ -114,6 +114,21 @@ model MediaDeletionTask {
   createdAt   DateTime @default(now())
 
   @@index([nextRetryAt])
+}
+
+// 用户头像及其派生对象：attachedAt=null 表示已上传但尚未写入用户资料
+model AvatarAsset {
+  id          String    @id @default(cuid())
+  userId      String
+  objectKey   String    @unique
+  derivedUrls String[]  @default([])
+  attachedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([attachedAt, createdAt])
 }
 
 // ============================================
@@ -275,6 +290,7 @@ model User {
   pointBalance                PointBalance?
   pointRedemptions            PointRedemption[]
   addresses                   UserAddress[]
+  avatarAssets                AvatarAsset[]
   membershipLevelChanges      MembershipLevelChange[]
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
@@ -366,14 +382,14 @@ model AccountDeletionRequest {
  * 用于实现 Token 刷新机制
  */
 model RefreshToken {
-  id            String    @id @default(cuid())
-  userId        String
-  clientId      String? // OAuth client_id（OAuth 刷新令牌使用）
+  id             String    @id @default(cuid())
+  userId         String
+  clientId       String? // OAuth client_id（OAuth 刷新令牌使用）
   oauthSessionId String? // 关联 OAuthSession.sessionId；历史 token 为空时走保守兼容路径
-  token         String    @db.Text // refresh token 的 SHA-256 哈希（不可逆，不落明文）
-  expiresAt     DateTime // 过期时间
-  revokedAt     DateTime? // 撤销时间（已登出）
-  revokedReason String? // 撤销原因（device_limit=设备数超限自动淘汰）
+  token          String    @db.Text // refresh token 的 SHA-256 哈希（不可逆，不落明文）
+  expiresAt      DateTime // 过期时间
+  revokedAt      DateTime? // 撤销时间（已登出）
+  revokedReason  String? // 撤销原因（device_limit=设备数超限自动淘汰）
 
   // 设备/会话信息
   deviceName String? // 设备名称/浏览器摘要
@@ -893,25 +909,25 @@ enum SpentAdjustmentSource {
 
 // 消费补录申请：用户提交全渠道消费凭证，管理员审核通过后手动累加历史消费金额（提升会员等级）
 model SpentAdjustmentApplication {
-  id            String                 @id @default(cuid())
-  userId        String
-  channel       SpentAdjustmentChannel
-  orderNo       String // 电商订单号或线下小票号
-  dealerName    String? // 经销商名称（经销渠道必填，其余渠道为空）
-  amountClaimed Int? // 用户申报金额（元）
-  purchasedAt   DateTime? // 消费日期（不限制时间范围）
-  images        String[] // 凭证截图 URL（选填，最多 3 张）
-  note          String?                @db.Text // 备注
-  requestId     String? // 客户端幂等键：同一用户同一 requestId 只创建一条申请
-  source        SpentAdjustmentSource  @default(USER) // 提交来源：用户自主 / 客服代填
+  id               String                 @id @default(cuid())
+  userId           String
+  channel          SpentAdjustmentChannel
+  orderNo          String // 电商订单号或线下小票号
+  dealerName       String? // 经销商名称（经销渠道必填，其余渠道为空）
+  amountClaimed    Int? // 用户申报金额（元）
+  purchasedAt      DateTime? // 消费日期（不限制时间范围）
+  images           String[] // 凭证截图 URL（选填，最多 3 张）
+  note             String?                @db.Text // 备注
+  requestId        String? // 客户端幂等键：同一用户同一 requestId 只创建一条申请
+  source           SpentAdjustmentSource  @default(USER) // 提交来源：用户自主 / 客服代填
   createdByAdminId String? // 代客填写的管理员（source=ADMIN 时记录）
-  status        SpentAdjustmentStatus  @default(PENDING)
-  reviewAmount  Int? // 审核核实金额（元，以人工核实为准）
-  reviewNote    String?                @db.Text // 驳回原因/审核备注
-  reviewedById  String?
-  reviewedAt    DateTime?
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @default(now()) @updatedAt
+  status           SpentAdjustmentStatus  @default(PENDING)
+  reviewAmount     Int? // 审核核实金额（元，以人工核实为准）
+  reviewNote       String?                @db.Text // 驳回原因/审核备注
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @default(now()) @updatedAt
 
   user           User   @relation(fields: [userId], references: [id], onDelete: Restrict)
   reviewedBy     Admin? @relation("SpentAdjustmentReview", fields: [reviewedById], references: [id], onDelete: SetNull)
@@ -1129,27 +1145,27 @@ model MembershipLevelChange {
 
 // 用户积分兑换记录（兑换产品来自产品库；名称/价格/扣分/收货地址快照，管理端履约）
 model PointRedemption {
-  id          String                @id @default(cuid())
-  userId      String
-  productId   String? // 产品从产品库删除时置空，历史记录保留快照
-  productName String // 兑换时的产品名称快照
-  priceYuan   Decimal               @db.Decimal(10, 2) // 兑换时的参考价格快照
-  points      Int // 实际扣减积分（⌊价格 ÷ 当时兑礼率⌋）
-  level       MembershipLevel? // 兑换时的会员等级快照（历史数据为空）
-  redeemRate  Decimal?              @db.Decimal(4, 2) // 兑换时的兑礼率快照（历史数据为空）
-  clientId    String? // OAuth 客户端 ID（会话直兑为空，用于责任追溯）
-  status      PointRedemptionStatus @default(PENDING)
-  stockDeducted Boolean @default(false) // 本单是否实际扣减过库存；历史单默认 false，取消时不凭空增库存
-  reference   String // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
-  recipient   String? // 收货人姓名快照（履约寄送用）
-  phone       String? // 收货手机号快照
-  address     String? // 完整收货地址快照（省市区 + 详细地址）
-  carrier     String? // 承运商（如 SF=顺丰），履约时写入
-  waybillNo   String? // 运单号（履约时录入，用户端据此查询物流轨迹）
-  fulfilledAt DateTime?
-  cancelledAt DateTime? // 取消时间
-  cancelNote  String?               @db.Text // 取消原因（管理端填写）
-  createdAt   DateTime              @default(now())
+  id            String                @id @default(cuid())
+  userId        String
+  productId     String? // 产品从产品库删除时置空，历史记录保留快照
+  productName   String // 兑换时的产品名称快照
+  priceYuan     Decimal               @db.Decimal(10, 2) // 兑换时的参考价格快照
+  points        Int // 实际扣减积分（⌊价格 ÷ 当时兑礼率⌋）
+  level         MembershipLevel? // 兑换时的会员等级快照（历史数据为空）
+  redeemRate    Decimal?              @db.Decimal(4, 2) // 兑换时的兑礼率快照（历史数据为空）
+  clientId      String? // OAuth 客户端 ID（会话直兑为空，用于责任追溯）
+  status        PointRedemptionStatus @default(PENDING)
+  stockDeducted Boolean               @default(false) // 本单是否实际扣减过库存；历史单默认 false，取消时不凭空增库存
+  reference     String // 幂等键（与 PointLedger REDEEM 流水 reference 一致）
+  recipient     String? // 收货人姓名快照（履约寄送用）
+  phone         String? // 收货手机号快照
+  address       String? // 完整收货地址快照（省市区 + 详细地址）
+  carrier       String? // 承运商（如 SF=顺丰），履约时写入
+  waybillNo     String? // 运单号（履约时录入，用户端据此查询物流轨迹）
+  fulfilledAt   DateTime?
+  cancelledAt   DateTime? // 取消时间
+  cancelNote    String?               @db.Text // 取消原因（管理端填写）
+  createdAt     DateTime              @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)

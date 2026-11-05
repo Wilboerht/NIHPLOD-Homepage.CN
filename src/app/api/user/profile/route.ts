@@ -21,6 +21,7 @@ import {
 import { isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
+import { cleanupAvatarUpload, prepareAvatarReplacement } from "@/lib/avatar-assets";
 
 // 用户资料缓存标签（静态标签，资料更新时统一失效）
 const USER_PROFILE_TAG = "user-profile";
@@ -169,22 +170,44 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       }
     }
 
-    const user = await prisma.user.update({
-      where: { id: payload.id, status: { not: "DELETED" } },
-      data: {
-        ...(nickname !== undefined && { nickname: nickname || null }),
-        ...(avatar !== undefined && { avatar: avatar || null }),
-        // 首次设置已在上方条件写认领；其余生日场景（清除 "" / 同值提交）按原语义处理
-        ...(birthday !== undefined &&
-          !settingNewBirthday && {
-            birthday: birthday === "" ? null : birthday,
-            birthdayLocked: birthday === "" ? previous.birthdayLocked : true,
-          }),
-        // 性别不锁定：null 表示清除（保密）
-        ...(gender !== undefined && { gender }),
-      },
-      select: { id: true, phone: true, nickname: true, avatar: true, birthday: true, gender: true },
-    });
+    const updateData = {
+      ...(nickname !== undefined && { nickname: nickname || null }),
+      ...(avatar !== undefined && { avatar: avatar || null }),
+      // 首次设置已在上方条件写认领；其余生日场景（清除 "" / 同值提交）按原语义处理
+      ...(birthday !== undefined &&
+        !settingNewBirthday && {
+          birthday: birthday === "" ? null : birthday,
+          birthdayLocked: birthday === "" ? previous.birthdayLocked : true,
+        }),
+      // 性别不锁定：null 表示清除（保密）
+      ...(gender !== undefined && { gender }),
+    };
+    const select = {
+      id: true,
+      phone: true,
+      nickname: true,
+      avatar: true,
+      birthday: true,
+      gender: true,
+    } as const;
+    const user =
+      avatar !== undefined
+        ? await prisma.$transaction(async (tx) => {
+            await prepareAvatarReplacement(tx, {
+              userId: payload.id,
+              nextAvatar: avatar || null,
+            });
+            return tx.user.update({
+              where: { id: payload.id, status: { not: "DELETED" } },
+              data: updateData,
+              select,
+            });
+          })
+        : await prisma.user.update({
+            where: { id: payload.id, status: { not: "DELETED" } },
+            data: updateData,
+            select,
+          });
 
     // 资料变更后立即失效缓存：{ expire: 0 } 表示下一次请求阻塞重取（不返回陈旧数据），
     // 保证前端保存后紧跟的 refreshUser 能读到新值（"max" 会先把旧资料再服务一次）
@@ -317,15 +340,25 @@ export async function POST(request: NextRequest) {
     // 使用统一上传逻辑 (自动根据策略选择 OSS 或本地)
     const result = await processAndSaveImage(buffer, safeName || "avatar", "avatars");
 
-    // 7. 更新数据库中的头像链接（先读旧值，用于判断头像是否实际变更以决定是否推 webhook）
-    const previousAvatar = (
-      await prisma.user.findUnique({ where: { id: payload.id }, select: { avatar: true } })
-    )?.avatar;
-    const updatedUser = await prisma.user.update({
-      where: { id: payload.id },
-      data: { avatar: result.url },
-      select: { nickname: true, avatar: true, birthday: true, gender: true },
-    });
+    // 7. 同事务登记新头像、更新资料并把旧头像纳入可靠删除队列
+    const { updatedUser, previousAvatar } = await prisma
+      .$transaction(async (tx) => {
+        const replacement = await prepareAvatarReplacement(tx, {
+          userId: payload.id,
+          nextAvatar: result.url,
+          newUpload: result,
+        });
+        const updatedUser = await tx.user.update({
+          where: { id: payload.id },
+          data: { avatar: result.url },
+          select: { nickname: true, avatar: true, birthday: true, gender: true },
+        });
+        return { updatedUser, previousAvatar: replacement.previousAvatar };
+      })
+      .catch(async (error) => {
+        await cleanupAvatarUpload(result);
+        throw error;
+      });
 
     // 头像变更后立即失效缓存（{ expire: 0 }：下一次请求阻塞重取，不返回陈旧数据）
     revalidateTag(USER_PROFILE_TAG, { expire: 0 });

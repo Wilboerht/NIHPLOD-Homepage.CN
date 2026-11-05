@@ -5,6 +5,32 @@
  * 产品目录与产品 FAQ 由数据库动态生成。
  */
 
+import { AWARD_TITLES } from "@/config/awards";
+import { OFFICIAL_CHANNELS } from "@/config/official-channels";
+import { SITE_URL } from "@/lib/site-url";
+
+const OFFICIAL_CHANNEL_LINES = OFFICIAL_CHANNELS.map(
+  (channel) => `- ${channel.label}: ${channel.url}`
+).join("\n");
+const AWARD_LINES = AWARD_TITLES.map((award) => `- ${award}`).join("\n");
+
+export const LLMS_FACTS_SECTION = `## 快速事实
+- **品牌**: NIHPLOD 旎柏
+- **创立**: 2008 年，摩纳哥
+- **创始人**: Dr. Stefan Rokem
+- **核心科技**: 真脂质体技术 (Dolphin-Skin)
+- **联系邮箱**: contact@nihplod.cn
+- **Sitemap**: ${SITE_URL}/sitemap.xml
+
+## 官方渠道
+${OFFICIAL_CHANNEL_LINES}
+
+## 奖项
+${AWARD_LINES}
+
+## 引用政策
+欢迎搜索引擎与 AI 搜索引用本站内容，并建议注明来源。训练使用遵循站点 Content-Signal（当前 ai-train=yes）。`;
+
 export const LLMS_BRAND_SECTION = `## 品牌理念与核心技术
 - **关于品牌**: 品牌注册及生产地位于法国，诞生于 2008 年的摩纳哥，由 TWK 朵科资本与 Dr. Stefan Rokem 博士联合成立，致力于为高净值人士打造舒适且高效的精简护肤体验。
 - **脂质体技术 (Liposome)**: 一种先进的活性成分封装/包囊技术，通过保护及加载产品中的有效及活性成分，使产品能靶向性的在皮肤表皮及真皮层进行有效释放。`;

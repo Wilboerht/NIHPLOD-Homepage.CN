@@ -30,12 +30,13 @@ describe("GET /llms-full.txt", () => {
     await expect(res.text()).resolves.toContain("### Q: 测试问题");
   });
 
-  it("生成失败时返回 500", async () => {
+  it("生成失败时返回静态回退 200", async () => {
     vi.mocked(getLlmsDocs).mockRejectedValue(new Error("db down"));
 
     const res = await GET();
 
-    expect(res.status).toBe(500);
-    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=60");
+    await expect(res.text()).resolves.toContain("NIHPLOD");
   });
 });

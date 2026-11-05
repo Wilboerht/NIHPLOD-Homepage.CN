@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: "护肤仪式与指南",
   description:
     "NIHPLOD 旎柏官方护肤仪式指南：晨间与晚间护肤步骤、脂质体护肤品科学使用方法。简单，从不妥协，教你正确使用高端护肤品，让护肤更有效。",
+  authors: [{ name: "NIHPLOD 官方" }],
   keywords: [
     "NIHPLOD",
     "旎柏",
@@ -25,11 +26,23 @@ export const metadata: Metadata = {
   ],
   alternates: {
     canonical: "/guide",
+    languages: {
+      "zh-CN": "/guide",
+      "x-default": "/guide",
+    },
   },
   openGraph: {
+    url: "/guide",
     title: "护肤仪式 | NIHPLOD 旎柏",
     description: "NIHPLOD 旎柏护肤仪式指南——简单，从不妥协。",
-    images: ["/images/og-image.png"],
+    images: [
+      {
+        url: "/images/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "NIHPLOD 旎柏护肤仪式",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",

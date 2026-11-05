@@ -3,7 +3,7 @@
  * 覆盖：抢占幂等（未抢到不执行）、会话撤销调用、子站 purge 失败置 FAILED 待重试（含目标名）、
  *       匿名化字段与 PII 清理（UserConsent 撤销 / sessionsInvalidatedAt / 兑换单快照脱敏 /
  *       SpentImportRow 手机号匿名化 / 双手机号哈希清理 LoginAttempt）、
- *       占位手机号含 userId（同号复用二次注销不冲突）、头像 OSS 清理 fail-soft、
+ *       占位手机号含 userId（同号复用二次注销不冲突）、头像生命周期清理 fail-soft、
  *       ExternalIdentity 删除、回执短信 fail-soft 与 notifyUser 开关、
  *       重试上限转人工告警、24 小时到期提醒
  */
@@ -38,6 +38,7 @@ const mockTxPointBalanceUpdateMany = vi.fn();
 const mockTxPointLedgerCreate = vi.fn();
 
 const mockPurgeUserFromSubsites = vi.fn();
+const mockPurgeAvatarAssets = vi.fn();
 const mockDeleteOSSFiles = vi.fn();
 const mockDeleteSpentProofFile = vi.fn();
 const mockSpentProofFindMany = vi.fn();
@@ -71,6 +72,10 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/advisor-internal", () => ({
   purgeUserFromSubsites: (...args: unknown[]) => mockPurgeUserFromSubsites(...args),
+}));
+
+vi.mock("@/lib/avatar-assets", () => ({
+  purgeAvatarAssets: (...args: unknown[]) => mockPurgeAvatarAssets(...args),
 }));
 
 vi.mock("@/lib/ali-oss", () => ({
@@ -191,6 +196,7 @@ describe("executeAccountDeletion", () => {
     mockFindUnique.mockResolvedValue({ userId: "user-1", phoneHash: expectedHash("13800138000") });
     mockUserFindUnique.mockResolvedValue(activeUser);
     mockPurgeUserFromSubsites.mockResolvedValue({ ok: true });
+    mockPurgeAvatarAssets.mockResolvedValue({ failed: 0 });
     mockDeleteOSSFiles.mockResolvedValue(undefined);
     mockDeleteSpentProofFile.mockResolvedValue(true);
     mockSpentProofFindMany.mockResolvedValue([]);
@@ -388,8 +394,8 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    expect(mockDeleteOSSFiles).toHaveBeenCalledWith("/uploads/2026-01-01/abc.png");
-    const deleteOrder = mockDeleteOSSFiles.mock.invocationCallOrder[0];
+    expect(mockPurgeAvatarAssets).toHaveBeenCalledWith("user-1", "/uploads/2026-01-01/abc.png");
+    const deleteOrder = mockPurgeAvatarAssets.mock.invocationCallOrder[0];
     const txOrder = mockTransaction.mock.invocationCallOrder[0];
     expect(deleteOrder).toBeLessThan(txOrder);
   });
@@ -428,7 +434,7 @@ describe("executeAccountDeletion", () => {
     expect(auditCall?.[0]?.detail?.proofPurgeFailed).toBe(true);
   });
 
-  it("M4：头像为完整 URL 时原样传给 deleteOSSFiles", async () => {
+  it("M4：头像为完整 URL 时原样交给头像生命周期清理", async () => {
     mockUserFindUnique.mockResolvedValue({
       ...activeUser,
       avatar: "https://cdn.example.com/uploads/x.png",
@@ -436,20 +442,19 @@ describe("executeAccountDeletion", () => {
 
     await executeAccountDeletion("req-1");
 
-    expect(mockDeleteOSSFiles).toHaveBeenCalledWith(["https://cdn.example.com/uploads/x.png"]);
+    expect(mockPurgeAvatarAssets).toHaveBeenCalledWith(
+      "user-1",
+      "https://cdn.example.com/uploads/x.png"
+    );
   });
 
-  it("M4：OSS 删除失败不阻断注销（fail-soft），审计详情记录 avatarPurgeFailed", async () => {
+  it("M4：头像删除失败不阻断注销（fail-soft），审计详情记录 avatarPurgeFailed", async () => {
     mockUserFindUnique.mockResolvedValue({ ...activeUser, avatar: "/uploads/a.png" });
-    mockDeleteOSSFiles.mockRejectedValue(new Error("oss timeout"));
+    mockPurgeAvatarAssets.mockResolvedValue({ failed: 1 });
 
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    expect(mockWarn).toHaveBeenCalledWith(
-      expect.stringContaining("头像删除失败"),
-      expect.anything()
-    );
     const auditDetail = mockCreateAuditLog.mock.calls[0][0].detail;
     expect(auditDetail.avatarPurgeFailed).toBe(true);
   });

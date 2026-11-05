@@ -45,7 +45,15 @@ vi.mock("@/lib/prisma", () => ({
       update: (...args: unknown[]) => mockUserUpdate(...args),
       updateMany: (...args: unknown[]) => mockUserUpdateMany(...args),
     },
+    $transaction: async (...args: unknown[]) => {
+      const callback = args[0] as (tx: unknown) => Promise<unknown>;
+      return callback({ user: { update: (...args: unknown[]) => mockUserUpdate(...args) } });
+    },
   },
+}));
+
+vi.mock("@/lib/avatar-assets", () => ({
+  prepareAvatarReplacement: vi.fn().mockResolvedValue({ previousAvatar: null }),
 }));
 
 // === Mock profile-webhook ===

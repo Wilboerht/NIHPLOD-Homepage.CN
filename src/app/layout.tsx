@@ -3,7 +3,7 @@ import { ViewTransitions } from "next-view-transitions";
 import "./globals.css";
 import { MotionProvider } from "@/components/providers/MotionProvider";
 import { ChunkErrorBoundary } from "@/components/providers/ChunkErrorBoundary";
-import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
+import { OrganizationJsonLd, WebSiteJsonLd, BrandJsonLd } from "@/components/seo/JsonLd";
 import { BaiduAnalytics } from "@/components/seo/BaiduAnalytics";
 import { GoogleAnalytics } from "@/components/seo/GoogleAnalytics";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -83,7 +83,6 @@ export const metadata: Metadata = {
     description:
       "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
-    creator: "@nihplod",
   },
 
   // 搜索引擎（Google/Bing/百度）要求 favicon 至少 48x48、大于 48 时边长须为 48 的倍数，
@@ -106,6 +105,7 @@ export const metadata: Metadata = {
   alternates: {
     languages: {
       "zh-CN": baseUrl,
+      "x-default": baseUrl,
     },
   },
 
@@ -163,9 +163,26 @@ export default function RootLayout({
           <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
           {/* 百度移动适配：声明页面适配移动端 */}
           <meta name="applicable-device" content="pc,mobile" />
+          <link rel="alternate" type="text/plain" href="/llms.txt" />
+          <link rel="alternate" type="text/plain" href="/llms-full.txt" />
+          <link
+            rel="preload"
+            as="font"
+            type="font/woff2"
+            href="/fonts/futura-lt-light.woff2"
+            crossOrigin="anonymous"
+          />
+          <link
+            rel="preload"
+            as="font"
+            type="font/woff2"
+            href="/fonts/futura-lt-medium.woff2"
+            crossOrigin="anonymous"
+          />
           {/* Schema.org 结构化数据 */}
           <OrganizationJsonLd />
           <WebSiteJsonLd />
+          <BrandJsonLd />
           {/* 百度统计 */}
           <BaiduAnalytics />
           {/* Google Analytics */}

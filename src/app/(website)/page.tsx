@@ -29,6 +29,10 @@ export const metadata: Metadata = {
   ],
   alternates: {
     canonical: "/",
+    languages: {
+      "zh-CN": "/",
+      "x-default": "/",
+    },
   },
   openGraph: {
     title: "NIHPLOD 旎柏 | 中国官网",

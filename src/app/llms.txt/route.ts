@@ -1,5 +1,7 @@
 import { apiConsole } from "@/lib/logger";
 import { getLlmsDocs } from "@/lib/llms-docs-server";
+import { buildLlmsSummary } from "@/lib/llms-docs";
+import { SITE_URL } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,9 +17,7 @@ export async function GET() {
     return new Response(`${summary}\n`, { headers: TEXT_HEADERS });
   } catch (error) {
     apiConsole.error("生成 llms.txt 失败:", error);
-    return new Response("", {
-      status: 500,
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-    });
+    const fallback = buildLlmsSummary({ siteUrl: SITE_URL, products: [] });
+    return new Response(`${fallback}\n`, { headers: TEXT_HEADERS });
   }
 }

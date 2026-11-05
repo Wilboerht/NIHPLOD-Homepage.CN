@@ -269,6 +269,7 @@ export async function POST(request: NextRequest) {
 
     // 重新验证前台页面缓存 & 管理后台统计缓存
     revalidatePath("/products");
+    revalidatePath("/sitemap.xml");
     revalidateTag("admin-stats", "max");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });

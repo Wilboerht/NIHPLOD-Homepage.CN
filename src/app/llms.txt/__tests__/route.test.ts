@@ -27,4 +27,14 @@ describe("GET /llms.txt", () => {
     expect(res.status).toBe(200);
     await expect(res.text()).resolves.toContain("所有产品");
   });
+
+  it("生成失败时返回静态回退 200", async () => {
+    vi.mocked(getLlmsDocs).mockRejectedValue(new Error("db down"));
+
+    const res = await GET();
+
+    expect(res.status).toBe(200);
+    await expect(res.text()).resolves.toContain("NIHPLOD 旎柏");
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=60");
+  });
 });

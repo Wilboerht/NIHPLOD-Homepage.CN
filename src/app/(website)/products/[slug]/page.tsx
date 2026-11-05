@@ -205,6 +205,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       canonical: pagePath,
       languages: {
         "zh-CN": pagePath,
+        "x-default": pagePath,
       },
     },
     openGraph: {
@@ -218,8 +219,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     twitter: {
       card: "summary_large_image",
-      site: "@nihplod",
-      creator: "@nihplod",
       title: `${product.name} | NIHPLOD 旎柏`,
       description,
       images: [ogImageUrl],

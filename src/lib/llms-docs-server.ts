@@ -55,7 +55,7 @@ const getCachedLlmsDocs = unstable_cache(
       }),
     };
   },
-  ["llms-docs-v1"],
+  ["llms-docs-v2"],
   { tags: [LLMS_DOCS_TAG], revalidate: 3600 }
 );
 

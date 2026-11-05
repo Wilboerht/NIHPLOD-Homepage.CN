@@ -9,8 +9,13 @@ export const metadata: Metadata = {
   title: "品牌故事",
   description:
     "探索 NIHPLOD 旎柏的品牌故事——源自摩纳哥的高端护肤品牌，以真脂质体专利技术（Dolphin-Skin）为核心，融合前沿科技与珍贵成分，为您带来逆转时光的奢华护肤体验。",
+  authors: [{ name: "NIHPLOD 官方" }],
   alternates: {
     canonical: "/about",
+    languages: {
+      "zh-CN": "/about",
+      "x-default": "/about",
+    },
   },
   keywords: [
     "NIHPLOD",
@@ -23,10 +28,18 @@ export const metadata: Metadata = {
     "科学护肤",
   ],
   openGraph: {
+    url: "/about",
     title: "品牌故事 | NIHPLOD 旎柏",
     description:
       "探索 NIHPLOD 旎柏的品牌故事——源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",
-    images: ["/images/og-image.png"],
+    images: [
+      {
+        url: "/images/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "NIHPLOD 旎柏品牌故事",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",

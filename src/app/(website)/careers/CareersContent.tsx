@@ -34,6 +34,8 @@ export interface Job {
   salary: string | null;
   longitude?: number | null;
   latitude?: number | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const jobTypeMap: Record<string, { label: string; color: string }> = {

@@ -26,6 +26,7 @@ import { expirePointsCron } from "./points-ledger";
 import { failStaleImportBatches } from "./spent-import";
 import { findSpentOrderConflicts } from "./spent-order-conflicts";
 import { purgeOrphanSpentProofs } from "./spent-proof-orphans";
+import { purgeOrphanAvatarUploads } from "./avatar-assets";
 import { sendRetestReminders } from "./retest-reminder";
 import { executeDueAccountDeletions } from "./account-deletion";
 import { anonymizeDeletedAdmins } from "./admin-retention";
@@ -173,6 +174,27 @@ const tasks: ScheduledTask[] = [
       } catch (error) {
         apiConsole.error("[Cron] 孤儿消费凭证清理失败:", error);
         markCleanupFailed("孤儿消费凭证");
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Purge Orphan Avatar Uploads",
+    cronExpression: "40 4 * * *", // 每天清理超过 24 小时仍未写入资料的头像
+    isCleanup: true,
+    handler: async () => {
+      try {
+        const result = await purgeOrphanAvatarUploads();
+        if (result.scanned > 0) {
+          apiConsole.info(
+            `[Cron] 孤儿头像清理完成: 入队 ${result.purged} / 扫描 ${result.scanned}，失败 ${result.failed}`
+          );
+        }
+        if (result.failed > 0) throw new Error(`孤儿头像清理失败 ${result.failed} 条`);
+        markCleanupOk("孤儿头像");
+      } catch (error) {
+        apiConsole.error("[Cron] 孤儿头像清理失败:", error);
+        markCleanupFailed("孤儿头像");
         throw error;
       }
     },

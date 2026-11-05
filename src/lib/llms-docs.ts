@@ -8,6 +8,7 @@
 
 import { resolveProductFaqs } from "@/lib/product-faqs";
 import { stripHtmlToText } from "@/lib/html-text";
+import { LLMS_FACTS_SECTION } from "@/config/llms-content";
 
 export interface LlmsProduct {
   name: string;
@@ -99,6 +100,8 @@ export function buildLlmsFullDoc({
 
 ${brandSection}
 
+${LLMS_FACTS_SECTION}
+
 ## 核心产品目录
 ${buildProductSections(products, siteUrl)}
 
@@ -132,6 +135,8 @@ export function buildLlmsSummary({ siteUrl, products }: BuildSummaryOptions): st
 
   return `# NIHPLOD 旎柏
 > 源自摩纳哥的高端护肤品牌，产品结合前沿科技与珍贵成分，为您开启逆转时光的奢华护肤之旅。
+
+${LLMS_FACTS_SECTION}
 
 ## 核心内容
 ${productLine}

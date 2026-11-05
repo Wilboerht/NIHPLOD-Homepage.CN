@@ -10,8 +10,13 @@ export const metadata: Metadata = {
   title: "加入我们",
   description:
     "加入 NIHPLOD 旎柏：源自摩纳哥的高端护肤品牌诚聘品牌运营、电商、市场等岗位人才。与专注美好的团队一起，逆转时光。",
+  authors: [{ name: "NIHPLOD 官方" }],
   alternates: {
     canonical: "/careers",
+    languages: {
+      "zh-CN": "/careers",
+      "x-default": "/careers",
+    },
   },
   keywords: [
     "NIHPLOD",
@@ -25,9 +30,17 @@ export const metadata: Metadata = {
     "护肤品行业",
   ],
   openGraph: {
+    url: "/careers",
     title: "加入我们 | NIHPLOD 旎柏",
     description: "加入 NIHPLOD 旎柏——与我们一起，逆转时光。",
-    images: ["/images/og-image.png"],
+    images: [
+      {
+        url: "/images/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "加入 NIHPLOD 旎柏",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -62,6 +75,8 @@ async function getJobs(): Promise<Job[]> {
         salary: true,
         longitude: true,
         latitude: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
     return jobs;

@@ -5,6 +5,8 @@ const mockUserFindUnique = vi.fn();
 const mockUserUpdate = vi.fn();
 const mockUserUpdateMany = vi.fn();
 const mockSendProfileUpdateWebhook = vi.fn();
+const mockPrepareAvatarReplacement = vi.fn();
+const mockCleanupAvatarUpload = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -13,7 +15,16 @@ vi.mock("@/lib/prisma", () => ({
       update: (...args: unknown[]) => mockUserUpdate(...args),
       updateMany: (...args: unknown[]) => mockUserUpdateMany(...args),
     },
+    $transaction: async (...args: unknown[]) => {
+      const callback = args[0] as (tx: unknown) => Promise<unknown>;
+      return callback({ user: { update: (...args: unknown[]) => mockUserUpdate(...args) } });
+    },
   },
+}));
+
+vi.mock("@/lib/avatar-assets", () => ({
+  prepareAvatarReplacement: (...args: unknown[]) => mockPrepareAvatarReplacement(...args),
+  cleanupAvatarUpload: (...args: unknown[]) => mockCleanupAvatarUpload(...args),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -62,11 +73,15 @@ import { PUT, POST } from "@/app/api/user/profile/route";
 import { verifyUserAuth } from "@/lib/auth";
 import { rateLimit } from "@/lib/ratelimit";
 import { isSpentProofMultipartTooLarge } from "@/lib/spent-adjustment-files";
+import { processAndSaveImage, validateFileBuffer, validateUploadServer } from "@/lib/upload";
 
 const mockRevalidateTag = revalidateTag as ReturnType<typeof vi.fn>;
 const mockVerifyUserAuth = verifyUserAuth as ReturnType<typeof vi.fn>;
 const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 const mockMultipartTooLarge = isSpentProofMultipartTooLarge as ReturnType<typeof vi.fn>;
+const mockProcessAndSaveImage = processAndSaveImage as ReturnType<typeof vi.fn>;
+const mockValidateFileBuffer = validateFileBuffer as ReturnType<typeof vi.fn>;
+const mockValidateUploadServer = validateUploadServer as ReturnType<typeof vi.fn>;
 
 function putRequest(body: unknown) {
   return new NextRequest(new URL("/api/user/profile", "http://localhost:3000"), {
@@ -91,6 +106,8 @@ describe("PUT /api/user/profile - profile_update webhook 触发条件", () => {
     // 生日首次设置的条件写认领默认成功（并发场景由 updateMany 条件保证）
     mockUserUpdateMany.mockResolvedValue({ count: 1 });
     mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
+    mockPrepareAvatarReplacement.mockResolvedValue({ previousAvatar: null });
+    mockCleanupAvatarUpload.mockResolvedValue(true);
   });
 
   it("昵称实际变更后应触发 webhook 推送（快照为变更后的公开资料）", async () => {
@@ -218,6 +235,8 @@ describe("PUT /api/user/profile - 性别保存与缓存失效", () => {
     // 生日首次设置的条件写认领默认成功（并发场景由 updateMany 条件保证）
     mockUserUpdateMany.mockResolvedValue({ count: 1 });
     mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
+    mockPrepareAvatarReplacement.mockResolvedValue({ previousAvatar: null });
+    mockCleanupAvatarUpload.mockResolvedValue(true);
   });
 
   it("设置性别：落库并立即失效 profile 缓存（expire: 0，保证写后读）", async () => {
@@ -263,6 +282,20 @@ describe("POST /api/user/profile - 头像上传加固", () => {
     mockVerifyUserAuth.mockResolvedValue({ id: "user-1" });
     mockRateLimit.mockResolvedValue({ success: true });
     mockMultipartTooLarge.mockReturnValue(false);
+    mockValidateUploadServer.mockReturnValue({ valid: true });
+    mockValidateFileBuffer.mockResolvedValue({ valid: true, detectedType: "image/jpeg" });
+    mockPrepareAvatarReplacement.mockResolvedValue({ previousAvatar: null });
+    mockCleanupAvatarUpload.mockResolvedValue(true);
+    mockProcessAndSaveImage.mockResolvedValue({
+      url: "/uploads/avatars/new.webp",
+      thumbnailUrl: "/uploads/avatars/thumbnail/new.webp",
+    });
+    mockUserUpdate.mockResolvedValue({
+      nickname: "用户",
+      avatar: "/uploads/avatars/new.webp",
+      birthday: null,
+      gender: null,
+    });
   });
 
   function uploadRequest() {
@@ -295,5 +328,36 @@ describe("POST /api/user/profile - 头像上传加固", () => {
     expect(res.status).toBe(413);
     expect((await res.json()).error.code).toBe("FILE_TOO_LARGE");
     expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("上传成功时在同一事务中登记新头像并准备旧头像清理", async () => {
+    const res = await POST(uploadRequest());
+
+    expect(res.status).toBe(200);
+    expect(mockPrepareAvatarReplacement).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        userId: "user-1",
+        nextAvatar: "/uploads/avatars/new.webp",
+        newUpload: expect.objectContaining({
+          thumbnailUrl: "/uploads/avatars/thumbnail/new.webp",
+        }),
+      })
+    );
+    expect(mockCleanupAvatarUpload).not.toHaveBeenCalled();
+  });
+
+  it("数据库更新失败时补偿删除本次主图和缩略图", async () => {
+    mockUserUpdate.mockRejectedValue(new Error("db failed"));
+
+    const res = await POST(uploadRequest());
+
+    expect(res.status).toBe(500);
+    expect(mockCleanupAvatarUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "/uploads/avatars/new.webp",
+        thumbnailUrl: "/uploads/avatars/thumbnail/new.webp",
+      })
+    );
   });
 });

@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     canonical: "/products",
     languages: {
       "zh-CN": "/products",
+      "x-default": "/products",
     },
   },
   keywords: [
@@ -54,8 +55,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@nihplod",
-    creator: "@nihplod",
     title: "产品系列 | NIHPLOD 旎柏",
     description: "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
