@@ -873,6 +873,9 @@ export async function retryApprovalRequest(input: ApprovalDecisionInput) {
     }
   }
 
+  // 先完成 TOTP 校验，再产生改派副作用；避免验证失败却已改写审批人。
+  const verifiedAt = await verifyFreshTotp(input.admin, input.totpCode);
+
   // 原审批人离职/降级后，EXECUTION_FAILED 申请不能永久卡死：
   // 允许当前 owner 以新的 TOTP 审批动作接管执行（仅 AUTO 模式）。
   if (request.executionMode === "AUTO") {
@@ -918,7 +921,6 @@ export async function retryApprovalRequest(input: ApprovalDecisionInput) {
     }
   }
 
-  const verifiedAt = await verifyFreshTotp(input.admin, input.totpCode);
   const execution = await executeApprovedRequest(request.id, {
     fromStatus: "EXECUTION_FAILED",
     onClaimed: async (claimed) => {
