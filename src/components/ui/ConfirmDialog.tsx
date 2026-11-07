@@ -85,7 +85,9 @@ export function ConfirmDialog({
       closeOnBackdrop={!loading}
       closeOnEscape={!loading}
       // 危险操作默认聚焦“取消”，避免直接按 Enter 执行不可逆操作
-      initialFocusRef={confirmDisabled ? undefined : type === "danger" ? cancelRef : confirmRef}
+      initialFocusRef={
+        confirmDisabled ? undefined : type === "danger" || type === "warning" ? cancelRef : confirmRef
+      }
       footer={
         <div className="flex flex-wrap justify-end gap-3">
           <Button ref={cancelRef} variant="outline" onClick={onClose} disabled={loading}>

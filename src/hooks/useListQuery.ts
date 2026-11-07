@@ -62,10 +62,11 @@ export function useListQuery() {
 
       const query = params.toString();
       const href = `${pathname}${query ? `?${query}` : ""}`;
+      // 列表筛选/分页不改变滚动位置，避免用户操作后跳回顶部。
       if (options.replace) {
         router.replace(href, { scroll: false });
       } else {
-        router.push(href);
+        router.push(href, { scroll: false });
       }
     },
     [pathname, router, searchParams]

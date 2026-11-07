@@ -47,6 +47,7 @@ const PENDING = {
   productName: "面膜礼盒",
   productId: "product-1",
   stockDeducted: false,
+  user: { status: "ACTIVE" },
 };
 
 describe("cancelRedemption 取消兑换退分", () => {

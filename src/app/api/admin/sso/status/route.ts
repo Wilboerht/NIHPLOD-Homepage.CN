@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSsoConfig, isAdminSsoEnabled, safeSecretEqual } from "@/lib/admin-sso";
-import { resolveAdvisorRole, resolveAdminPermissions } from "@/lib/admin-permissions";
+import { resolveAdvisorRole } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
-import { logger } from "@/lib/logger";
+import { apiConsole, logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -62,55 +62,58 @@ export async function POST(request: NextRequest) {
   }
 
   const ids = Array.from(new Set(adminIds));
-  const admins = await prisma.admin.findMany({
-    where: { id: { in: ids } },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      permissions: true,
-      tokenVersion: true,
-      status: true,
-      deletedAt: true,
-      totpEnabled: true,
-    },
-  });
-
-  await createAuditLog({
-    action: "admin_sso_status_sync",
-    targetType: "admin",
-    targetLabel: client_id,
-    actorType: "INTEGRATION",
-    actorName: client_id,
-    authMethod: "client_secret",
-    source: "INTEGRATION",
-    detail: {
-      clientId: client_id,
-      requestedIds: ids.length,
-      returnedCount: admins.length,
-    },
-    request,
-  });
-
-  return NextResponse.json(
-    {
-      success: true,
-      data: {
-        admins: admins.map((admin) => ({
-          id: admin.id,
-          email: admin.email,
-          name: admin.name,
-          role: admin.role,
-          permissions: resolveAdminPermissions(admin.role, admin.permissions),
-          advisorRole: resolveAdvisorRole(admin.role, admin.permissions),
-          ver: admin.tokenVersion,
-          status: admin.status,
-          deletedAt: admin.deletedAt,
-          totpEnabled: admin.totpEnabled,
-        })),
+  try {
+    const admins = await prisma.admin.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        permissions: true,
+        tokenVersion: true,
+        status: true,
+        deletedAt: true,
       },
-    },
-    { headers: { "Cache-Control": "no-store", Pragma: "no-cache" } }
-  );
+    });
+
+    await createAuditLog({
+      action: "admin_sso_status_sync",
+      targetType: "admin",
+      targetLabel: client_id,
+      actorType: "INTEGRATION",
+      actorName: client_id,
+      authMethod: "client_secret",
+      source: "INTEGRATION",
+      detail: {
+        clientId: client_id,
+        requestedIds: ids.length,
+        returnedCount: admins.length,
+      },
+      request,
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          // 只返回影子账号同步所需的最小字段；不再暴露完整权限集合与 TOTP 状态。
+          admins: admins.map((admin) => ({
+            id: admin.id,
+            email: admin.email,
+            name: admin.name,
+            role: admin.role,
+            advisorRole: resolveAdvisorRole(admin.role, admin.permissions),
+            ver: admin.tokenVersion,
+            status: admin.status,
+            deletedAt: admin.deletedAt,
+          })),
+        },
+      },
+      { headers: { "Cache-Control": "no-store", Pragma: "no-cache" } }
+    );
+  } catch (error) {
+    apiConsole.error("[AdminSSOStatus] 查询失败:", error);
+    return jsonError("INTERNAL_ERROR", "服务暂时不可用", 503);
+  }
 }

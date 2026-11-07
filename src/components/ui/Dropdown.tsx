@@ -83,6 +83,14 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
     }
   };
 
+  const focusItemByIndex = (itemIndex: number) => {
+    const nodes = menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    const target = Array.from(nodes ?? []).find(
+      (node) => Number(node.dataset.itemIndex) === itemIndex
+    );
+    target?.focus();
+  };
+
   const handleMenuKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -96,7 +104,7 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
       const next = enabledIndices[Math.min(pos + 1, enabledIndices.length - 1)];
       if (next !== undefined) {
         setActiveIndex(next);
-        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[next]?.focus();
+        focusItemByIndex(next);
       }
       return;
     }
@@ -106,7 +114,7 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
       const prev = enabledIndices[Math.max(pos - 1, 0)];
       if (prev !== undefined) {
         setActiveIndex(prev);
-        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[prev]?.focus();
+        focusItemByIndex(prev);
       }
       return;
     }
@@ -170,6 +178,7 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
                 key={index}
                 type="button"
                 role="menuitem"
+                data-item-index={index}
                 disabled={item.disabled}
                 onClick={() => handleItemClick(item)}
                 onMouseEnter={() => setActiveIndex(index)}

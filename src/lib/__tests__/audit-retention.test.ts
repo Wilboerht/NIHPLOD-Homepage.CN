@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   auditFindMany: vi.fn(),
   ssoFindMany: vi.fn(),
   holdsFindMany: vi.fn(),
+  queryRaw: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -11,6 +12,7 @@ vi.mock("@/lib/prisma", () => ({
     auditLog: { findMany: mocks.auditFindMany },
     ssoAuditEvent: { findMany: mocks.ssoFindMany },
     auditLegalHold: { findMany: mocks.holdsFindMany },
+    $queryRaw: mocks.queryRaw,
   },
 }));
 
@@ -47,6 +49,23 @@ describe("audit retention preview", () => {
         return cutoff ? rows.filter((row) => row.createdAt < cutoff) : rows;
       }
     );
+    // 预览已改为 SQL 按天聚合；从 Prisma.sql 参数中提取 cutoff 并返回聚合结果。
+    mocks.queryRaw.mockImplementation(async (sql: { values?: unknown[] }) => {
+      const cutoff = (sql?.values ?? []).find((value) => value instanceof Date) as
+        | Date
+        | undefined;
+      const filtered = cutoff ? rows.filter((row) => row.createdAt < cutoff) : rows;
+      const byDay = new Map<string, number>();
+      for (const row of filtered) {
+        const shifted = new Date(row.createdAt.getTime() + 8 * 60 * 60 * 1000);
+        const day = shifted.toISOString().slice(0, 10);
+        byDay.set(day, (byDay.get(day) ?? 0) + 1);
+      }
+      return [...byDay.entries()].map(([day, count]) => ({
+        day: new Date(`${day}T00:00:00.000Z`),
+        count: BigInt(count),
+      }));
+    });
   });
 
   it("按 UTC+8 日聚合，并生成稳定 previewHash", async () => {

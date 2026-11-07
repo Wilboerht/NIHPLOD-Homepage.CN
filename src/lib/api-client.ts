@@ -43,7 +43,10 @@ export function getErrorDataFlag(error: unknown, key: string): boolean {
 
 /** 统一提取错误文案（优先服务端 message，其次 Error.message，最后 fallback） */
 export function getApiErrorMessage(error: unknown, fallback = "操作失败"): string {
-  if (error instanceof ApiError || error instanceof Error) {
+  if (error instanceof ApiError) return error.message || fallback;
+  if (error instanceof Error) {
+    if (error.name === "AbortError") return "请求超时，请稍后重试";
+    if (error instanceof TypeError) return "网络异常，请检查网络后重试";
     return error.message || fallback;
   }
   return fallback;
@@ -56,7 +59,12 @@ interface RequestOptions {
   headers?: Record<string, string>;
   /** 请求超时，默认 30 秒；批量导入等长任务可单独放宽 */
   timeoutMs?: number;
+  /** 调用方取消信号（组件卸载/切换筛选时使用） */
+  signal?: AbortSignal;
 }
+
+/** 管理端会话失效事件：AdminShell 监听后统一跳转登录页 */
+export const ADMIN_SESSION_EXPIRED_EVENT = "admin:session-expired";
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
   const url = path.startsWith("/") ? path : `/${path}`;
@@ -156,12 +164,42 @@ export async function apiRequest<T = unknown>(
       }
     }
 
-    // 请求超时保护（默认 30 秒）
+    // 请求超时保护（默认 30 秒）+ 调用方取消信号
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let clientAborted = false;
+    const onAbort = () => {
+      clientAborted = true;
+      controller.abort();
+    };
+    if (options.signal) {
+      if (options.signal.aborted) {
+        clientAborted = true;
+        controller.abort();
+      } else {
+        options.signal.addEventListener("abort", onAbort, { once: true });
+      }
+    }
     init.signal = controller.signal;
 
-    const response = await fetch(url, init).finally(() => clearTimeout(timeoutId));
+    let response: Response;
+    try {
+      response = await fetch(url, init);
+    } catch (error) {
+      if (options.signal?.aborted || clientAborted) {
+        throw new ApiError("REQUEST_ABORTED", "请求已取消", 0);
+      }
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new ApiError("TIMEOUT", "请求超时，请稍后重试", 408);
+      }
+      if (error instanceof TypeError) {
+        throw new ApiError("NETWORK_ERROR", "网络异常，请检查网络后重试", 0);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      options.signal?.removeEventListener("abort", onAbort);
+    }
 
     // 尝试解析 JSON，即使状态码不是 2xx
     let data: ApiResponse<T> = { success: true };
@@ -174,6 +212,15 @@ export async function apiRequest<T = unknown>(
     }
 
     if (!response.ok || !data.success) {
+      // 管理端会话失效：统一广播，由 AdminShell 跳转登录页，避免各页面重复处理。
+      if (
+        response.status === 401 &&
+        path.startsWith("/api/admin/") &&
+        !path.startsWith("/api/admin/login") &&
+        typeof window !== "undefined"
+      ) {
+        window.dispatchEvent(new Event(ADMIN_SESSION_EXPIRED_EVENT));
+      }
       // CSRF 校验失败时刷新 Token 并重试一次
       if (!isRetry && response.status === 403 && data.error?.code === "CSRF_INVALID") {
         await refreshCSRFToken();

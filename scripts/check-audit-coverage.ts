@@ -9,7 +9,8 @@ import { join, relative } from "node:path";
 
 const ROOT = join(process.cwd(), "src", "app", "api", "admin");
 const AUDIT_CALL = /createAuditLog|beginAuditLog|createAuditLogStrict|createAuditLogTx/;
-const MUTATING_EXPORT = /export\s+async\s+function\s+(POST|PUT|PATCH|DELETE)\b/;
+const MUTATING_EXPORT =
+  /export\s+(?:async\s+function|const)\s+(POST|PUT|PATCH|DELETE)\b/;
 
 /** 明确不需要写审计的端点（必须写原因） */
 const ALLOWLIST = new Map<string, string>([

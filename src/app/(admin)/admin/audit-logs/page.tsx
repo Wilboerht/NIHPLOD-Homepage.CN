@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Copy, Download, Eye, FileJson, RefreshCw, X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -240,6 +240,7 @@ function AuditLogsContent() {
   const [detail, setDetail] = useState<AuditLogItem | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const detailRequestRef = useRef(0);
 
   const rawPage = Number(searchParams.get("page") || "1");
   const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.min(1000, Math.trunc(rawPage)) : 1;
@@ -335,11 +336,13 @@ function AuditLogsContent() {
 
   const fetchDetail = useCallback(
     async (log: AuditLogItem) => {
+      const requestId = ++detailRequestRef.current;
       setDetailLoading(true);
       try {
         for (let attempt = 0; attempt < 2; attempt += 1) {
           try {
             const data = await apiGet<AuditLogItem>(`/api/admin/audit-logs/${log.id}`);
+            if (requestId !== detailRequestRef.current) return;
             setDetail(data);
             setDetailOpen(true);
             return;
@@ -351,12 +354,14 @@ function AuditLogsContent() {
                     ? String((error as { code?: string }).code)
                     : undefined
                 );
+                if (requestId !== detailRequestRef.current) return;
                 if (verified) continue;
               }
               // 用户取消二次验证，或验证后服务端仍要求 TOTP：
               // 不打开详情弹窗，也不回退展示列表摘要。
               return;
             }
+            if (requestId !== detailRequestRef.current) return;
             toast.error(error instanceof Error ? error.message : "加载详情失败");
             setDetail(log);
             setDetailOpen(true);
@@ -364,7 +369,7 @@ function AuditLogsContent() {
           }
         }
       } finally {
-        setDetailLoading(false);
+        if (requestId === detailRequestRef.current) setDetailLoading(false);
       }
     },
     [requireTotp, toast]

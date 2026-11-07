@@ -160,15 +160,15 @@ export function ProductsTable({
     }
   };
 
-  // 批量操作
+  // 批量发布/下架属于可逆日常运营操作：登录 TOTP 已足够，不再二次验证
   const handleBatchAction = async (action: "publish" | "unpublish") => {
     setActionLoading(action);
     try {
       await apiPost("/api/admin/products/batch", { ids: selectedIds, action });
       selection.clear();
       onRefresh();
-    } catch {
-      showError("批量操作失败，请重试");
+    } catch (err) {
+      showError(err instanceof ApiError ? err.message : "批量操作失败，请重试");
     } finally {
       setActionLoading(null);
     }

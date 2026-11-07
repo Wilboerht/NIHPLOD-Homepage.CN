@@ -13,6 +13,7 @@ vi.mock("@/lib/api-client", async () => {
 });
 
 import { AdvisorReports } from "@/components/admin/users/AdvisorReports";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const listPayload = {
   reports: [
@@ -97,7 +98,11 @@ describe("AdvisorReports", () => {
   });
 
   it("加载列表并可查看完整报告正文", async () => {
-    render(<AdvisorReports userId="user-1" />);
+    render(
+      <ToastProvider>
+        <AdvisorReports userId="user-1" />
+      </ToastProvider>
+    );
 
     expect(await screen.findByText("混合偏干")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "查看报告" }));

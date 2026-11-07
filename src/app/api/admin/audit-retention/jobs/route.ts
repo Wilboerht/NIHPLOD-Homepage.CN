@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
+import { apiConsole } from "@/lib/logger";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store, private" } as const;
 
@@ -24,26 +25,34 @@ export async function GET(request: NextRequest) {
   const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
   if (rateLimitResponse) return rateLimitResponse;
 
-  const jobs = await prisma.auditRetentionJob.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-  return NextResponse.json(
-    {
-      success: true,
-      data: {
-        items: jobs.map((job) => ({
-          ...job,
-          createdAt: job.createdAt.toISOString(),
-          startedAt: job.startedAt?.toISOString() ?? null,
-          finishedAt: job.finishedAt?.toISOString() ?? null,
-          expiresAt: job.expiresAt.toISOString(),
-          totpVerifiedAt: job.totpVerifiedAt.toISOString(),
-          cutoff: job.cutoff.toISOString(),
-          approvalSignature: undefined,
-        })),
+  try {
+    const jobs = await prisma.auditRetentionJob.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          items: jobs.map((job) => ({
+            ...job,
+            createdAt: job.createdAt.toISOString(),
+            startedAt: job.startedAt?.toISOString() ?? null,
+            finishedAt: job.finishedAt?.toISOString() ?? null,
+            expiresAt: job.expiresAt.toISOString(),
+            totpVerifiedAt: job.totpVerifiedAt.toISOString(),
+            cutoff: job.cutoff.toISOString(),
+            approvalSignature: undefined,
+          })),
+        },
       },
-    },
-    { headers: NO_STORE_HEADERS }
-  );
+      { headers: NO_STORE_HEADERS }
+    );
+  } catch (error) {
+    apiConsole.error("[AuditRetentionJobs] 查询失败:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "查询失败" } },
+      { status: 500, headers: NO_STORE_HEADERS }
+    );
+  }
 }

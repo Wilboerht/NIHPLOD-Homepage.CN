@@ -26,16 +26,6 @@ function sameAvatarUrl(left: string, right: string): boolean {
   return normalizeLocalAvatarUrl(left) === normalizeLocalAvatarUrl(right);
 }
 
-function isManagedAvatarUrl(url: string): boolean {
-  const normalized = normalizeLocalAvatarUrl(url);
-  if (normalized.startsWith("/uploads/avatars/")) return true;
-  try {
-    return new URL(normalized).pathname.startsWith("/avatars/");
-  } catch {
-    return false;
-  }
-}
-
 export async function cleanupAvatarUpload(upload: AvatarUploadRefs): Promise<boolean> {
   let succeeded = true;
   for (const objectKey of getAvatarObjectKeys(upload)) {
@@ -100,15 +90,10 @@ export async function prepareAvatarReplacement(
   const obsolete = assets.filter((asset) => !retainedIds.has(asset.id));
   const deletionKeys = obsolete.flatMap((asset) => [asset.objectKey, ...asset.derivedUrls]);
 
-  if (
-    user.avatar &&
-    (!nextAvatar || !sameAvatarUrl(user.avatar, nextAvatar)) &&
-    isManagedAvatarUrl(user.avatar) &&
-    !assets.some((asset) => sameAvatarUrl(asset.objectKey, user.avatar!))
-  ) {
-    deletionKeys.push(normalizeLocalAvatarUrl(user.avatar));
-  }
-
+  // 只删除登记在当前用户名下的 AvatarAsset。
+  // 旧头像若不在 AvatarAsset 中（历史遗留或用户把头像 URL 指向他人头像），
+  // 不得凭 URL 形状直接删除，避免跨用户对象删除（IDOR）。
+  // 历史遗留头像会由孤儿清理/人工运营处理，安全优先。
   await enqueueMediaDeletions(tx, deletionKeys);
   if (obsolete.length > 0) {
     await tx.avatarAsset.deleteMany({ where: { id: { in: obsolete.map((asset) => asset.id) } } });
@@ -126,18 +111,14 @@ export async function prepareAvatarReplacement(
   return { previousAvatar: user.avatar };
 }
 
-export async function purgeAvatarAssets(
-  userId: string,
-  currentAvatar: string | null
-): Promise<{ failed: number }> {
+export async function purgeAvatarAssets(userId: string): Promise<{ failed: number }> {
   const assets = await prisma.avatarAsset.findMany({
     where: { userId },
     select: { id: true, objectKey: true, derivedUrls: true },
   });
-  const candidates = [
-    ...assets.map((asset) => [asset.objectKey, ...asset.derivedUrls]),
-    ...(currentAvatar ? [[currentAvatar]] : []),
-  ];
+  // 只删除登记在当前用户名下的 AvatarAsset；旧头像 URL 不再作为删除依据，
+  // 避免用户把头像指向他人对象后注销账号导致跨用户删除。
+  const candidates = assets.map((asset) => [asset.objectKey, ...asset.derivedUrls]);
   const objectKeys = [...new Set(candidates.flat())];
   const failedKeys = new Set<string>();
 

@@ -289,7 +289,7 @@ export async function fulfillRedemption(params: {
   waybillNo?: string;
 }): Promise<{
   ok: boolean;
-  code?: "NOT_FOUND" | "ALREADY_PROCESSED" | "NEGATIVE_BALANCE";
+  code?: "NOT_FOUND" | "ALREADY_PROCESSED" | "NEGATIVE_BALANCE" | "USER_INACTIVE";
   available?: number;
 }> {
   const { redemptionId, waybillNo } = params;
@@ -298,11 +298,14 @@ export async function fulfillRedemption(params: {
     prisma.$transaction(async (tx) => {
       const redemption = await tx.pointRedemption.findUnique({
         where: { id: redemptionId },
-        select: { id: true, status: true, userId: true },
+        select: { id: true, status: true, userId: true, user: { select: { status: true } } },
       });
       if (!redemption) return { ok: false, code: "NOT_FOUND" as const };
       if (redemption.status !== "PENDING") {
         return { ok: false, code: "ALREADY_PROCESSED" as const };
+      }
+      if (redemption.user.status !== "ACTIVE") {
+        return { ok: false, code: "USER_INACTIVE" as const };
       }
 
       // 履约前风控：退款/消费额下降可把用户积分冲成负数（超兑债务）。
@@ -375,6 +378,7 @@ export async function cancelRedemption(params: {
           productName: true,
           productId: true,
           stockDeducted: true,
+          user: { select: { status: true } },
         },
       });
       if (!redemption) return { ok: false, code: "NOT_FOUND" };
@@ -389,14 +393,17 @@ export async function cancelRedemption(params: {
 
       await releaseRedemptionStock(tx, redemption.productId, redemption.stockDeducted);
 
-      await adjustPoints(tx, {
-        userId: redemption.userId,
-        amount: redemption.points,
-        reference: `cancel:${redemptionId}`,
-        note: cancelNote || `兑换取消退还：${redemption.productName}`,
-      });
-
-      return { ok: true, points: redemption.points };
+      // 已注销用户不再写余额/流水，只完成取消与库存归还，避免注销后账户仍可变动。
+      if (redemption.user.status !== "DELETED") {
+        await adjustPoints(tx, {
+          userId: redemption.userId,
+          amount: redemption.points,
+          reference: `cancel:${redemptionId}`,
+          note: cancelNote || `兑换取消退还：${redemption.productName}`,
+        });
+        return { ok: true, points: redemption.points };
+      }
+      return { ok: true, points: 0 };
     })
   );
 }

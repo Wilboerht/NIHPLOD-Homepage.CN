@@ -139,6 +139,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   admin_approval_executed: "Owner 审批执行完成",
   admin_approval_execution_failed: "Owner 审批执行失败",
   admin_approval_stale: "Owner 审批目标已变化",
+  admin_approval_result_unknown: "Owner 审批执行结果未知",
 };
 
 export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {

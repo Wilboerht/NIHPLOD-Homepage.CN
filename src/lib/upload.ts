@@ -443,11 +443,24 @@ export async function uploadFile(
 // 删除上传的文件
 export async function deleteUploadedFile(url: string): Promise<boolean> {
   try {
-    // 自动识别存储类型 (根据 URL 特征)
-    const ossDomain = getOSSPublicDomain();
+    // 只允许删除配置的自有 OSS 域名下的对象，禁止凭 "aliyuncs.com" 子串
+    // 删除任意 Aliyun Bucket（防止流入任意 URL 后造成跨对象删除）。
+    const ossHost = (() => {
+      try {
+        return new URL(getOSSPublicDomain()).host;
+      } catch {
+        return null;
+      }
+    })();
+    const parsedHost = (() => {
+      try {
+        return new URL(url).host;
+      } catch {
+        return null;
+      }
+    })();
 
-    if (url.includes("aliyuncs.com") || url.includes(ossDomain)) {
-      // 识别为 OSS
+    if (parsedHost && ossHost && parsedHost === ossHost) {
       await deleteOSSFiles([url]);
       return true;
     } else if (url.startsWith("/uploads/")) {

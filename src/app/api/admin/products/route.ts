@@ -11,11 +11,15 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-import { requireAdminStepUp } from "@/lib/admin-totp";
 import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
 import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
+import {
+  collectProductImageUrls,
+  findReusedProductImageUrl,
+  isManagedProductImageUrl,
+} from "@/lib/product-media";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
@@ -179,11 +183,31 @@ export async function POST(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const stepUpResponse = await requireAdminStepUp(request, admin);
-    if (stepUpResponse) return stepUpResponse;
-
     const body = await request.json();
     const validated = ProductSchema.parse(body);
+
+    // 图片 URL 归属校验：只允许产品上传目录/自有 OSS，且不能占用其他产品的图片 URL
+    const requestedImageUrls = collectProductImageUrls(validated.images);
+    const invalidImageUrl = requestedImageUrls.find((url) => !isManagedProductImageUrl(url));
+    if (invalidImageUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "INVALID_IMAGE_URL", message: "产品图片地址不合法，请重新上传" },
+        },
+        { status: 400 }
+      );
+    }
+    const reusedImageUrl = await findReusedProductImageUrl(requestedImageUrls);
+    if (reusedImageUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "IMAGE_URL_IN_USE", message: "该图片已被其他产品使用，请重新上传" },
+        },
+        { status: 409 }
+      );
+    }
 
     // 对 HTML 字段入库前消毒
     const sanitized = {

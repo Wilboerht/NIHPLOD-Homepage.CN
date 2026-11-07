@@ -726,7 +726,7 @@ export function AdvisorReports({ userId }: { userId: string }) {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => openDetail(report.sessionId)}
+                        onClick={() => void openDetail(report.sessionId)}
                       >
                         查看报告
                       </Button>

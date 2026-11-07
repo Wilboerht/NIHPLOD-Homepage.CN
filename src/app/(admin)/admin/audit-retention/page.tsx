@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
@@ -93,6 +94,7 @@ function RetentionContent() {
   const [totpCode, setTotpCode] = useState("");
   const [localOnlyAck, setLocalOnlyAck] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cancelTargetJob, setCancelTargetJob] = useState<string | null>(null);
   const [holdOpen, setHoldOpen] = useState(false);
   const [holdForm, setHoldForm] = useState({
     targetType: "",
@@ -463,7 +465,7 @@ function RetentionContent() {
                           variant="ghost"
                           size="sm"
                           disabled={submitting}
-                          onClick={() => void cancelJob(job.id)}
+                          onClick={() => setCancelTargetJob(job.id)}
                         >
                           取消
                         </Button>
@@ -698,6 +700,21 @@ function RetentionContent() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={!!cancelTargetJob}
+        onClose={() => setCancelTargetJob(null)}
+        onConfirm={async () => {
+          const id = cancelTargetJob;
+          setCancelTargetJob(null);
+          if (id) await cancelJob(id);
+        }}
+        type="danger"
+        title="取消清理任务"
+        description="取消后该清理任务不会再执行；如需清理需重新预览并提交。确定取消吗？"
+        confirmText="确认取消"
+        loading={submitting}
+      />
     </div>
   );
 }

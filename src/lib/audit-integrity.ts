@@ -300,14 +300,16 @@ export async function anchorMissingAuditDays(options: { maxDays?: number } = {})
 
   for (const { stream, earliest } of streams) {
     if (!earliest) continue;
+    // 一次性读取已有锚点日期，避免“已存在日期也消耗 maxDays”导致永远补不到更晚的缺口。
+    const existingAnchors = await prisma.auditLogAnchor.findMany({
+      where: { stream, signatureVersion: 2, day: { lte: yesterday } },
+      select: { day: true },
+    });
+    const existingDays = new Set(existingAnchors.map((anchor) => anchor.day));
     let day = getUtc8DayRange(earliest).day;
-    let processed = 0;
-    while (day <= yesterday && processed < maxDays) {
-      const exists = await prisma.auditLogAnchor.findFirst({
-        where: { stream, day, signatureVersion: 2 },
-        select: { id: true },
-      });
-      if (!exists) {
+    let createdCount = 0;
+    while (day <= yesterday && createdCount < maxDays) {
+      if (!existingDays.has(day)) {
         const [year, month, date] = day.split("-").map(Number);
         const fromAt = new Date(Date.UTC(year, month - 1, date) - UTC8_OFFSET_MS);
         created.push(
@@ -317,9 +319,9 @@ export async function anchorMissingAuditDays(options: { maxDays?: number } = {})
             toAt: new Date(fromAt.getTime() + DAY_MS),
           })
         );
+        createdCount += 1;
       }
       day = addDaysUtc8(day, 1);
-      processed += 1;
     }
   }
   return { created, lastDay: yesterday };
@@ -364,6 +366,31 @@ export async function verifyAuditDay(
       archiveVerified: false,
       backupVerified: false,
       error: "ANCHOR_NOT_FOUND",
+    };
+  }
+
+  // 无论是否已归档，都先验证数据库锚点签名，避免归档分支跳过锚点完整性。
+  const expectedSignature = computeAnchorSignature({
+    stream,
+    day,
+    count: anchor.count,
+    digest: anchor.digest,
+    prevAnchorHash: anchor.prevAnchorHash,
+    keyVersion: anchor.keyVersion,
+    signatureVersion: anchor.signatureVersion,
+  });
+  if (expectedSignature !== anchor.signature) {
+    return {
+      stream,
+      day,
+      verified: false,
+      count: anchor.count,
+      digest: anchor.digest,
+      signatureVersion: anchor.signatureVersion,
+      keyVersion: anchor.keyVersion,
+      archiveVerified: false,
+      backupVerified: false,
+      error: "ANCHOR_SIGNATURE_INVALID",
     };
   }
 

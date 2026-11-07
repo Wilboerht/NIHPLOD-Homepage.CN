@@ -148,8 +148,8 @@ function AdminPointGiftsContent() {
 
   const takeLatestProducts = useLatestRequest();
   const fetchProducts = useCallback(async () => {
-    // 无 gifts:read 时产品面板不展示，也避免必然 403 的请求
-    if (!canGiftRead) {
+    // 无 gifts:read 或当前不在礼品设置工作区时，不请求产品数据
+    if (!canGiftRead || view !== "gifts") {
       setProductsLoading(false);
       return;
     }
@@ -176,12 +176,12 @@ function AdminPointGiftsContent() {
     } finally {
       if (isLatest()) setProductsLoading(false);
     }
-  }, [productPage, searchParam, redeemableFilter, showError, canGiftRead, takeLatestProducts]);
+  }, [productPage, searchParam, redeemableFilter, showError, canGiftRead, view, takeLatestProducts]);
 
   const takeLatestRedemptions = useLatestRequest();
   const fetchRedemptions = useCallback(async () => {
-    // 仅 gifts:read 的角色不渲染兑换记录，避免必然 403
-    if (!canRedeemRead) {
+    // 仅 gifts:read 的角色或当前不在兑换履约工作区时，不请求兑换记录
+    if (!canRedeemRead || view !== "redemptions") {
       setRedemptionLoading(false);
       return;
     }
@@ -243,6 +243,7 @@ function AdminPointGiftsContent() {
     redemptionSearchParam,
     showError,
     canRedeemRead,
+    view,
     takeLatestRedemptions,
     piiRevealed,
   ]);

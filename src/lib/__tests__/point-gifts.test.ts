@@ -317,7 +317,12 @@ describe("fulfillRedemption 履约", () => {
   });
 
   it("PENDING → FULFILLED（CAS 抢占成功）", async () => {
-    mockFindUnique.mockResolvedValue({ id: "r1", status: "PENDING", userId: "user-1" });
+    mockFindUnique.mockResolvedValue({
+      id: "r1",
+      status: "PENDING",
+      userId: "user-1",
+      user: { status: "ACTIVE" },
+    });
     mockUpdateMany.mockResolvedValue({ count: 1 });
 
     const result = await fulfillRedemption({ redemptionId: "r1", adminId: "admin-1" });
@@ -343,7 +348,12 @@ describe("fulfillRedemption 履约", () => {
   });
 
   it("用户积分为负：拒绝履约并要求先人工处置", async () => {
-    mockFindUnique.mockResolvedValue({ id: "r1", status: "PENDING", userId: "user-1" });
+    mockFindUnique.mockResolvedValue({
+      id: "r1",
+      status: "PENDING",
+      userId: "user-1",
+      user: { status: "ACTIVE" },
+    });
     mockBalanceFind.mockResolvedValue({ available: -50 });
 
     const result = await fulfillRedemption({ redemptionId: "r1", adminId: "admin-1" });

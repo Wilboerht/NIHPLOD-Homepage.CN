@@ -23,6 +23,9 @@ vi.mock("@/lib/resume-files", () => ({
 vi.mock("@/lib/audit", () => ({
   createAuditLogStrict: mocks.createAuditLogStrict,
 }));
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
 vi.mock("@/lib/validation", () => ({
   validateCUID: vi.fn().mockReturnValue(true),
   invalidIdResponse: () => new Response("invalid", { status: 400 }),

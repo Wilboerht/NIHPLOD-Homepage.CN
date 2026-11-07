@@ -14,7 +14,8 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { getOAuthClientByClientId, verifyOAuthClientSecret } from "@/lib/oauth-client";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { beginAuditLog, finishAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
 
@@ -75,6 +76,11 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
+
+    // 在线测试会向配置的 token/introspect 端点发送调用方提供的 clientSecret，
+    // 属于高权限调试能力：要求 step-up，生产环境建议关闭或仅 owner 使用。
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     const body = await request.json();
     const parsed = bodySchema.safeParse(body);
@@ -143,6 +149,19 @@ export async function POST(request: NextRequest) {
         durationMs: Math.round(performance.now() - t1),
         detail: `未找到 clientId "${clientId}" 对应的 OAuth Client`,
       });
+      await createAuditLog({
+        action: "oauth_client_test",
+        targetType: "oauth_client",
+        targetId: clientId,
+        detail: { clientId, redirectUri, allPassed: false, reason: "CLIENT_NOT_FOUND" },
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
+        actorRole: admin.role,
+        authMethod: "session",
+        adminId: admin.id,
+        request,
+      }).catch((error) => apiConsole.warn("[OAuthClientTest] 失败审计写入失败:", error));
       // 测试结果是业务结论而非请求失败：返回 success:true + allPassed:false，
       // 让前端能展示完整诊断步骤（api-client 在 success:false 时会丢弃 data）
       return NextResponse.json({
@@ -162,6 +181,19 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verifyResult.client) {
+      await createAuditLog({
+        action: "oauth_client_test",
+        targetType: "oauth_client",
+        targetId: client.id,
+        detail: { clientId, redirectUri, allPassed: false, reason: "INVALID_CLIENT_SECRET" },
+        actorType: "ADMIN",
+        actorEmail: admin.email,
+        actorName: admin.name,
+        actorRole: admin.role,
+        authMethod: "session",
+        adminId: admin.id,
+        request,
+      }).catch((error) => apiConsole.warn("[OAuthClientTest] 失败审计写入失败:", error));
       return NextResponse.json({
         success: true,
         data: { steps, summary: "客户端凭据无效", allPassed: false },

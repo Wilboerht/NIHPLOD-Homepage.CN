@@ -109,12 +109,13 @@ export function generateTOTPCode(secret: string): string {
 }
 
 /**
- * 生成备用码（10 个 8 位随机码）
+ * 生成备用码（10 个 20 位十六进制随机码，约 80 bit 熵）
+ * 长度保持在现有输入框 maxLength=20 以内。
  */
 export function generateBackupCodes(count: number = 10): string[] {
   const codes: string[] = [];
   for (let i = 0; i < count; i++) {
-    codes.push(randomBytes(8).toString("hex").toUpperCase());
+    codes.push(randomBytes(10).toString("hex").toUpperCase());
   }
   return codes;
 }

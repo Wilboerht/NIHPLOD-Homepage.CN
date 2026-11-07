@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 vi.mock("@/lib/prisma", () => {
-  const prisma = {
+  const prisma: Record<string, unknown> = {
     user: { findUnique: vi.fn() },
     refreshToken: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     oAuthSession: {
@@ -21,6 +21,7 @@ vi.mock("@/lib/prisma", () => {
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   };
+  prisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma));
   return { prisma, default: prisma };
 });
 
@@ -134,7 +135,11 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
     expect(/[a-z]/.test(temp)).toBe(true);
     expect(/[0-9]/.test(temp)).toBe(true);
 
-    expect(updateUserPassword).toHaveBeenCalledWith("user-1", temp, { skipHistoryCheck: true });
+    expect(updateUserPassword).toHaveBeenCalledWith(
+      "user-1",
+      temp,
+      expect.objectContaining({ skipHistoryCheck: true })
+    );
     expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "user-1", revokedAt: null } })
     );

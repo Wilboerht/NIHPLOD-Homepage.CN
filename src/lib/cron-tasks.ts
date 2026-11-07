@@ -404,7 +404,9 @@ const tasks: ScheduledTask[] = [
     isCleanup: true,
     handler: async () => {
       try {
-        await reapStalePendingAuditLogs(10);
+        // 长导出/长导入等操作可能持续超过 10 分钟；只有超过 24 小时仍 PENDING
+        // 才视为进程崩溃，避免把成功操作提前改成 FAILURE 且无法回写。
+        await reapStalePendingAuditLogs(24 * 60);
       } catch (error) {
         apiConsole.error("[Cron] PENDING 审计回收失败:", error);
         throw error;

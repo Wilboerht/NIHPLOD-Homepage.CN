@@ -22,6 +22,9 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/prisma", () => ({
   default: { user: { findUnique: mocks.userFindUnique } },
 }));
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
 
 import { GET as listReports } from "../[id]/advisor/reports/route";
 import { GET as getReport } from "../[id]/advisor/reports/[sessionId]/route";

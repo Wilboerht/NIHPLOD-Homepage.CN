@@ -215,6 +215,8 @@ async function executeSpentReviewApprove(
     adminId: ctx.approver.id,
     reviewAmount: payload.reviewAmount,
     reviewNote: payload.reviewNote,
+    // 审批执行人只能是 owner（审批流程已校验），owner 允许自建自审。
+    allowSelfReview: true,
   });
   if (!result.ok) {
     throw new AdminApprovalError(
@@ -322,12 +324,53 @@ async function executeSpentImport(ctx: ApprovalExecutorContext): Promise<Approva
     throw new AdminApprovalError("NO_ROWS", "审批申请没有可导入的行", 400);
   }
 
+  // 幂等：优先按审批 ID 精确复用；旧批次没有 approvalId 时回退到文件+原因匹配。
+  // 避免同一文件不同行子集的另一个审批误复用旧批次。
+  const existingSelect = {
+    id: true,
+    totalRows: true,
+    successRows: true,
+    duplicateRows: true,
+    errorRows: true,
+    totalAmount: true,
+  } as const;
+  const existingBatch =
+    (await prisma.spentImportBatch.findFirst({
+      where: { approvalId: ctx.approvalId, undoneAt: null, status: "COMPLETED" },
+      select: existingSelect,
+    })) ??
+    (await prisma.spentImportBatch.findFirst({
+      where: {
+        approvalId: null,
+        fileHash,
+        reason: payload.reason,
+        adminId: ctx.requester.id,
+        undoneAt: null,
+        status: "COMPLETED",
+      },
+      select: existingSelect,
+    }));
+  if (existingBatch) {
+    return {
+      resultMeta: {
+        batchId: existingBatch.id,
+        totalRows: existingBatch.totalRows,
+        successRows: existingBatch.successRows,
+        duplicateRows: existingBatch.duplicateRows,
+        errorRows: existingBatch.errorRows,
+        totalAmount: existingBatch.totalAmount,
+        idempotent: true,
+      },
+    };
+  }
+
   const result = await executeImportBatch({
     rows: resolvedRows,
     fileName,
     fileHash,
     reason: payload.reason,
     adminId: ctx.requester.id,
+    approvalId: ctx.approvalId,
   });
 
   await writeExecutorAudit({
@@ -375,14 +418,15 @@ async function executeSpentImportUndo(
   }
   assertSnapshot(ctx, { status: batch.status });
 
-  const result = await undoImportBatch(payload.batchId);
-  if (!result.ok) {
-    throw new AdminApprovalError(
-      result.code === "REVERSAL_EXCEEDS_BALANCE" ? "STALE" : "EXECUTION_FAILED",
-      result.message,
-      result.code === "REVERSAL_EXCEEDS_BALANCE" ? 409 : 400
-    );
-  }
+    const result = await undoImportBatch(payload.batchId);
+    if (!result.ok) {
+      // 余额不足属于可修复的业务状态（补足后可重试），不能映射为不可重试的 STALE。
+      throw new AdminApprovalError(
+        result.code === "ALREADY_UNDONE" ? "STALE" : "EXECUTION_FAILED",
+        result.message,
+        409
+      );
+    }
 
   await writeExecutorAudit({
     ctx,

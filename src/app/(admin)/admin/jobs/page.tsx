@@ -101,7 +101,7 @@ function AdminJobsContent() {
       if (!("page" in updates)) {
         params.delete("page");
       }
-      router.push(`/admin/jobs?${params.toString()}`);
+      router.replace(`/admin/jobs?${params.toString()}`, { scroll: false });
     },
     [searchParams, router]
   );

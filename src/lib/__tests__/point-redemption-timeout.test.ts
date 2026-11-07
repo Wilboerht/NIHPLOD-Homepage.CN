@@ -67,6 +67,7 @@ describe("expirePendingRedemptions", () => {
       status: "PENDING",
       productName: "面霜",
       productId: "product-1",
+      user: { status: "ACTIVE" },
     });
     tx.pointRedemption.updateMany.mockResolvedValue({ count: 1 });
     tx.pointBalance.findUnique.mockResolvedValue({ available: 0 });

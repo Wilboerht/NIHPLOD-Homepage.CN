@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Empty } from "@/components/ui/Empty";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -124,6 +125,7 @@ function ApprovalsContent() {
   const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<ApprovalItem | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [note, setNote] = useState("");
   const [secret, setSecret] = useState<string | null>(null);
   const [secretSaved, setSecretSaved] = useState(false);
@@ -630,7 +632,7 @@ function ApprovalsContent() {
                   variant="outline"
                   size="sm"
                   loading={actionLoading === "cancel"}
-                  onClick={() => void handleCancel()}
+                  onClick={() => setCancelConfirmOpen(true)}
                 >
                   撤回申请
                 </Button>
@@ -735,6 +737,20 @@ function ApprovalsContent() {
       {requestOpen && (
         <ApprovalRequestDialog open onClose={() => setRequestOpen(false)} onCreated={fetchItems} />
       )}
+
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        onClose={() => setCancelConfirmOpen(false)}
+        onConfirm={async () => {
+          setCancelConfirmOpen(false);
+          await handleCancel();
+        }}
+        type="danger"
+        title="撤回审批申请"
+        description="撤回后本次申请将失效，如需继续操作需重新发起申请。确定撤回吗？"
+        confirmText="确认撤回"
+        loading={actionLoading === "cancel"}
+      />
 
       {freshTotpModal}
     </div>

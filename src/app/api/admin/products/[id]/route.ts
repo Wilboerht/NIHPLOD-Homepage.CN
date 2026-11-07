@@ -17,6 +17,12 @@ import { normalizePurchaseLink } from "@/lib/purchase-platforms";
 import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
 import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
+import {
+  collectProductImageUrls,
+  filterDeletableProductImageUrls,
+  findReusedProductImageUrl,
+  isManagedProductImageUrl,
+} from "@/lib/product-media";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
 const patchProductSchema = z
@@ -284,6 +290,34 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const existingImageIds = existingImages.map((i) => i.id);
     const newImageIds = validated.images.filter((i) => i.id).map((i) => i.id);
 
+    // 图片 URL 归属校验：新引入的 URL 必须是产品上传目录/自有 OSS，
+    // 且不能被其他产品占用；历史遗留 URL（本产品已存在）保持兼容。
+    const existingImageUrlSet = new Set(
+      existingImages.flatMap((image) => [image.url, ...image.derivedUrls])
+    );
+    const requestedImageUrls = collectProductImageUrls(sanitized.images);
+    const introducedImageUrls = requestedImageUrls.filter((url) => !existingImageUrlSet.has(url));
+    const invalidImageUrl = introducedImageUrls.find((url) => !isManagedProductImageUrl(url));
+    if (invalidImageUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "INVALID_IMAGE_URL", message: "产品图片地址不合法，请重新上传" },
+        },
+        { status: 400 }
+      );
+    }
+    const reusedImageUrl = await findReusedProductImageUrl(introducedImageUrls, id);
+    if (reusedImageUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "IMAGE_URL_IN_USE", message: "该图片已被其他产品使用，请重新上传" },
+        },
+        { status: 409 }
+      );
+    }
+
     // 删除不再使用的图片
     const imagesToDelete = existingImageIds.filter((imgId) => !newImageIds.includes(imgId));
 
@@ -307,7 +341,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         const removedImages = existingImages.filter((image) => imagesToDelete.includes(image.id));
         await enqueueMediaDeletions(
           tx,
-          removedImages.flatMap((image) => [image.url, ...image.derivedUrls])
+          filterDeletableProductImageUrls(
+            removedImages.flatMap((image) => [image.url, ...image.derivedUrls])
+          )
         );
         await tx.image.deleteMany({
           where: { id: { in: imagesToDelete } },
@@ -531,7 +567,9 @@ export async function DELETE(
     await prisma.$transaction(async (tx) => {
       await enqueueMediaDeletions(
         tx,
-        existing.images.flatMap((image) => [image.url, ...image.derivedUrls])
+        filterDeletableProductImageUrls(
+          existing.images.flatMap((image) => [image.url, ...image.derivedUrls])
+        )
       );
       await tx.product.delete({ where: { id } });
     });

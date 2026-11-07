@@ -39,12 +39,12 @@ vi.mock("@/lib/spent-adjustments", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     spentAdjustmentApplication: {
-      findUnique: vi.fn().mockResolvedValue({ amountClaimed: 1000 }),
+      findUnique: vi.fn().mockResolvedValue({ amountClaimed: 1000, createdByAdminId: null }),
     },
   },
   default: {
     spentAdjustmentApplication: {
-      findUnique: vi.fn().mockResolvedValue({ amountClaimed: 1000 }),
+      findUnique: vi.fn().mockResolvedValue({ amountClaimed: 1000, createdByAdminId: null }),
     },
   },
 }));
@@ -68,11 +68,15 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken } from "@/lib/csrf";
 import { reviewApplication } from "@/lib/spent-adjustments";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/prisma";
 import { POST } from "@/app/api/admin/spent-adjustments/[id]/review/route";
 
 const mockVerifyAuth = verifyAuth as ReturnType<typeof vi.fn>;
 const mockValidateCSRF = validateCSRFToken as ReturnType<typeof vi.fn>;
 const mockReview = reviewApplication as ReturnType<typeof vi.fn>;
+const mockFindApplication = prisma.spentAdjustmentApplication.findUnique as ReturnType<
+  typeof vi.fn
+>;
 
 function createRequest(body: unknown): NextRequest {
   return new NextRequest(
@@ -91,6 +95,34 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
     mockVerifyAuth.mockResolvedValue({ id: "admin-1", role: "admin" });
     mockValidateCSRF.mockReturnValue(true);
     mockReview.mockResolvedValue({ ok: true, status: "APPROVED" });
+    mockFindApplication.mockResolvedValue({ amountClaimed: 1000, createdByAdminId: null });
+  });
+
+  it("非 owner 审核自己提交的补录返回 403，不调用审核服务", async () => {
+    mockFindApplication.mockResolvedValue({ amountClaimed: 1000, createdByAdminId: "admin-1" });
+
+    const res = await POST(createRequest({ decision: "approve", reviewAmount: 1000 }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
+    const data = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(data.error.code).toBe("SELF_REVIEW_FORBIDDEN");
+    expect(mockReview).not.toHaveBeenCalled();
+  });
+
+  it("owner 审核自己提交的补录允许通过，并传递 allowSelfReview", async () => {
+    mockVerifyAuth.mockResolvedValue({ id: "owner-1", role: "owner" });
+    mockFindApplication.mockResolvedValue({ amountClaimed: 1000, createdByAdminId: "owner-1" });
+
+    const res = await POST(createRequest({ decision: "approve", reviewAmount: 1000 }), {
+      params: Promise.resolve({ id: "app-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockReview).toHaveBeenCalledWith(
+      expect.objectContaining({ adminId: "owner-1", allowSelfReview: true })
+    );
   });
 
   it("未登录返回 401", async () => {
@@ -129,6 +161,7 @@ describe("POST /api/admin/spent-adjustments/[id]/review", () => {
       adminId: "admin-1",
       reviewAmount: 1280,
       reviewNote: "已核实",
+      allowSelfReview: false,
     });
     expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({

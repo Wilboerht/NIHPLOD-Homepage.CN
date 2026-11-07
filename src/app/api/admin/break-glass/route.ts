@@ -34,7 +34,16 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
   const username = process.env.ADVISOR_BREAK_GLASS_USERNAME || "";
   const password = process.env.ADVISOR_BREAK_GLASS_PASSWORD || "";
   const totpSecret = process.env.ADVISOR_BREAK_GLASS_TOTP_SECRET || "";
-  const configured = Boolean(username && password && totpSecret);
+  const enabled = process.env.ADVISOR_BREAK_GLASS_ENABLED !== "false";
+  // 示例值 CHANGE_ME 不能被视为“已配置”，避免直接暴露已知应急凭据
+  const configured = Boolean(
+    enabled &&
+      username &&
+      password &&
+      totpSecret &&
+      password !== "CHANGE_ME" &&
+      totpSecret !== "CHANGE_ME"
+  );
 
   const otpauthUrl =
     process.env.ADVISOR_BREAK_GLASS_OTPAUTH_URL ||

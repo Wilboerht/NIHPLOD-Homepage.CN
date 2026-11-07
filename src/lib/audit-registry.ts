@@ -132,6 +132,7 @@ const SECURITY_ACTIONS = new Set([
   "admin_approval_executed",
   "admin_approval_execution_failed",
   "admin_approval_stale",
+  "admin_approval_result_unknown",
 ]);
 
 const CONTENT_ACTIONS = new Set([
@@ -221,6 +222,7 @@ const HIGH_ACTIONS = new Set([
   "admin_approval_executed",
   "admin_approval_execution_failed",
   "admin_approval_stale",
+  "admin_approval_result_unknown",
 ]);
 
 const MEDIUM_ACTIONS = new Set([

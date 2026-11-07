@@ -271,6 +271,7 @@ function AdminProductsContent() {
           <form onSubmit={handleSearch} className="relative min-w-[200px] max-w-md flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
             <Input
+              aria-label="搜索产品"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="搜索产品名称..."

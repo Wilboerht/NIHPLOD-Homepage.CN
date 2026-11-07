@@ -43,6 +43,18 @@ const SENSITIVE_TEXT_KEYS = new Set([
   "resumePath",
   "resumeFileName",
 ]);
+
+// 业务自由文本可能包含姓名、电话、地址、订单号等 PII：
+// 对无 audit:sensitive:read 的查看者隐藏；有权限的审计员仍可看到原文。
+const SENSITIVE_FREE_TEXT_KEYS = new Set([
+  "note",
+  "reason",
+  "reviewNote",
+  "decisionNote",
+  "deletionReason",
+  "cancellationReason",
+  "adminNote",
+]);
 const REDACTED_TEXT = "[已脱敏]";
 
 function maskEmail(value: string): string {
@@ -90,6 +102,10 @@ export function maskAuditDetail(detail: unknown): unknown {
 
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(safeDetail as Record<string, unknown>)) {
+    if (SENSITIVE_FREE_TEXT_KEYS.has(key)) {
+      result[key] = value ? REDACTED_TEXT : value;
+      continue;
+    }
     if (typeof value === "string") {
       if (PHONE_KEYS.has(key)) result[key] = value ? maskPhone(value) : value;
       else if (ADDRESS_KEYS.has(key)) result[key] = maskAddress(value);

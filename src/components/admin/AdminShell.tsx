@@ -3,7 +3,7 @@
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode, Suspense } from "react";
+import { useEffect, useMemo, useState, type ReactNode, Suspense } from "react";
 import { ChevronLeft, ChevronRight, Globe, KeyRound, Loader2, LogOut, Menu, X } from "lucide-react";
 import {
   getBreadcrumbs,
@@ -12,7 +12,7 @@ import {
   type AdminNavCountKey,
 } from "@/config/admin-nav";
 import { ROLE_LABELS, type AdminRoleValue } from "@/lib/admin-permissions";
-import { apiGet, apiPost } from "@/lib/api-client";
+import { ADMIN_SESSION_EXPIRED_EVENT, apiGet, apiPost } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { useAdminSession } from "@/contexts/AdminSessionContext";
@@ -45,15 +45,37 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const toast = useToast();
-  const { role, name, permissions, loading, redirecting } = useAdminSession();
+  const { role, name, permissions, loading, redirecting, error, refresh } = useAdminSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 从 localStorage 恢复一次用户偏好
+      setCollapsed(window.localStorage.getItem("admin-sidebar-collapsed") === "1");
+    } catch {
+      // localStorage 不可用时保持默认展开
+    }
+  }, []);
+  const toggleCollapsed = () => {
+    setCollapsed((value) => {
+      const next = !value;
+      try {
+        window.localStorage.setItem("admin-sidebar-collapsed", next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   const [loggingOut, setLoggingOut] = useState(false);
   const [navCounts, setNavCounts] = useState<NavCounts>(EMPTY_NAV_COUNTS);
   const [navCountsVersion, setNavCountsVersion] = useState(0);
   const drawerTrapRef = useFocusTrap(drawerOpen);
 
-  const permissionList = loading ? undefined : Array.from(permissions);
+  const permissionList = useMemo(
+    () => (loading ? undefined : Array.from(permissions)),
+    [loading, permissions]
+  );
 
   // 路由变化时收起移动端抽屉（渲染期间调整状态，避免 effect 级联渲染）
   const [lastPathname, setLastPathname] = useState(pathname);
@@ -87,6 +109,16 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("admin:messages-updated", handler);
   }, []);
 
+  // 任意管理端请求返回 401 时统一跳转登录页
+  useEffect(() => {
+    const handler = () => {
+      router.push("/admin-login?reauth=1");
+      router.refresh();
+    };
+    window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, handler);
+    return () => window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, handler);
+  }, [router]);
+
   // 注销重试、消费审核等操作完成后，页面可通知侧边栏重新拉取待处理数量
   useEffect(() => {
     const refresh = () => setNavCountsVersion((v) => v + 1);
@@ -119,12 +151,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
       .then((data) => {
         if (!cancelled) setNavCounts({ ...EMPTY_NAV_COUNTS, ...data });
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (!cancelled) apiConsole.warn("侧边栏待处理数量加载失败:", error);
+      });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, pathname, navCountsVersion]);
+  }, [loading, permissionList, navCountsVersion]);
 
   if (redirecting) {
     return (
@@ -135,11 +168,43 @@ export function AdminShell({ children }: { children: ReactNode }) {
     );
   }
 
+  // 会话加载失败时保留明确的重试入口，避免侧边栏权限为空导致导航全部消失。
+  if (!loading && error) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-white px-6 text-center">
+        <p className="text-base font-medium text-brand-charcoal">后台会话加载失败</p>
+        <p className="max-w-md text-sm text-brand-charcoal/65">
+          可能是网络异常或服务暂时不可用。请重试；若持续失败，请重新登录。
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={refresh}
+            className="rounded-lg bg-brand-primary px-4 py-2 text-sm text-white hover:bg-brand-primary/90"
+          >
+            重试
+          </button>
+          <Link
+            href="/admin-login?reauth=1"
+            className="rounded-lg border border-brand-charcoal/15 px-4 py-2 text-sm text-brand-charcoal hover:bg-brand-charcoal/5"
+          >
+            重新登录
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
     try {
-      await apiPost("/api/admin/logout");
+      const result = await apiPost<{ message?: string; revocationFailed?: boolean }>(
+        "/api/admin/logout"
+      );
+      if (result?.revocationFailed) {
+        toast.error(result.message || "本地已登出，但服务端会话撤销未完成");
+      }
       router.push("/admin-login?reauth=1");
       router.refresh();
     } catch (error) {
@@ -167,7 +232,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           permissions={permissionList}
           navCounts={navCounts}
           collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((v) => !v)}
+          onToggleCollapse={toggleCollapsed}
           userName={name}
           userRole={role}
           onLogout={handleLogout}

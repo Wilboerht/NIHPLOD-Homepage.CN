@@ -162,7 +162,7 @@ export async function executeAccountDeletion(
     }
 
     // 4. 当前头像 + 所有已登记头像及派生对象清理；失败对象进入删除队列继续重试
-    const avatarPurge = await purgeAvatarAssets(userId, user.avatar);
+    const avatarPurge = await purgeAvatarAssets(userId);
     const avatarPurgeFailed = avatarPurge.failed > 0;
 
     const proofApplications = await prisma.spentAdjustmentApplication.findMany({
@@ -206,13 +206,20 @@ export async function executeAccountDeletion(
           )
         ),
       ];
-      await tx.loginAttempt.deleteMany({ where: { identifier: { in: phoneHashes } } });
+      // 旧手机号可能已被回收给新用户：仅当该号码当前不归属其他有效用户时才删除历史记录
+      const phoneReused = await tx.user.findFirst({
+        where: { phone: originalPhone, id: { not: userId } },
+        select: { id: true },
+      });
+      if (!phoneReused) {
+        await tx.loginAttempt.deleteMany({ where: { identifier: { in: phoneHashes } } });
+      }
       await tx.userAddress.deleteMany({ where: { userId } });
       await tx.webhookDeliveryFailure.deleteMany({ where: { userId } });
       await tx.refreshToken.deleteMany({ where: { userId } });
       await tx.spentAdjustmentApplication.updateMany({
         where: { userId },
-        data: { images: [], note: null },
+        data: { images: [], note: null, dealerName: null },
       });
       // 待审核补录申请自动关闭：用户已注销，无法再审核入账，
       // 避免申请永久占用审核队列（已通过记录保留用于财务审计）。
@@ -225,6 +232,11 @@ export async function executeAccountDeletion(
         },
       });
       closedPendingSpentAdjustments = closedPending.count;
+      // 审核备注/驳回原因属于自由文本，可能含 PII；注销后统一清空。
+      await tx.spentAdjustmentApplication.updateMany({
+        where: { userId },
+        data: { reviewNote: null },
+      });
       // SSO 授权同意全量撤销（与管理端删除路径同口径）
       await tx.userConsent.updateMany({
         where: { userId, revokedAt: null },
@@ -292,7 +304,15 @@ export async function executeAccountDeletion(
       // 且不破坏整批撤销等业务逻辑（撤销按 reference/amount，不依赖 phone）
       await tx.spentImportRow.updateMany({
         where: { userId },
-        data: { phone: placeholderPhone },
+        data: { phone: placeholderPhone, note: null },
+      });
+      await tx.spentSyncRecord.updateMany({
+        where: { userId },
+        data: { note: null },
+      });
+      await tx.pointLedger.updateMany({
+        where: { userId },
+        data: { note: null },
       });
       // 注：JobApplication.phone / ContactMessage.phone 无用户关联，
       // 属独立提交的表单数据（简历投递/留言），不在账号注销清理范围内，不做处理

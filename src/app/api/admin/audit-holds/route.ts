@@ -47,24 +47,32 @@ export async function GET(request: NextRequest) {
   const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
   if (rateLimitResponse) return rateLimitResponse;
 
-  const holds = await prisma.auditLegalHold.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-  return NextResponse.json(
-    {
-      success: true,
-      data: {
-        items: holds.map((hold) => ({
-          ...hold,
-          createdAt: hold.createdAt.toISOString(),
-          releasedAt: hold.releasedAt?.toISOString() ?? null,
-          expiresAt: hold.expiresAt?.toISOString() ?? null,
-        })),
+  try {
+    const holds = await prisma.auditLegalHold.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          items: holds.map((hold) => ({
+            ...hold,
+            createdAt: hold.createdAt.toISOString(),
+            releasedAt: hold.releasedAt?.toISOString() ?? null,
+            expiresAt: hold.expiresAt?.toISOString() ?? null,
+          })),
+        },
       },
-    },
-    { headers: NO_STORE_HEADERS }
-  );
+      { headers: NO_STORE_HEADERS }
+    );
+  } catch (error) {
+    apiConsole.error("[AuditHolds] 查询失败:", error);
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "查询失败" } },
+      { status: 500, headers: NO_STORE_HEADERS }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -97,6 +105,9 @@ export async function POST(request: NextRequest) {
     if (totp) return totp;
 
     const hold = await prisma.$transaction(async (tx) => {
+      // 与 retention worker 共用同一把锁：保证 hold 创建不会被正在进行的删除批次
+      // “夹在中间”而对已删除数据假装生效。
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('AuditRetention:worker'))`;
       const created = await tx.auditLegalHold.create({
         data: {
           targetType: body.targetType ?? null,

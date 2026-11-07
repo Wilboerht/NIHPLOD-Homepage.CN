@@ -28,6 +28,7 @@ vi.mock("@/lib/prisma", () => {
 
 vi.mock("@/lib/points", () => ({
   applyExternalSpentSync: vi.fn(),
+  pushMembershipUpdateWebhook: vi.fn().mockResolvedValue(undefined),
   SpentReversalExceedsBalanceError: class SpentReversalExceedsBalanceError extends Error {},
 }));
 
@@ -458,8 +459,8 @@ describe("executeImportBatch", () => {
     const call = mockApplySync.mock.calls[0][0];
     expect(call).toMatchObject({ userId: "user-1", spentDelta: 1000 });
     // SpentSyncRecord 仍使用批内唯一 reference，保证撤销后可重新导入
-    expect(call.reference).toMatch(/^import:[0-9a-f]{32}:[0-9a-f-]+$/);
-    const contentReference = call.reference.replace(/:[0-9a-f-]+$/, "");
+    expect(call.reference).toMatch(/^import:[0-9a-f]{32}:[0-9a-f-]+:\d+$/);
+    const contentReference = call.reference.replace(/:[0-9a-f-]+:\d+$/, "");
 
     // 批次先创建，行初始为 PENDING；成功后批次更新为 COMPLETED
     expect(mockBatchCreate).toHaveBeenCalledWith({
@@ -652,13 +653,17 @@ describe("undoImportBatch", () => {
 
     expect(result).toEqual({ ok: true, revertedRows: 2, totalAmount: 1500 });
     expect(mockApplySync).toHaveBeenCalledTimes(2);
-    expect(mockApplySync).toHaveBeenCalledWith({
-      userId: "user-1",
-      spentDelta: -1000,
-      reference: "import-undo:batch-1:row-1",
-      allowNegativeClamp: false,
-      note: expect.stringContaining("batch-1"),
-    });
+    expect(mockApplySync).toHaveBeenCalledWith(
+      {
+        userId: "user-1",
+        spentDelta: -1000,
+        reference: "import-undo:batch-1:row-1",
+        allowNegativeClamp: false,
+        suppressWebhook: true,
+        note: expect.stringContaining("batch-1"),
+      },
+      expect.anything()
+    );
     // 标记原始记录已撤销（保留审计，不物理删除）
     expect(mockSyncRecordUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1", reference: "import:ref-1" },
@@ -668,10 +673,28 @@ describe("undoImportBatch", () => {
       where: { userId: "user-2", reference: "import:ref-2" },
       data: { revertedAt: expect.any(Date) },
     });
-    expect(mockBatchUpdate).toHaveBeenCalledWith({
-      where: { id: "batch-1" },
+    expect(mockBatchUpdateMany).toHaveBeenCalledWith({
+      where: { id: "batch-1", undoneAt: null },
       data: { undoneAt: expect.any(Date) },
     });
+  });
+
+  it("任一冲正失败时整批回滚，不写 undoneAt", async () => {
+    mockBatchFindUnique.mockResolvedValue({
+      id: "batch-1",
+      undoneAt: null,
+      totalAmount: 1500,
+      rows: [
+        { id: "row-1", userId: "user-1", amount: 1000, appliedDelta: 1000, reference: "import:ref-1" },
+        { id: "row-2", userId: "user-2", amount: 500, appliedDelta: 500, reference: "import:ref-2" },
+      ],
+    });
+    mockApplySync.mockRejectedValueOnce(new Error("db down"));
+
+    const result = await undoImportBatch("batch-1");
+
+    expect(result).toMatchObject({ ok: false, code: "INTERNAL_ERROR" });
+    expect(mockBatchUpdateMany).not.toHaveBeenCalled();
   });
 
   it("批次不存在：NOT_FOUND", async () => {

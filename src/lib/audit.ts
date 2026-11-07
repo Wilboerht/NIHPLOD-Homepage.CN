@@ -153,7 +153,8 @@ export type AuditAction =
   | "admin_approval_retried"
   | "admin_approval_executed"
   | "admin_approval_execution_failed"
-  | "admin_approval_stale";
+  | "admin_approval_stale"
+  | "admin_approval_result_unknown";
 
 export type AuditTargetType =
   | "order"
@@ -319,6 +320,7 @@ export const AUDIT_ACTIONS = [
   "admin_approval_executed",
   "admin_approval_execution_failed",
   "admin_approval_stale",
+  "admin_approval_result_unknown",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [

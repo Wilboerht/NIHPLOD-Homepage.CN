@@ -22,6 +22,7 @@ import {
   ADMIN_STEP_UP_COOKIE_OPTIONS,
   revokeAllAdminStepUpGrants,
 } from "@/lib/admin-step-up";
+import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 
 const disableSchema = z.object({
   password: z.string().min(1, "请输入密码"),
@@ -191,6 +192,8 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
             totpEnabledAt: null,
             totpSecret: null,
             totpBackupCodes: null,
+            // 关闭 2FA 属于安全止损操作：必须让所有旧会话/旧 token 立即失效。
+            tokenVersion: { increment: 1 },
           },
         });
       });
@@ -205,9 +208,17 @@ export const POST = withAuth(async (request: NextRequest, adminPayload) => {
 
     await finishAuditLog(auditId, "SUCCESS", { action: "totp_disabled" });
 
-    const response = NextResponse.json({ success: true, data: { message: "二次验证已关闭" } });
+    const response = NextResponse.json({
+      success: true,
+      data: { message: "二次验证已关闭，请重新登录" },
+    });
     response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, "", {
       ...ADMIN_STEP_UP_COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+    // tokenVersion 已递增，当前 token 失效；同时清除 Cookie 避免前端继续携带旧 token。
+    response.cookies.set(AUTH_COOKIE_NAME, "", {
+      ...COOKIE_OPTIONS,
       maxAge: 0,
     });
     return response;

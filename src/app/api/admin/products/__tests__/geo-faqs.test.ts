@@ -14,6 +14,7 @@ vi.mock("@/lib/prisma", () => {
     },
     image: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     purchaseLink: {
       findMany: vi.fn(),

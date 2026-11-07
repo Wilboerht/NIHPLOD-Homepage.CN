@@ -89,6 +89,8 @@ export async function applyExternalSpentSync(
     allowNegativeClamp?: boolean;
     /** 正向入账时可要求用户当前仍为 ACTIVE，防止注销/封禁与导入并发。 */
     requireActiveUser?: boolean;
+    /** 外层事务内调用时抑制提交前 webhook，由调用方在事务提交后补发。 */
+    suppressWebhook?: boolean;
   },
   txClient?: Prisma.TransactionClient,
   dailyLimitYuan?: number
@@ -285,6 +287,7 @@ export async function applyExternalSpentSync(
       // （等级没变但 totalSpent 变了也要推：银卡"每满 ¥1,000 加 20 次"依赖 totalSpent 本身）。
       // fire-and-forget：catch 兜底，不阻塞入账主流程。
       if (
+        !params.suppressWebhook &&
         !result.duplicated &&
         txOutcome.previous &&
         (txOutcome.previous.totalSpent !== result.totalSpent ||
@@ -349,7 +352,7 @@ export function invalidateProfileCache(): void {
  * 查询用户当前资料组装 profile 快照（与 /api/user/profile 变更推送的组装方式一致，
  * birthday 转 ISO 字符串），membership 携带入账后的权威等级与累计消费额。
  */
-async function pushMembershipUpdateWebhook(
+export async function pushMembershipUpdateWebhook(
   userId: string,
   result: { totalSpent: number; membershipLevel: MembershipLevel }
 ): Promise<void> {

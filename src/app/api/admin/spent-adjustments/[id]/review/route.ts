@@ -94,12 +94,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const claimed = await prisma.spentAdjustmentApplication.findUnique({
       where: { id },
-      select: { amountClaimed: true },
+      select: { amountClaimed: true, createdByAdminId: true },
     });
     if (!claimed) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "消费补录不存在" } },
         { status: 404 }
+      );
+    }
+
+    // 四眼原则：非 owner 不得审核自己代客提交的申请；owner 允许自建自审。
+    if (claimed.createdByAdminId === admin.id && admin.role !== "owner") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "SELF_REVIEW_FORBIDDEN",
+            message: "不能审核自己提交的消费补录申请，请由其他管理员审核",
+          },
+        },
+        { status: 403 }
       );
     }
 
@@ -134,7 +148,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       action,
       targetType: "spent_adjustment",
       targetId: id,
-      detail: { decision, reviewAmount, reviewNote },
+      detail: {
+        decision,
+        reviewAmount,
+        reviewNote,
+        createdByAdminId: claimed.createdByAdminId,
+      },
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -161,6 +180,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         adminId: admin.id,
         reviewAmount,
         reviewNote: reviewNote || undefined,
+        allowSelfReview: admin.role === "owner",
       });
     } catch (error) {
       await finishAuditLog(auditId, "FAILURE", { decision, error: "EXCEPTION" });
@@ -173,6 +193,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         NOT_FOUND: 404,
         ALREADY_REVIEWED: 409,
         USER_INACTIVE: 409,
+        SELF_REVIEW_FORBIDDEN: 403,
         ORDER_ALREADY_IMPORTED: 409,
         ORDER_CONFLICT: 409,
         INVALID_PARAMS: 400,

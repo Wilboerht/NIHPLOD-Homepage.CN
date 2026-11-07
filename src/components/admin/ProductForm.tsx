@@ -17,8 +17,7 @@ import { ProductFormSection } from "@/components/admin/ProductFormSection";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { apiPost, apiPut, ApiError } from "@/lib/api-client";
-import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { apiPost, apiPut } from "@/lib/api-client";
 import { ProductSchema, type GeoFaq } from "@/schemas/product";
 import { generateSlug } from "@/lib/utils";
 import { focusFirstInvalid } from "@/lib/form";
@@ -140,7 +139,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   // 只允许回到产品列表，避免开放重定向
   const returnTo = returnToParam.startsWith("/admin/products") ? returnToParam : "/admin/products";
   const { success, error: showError } = useToast();
-  const { requireTotp, totpModal } = useTotpConfirm();
   const [formData, setFormData] = useState<FormData>(() => {
     if (initialData) {
       return {
@@ -495,14 +493,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           ? apiPost("/api/admin/products", payload)
           : apiPut(`/api/admin/products/${initialData?.id}`, payload);
 
-      try {
-        await submitProduct();
-      } catch (error) {
-        if (!isTotpRequired(error)) throw error;
-        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
-        if (!verified) return;
-        await submitProduct();
-      }
+      await submitProduct();
 
       success(publish ? "产品已发布" : "产品已保存为草稿");
       router.push(returnTo);
@@ -986,7 +977,6 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           </div>
         </div>
       </Modal>
-      {totpModal}
     </form>
   );
 }

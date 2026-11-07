@@ -164,20 +164,20 @@ describe("头像替换", () => {
     });
   });
 
-  it("清除头像时兼容没有资产登记的历史本地文件", async () => {
+  it("未登记在当前用户名下的历史头像不会被删除（防跨用户 IDOR）", async () => {
     const tx = replacementTx("/uploads/avatars/legacy.webp", []);
 
     await prepareAvatarReplacement(tx as never, { userId: "user-1", nextAvatar: null });
 
-    expect(mockEnqueueMediaDeletions).toHaveBeenCalledWith(tx, ["/uploads/avatars/legacy.webp"]);
+    expect(mockEnqueueMediaDeletions).toHaveBeenCalledWith(tx, []);
   });
 
-  it("历史本地绝对 URL 入队前归一化为相对路径", async () => {
+  it("历史绝对 URL 未登记时同样不会被删除", async () => {
     const tx = replacementTx("https://nihplod.cn/uploads/avatars/legacy.webp", []);
 
     await prepareAvatarReplacement(tx as never, { userId: "user-1", nextAvatar: null });
 
-    expect(mockEnqueueMediaDeletions).toHaveBeenCalledWith(tx, ["/uploads/avatars/legacy.webp"]);
+    expect(mockEnqueueMediaDeletions).toHaveBeenCalledWith(tx, []);
   });
 });
 
@@ -240,7 +240,7 @@ describe("孤儿头像清理", () => {
 });
 
 describe("注销头像清理", () => {
-  it("覆盖已登记主图、派生图和当前历史头像，成功后移除资产登记", async () => {
+  it("只删除已登记主图与派生图，未登记的当前头像不删除", async () => {
     mockAssetFindMany.mockResolvedValue([
       {
         id: "asset-1",
@@ -249,10 +249,10 @@ describe("注销头像清理", () => {
       },
     ]);
 
-    const result = await purgeAvatarAssets("user-1", "/uploads/avatars/legacy.webp");
+    const result = await purgeAvatarAssets("user-1");
 
     expect(result).toEqual({ failed: 0 });
-    expect(mockDeleteUploadedFile).toHaveBeenCalledTimes(3);
+    expect(mockDeleteUploadedFile).toHaveBeenCalledTimes(2);
     expect(mockAssetDeleteMany).toHaveBeenCalledWith({ where: { id: { in: ["asset-1"] } } });
     expect(mockMediaTaskCreateMany).not.toHaveBeenCalled();
   });
@@ -267,7 +267,7 @@ describe("注销头像清理", () => {
     ]);
     mockDeleteUploadedFile.mockRejectedValue(new Error("io failed"));
 
-    const result = await purgeAvatarAssets("user-1", null);
+    const result = await purgeAvatarAssets("user-1");
 
     expect(result).toEqual({ failed: 1 });
     expect(mockDeleteUploadedFile).toHaveBeenCalledWith("/uploads/avatars/current.webp");

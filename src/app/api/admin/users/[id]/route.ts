@@ -293,8 +293,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
           externalIdentities: user.externalIdentities.map((i) => {
             const meta = (i.metadata ?? null) as Record<string, unknown> | null;
             const mpClientId = typeof meta?.mpClientId === "string" ? meta.mpClientId : null;
+            // metadata 可能包含 openid/昵称/头像等 PII：只返回白名单字段。
             return {
-              ...i,
+              id: i.id,
+              provider: i.provider,
               subjectId: canReadSensitive ? i.subjectId : maskIdentifier(i.subjectId),
               unionId: canReadSensitive ? i.unionId : maskIdentifier(i.unionId),
               // 来源小程序标识与名称（存量行无 mpClientId，返回 null）
@@ -367,7 +369,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           createdAt: a.createdAt.toISOString(),
         })),
       },
-    });
+    }, { headers: { "Cache-Control": "no-store, private", Pragma: "no-cache" } });
   } catch (error) {
     apiConsole.error("[AdminUserDetail] 异常:", error);
     return NextResponse.json(
@@ -433,7 +435,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       request,
     });
 
-    return NextResponse.json({ success: true, data: { phone: user.phone } });
+    return NextResponse.json(
+      { success: true, data: { phone: user.phone } },
+      { headers: { "Cache-Control": "no-store, private", Pragma: "no-cache" } }
+    );
   } catch (error) {
     apiConsole.error("[AdminUserRevealPhone] 异常:", error);
     return NextResponse.json(

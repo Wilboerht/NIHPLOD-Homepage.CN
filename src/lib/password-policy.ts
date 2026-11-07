@@ -3,8 +3,11 @@
  * 依赖 Prisma / 数据库，禁止在客户端组件中引用。
  */
 import bcrypt from "bcryptjs";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
 import { PASSWORD_HISTORY_LIMIT, hashPassword, getPasswordExpiryDate } from "./password";
+
+type PasswordDb = Pick<Prisma.TransactionClient, "user" | "passwordHistory">;
 
 /**
  * 记录密码历史
@@ -73,7 +76,7 @@ export async function checkPasswordHistory(
 export async function updateUserPassword(
   userId: string,
   newPassword: string,
-  options: { skipHistoryCheck?: boolean } = {}
+  options: { skipHistoryCheck?: boolean; tx?: PasswordDb } = {}
 ): Promise<{ success: boolean; errorCode?: string; errorMessage?: string }> {
   if (!options.skipHistoryCheck) {
     const reused = await checkPasswordHistory(userId, newPassword);
@@ -90,8 +93,8 @@ export async function updateUserPassword(
   const changedAt = new Date();
   const expiresAt = getPasswordExpiryDate();
 
-  await prisma.$transaction(async (tx) => {
-    await tx.user.update({
+  const persist = async (db: PasswordDb) => {
+    await db.user.update({
       where: { id: userId },
       data: {
         password: hashedPassword,
@@ -100,11 +103,11 @@ export async function updateUserPassword(
       },
     });
 
-    await tx.passwordHistory.create({
+    await db.passwordHistory.create({
       data: { userId, password: hashedPassword },
     });
 
-    const histories = await tx.passwordHistory.findMany({
+    const histories = await db.passwordHistory.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       select: { id: true },
@@ -112,11 +115,17 @@ export async function updateUserPassword(
 
     if (histories.length > PASSWORD_HISTORY_LIMIT) {
       const idsToDelete = histories.slice(PASSWORD_HISTORY_LIMIT).map((h) => h.id);
-      await tx.passwordHistory.deleteMany({
+      await db.passwordHistory.deleteMany({
         where: { id: { in: idsToDelete } },
       });
     }
-  });
+  };
+
+  if (options.tx) {
+    await persist(options.tx);
+  } else {
+    await prisma.$transaction(persist);
+  }
 
   return { success: true };
 }

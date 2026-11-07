@@ -302,8 +302,6 @@ export function DataTable<T extends object>({
                     key={getRowKey(record, rowIndex)}
                     {...rowRestProps}
                     tabIndex={onRowClick ? 0 : undefined}
-                    role={onRowClick ? "button" : undefined}
-                    aria-label={onRowClick ? "查看详情" : undefined}
                     onKeyDown={(e) => {
                       rowOnKeyDown?.(e);
                       if (

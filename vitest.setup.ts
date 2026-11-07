@@ -4,10 +4,9 @@ import { vi } from "vitest";
 // 固定时区为 Asia/Shanghai，避免日期相关测试因时区不同而失败
 process.env.TZ = "Asia/Shanghai";
 
-// 全局 fetch mock（避免测试中意外发出真实网络请求）
-if (!globalThis.fetch) {
-  globalThis.fetch = vi.fn().mockRejectedValue(new Error("fetch not mocked"));
-}
+// 全局 fetch mock（Node 18+ 自带 fetch，必须无条件覆盖，避免测试意外发出真实网络请求）
+globalThis.fetch = vi.fn().mockRejectedValue(new Error("fetch not mocked"));
+
 
 // 抑制测试中的 console.log 噪音（保留 error/warn 便于排查）
 const originalLog = console.log;

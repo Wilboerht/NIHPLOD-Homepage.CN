@@ -8,7 +8,7 @@ const { prismaMock, createAuditLogMock, sendWecomMock, executeApprovalPolicyMock
       $transaction: vi.fn(),
       $executeRaw: vi.fn().mockResolvedValue(0),
       user: { findUnique: vi.fn() },
-      admin: { findUnique: vi.fn(), findMany: vi.fn() },
+      admin: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
       pointRedemption: { findUnique: vi.fn() },
       spentAdjustmentApplication: { findUnique: vi.fn() },
       adminApprovalRequest: {
@@ -52,6 +52,9 @@ beforeEach(() => {
   prismaMock.$transaction.mockImplementation(
     async (fn: (tx: typeof prismaMock) => Promise<unknown>) => fn(prismaMock)
   );
+  // 执行前会重新校验审批人仍是有效 owner
+  prismaMock.admin.findFirst.mockResolvedValue({ id: "owner-1" });
+  prismaMock.adminApprovalRequest.updateMany.mockResolvedValue({ count: 1 });
 });
 
 const OPS = {
@@ -212,6 +215,8 @@ describe("retryApprovalRequest", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     prismaMock.adminApprovalRequest.findUnique.mockReset();
+    prismaMock.adminApprovalRequest.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.admin.findFirst.mockResolvedValue({ id: "owner-1" });
     executeApprovalPolicyMock.mockResolvedValue({ resultMeta: {} });
   });
 

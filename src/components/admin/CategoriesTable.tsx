@@ -177,10 +177,32 @@ export function CategoriesTable({
       {
         key: "actions",
         title: "操作",
-        width: "112px",
+        width: "168px",
         align: "right",
-        render: (_, record) => (
+        render: (_, record, index) => (
           <div className="flex items-center justify-end gap-1">
+            {canWrite && (
+              <>
+                <Tooltip content="上移" side="top">
+                  <IconButton
+                    label={`上移 ${record.name}`}
+                    disabled={index === 0 || savingOrder}
+                    onClick={() => onMove(index, -1)}
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip content="下移" side="top">
+                  <IconButton
+                    label={`下移 ${record.name}`}
+                    disabled={index === categories.length - 1 || savingOrder}
+                    onClick={() => onMove(index, 1)}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
             {canWrite && (
               <Tooltip content="编辑" side="top">
                 <IconButton label={`编辑 ${record.name}`} onClick={() => onEdit(record)}>
@@ -203,7 +225,17 @@ export function CategoriesTable({
         ),
       },
     ],
-    [canWrite, canDelete, togglingId, savingOrder, onEdit, onDelete, onToggleVisible]
+    [
+      canWrite,
+      canDelete,
+      togglingId,
+      savingOrder,
+      onEdit,
+      onDelete,
+      onToggleVisible,
+      onMove,
+      categories.length,
+    ]
   );
 
   return (

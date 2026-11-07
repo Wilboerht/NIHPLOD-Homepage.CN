@@ -575,6 +575,8 @@ function AdminUsersContent() {
 
   const takeLatestUsers = useLatestRequest();
   const takeLatestDetail = useLatestRequest();
+  // 详情与积分流水互不覆盖，避免打开用户详情时把刚加载的流水判为过期
+  const takeLatestLedger = useLatestRequest();
   const fetchUsers = useCallback(async () => {
     const isLatest = takeLatestUsers();
     setLoading(true);
@@ -613,7 +615,7 @@ function AdminUsersContent() {
 
   const fetchLedger = useCallback(
     async (userId: string, targetPage: number) => {
-      const isLatest = takeLatestDetail();
+      const isLatest = takeLatestLedger();
       setLedgerLoading(true);
       try {
         const data = await apiGet<{
@@ -633,7 +635,7 @@ function AdminUsersContent() {
         if (isLatest()) setLedgerLoading(false);
       }
     },
-    [takeLatestDetail, toast]
+    [takeLatestLedger, toast]
   );
 
   // 仅按用户 id 重置流水：详情对象因状态变更刷新时不重置当前翻页
@@ -1170,6 +1172,7 @@ function AdminUsersContent() {
           <div className="relative w-full md:max-w-sm md:flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
             <Input
+              aria-label="搜索用户"
               placeholder="搜索用户 ID/完整手机号/昵称..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}

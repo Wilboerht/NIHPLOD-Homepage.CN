@@ -181,8 +181,22 @@ export async function POST(request: NextRequest) {
     // 0. CSRF 保护：校验 Origin / Referer 头（支持多域名、多协议）
     const origin = request.headers.get("origin");
     const referer = request.headers.get("referer");
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn";
-    const allowedHostnames = new Set([new URL(appUrl).hostname]);
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
+    if (!appUrl) {
+      apiConsole.error("[AdminLogin] 缺少 NEXT_PUBLIC_APP_URL，拒绝登录");
+      return NextResponse.json(
+        { success: false, error: { code: "SERVER_ERROR", message: "服务配置错误" } },
+        { status: 500 }
+      );
+    }
+    // 官方主域始终允许，避免环境变量缺失/测试环境误配导致自有域名被拒
+    const allowedHostnames = new Set([
+      new URL(appUrl).hostname,
+      "nihplod.cn",
+      "www.nihplod.cn",
+    ]);
     // 额外允许的 hostname（通过环境变量逗号分隔）
     const extraHosts = process.env.APP_ALLOWED_HOSTS;
     if (extraHosts) {

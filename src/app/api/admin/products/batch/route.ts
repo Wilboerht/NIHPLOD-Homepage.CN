@@ -12,6 +12,7 @@ import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
 import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
+import { filterDeletableProductImageUrls } from "@/lib/product-media";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
@@ -69,10 +70,11 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    // 批量上下架与删除都属于会立即影响前台的写操作：统一要求 step-up，
-    // 避免“单条创建要 TOTP、批量发布却可以直接执行”的口径不一致。
-    const stepUpResponse = await requireAdminStepUp(request, admin);
-    if (stepUpResponse) return stepUpResponse;
+    // 仅批量删除要求 step-up；批量发布/下架属于可逆的日常运营操作，登录 TOTP 已足够。
+    if (action === "delete") {
+      const stepUpResponse = await requireAdminStepUp(request, admin);
+      if (stepUpResponse) return stepUpResponse;
+    }
 
     // 操作前记录受影响产品的 slug，用于精确刷新前台页面缓存
     const affectedProducts = await prisma.product.findMany({
@@ -108,7 +110,9 @@ export async function POST(request: NextRequest) {
           });
           await enqueueMediaDeletions(
             tx,
-            images.flatMap((image) => [image.url, ...image.derivedUrls])
+            filterDeletableProductImageUrls(
+              images.flatMap((image) => [image.url, ...image.derivedUrls])
+            )
           );
           return tx.product.deleteMany({ where: { id: { in: ids } } });
         });

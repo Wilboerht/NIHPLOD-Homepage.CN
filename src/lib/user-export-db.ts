@@ -25,6 +25,12 @@ import {
 
 export const USER_EXPORT_BATCH_SIZE = 200;
 
+/** 自由文本可能含姓名/电话/地址/订单号：无敏感权限时整体脱敏 */
+function sensitiveText(value: string | null | undefined, canReadSensitive: boolean): string {
+  if (!canReadSensitive) return value ? "[已脱敏]" : "";
+  return value ?? "";
+}
+
 const USER_ID_SELECT = { id: true, createdAt: true } satisfies Prisma.UserSelect;
 
 export interface DatabaseExportOptions {
@@ -262,7 +268,7 @@ function identitiesEntry(options: DatabaseExportOptions): ExportCsvEntry {
                 : maskIdentifier(identity.unionId),
               mpClientId ?? "",
               mpClientId ? (clientNames.get(mpClientId) ?? "") : "",
-              jsonCell(identity.metadata),
+              options.canReadSensitive ? jsonCell(identity.metadata) : "",
               toIso(identity.createdAt),
               toIso(identity.updatedAt),
             ];
@@ -322,7 +328,7 @@ function pointsEntry(options: DatabaseExportOptions): ExportCsvEntry {
               item.amount,
               item.remaining ?? "",
               item.reference,
-              item.note ?? "",
+              sensitiveText(item.note, options.canReadSensitive),
               toIso(item.frozenUntil),
               toIso(item.releasedAt),
               toIso(item.expiresAt),
@@ -418,7 +424,7 @@ function redemptionsEntry(options: DatabaseExportOptions): ExportCsvEntry {
               item.waybillNo ?? "",
               toIso(item.fulfilledAt),
               toIso(item.cancelledAt),
-              item.cancelNote ?? "",
+              sensitiveText(item.cancelNote, options.canReadSensitive),
               toIso(item.createdAt),
             ];
           }
@@ -544,18 +550,18 @@ function spentEntry(options: DatabaseExportOptions): ExportCsvEntry {
               SPENT_CHANNEL_LABELS[item.channel] ?? item.channel,
               item.channel,
               options.canReadSensitive ? item.orderNo : maskIdentifier(item.orderNo),
-              item.dealerName ?? "",
+              sensitiveText(item.dealerName, options.canReadSensitive),
               item.amountClaimed ?? "",
               toIso(item.purchasedAt),
               item.images.length,
               options.canReadSensitive ? jsonCell(item.images) : "",
-              item.note ?? "",
+              sensitiveText(item.note, options.canReadSensitive),
               SPENT_STATUS_LABELS[item.status] ?? item.status,
               item.status,
               SPENT_SOURCE_LABELS[item.source] ?? item.source,
               item.source,
               item.reviewAmount ?? "",
-              item.reviewNote ?? "",
+              sensitiveText(item.reviewNote, options.canReadSensitive),
               item.reviewedBy ? `${item.reviewedBy.name} (${item.reviewedBy.email})` : "",
               toIso(item.reviewedAt),
               toIso(item.createdAt),
@@ -610,7 +616,7 @@ function levelChangesEntry(options: DatabaseExportOptions): ExportCsvEntry {
               MEMBERSHIP_LABELS[item.toLevel] ?? item.toLevel,
               item.toLevel,
               item.reference,
-              item.note ?? "",
+              sensitiveText(item.note, options.canReadSensitive),
               toIso(item.createdAt),
             ];
           }
@@ -663,7 +669,7 @@ function loginAttemptsEntry(options: DatabaseExportOptions): ExportCsvEntry {
               LOGIN_TYPE_LABELS[item.type] ?? item.type,
               item.type,
               yesNo(item.success),
-              item.reason ?? "",
+              sensitiveText(item.reason, options.canReadSensitive),
               options.canReadSensitive ? (item.ipAddress ?? "") : "",
               options.canReadSensitive ? (item.userAgent ?? "") : "",
               item.clientId ?? "",
@@ -720,13 +726,13 @@ function accountDeletionsEntry(options: DatabaseExportOptions): ExportCsvEntry {
               item.id,
               DELETION_STATUS_LABELS[item.status] ?? item.status,
               item.status,
-              item.reason ?? "",
+              sensitiveText(item.reason, options.canReadSensitive),
               toIso(item.requestedAt),
               toIso(item.scheduledAt),
               toIso(item.cancelledAt),
               toIso(item.completedAt),
               item.attempts,
-              item.lastError ?? "",
+              sensitiveText(item.lastError, options.canReadSensitive),
             ];
           }
         }

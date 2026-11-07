@@ -27,10 +27,34 @@ export async function POST(request: NextRequest) {
     return csrfForbiddenResponse();
   }
 
-  try {
-    const rateLimitResponse = await checkAdminRateLimit(request, "admin-logout");
-    if (rateLimitResponse) return rateLimitResponse;
+  const clearAuthCookies = (response: NextResponse) => {
+    response.cookies.set(AUTH_COOKIE_NAME, "", {
+      ...COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+    response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, "", {
+      ...ADMIN_STEP_UP_COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+    return response;
+  };
 
+  try {
+    // 先做限流，但即使被限流也必须清 Cookie，避免管理员无法退出。
+    const rateLimitResponse = await checkAdminRateLimit(request, "admin-logout");
+    if (rateLimitResponse) {
+      return clearAuthCookies(
+        NextResponse.json({
+          success: true,
+          data: {
+            message: "本地已登出，但请求过于频繁，服务端会话撤销未执行",
+            revocationFailed: true,
+          },
+        })
+      );
+    }
+
+    let revocationFailed = false;
     const token = getTokenFromRequest(request);
     let adminId: string | undefined;
     let adminEmail: string | undefined;
@@ -48,12 +72,16 @@ export async function POST(request: NextRequest) {
         adminJti = payload.jti;
         if (payload.jti) {
           await revokeAccessToken(payload.jti, payload.exp ? payload.exp * 1000 : undefined).catch(
-            (err) => apiConsole.warn("[AdminLogout] token jti 撤销失败:", err)
+            (err) => {
+              revocationFailed = true;
+              apiConsole.warn("[AdminLogout] token jti 撤销失败:", err);
+            }
           );
         }
-        await revokeAdminStepUpGrantsForSession(payload.id, payload.jti ?? null).catch((err) =>
-          apiConsole.warn("[AdminLogout] step-up grant 撤销失败:", err)
-        );
+        await revokeAdminStepUpGrantsForSession(payload.id, payload.jti ?? null).catch((err) => {
+          revocationFailed = true;
+          apiConsole.warn("[AdminLogout] step-up grant 撤销失败:", err);
+        });
       }
     }
 
@@ -68,28 +96,23 @@ export async function POST(request: NextRequest) {
         actorRole: adminRole,
         authMethod: "session",
         sessionJti: adminJti,
-        detail: { email: adminEmail },
+        detail: { email: adminEmail, revocationFailed },
         adminId,
         request,
       });
     }
 
-    const response = NextResponse.json({
-      success: true,
-      message: "已成功登出",
-    });
-
-    // 清除认证 Cookie（与设置时属性保持一致）
-    response.cookies.set(AUTH_COOKIE_NAME, "", {
-      ...COOKIE_OPTIONS,
-      maxAge: 0,
-    });
-    response.cookies.set(ADMIN_STEP_UP_COOKIE_NAME, "", {
-      ...ADMIN_STEP_UP_COOKIE_OPTIONS,
-      maxAge: 0,
-    });
-
-    return response;
+    return clearAuthCookies(
+      NextResponse.json({
+        success: true,
+        data: {
+          message: revocationFailed
+            ? "本地已登出，但服务端会话撤销未完成，请稍后确认"
+            : "已成功登出",
+          revocationFailed,
+        },
+      })
+    );
   } catch (error) {
     apiConsole.error("[AdminLogout] POST 异常:", error);
 

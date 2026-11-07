@@ -204,29 +204,50 @@ async function insertRetentionSummary(
 }
 
 async function processOne(jobId: string): Promise<void> {
+  const leaseToken = randomUUID();
   const claimed = await prisma.auditRetentionJob.updateMany({
     where: { id: jobId, status: "PENDING" },
-    data: { status: "RUNNING", startedAt: new Date() },
+    data: {
+      status: "RUNNING",
+      startedAt: new Date(),
+      leaseToken,
+      heartbeatAt: new Date(),
+    },
   });
   if (claimed.count === 0) return;
 
   const job = await prisma.auditRetentionJob.findUnique({ where: { id: jobId } });
   if (!job) return;
 
-  const fail = async (error: string) => {
-    await prisma.auditRetentionJob.update({
-      where: { id: job.id },
-      data: { status: "FAILED", error: error.slice(0, 2000), finishedAt: new Date() },
+  const heartbeatTimer = setInterval(() => {
+    void prisma.auditRetentionJob
+      .updateMany({
+        where: { id: job.id, status: "RUNNING", leaseToken },
+        data: { heartbeatAt: new Date() },
+      })
+      .catch((error) => apiConsole.warn("[AuditRetention] 心跳更新失败:", error));
+  }, 60 * 1000);
+  heartbeatTimer.unref?.();
+
+  const finish = async (
+    status: "FAILED" | "EXPIRED",
+    data: { error?: string; finishedAt: Date }
+  ): Promise<boolean> => {
+    const updated = await prisma.auditRetentionJob.updateMany({
+      where: { id: job.id, status: "RUNNING", leaseToken },
+      data: { status, ...data, leaseToken: null, heartbeatAt: null },
     });
+    return updated.count > 0;
+  };
+
+  const fail = async (error: string) => {
+    await finish("FAILED", { error: error.slice(0, 2000), finishedAt: new Date() });
     apiConsole.error(`[AuditRetention] job ${job.id} 失败:`, error);
   };
 
   try {
     if (job.expiresAt.getTime() < Date.now()) {
-      await prisma.auditRetentionJob.update({
-        where: { id: job.id },
-        data: { status: "EXPIRED", finishedAt: new Date() },
-      });
+      await finish("EXPIRED", { finishedAt: new Date() });
       return;
     }
     if (process.env.AUDIT_RETENTION_ENABLED !== "true") {
@@ -307,14 +328,18 @@ async function processOne(jobId: string): Promise<void> {
         cutoffs,
       });
 
-      await client.query(
+      const completed = await client.query(
         `UPDATE "AuditRetentionJob"
          SET "status" = 'SUCCEEDED', "deletedCount" = $1, "deletedBytes" = $2,
              "holdsExcluded" = $3, "archiveManifests" = $4::jsonb,
-             "finishedAt" = (now() AT TIME ZONE 'UTC')
-         WHERE "id" = $5`,
-        [deleted, deletedBytes, holdsExcluded, JSON.stringify(archiveManifests), job.id]
+             "finishedAt" = (now() AT TIME ZONE 'UTC'),
+             "leaseToken" = NULL, "heartbeatAt" = NULL
+         WHERE "id" = $5 AND "status" = 'RUNNING' AND "leaseToken" = $6`,
+        [deleted, deletedBytes, holdsExcluded, JSON.stringify(archiveManifests), job.id, leaseToken]
       );
+      if (completed.rowCount === 0) {
+        throw new Error("执行租约已丢失，已回滚清理结果");
+      }
       await client.query("COMMIT");
       apiConsole.info(
         `[AuditRetention] job ${job.id} 完成: 删除 ${deleted} 条，hold 排除 ${holdsExcluded} 条`
@@ -327,14 +352,34 @@ async function processOne(jobId: string): Promise<void> {
     }
   } catch (error) {
     await fail(error instanceof Error ? error.message : String(error));
+  } finally {
+    clearInterval(heartbeatTimer);
   }
 }
 
 export async function processAuditRetentionJobs(): Promise<number> {
   const now = new Date();
+  const staleBefore = new Date(now.getTime() - 30 * 60 * 1000);
+  // 回收崩溃/卡死的 RUNNING 任务，避免永久停留在执行中。
+  await prisma.auditRetentionJob.updateMany({
+    where: {
+      status: "RUNNING",
+      OR: [
+        { heartbeatAt: { lt: staleBefore } },
+        { heartbeatAt: null, startedAt: { lt: staleBefore } },
+      ],
+    },
+    data: {
+      status: "FAILED",
+      error: "执行超时或进程中断，任务已回收",
+      finishedAt: now,
+      leaseToken: null,
+      heartbeatAt: null,
+    },
+  });
   await prisma.auditRetentionJob.updateMany({
     where: { status: "PENDING", expiresAt: { lt: now } },
-    data: { status: "EXPIRED", finishedAt: now },
+    data: { status: "EXPIRED", finishedAt: now, leaseToken: null, heartbeatAt: null },
   });
   const jobs = await prisma.auditRetentionJob.findMany({
     where: { status: "PENDING", expiresAt: { gt: now } },

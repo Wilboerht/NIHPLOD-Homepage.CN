@@ -72,9 +72,8 @@ describe("maskAuditDetail", () => {
     const result = maskAuditDetail({
       note: "联系 13800138000 或 admin@example.com，证件 110101199001011234",
     });
-    expect(result).toEqual({
-      note: "联系 138****8000 或 ad***@example.com，证件 **************",
-    });
+    // 业务自由文本（note/reason/reviewNote 等）对非敏感查看者整体隐藏
+    expect(result).toEqual({ note: "[已脱敏]" });
     expect(maskAuditText("13800138000")).toBe("138****8000");
   });
 

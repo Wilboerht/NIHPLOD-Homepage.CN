@@ -367,6 +367,7 @@ export const ROLE_TEMPLATES: Record<
     "applications:read",
     "applications:write",
     "applications:delete",
+    "amap:read",
   ],
   finance: [
     "dashboard:read",

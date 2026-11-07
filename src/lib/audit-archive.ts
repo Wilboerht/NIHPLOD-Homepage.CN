@@ -458,12 +458,18 @@ export async function verifyArchiveBackup(stream: AuditStream, day: string): Pro
   }
   const eventPath = join(dayDir(backupRoot, stream, day), manifest.eventFile || "events.jsonl.gz");
   if (!(await pathExists(eventPath))) return false;
+  const sha256 = await hashFile(eventPath);
+  if (sha256 !== manifest.sha256) return false;
   const archived = await readEventsDigest(eventPath);
-  return (
-    archived.count === manifest.count &&
-    archived.digest === manifest.digest &&
-    (await hashFile(eventPath)) === manifest.sha256
-  );
+  if (archived.count !== manifest.count || archived.digest !== manifest.digest) return false;
+
+  // 备份 manifest 必须与主归档使用同一 HMAC 校验，防止同时篡改文件与摘要。
+  const filePayload = manifest.signatureIncludesFile ? `:${sha256}:${manifest.eventFile}` : "";
+  const payload = `${manifest.prevAnchorHash ?? ""}:${manifest.digest}:${manifest.count}:${manifest.stream}:${manifest.day}${filePayload}`;
+  const expected = createHmac("sha256", getAuditIntegrityKey(manifest.keyVersion))
+    .update(payload)
+    .digest("hex");
+  return expected === manifest.signature;
 }
 
 export async function getArchiveStatus(

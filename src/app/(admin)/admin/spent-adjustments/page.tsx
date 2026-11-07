@@ -286,7 +286,7 @@ function AdminSpentAdjustmentsContent() {
   };
 
   const handleUndo = async () => {
-    if (!undoTarget) return;
+    if (!undoTarget || undoing) return;
     setUndoing(true);
     try {
       const submit = (totpCode?: string) =>
@@ -898,7 +898,7 @@ function AdminSpentAdjustmentsContent() {
               )}
             </div>
 
-            {/* 凭证截图 */}
+            {/* 凭证截图（登录已 TOTP，查看时不再重复 step-up） */}
             {detail.images.length > 0 && (
               <div className="mt-4">
                 <p className="mb-2 flex items-center gap-1.5 text-sm text-brand-charcoal/70">
@@ -918,6 +918,8 @@ function AdminSpentAdjustmentsContent() {
                       <img
                         src={receiptImageSrc(url, "admin")}
                         alt={`凭证 ${i + 1}`}
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                       />
                       <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity group-hover:bg-black/30 group-hover:opacity-100">
@@ -1012,7 +1014,9 @@ function AdminSpentAdjustmentsContent() {
         open={!!undoTarget}
         onClose={() => setUndoTarget(null)}
         onConfirm={handleUndo}
-        type="warning"
+        type="danger"
+        loading={undoing}
+        confirmText="确认撤销"
         title="撤销审核"
         description="撤销后将按原核实金额扣减该用户的历史消费（会员等级同步重算），申请回到待审核队列，可重新审核。确认撤销？"
       />

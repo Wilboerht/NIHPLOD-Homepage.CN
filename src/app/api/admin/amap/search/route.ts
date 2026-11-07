@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         { status: 401, headers: NO_STORE_HEADERS }
       );
     }
-    if (!hasAdminPermission(admin, "jobs:write")) {
+    if (!hasAdminPermission(admin, "amap:read")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：地点搜索" } },
         { status: 403, headers: NO_STORE_HEADERS }

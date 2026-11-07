@@ -101,6 +101,43 @@ describe("reviewApplication", () => {
     expect(sendSpentAdjustmentReviewMessage).toHaveBeenCalled();
   });
 
+  it("非 owner 自建自审被拒绝，不执行 CAS 与入账", async () => {
+    mockFindUnique.mockResolvedValue({ ...pendingApp, createdByAdminId: "admin-1" });
+
+    const result = await reviewApplication({
+      applicationId: "app-1",
+      decision: "approve",
+      adminId: "admin-1",
+      reviewAmount: 1280,
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({ ok: false, code: "SELF_REVIEW_FORBIDDEN" })
+    );
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+    expect(mockApplySync).not.toHaveBeenCalled();
+  });
+
+  it("owner 自建自审允许执行", async () => {
+    mockFindUnique.mockResolvedValue({ ...pendingApp, createdByAdminId: "owner-1" });
+    mockUpdateMany.mockResolvedValue({ count: 1 });
+    mockApplySync.mockResolvedValue({
+      totalSpent: 1280,
+      membershipLevel: "SILVER",
+      duplicated: false,
+    });
+
+    const result = await reviewApplication({
+      applicationId: "app-1",
+      decision: "approve",
+      adminId: "owner-1",
+      reviewAmount: 1280,
+      allowSelfReview: true,
+    });
+
+    expect(result).toEqual({ ok: true, status: "APPROVED" });
+  });
+
   it("驳回：不入账，仅更新状态", async () => {
     mockFindUnique.mockResolvedValue(pendingApp);
     mockUpdateMany.mockResolvedValue({ count: 1 });

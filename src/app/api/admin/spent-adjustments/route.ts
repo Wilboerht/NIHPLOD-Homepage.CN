@@ -76,7 +76,8 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { orderNo: { contains: search, mode: "insensitive" } },
-        { user: { phone: { contains: search } } },
+        // 手机号精确匹配，避免通过子串逐位枚举用户
+        { user: { phone: { equals: search.trim() } } },
         { user: { nickname: { contains: search, mode: "insensitive" } } },
       ];
     }

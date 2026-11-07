@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { apiPost, ApiError } from "@/lib/api-client";
 import {
   APPROVAL_POLICIES,
@@ -63,6 +64,24 @@ export function ApprovalRequestDialog({
   );
   const [reason, setReason] = useState(initialValues?.reason ?? "");
   const [submitting, setSubmitting] = useState(false);
+
+  const isDirty = [
+    userId,
+    amount,
+    note,
+    redemptionId,
+    applicationId,
+    reviewAmount,
+    reviewNote,
+    adminId,
+    reason,
+  ].some((value) => value.trim().length > 0);
+  const { confirmClose } = useUnsavedChanges(isDirty, "审批申请尚未提交，确定要关闭吗？");
+
+  const handleClose = () => {
+    if (submitting) return;
+    if (confirmClose()) onClose();
+  };
 
   const policy = APPROVAL_POLICIES[policyKey];
 
@@ -155,9 +174,7 @@ export function ApprovalRequestDialog({
   return (
     <Modal
       open={open}
-      onClose={() => {
-        if (!submitting) onClose();
-      }}
+      onClose={handleClose}
       title="发起 Owner 审批"
       size="md"
       closeOnBackdrop={false}
@@ -288,7 +305,7 @@ export function ApprovalRequestDialog({
         />
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={onClose} disabled={submitting}>
+          <Button variant="outline" size="sm" onClick={handleClose} disabled={submitting}>
             取消
           </Button>
           <Button size="sm" loading={submitting} onClick={() => void submit()}>

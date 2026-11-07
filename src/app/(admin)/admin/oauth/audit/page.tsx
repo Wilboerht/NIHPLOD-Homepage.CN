@@ -12,8 +12,9 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { Empty } from "@/components/ui/Empty";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet } from "@/lib/api-client";
+import { apiGet, ApiError } from "@/lib/api-client";
 import { downloadFromUrl } from "@/lib/client-download";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -100,6 +101,7 @@ function OAuthAuditPage() {
   const router = useRouter();
   const toast = useToast();
   const { can: canAdmin } = useAdminPermissions();
+  const { requireTotp, totpModal } = useTotpConfirm();
   // 导出接口单独要求 audit:export 权限，无权限时不渲染入口；失败由 fetch 响应统一提示。
   const canExport = canAdmin("audit:export");
   const [entries, setEntries] = useState<AuditEntry[]>([]);
@@ -222,12 +224,18 @@ function OAuthAuditPage() {
     if (dateFrom) params.set("startDate", dateFrom);
     if (dateTo) params.set("endDate", dateTo);
     if (successFilter) params.set("success", successFilter);
+    const url = `/api/admin/oauth/audit?${params.toString()}`;
+    const filename = `sso-audit-${new Date().toISOString().slice(0, 10)}.csv`;
     setExporting(true);
     try {
-      await downloadFromUrl(
-        `/api/admin/oauth/audit?${params.toString()}`,
-        `sso-audit-${new Date().toISOString().slice(0, 10)}.csv`
-      );
+      try {
+        await downloadFromUrl(url, filename);
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        await downloadFromUrl(url, filename);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
     } finally {
@@ -533,6 +541,7 @@ function OAuthAuditPage() {
           <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
         </div>
       )}
+      {totpModal}
     </div>
   );
 }

@@ -147,12 +147,42 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // 更新密码（含密码历史与过期时间），临时密码跳过历史重复检查
+    // 密码更新与会话撤销必须原子：撤销失败时回滚密码，避免“密码已改但旧会话仍可用”。
+    let revokedOAuthSessions = 0;
+    let sessionsToNotify: { clientId: string; sessionId: string }[] = [];
     let updated: Awaited<ReturnType<typeof updateUserPassword>>;
     try {
-      updated = await updateUserPassword(user.id, tempPassword, { skipHistoryCheck: true });
+      const committed = await prisma.$transaction(async (tx) => {
+        const result = await updateUserPassword(user.id, tempPassword, {
+          skipHistoryCheck: true,
+          tx,
+        });
+        if (!result.success) {
+          return { result, revoked: 0, activeSessions: [] as typeof sessionsToNotify };
+        }
+
+        await tx.refreshToken.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: new Date(), revokedReason: "credential_change" },
+        });
+        // 不写 user 级黑名单：passwordChangedAt 已使旧 access token 失效，
+        // 而 user 级黑名单会同时拦截用户用临时密码新登录签发的 token（历史 8h 锁死问题）。
+        // OAuth access token 的失效由 verifyOAuthAccessToken 的 credential cutoff + session 撤销共同保证。
+        const activeSessions = await tx.oAuthSession.findMany({
+          where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } },
+          select: { clientId: true, sessionId: true },
+        });
+        const revoked = await tx.oAuthSession.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        return { result, revoked: revoked.count, activeSessions };
+      });
+      updated = committed.result;
+      revokedOAuthSessions = committed.revoked;
+      sessionsToNotify = committed.activeSessions;
     } catch (error) {
-      await finishAuditLog(auditId, "FAILURE", { error: "UPDATE_FAILED" });
+      await finishAuditLog(auditId, "FAILURE", { error: "PASSWORD_OR_SESSION_REVOKE_FAILED" });
       throw error;
     }
     if (!updated.success) {
@@ -171,37 +201,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // 强制下线：撤销全部 Refresh Token + access token 黑名单 + OAuth 会话
-    let revokedOAuthSessions = 0;
-    try {
-      await prisma.refreshToken.updateMany({
-        where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date(), revokedReason: "credential_change" },
-      });
-      // 不写 user 级黑名单：passwordChangedAt 已使旧 access token 失效，
-      // 而 user 级黑名单会同时拦截用户用临时密码新登录签发的 token（历史 8h 锁死问题）。
-      // OAuth access token 的失效由 verifyOAuthAccessToken 的 credential cutoff + session 撤销共同保证。
-
-      const activeSessions = await prisma.oAuthSession.findMany({
-        where: { userId: user.id, revokedAt: null, expiresAt: { gt: new Date() } },
-        select: { clientId: true, sessionId: true },
-      });
-      if (activeSessions.length > 0) {
-        const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-        const sids: Record<string, string> = {};
-        for (const s of activeSessions) {
-          if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
-        }
-        const result = await prisma.oAuthSession.updateMany({
-          where: { userId: user.id, revokedAt: null },
-          data: { revokedAt: new Date() },
-        });
-        revokedOAuthSessions = result.count;
-        await sendBackchannelLogout(user.id, clientIds, { includeInactive: true, sids });
+    // 外部 backchannel 通知在事务提交后执行；失败只记录告警（DB 会话已撤销）。
+    if (sessionsToNotify.length > 0) {
+      const clientIds = [...new Set(sessionsToNotify.map((session) => session.clientId))];
+      const sids: Record<string, string> = {};
+      for (const session of sessionsToNotify) {
+        if (!sids[session.clientId]) sids[session.clientId] = session.sessionId;
       }
-    } catch (err) {
-      // 会话撤销失败不阻断密码重置结果返回，但记录日志便于排查
-      apiConsole.warn("[AdminResetPassword] 会话撤销失败:", err);
+      await sendBackchannelLogout(user.id, clientIds, {
+        includeInactive: true,
+        sids,
+      }).catch((err) => {
+        apiConsole.warn("[AdminResetPassword] backchannel 通知失败:", err);
+      });
     }
 
     await finishAuditLog(auditId, "SUCCESS", {
@@ -214,13 +226,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       apiConsole.error("[AdminResetPassword] 安全通知发送失败:", err);
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        tempPassword,
-        message: "密码已重置，临时密码仅显示一次，请通过安全渠道告知用户",
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          tempPassword,
+          message: "密码已重置，临时密码仅显示一次，请通过安全渠道告知用户",
+        },
       },
-    });
+      { headers: { "Cache-Control": "no-store, private", Pragma: "no-cache" } }
+    );
   } catch (error) {
     apiConsole.error("[AdminResetPassword] 异常:", error);
     return NextResponse.json(

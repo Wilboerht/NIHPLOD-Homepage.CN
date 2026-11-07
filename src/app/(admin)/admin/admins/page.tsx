@@ -171,7 +171,6 @@ function AdminAdminsContent() {
   const [deleting, setDeleting] = useState(false);
   const [recoveryTarget, setRecoveryTarget] = useState<AdminItem | null>(null);
   const [recoveryReason, setRecoveryReason] = useState("");
-  const [recoveryCode, setRecoveryCode] = useState("");
   const [recoverySubmitting, setRecoverySubmitting] = useState(false);
   const [recoveryResult, setRecoveryResult] = useState<{
     code: string;
@@ -377,7 +376,6 @@ function AdminAdminsContent() {
   const openRecovery = (target: AdminItem) => {
     setRecoveryTarget(target);
     setRecoveryReason("");
-    setRecoveryCode("");
     setRecoveryResult(null);
     setRecoverySaved(false);
   };
@@ -386,7 +384,6 @@ function AdminAdminsContent() {
     if (recoverySubmitting) return;
     setRecoveryTarget(null);
     setRecoveryResult(null);
-    setRecoveryCode("");
     setRecoveryReason("");
     setRecoverySaved(false);
   };
@@ -398,21 +395,19 @@ function AdminAdminsContent() {
       error("请填写至少 5 个字符的恢复原因");
       return;
     }
-    if (recoveryCode.trim().length < 6) {
-      error("请输入你的 TOTP 验证码");
-      return;
-    }
 
     setRecoverySubmitting(true);
     try {
-      const data = await apiPost<{
-        code: string;
-        expiresAt: string;
-        targetEmail: string;
-      }>(`/api/admin/admins/${recoveryTarget.id}/totp-recovery`, {
-        reason: recoveryReason.trim(),
-        totpCode: recoveryCode.trim(),
-      });
+      const data = await withStepUp(() =>
+        apiPost<{
+          code: string;
+          expiresAt: string;
+          targetEmail: string;
+        }>(`/api/admin/admins/${recoveryTarget.id}/totp-recovery`, {
+          reason: recoveryReason.trim(),
+        })
+      );
+      if (!data) return;
       setRecoveryResult(data);
       setRecoverySaved(false);
       success("恢复码已生成");
@@ -501,6 +496,7 @@ function AdminAdminsContent() {
           <div className="relative max-w-md flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
             <Input
+              aria-label="搜索管理员"
               placeholder="搜索邮箱/姓名..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -1091,15 +1087,6 @@ function AdminAdminsContent() {
                 onChange={(e) => setRecoveryReason(e.target.value)}
                 placeholder="例如：手机丢失，备用码不可用"
                 maxLength={500}
-              />
-              <Input
-                label="你的 TOTP 验证码"
-                required
-                value={recoveryCode}
-                onChange={(e) => setRecoveryCode(e.target.value.replace(/[^0-9A-Za-z]/g, ""))}
-                placeholder="6 位动态验证码或备用码"
-                maxLength={20}
-                inputMode="text"
               />
             </form>
           )}

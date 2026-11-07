@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -9,22 +9,29 @@ export function useFreshTotpConfirm() {
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [hint, setHint] = useState("");
-  const resolverRef = useRef<((value: string | null) => void) | null>(null);
+  const resolversRef = useRef<Array<(value: string | null) => void>>([]);
+
+  useEffect(() => {
+    return () => {
+      for (const resolve of resolversRef.current) resolve(null);
+      resolversRef.current = [];
+    };
+  }, []);
 
   const requireFreshTotp = useCallback((reason?: string) => {
     setCode("");
     setHint(reason || "该操作需要一次性二次验证码，验证后不会缓存。");
     setOpen(true);
     return new Promise<string | null>((resolve) => {
-      resolverRef.current = resolve;
+      resolversRef.current.push(resolve);
     });
   }, []);
 
   const finish = (value: string | null) => {
     setOpen(false);
     setCode("");
-    resolverRef.current?.(value);
-    resolverRef.current = null;
+    for (const resolve of resolversRef.current) resolve(value);
+    resolversRef.current = [];
   };
 
   const freshTotpModal = (

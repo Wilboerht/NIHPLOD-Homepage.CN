@@ -95,7 +95,13 @@ export async function POST(request: NextRequest) {
     return jsonError("INVALID_CLIENT", "客户端认证失败", 401);
   }
 
-  const consumed = await consumeAdminSsoCode(code);
+  let consumed: Awaited<ReturnType<typeof consumeAdminSsoCode>>;
+  try {
+    consumed = await consumeAdminSsoCode(code);
+  } catch (error) {
+    logger.error("[AdminSSO] 授权码消费失败", { error: String(error) });
+    return jsonError("INTERNAL_ERROR", "服务暂时不可用", 503);
+  }
   if (!consumed) {
     await createAuditLog({
       action: "admin_sso_denied",
@@ -134,21 +140,29 @@ export async function POST(request: NextRequest) {
     return deny("main_session_expired", "主站登录已过期，请重新登录", 401);
   }
 
-  const admin = await prisma.admin.findUnique({
-    where: { id: consumed.adminId },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      permissions: true,
-      tokenVersion: true,
-      status: true,
-      deletedAt: true,
-      totpEnabled: true,
-    },
-  });
+  const admin = await prisma.admin
+    .findUnique({
+      where: { id: consumed.adminId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        permissions: true,
+        tokenVersion: true,
+        status: true,
+        deletedAt: true,
+        totpEnabled: true,
+      },
+    })
+    .catch((error) => {
+      logger.error("[AdminSSO] 管理员查询失败", { error: String(error) });
+      return undefined;
+    });
 
+  if (admin === undefined) {
+    return jsonError("INTERNAL_ERROR", "服务暂时不可用", 503);
+  }
   if (!admin || admin.deletedAt || admin.status !== "ACTIVE") {
     return deny("admin_inactive", "管理员账号不可用", 401);
   }

@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import type { AdminApprovalRequest, AdminApprovalStatus } from "@/generated/prisma/client";
 import type { AdminUser } from "@/types/auth";
 import { prisma } from "./prisma";
@@ -25,6 +25,7 @@ import { verifyImportPreviewToken } from "./spent-import";
 
 const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
 const EXECUTING_TIMEOUT_MS = 30 * 60 * 1000;
+const EXECUTING_HEARTBEAT_MS = 60 * 1000;
 
 export interface ApprovalTarget {
   targetType: string;
@@ -342,6 +343,16 @@ async function resolveApprovalTarget(
   }
 }
 
+function summarizeApprovalPayload(payload: unknown): Record<string, unknown> | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const clone = { ...(payload as Record<string, unknown>) };
+  // 导入预览令牌最大 2MB：列表/审批响应只返回占位，详情接口按需返回完整值。
+  if (typeof clone.previewToken === "string") {
+    clone.previewToken = "[已在列表隐藏，请打开详情查看]";
+  }
+  return clone;
+}
+
 function approvalSummary(request: AdminApprovalRequest) {
   return {
     id: request.id,
@@ -352,7 +363,7 @@ function approvalSummary(request: AdminApprovalRequest) {
     targetId: request.targetId,
     targetLabel: request.targetLabel,
     targetSnapshot: request.targetSnapshot,
-    payload: request.payload,
+    payload: summarizeApprovalPayload(request.payload),
     reason: request.reason,
     requesterId: request.requesterId,
     requesterEmail: request.requesterEmail,
@@ -622,15 +633,29 @@ async function executeApprovedRequest(
   if (!request.approverId) {
     throw new AdminApprovalError("NOT_APPROVED", "审批人信息缺失", 409);
   }
+
+  // 执行前重新校验审批人：必须仍是有效 owner。
+  // 避免审批后被降级/停用/删除的账号继续触发资金或权限操作。
+  const approver = await prisma.admin.findFirst({
+    where: { id: request.approverId, role: "owner", status: "ACTIVE", deletedAt: null },
+    select: { id: true },
+  });
+  if (!approver) {
+    throw new AdminApprovalError("APPROVER_INACTIVE", "审批人已失效，请重新发起审批", 409);
+  }
+
   if (request.payloadHash !== hashPayload(request.payload as Record<string, unknown>)) {
     throw new AdminApprovalError("PAYLOAD_CHANGED", "申请参数已变化，请重新发起", 409);
   }
 
+  const leaseToken = randomUUID();
   const claimed = await prisma.adminApprovalRequest.updateMany({
     where: { id: request.id, status: fromStatus },
     data: {
       status: "EXECUTING",
       error: null,
+      leaseToken,
+      heartbeatAt: new Date(),
       ...(fromStatus === "EXECUTION_FAILED" ? { executedAt: null } : {}),
     },
   });
@@ -641,18 +666,59 @@ async function executeApprovedRequest(
     await options.onClaimed(request);
   }
 
+  // 心跳续租：长耗时执行（导入、批量删除等）不会被超时补偿任务误判。
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  const touchHeartbeat = async () => {
+    try {
+      await prisma.adminApprovalRequest.updateMany({
+        where: { id: request.id, status: "EXECUTING", leaseToken },
+        data: { heartbeatAt: new Date() },
+      });
+    } catch (error) {
+      apiConsole.warn("[AdminApproval] 执行心跳更新失败:", error);
+    }
+  };
+  heartbeatTimer = setInterval(() => {
+    void touchHeartbeat();
+  }, EXECUTING_HEARTBEAT_MS);
+  heartbeatTimer.unref?.();
+
   try {
     const result: ApprovalExecutorResult = await executeApprovalPolicy(executorContext(request));
     const resultMeta = result.resultMeta ?? {};
-    await prisma.adminApprovalRequest.updateMany({
-      where: { id: request.id, status: "EXECUTING" },
+    const completed = await prisma.adminApprovalRequest.updateMany({
+      where: { id: request.id, status: "EXECUTING", leaseToken },
       data: {
         status: "EXECUTED",
         executionResult: toInputJson(resultMeta),
         executedAt: new Date(),
         error: null,
+        leaseToken: null,
+        heartbeatAt: null,
       },
     });
+    if (completed.count === 0) {
+      // 业务副作用可能已完成，但租约已被超时任务回收：不能谎报成功。
+      await createAuditLog({
+        action: "admin_approval_result_unknown",
+        targetType: "system",
+        targetId: request.id,
+        targetLabel: request.policyKey,
+        detail: {
+          approvalId: request.id,
+          requesterId: request.requesterId,
+          approverId: request.approverId,
+          reason: "lease_lost_after_execution",
+          resultMeta,
+        },
+        actorType: "SYSTEM",
+      });
+      return {
+        ok: false,
+        status: "EXECUTION_FAILED",
+        error: "执行结果未知（执行租约丢失），请核查业务结果后再决定是否重试",
+      };
+    }
     await createAuditLog({
       action: "admin_approval_executed",
       targetType: "system",
@@ -677,14 +743,37 @@ async function executeApprovedRequest(
   } catch (error) {
     const isStale = error instanceof AdminApprovalError && error.code === "STALE";
     const message = error instanceof Error ? error.message : "审批执行失败";
-    await prisma.adminApprovalRequest.updateMany({
-      where: { id: request.id, status: "EXECUTING" },
+    const failed = await prisma.adminApprovalRequest.updateMany({
+      where: { id: request.id, status: "EXECUTING", leaseToken },
       data: {
         status: isStale ? "STALE" : "EXECUTION_FAILED",
         error: message,
         executedAt: new Date(),
+        leaseToken: null,
+        heartbeatAt: null,
       },
     });
+    if (failed.count === 0) {
+      await createAuditLog({
+        action: "admin_approval_result_unknown",
+        targetType: "system",
+        targetId: request.id,
+        targetLabel: request.policyKey,
+        detail: {
+          approvalId: request.id,
+          requesterId: request.requesterId,
+          approverId: request.approverId,
+          reason: "lease_lost_after_error",
+          error: message,
+        },
+        actorType: "SYSTEM",
+      });
+      return {
+        ok: false,
+        status: "EXECUTION_FAILED",
+        error: "执行结果未知（执行租约丢失），请核查业务结果后再决定是否重试",
+      };
+    }
     await createAuditLog({
       action: isStale ? "admin_approval_stale" : "admin_approval_execution_failed",
       targetType: "system",
@@ -709,6 +798,8 @@ async function executeApprovedRequest(
       status: isStale ? "STALE" : "EXECUTION_FAILED",
       error: message,
     };
+  } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
   }
 }
 
@@ -736,6 +827,9 @@ export async function retryApprovalRequest(input: ApprovalDecisionInput) {
     const policy = getApprovalPolicy(request.policyKey);
     if (!policy || !hasAdminPermission(input.admin, policy.requestPermission)) {
       throw new AdminApprovalError("FORBIDDEN", "审批对应的业务权限已失效", 403);
+    }
+    if (!hasAdminPermission(input.admin, policy.actionPermission)) {
+      throw new AdminApprovalError("FORBIDDEN", "审批对应的执行权限已失效", 403);
     }
   }
 
@@ -973,6 +1067,9 @@ export async function executeRequesterApproval(admin: AdminUser, id: string, tot
   if (!policy || !hasAdminPermission(admin, policy.requestPermission)) {
     throw new AdminApprovalError("FORBIDDEN", "审批对应的业务权限已失效", 403);
   }
+  if (!hasAdminPermission(admin, policy.actionPermission)) {
+    throw new AdminApprovalError("FORBIDDEN", "审批对应的执行权限已失效", 403);
+  }
   if (request.executionMode !== "REQUESTER") {
     throw new AdminApprovalError("INVALID_MODE", "该审批不支持申请人执行", 400);
   }
@@ -1029,9 +1126,24 @@ export async function reconcileStaleApprovedApprovals(now = new Date()): Promise
 export async function expirePendingApprovals(now = new Date()): Promise<number> {
   const staleBefore = new Date(now.getTime() - EXECUTING_TIMEOUT_MS);
   const staleExecuting = await prisma.adminApprovalRequest.findMany({
-    where: { status: "EXECUTING", updatedAt: { lt: staleBefore } },
+    where: {
+      status: "EXECUTING",
+      OR: [
+        { heartbeatAt: { lt: staleBefore } },
+        { heartbeatAt: null, updatedAt: { lt: staleBefore } },
+      ],
+    },
     take: 100,
     orderBy: { updatedAt: "asc" },
+    select: {
+      id: true,
+      policyKey: true,
+      requesterId: true,
+      requesterEmail: true,
+      requesterName: true,
+      approverId: true,
+      leaseToken: true,
+    },
   });
   let count = 0;
   for (const request of staleExecuting) {
@@ -1039,12 +1151,18 @@ export async function expirePendingApprovals(now = new Date()): Promise<number> 
       where: {
         id: request.id,
         status: "EXECUTING",
-        updatedAt: { lt: staleBefore },
+        leaseToken: request.leaseToken,
+        OR: [
+          { heartbeatAt: { lt: staleBefore } },
+          { heartbeatAt: null, updatedAt: { lt: staleBefore } },
+        ],
       },
       data: {
         status: "EXECUTION_FAILED",
         error: "执行超时，请重试",
         executedAt: now,
+        leaseToken: null,
+        heartbeatAt: null,
       },
     });
     if (updated.count === 0) continue;
@@ -1077,6 +1195,13 @@ export async function expirePendingApprovals(now = new Date()): Promise<number> 
     },
     take: 100,
     orderBy: { expiresAt: "asc" },
+    select: {
+      id: true,
+      policyKey: true,
+      requesterId: true,
+      requesterEmail: true,
+      requesterName: true,
+    },
   });
   for (const request of expired) {
     const updated = await prisma.adminApprovalRequest.updateMany({

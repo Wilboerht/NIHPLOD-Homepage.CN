@@ -193,8 +193,9 @@ function AdminApplicationsContent() {
       setJobs(items);
     } catch (error) {
       apiConsole.error("获取职位列表失败:", error);
+      showError("职位筛选加载失败，请刷新页面重试");
     }
-  }, []);
+  }, [showError]);
 
   useEffect(() => {
     deferInEffect(() => {

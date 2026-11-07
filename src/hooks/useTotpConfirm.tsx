@@ -15,7 +15,7 @@
  *   }
  *   // JSX 中渲染 {totpModal}
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -37,7 +37,15 @@ export function useTotpConfirm() {
   const [hint, setHint] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const resolverRef = useRef<((verified: boolean) => void) | null>(null);
+  // 并发调用可能同时等待 step-up：用队列保存所有 resolver，避免覆盖导致永久挂起。
+  const resolversRef = useRef<Array<(verified: boolean) => void>>([]);
+
+  useEffect(() => {
+    return () => {
+      for (const resolve of resolversRef.current) resolve(false);
+      resolversRef.current = [];
+    };
+  }, []);
 
   const requireTotp = useCallback((reason?: string) => {
     setCode("");
@@ -50,16 +58,20 @@ export function useTotpConfirm() {
     );
     setOpen(true);
     return new Promise<boolean>((resolve) => {
-      resolverRef.current = resolve;
+      resolversRef.current.push(resolve);
     });
   }, []);
+
+  const resolveAll = (verified: boolean) => {
+    for (const resolve of resolversRef.current) resolve(verified);
+    resolversRef.current = [];
+  };
 
   const finish = (verified: boolean) => {
     if (submitting) return;
     setOpen(false);
     setError(null);
-    resolverRef.current?.(verified);
-    resolverRef.current = null;
+    resolveAll(verified);
   };
 
   const submit = async () => {
@@ -70,8 +82,7 @@ export function useTotpConfirm() {
       await apiPost("/api/admin/step-up", { totpCode: code });
       success("二次验证已通过，短时间内敏感操作无需重复输入");
       setOpen(false);
-      resolverRef.current?.(true);
-      resolverRef.current = null;
+      resolveAll(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "验证失败，请重试");
     } finally {

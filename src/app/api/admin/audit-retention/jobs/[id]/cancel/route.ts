@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "@/lib/auth";
+import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLogTx } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
+import { apiConsole } from "@/lib/logger";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store, private" } as const;
 
@@ -24,39 +25,49 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     );
   }
   if (!validateCSRFToken(request)) return csrfForbiddenResponse();
+  const rateLimitResponse = await checkAdminRateLimit(request, "admin-write");
+  if (rateLimitResponse) return rateLimitResponse;
 
-  const { id } = await params;
-  const result = await prisma.$transaction(async (tx) => {
-    const updated = await tx.auditRetentionJob.updateMany({
-      where: { id, status: "PENDING" },
-      data: { status: "CANCELLED", finishedAt: new Date() },
-    });
-    if (updated.count > 0) {
-      await createAuditLogTx(tx, {
-        action: "audit_retention_request",
-        targetType: "audit_retention",
-        targetId: id,
-        targetLabel: id,
-        actorType: "ADMIN",
-        actorEmail: admin.email,
-        actorName: admin.name,
-        actorRole: admin.role,
-        authMethod: "session",
-        sessionJti: admin.jti ?? null,
-        source: "WEB",
-        reason: "取消审计清理任务",
-        detail: { phase: "cancelled", jobId: id },
-        adminId: admin.id,
-        request,
+  try {
+    const { id } = await params;
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.auditRetentionJob.updateMany({
+        where: { id, status: "PENDING" },
+        data: { status: "CANCELLED", finishedAt: new Date() },
       });
+      if (updated.count > 0) {
+        await createAuditLogTx(tx, {
+          action: "audit_retention_request",
+          targetType: "audit_retention",
+          targetId: id,
+          targetLabel: id,
+          actorType: "ADMIN",
+          actorEmail: admin.email,
+          actorName: admin.name,
+          actorRole: admin.role,
+          authMethod: "session",
+          sessionJti: admin.jti ?? null,
+          source: "WEB",
+          reason: "取消审计清理任务",
+          detail: { phase: "cancelled", jobId: id },
+          adminId: admin.id,
+          request,
+        });
+      }
+      return updated;
+    });
+    if (result.count === 0) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_CANCELLABLE", message: "任务不可取消" } },
+        { status: 409 }
+      );
     }
-    return updated;
-  });
-  if (result.count === 0) {
+    return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
+  } catch (error) {
+    apiConsole.error("[AuditRetentionCancel] 取消失败:", error);
     return NextResponse.json(
-      { success: false, error: { code: "NOT_CANCELLABLE", message: "任务不可取消" } },
-      { status: 409 }
+      { success: false, error: { code: "INTERNAL_ERROR", message: "取消失败" } },
+      { status: 500, headers: NO_STORE_HEADERS }
     );
   }
-  return NextResponse.json({ success: true }, { headers: NO_STORE_HEADERS });
 }

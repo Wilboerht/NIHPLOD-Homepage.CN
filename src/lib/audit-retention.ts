@@ -11,7 +11,7 @@ import { getAuditIntegrityKey } from "./audit-chain";
 import { getAuditLogRetentionDays } from "./audit";
 import { getSsoAuditRetentionDays } from "./sso-audit";
 import { stableStringify } from "./audit-chain";
-import type { AuditRetentionJob } from "@/generated/prisma/client";
+import { Prisma, type AuditRetentionJob } from "@/generated/prisma/client";
 
 export type RetentionStream = "audit" | "sso";
 
@@ -101,19 +101,29 @@ function dayBucketsFromRows(
   return [...map.values()].sort((a, b) => a.day.localeCompare(b.day));
 }
 
-async function loadEligibleRows(
+/**
+ * 按天聚合可清理行数，避免一次性把全部历史加载进内存（预览 OOM）。
+ * 字节数按每行 512B 估算，仅用于展示；实际删除以行数为准。
+ */
+async function loadEligibleDayBuckets(
   stream: RetentionStream,
   cutoff: Date
-): Promise<Array<{ createdAt: Date; size?: number }>> {
-  if (stream === "audit") {
-    return prisma.auditLog.findMany({
-      where: { createdAt: { lt: cutoff } },
-      select: { createdAt: true },
-    });
-  }
-  return prisma.ssoAuditEvent.findMany({
-    where: { createdAt: { lt: cutoff } },
-    select: { createdAt: true },
+): Promise<Array<{ day: string; count: number; bytes: number }>> {
+  const table =
+    stream === "audit" ? Prisma.raw('"AuditLog"') : Prisma.raw('"SsoAuditEvent"');
+  const rows = await prisma.$queryRaw<Array<{ day: Date | string; count: bigint }>>(Prisma.sql`
+    SELECT ((("createdAt" AT TIME ZONE 'UTC') + interval '8 hours')::date) AS day,
+           count(*)::bigint AS count
+    FROM ${table}
+    WHERE "createdAt" < ${cutoff}
+    GROUP BY 1
+    ORDER BY 1
+  `);
+  return rows.map((row) => {
+    const day =
+      row.day instanceof Date ? row.day.toISOString().slice(0, 10) : String(row.day).slice(0, 10);
+    const count = Number(row.count);
+    return { day, count, bytes: count * 512 };
   });
 }
 
@@ -175,8 +185,7 @@ export async function buildRetentionPreview(options?: {
   for (const entry of cutoffs) {
     const cutoff = new Date(entry.cutoff);
     if (Number.isNaN(cutoff.getTime())) throw new Error("INVALID_CUTOFF");
-    const rows = await loadEligibleRows(entry.stream, cutoff);
-    const days = dayBucketsFromRows(entry.stream, rows);
+    const days = await loadEligibleDayBuckets(entry.stream, cutoff);
     const heldByDay =
       entry.stream === "audit" ? await heldAuditRowsByDay(cutoff) : await heldSsoRowsByDay(cutoff);
 

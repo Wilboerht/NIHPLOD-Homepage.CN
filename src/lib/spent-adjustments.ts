@@ -61,8 +61,10 @@ export async function reviewApplication(params: {
   adminId: string;
   reviewAmount?: number;
   reviewNote?: string;
+  /** 仅 owner 可对自己代客提交的申请直接审核（四眼原则豁免） */
+  allowSelfReview?: boolean;
 }): Promise<ReviewResult> {
-  const { applicationId, decision, adminId, reviewAmount, reviewNote } = params;
+  const { applicationId, decision, adminId, reviewAmount, reviewNote, allowSelfReview } = params;
   const approved = decision === "approve";
   const now = new Date();
 
@@ -78,12 +80,22 @@ export async function reviewApplication(params: {
       userId: true,
       channel: true,
       orderNo: true,
+      createdByAdminId: true,
       user: { select: { phone: true, status: true } },
     },
   });
 
   if (!application) {
     return { ok: false, code: "NOT_FOUND", message: "申请不存在" };
+  }
+
+  // 四眼原则：非 owner 不得审核自己代客提交的申请，避免自建自审虚增消费。
+  if (application.createdByAdminId === adminId && !allowSelfReview) {
+    return {
+      ok: false,
+      code: "SELF_REVIEW_FORBIDDEN",
+      message: "不能审核自己提交的消费补录申请，请由其他管理员审核",
+    };
   }
 
   if (application.status !== "PENDING") {

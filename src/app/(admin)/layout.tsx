@@ -3,7 +3,6 @@
 import { ReactNode, Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { AdminShell } from "@/components/admin";
-import { ToastProvider } from "@/components/ui/Toast";
 import { AdminSessionProvider } from "@/contexts/AdminSessionContext";
 
 interface AdminLayoutProps {
@@ -32,10 +31,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <ToastProvider>
-      <AdminSessionProvider>
-        <AdminShell>{children}</AdminShell>
-      </AdminSessionProvider>
-    </ToastProvider>
+    <AdminSessionProvider>
+      <AdminShell>{children}</AdminShell>
+    </AdminSessionProvider>
   );
 }

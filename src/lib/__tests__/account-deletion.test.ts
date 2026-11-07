@@ -31,11 +31,14 @@ const mockTxUserConsentUpdateMany = vi.fn();
 const mockTxPointRedemptionUpdateMany = vi.fn();
 const mockTxPointRedemptionFindMany = vi.fn();
 const mockTxSpentImportRowUpdateMany = vi.fn();
+const mockTxSpentSyncRecordUpdateMany = vi.fn();
 const mockTxSpentAdjustmentUpdateMany = vi.fn().mockResolvedValue({ count: 0 });
+const mockTxUserFindFirst = vi.fn();
 const mockTxUserUpdate = vi.fn();
 const mockTxPointBalanceFindUnique = vi.fn();
 const mockTxPointBalanceUpdateMany = vi.fn();
 const mockTxPointLedgerCreate = vi.fn();
+const mockTxPointLedgerUpdateMany = vi.fn();
 
 const mockPurgeUserFromSubsites = vi.fn();
 const mockPurgeAvatarAssets = vi.fn();
@@ -178,12 +181,16 @@ function mockTxSuccess() {
         updateMany: mockTxPointBalanceUpdateMany,
         upsert: vi.fn().mockResolvedValue({}),
       },
-      pointLedger: { create: mockTxPointLedgerCreate },
+      pointLedger: {
+        create: mockTxPointLedgerCreate,
+        updateMany: mockTxPointLedgerUpdateMany,
+      },
       spentImportRow: { updateMany: mockTxSpentImportRowUpdateMany },
+      spentSyncRecord: { updateMany: mockTxSpentSyncRecordUpdateMany },
       spentAdjustmentApplication: { updateMany: mockTxSpentAdjustmentUpdateMany },
       product: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "user-1" }]),
-      user: { update: mockTxUserUpdate },
+      user: { update: mockTxUserUpdate, findFirst: mockTxUserFindFirst },
     })
   );
 }
@@ -205,6 +212,9 @@ describe("executeAccountDeletion", () => {
     mockTxPointBalanceFindUnique.mockResolvedValue({ available: 0, frozen: 0 });
     mockTxPointBalanceUpdateMany.mockResolvedValue({ count: 1 });
     mockTxPointLedgerCreate.mockResolvedValue({});
+    mockTxPointLedgerUpdateMany.mockResolvedValue({ count: 0 });
+    mockTxSpentSyncRecordUpdateMany.mockResolvedValue({ count: 0 });
+    mockTxUserFindFirst.mockResolvedValue(null);
     mockTxSpentAdjustmentUpdateMany.mockResolvedValue({ count: 0 });
     mockTxSuccess();
     mockRequestUpdate.mockResolvedValue({ attempts: 1 });
@@ -295,13 +305,13 @@ describe("executeAccountDeletion", () => {
     // 消费导入行内手机号匿名化为同一占位值
     expect(mockTxSpentImportRowUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      data: { phone: expectedPlaceholder("13800138000", "user-1") },
+      data: { phone: expectedPlaceholder("13800138000", "user-1"), note: null },
     });
 
     // 补录凭证/备注脱敏 + 待审核申请自动关闭（避免注销用户长期占用审核队列）
     expect(mockTxSpentAdjustmentUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      data: { images: [], note: null },
+      data: { images: [], note: null, dealerName: null },
     });
     expect(mockTxSpentAdjustmentUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1", status: "PENDING" },
@@ -394,7 +404,7 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    expect(mockPurgeAvatarAssets).toHaveBeenCalledWith("user-1", "/uploads/2026-01-01/abc.png");
+    expect(mockPurgeAvatarAssets).toHaveBeenCalledWith("user-1");
     const deleteOrder = mockPurgeAvatarAssets.mock.invocationCallOrder[0];
     const txOrder = mockTransaction.mock.invocationCallOrder[0];
     expect(deleteOrder).toBeLessThan(txOrder);
@@ -442,10 +452,7 @@ describe("executeAccountDeletion", () => {
 
     await executeAccountDeletion("req-1");
 
-    expect(mockPurgeAvatarAssets).toHaveBeenCalledWith(
-      "user-1",
-      "https://cdn.example.com/uploads/x.png"
-    );
+    expect(mockPurgeAvatarAssets).toHaveBeenCalledWith("user-1");
   });
 
   it("M4：头像删除失败不阻断注销（fail-soft），审计详情记录 avatarPurgeFailed", async () => {
