@@ -2,8 +2,8 @@
  * OAuth AccountDeletion 端点单元测试
  * GET/POST/DELETE /api/oauth/account/deletion
  *
- * 覆盖：未认证 401 / �?scope 403（读需 profile、写需 profile:write�?
- * 查询透传（无申请 / 进行中）/ 提交成功（冷静期默认 7 �?+ 手机号哈希不落明文）/
+ * 覆盖：未认证 401 / 缺 scope 403（读需 profile、写需 profile:write）/
+ * 查询透传（无申请 / 进行中）/ 提交成功（冷静期默认 7 天 + 手机号哈希不落明文）/
  * 提交频控 429 / 撤回成功 / 无进行中申请 409
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -21,7 +21,7 @@ vi.mock("@/lib/token-blacklist", () => ({
   isTokenBlacklisted: (...args: unknown[]) => mockIsBlacklisted(...args),
 }));
 
-// === Mock jwt（verifyOAuthAccessToken�?==
+// === Mock jwt（verifyOAuthAccessToken）===
 const mockVerifyOAuthAccessToken = vi.fn();
 vi.mock("@/lib/jwt", () => ({
   verifyOAuthAccessToken: (...args: unknown[]) => mockVerifyOAuthAccessToken(...args),
@@ -69,7 +69,7 @@ const prismaMock = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
-// === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris�?==
+// === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris）===
 vi.mock("@/lib/oauth-cors", () => ({
   getOAuthCorsHeaders: vi.fn().mockResolvedValue({}),
 }));
@@ -164,7 +164,7 @@ describe("/api/oauth/account/deletion", () => {
     expect(body.data.request.remainingDays).toBeGreaterThan(0);
   });
 
-  it("POST scope 不含 account:delete 返回 403", async () => {
+  it("POST scope 不含 profile:write 返回 403", async () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "wechat-mp-points",
@@ -180,10 +180,10 @@ describe("/api/oauth/account/deletion", () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "wechat-mp-points",
-      scope: "openid profile account:delete",
+      scope: "openid profile profile:write",
     });
     const before = Date.now();
-    const res = await POST(makeRequest("POST", { reason: "不再需�?, smsCode: "123456" }));
+    const res = await POST(makeRequest("POST", { reason: "不再需要", smsCode: "123456" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
@@ -205,7 +205,7 @@ describe("/api/oauth/account/deletion", () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "wechat-mp-points",
-      scope: "openid profile account:delete",
+      scope: "openid profile profile:write",
     });
     mockRateLimit.mockResolvedValueOnce({ success: false } as never);
     const res = await POST(makeRequest("POST", {}));
@@ -217,7 +217,7 @@ describe("/api/oauth/account/deletion", () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "wechat-mp-points",
-      scope: "openid profile account:delete",
+      scope: "openid profile profile:write",
     });
     prismaMock.accountDeletionRequest.updateMany.mockResolvedValue({ count: 1 });
     const res = await DELETE(makeRequest("DELETE"));
@@ -236,7 +236,7 @@ describe("/api/oauth/account/deletion", () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "wechat-mp-points",
-      scope: "openid profile account:delete",
+      scope: "openid profile profile:write",
     });
     prismaMock.accountDeletionRequest.updateMany.mockResolvedValue({ count: 0 });
     const res = await DELETE(makeRequest("DELETE"));

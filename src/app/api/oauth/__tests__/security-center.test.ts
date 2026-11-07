@@ -106,7 +106,7 @@ function context<T extends Record<string, string>>(params: T) {
 const activePayload = {
   id: "user-1",
   client_id: "wechat-mp-points",
-  scope: "openid profile profile:write security:manage",
+  scope: "openid profile profile:write",
 };
 
 const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
