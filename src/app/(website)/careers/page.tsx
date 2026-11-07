@@ -82,6 +82,10 @@ async function getJobs(): Promise<Job[]> {
     return jobs;
   } catch (error) {
     console.error("获取职位列表失败:", error);
+    // 构建阶段数据库不可达时返回空列表，避免 next build 因连接超时长时间卡住。
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return [];
+    }
     throw error;
   }
 }

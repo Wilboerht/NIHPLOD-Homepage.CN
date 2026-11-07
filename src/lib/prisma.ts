@@ -38,7 +38,10 @@ const poolConfig: pg.PoolConfig = {
         ? parseInt(process.env.DATABASE_MAX_CONNECTIONS, 10)
         : 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 30000,
+  // 构建阶段（next build 预渲染）若数据库不可达，30s/连接会让构建看起来“卡死”；
+  // 缩短到 5s 让构建快速失败或走页面级降级，而不是长时间挂起。
+  connectionTimeoutMillis:
+    process.env.NEXT_PHASE === "phase-production-build" ? 5000 : 30000,
   // statement_timeout 通过连接启动参数下发（PG options），
   // 替代 pool.on("connect") + client.query 的写法——后者会触发 pg 的
   // "client.query() when the client is already executing a query" 弃用警告。

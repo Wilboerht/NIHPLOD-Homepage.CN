@@ -100,6 +100,10 @@ async function getProductsUncached() {
     }));
   } catch (error) {
     apiConsole.error("获取产品列表失败:", error);
+    // 构建阶段数据库不可达时不要阻塞/中断整次构建；ISR 首次请求会重新取数。
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return [];
+    }
     throw error;
   }
 }

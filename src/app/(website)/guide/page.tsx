@@ -98,6 +98,10 @@ async function getProducts() {
     }));
   } catch (error) {
     console.error("获取产品列表失败:", error);
+    // 构建阶段数据库不可达时返回空列表，避免 next build 长时间等待连接超时。
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return [];
+    }
     throw error;
   }
 }
