@@ -9,6 +9,7 @@
  * - 重定向到 /logout 页面完成主站登出
  */
 import { NextRequest, NextResponse } from "next/server";
+import { decodeJwt } from "jose";
 import { isTrustedPostLogoutRedirectUri } from "@/lib/post-logout-redirect";
 import { verifyIdToken } from "@/lib/jwt";
 import { getOAuthClientByClientId } from "@/lib/oauth-client";
@@ -19,6 +20,27 @@ import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * 从未验签的 id_token_hint 中提取 aud，仅用于“识别发起方 client”。
+ * 安全边界：该值只用于查找已注册且启用的 client，并且 post_logout_redirect_uri
+ * 仍必须与该 client 注册列表精确匹配；它不会用于授予任何登录/免确认权限。
+ * 这样即使 hint 已过期，标准 OIDC RP 的 post_logout_redirect_uri 也不会丢失。
+ */
+function extractAudienceUnverified(idTokenHint: string): string | null {
+  try {
+    const payload = decodeJwt(idTokenHint);
+    const aud = payload.aud;
+    if (typeof aud === "string" && aud) return aud;
+    if (Array.isArray(aud)) {
+      const first = aud.find((value): value is string => typeof value === "string" && !!value);
+      return first ?? null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,9 +67,13 @@ export async function GET(request: NextRequest) {
     // 走免确认直登出）
     if (!explicitClientId && idTokenHint) {
       const hintClaims = await verifyIdToken(idTokenHint);
-      if (hintClaims?.aud && typeof hintClaims.aud === "string") {
-        const audClient = await getOAuthClientByClientId(hintClaims.aud).catch(() => null);
-        if (audClient?.isActive) clientId = hintClaims.aud;
+      const hintAudience =
+        hintClaims?.aud && typeof hintClaims.aud === "string"
+          ? hintClaims.aud
+          : extractAudienceUnverified(idTokenHint);
+      if (hintAudience) {
+        const audClient = await getOAuthClientByClientId(hintAudience).catch(() => null);
+        if (audClient?.isActive) clientId = hintAudience;
       }
     }
 
@@ -76,7 +102,15 @@ export async function GET(request: NextRequest) {
           // RP 级登出免确认仅撤销发起方 client 的会话；主站会话只能经 /logout 确认页
           // 用户显式确认后由 POST /api/auth/logout 清除——否则任何持有有效 id_token 的
           // RP 都能经跨站 GET 静默踢掉用户的主站会话。
-          await revokeOAuthClientSessions(user.id, effectiveClientId, { reason: "logout" });
+          // 有 sid 时只退出当前会话（RP-Initiated Logout 的设备级语义）；
+          // 缺失 sid 的旧 token 回退为撤销该 client 全部会话（兼容旧行为）。
+          const sessionSid =
+            typeof hintClaims.sid === "string" && hintClaims.sid ? hintClaims.sid : undefined;
+          await revokeOAuthClientSessions(
+            user.id,
+            effectiveClientId,
+            sessionSid ? { reason: "logout", sid: sessionSid } : { reason: "logout" }
+          );
           logAuthEvent("user_logout", {
             userId: user.id,
             success: true,

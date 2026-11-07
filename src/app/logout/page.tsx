@@ -35,6 +35,20 @@ async function ensureCsrfToken(): Promise<string | null> {
   return null;
 }
 
+/** 从 id_token_hint 解出 sid（不验签，仅用于把登出范围收窄到当前会话）。 */
+function extractSidFromIdToken(idToken: string): string | null {
+  try {
+    const parts = idToken.split(".");
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(padded)) as { sid?: unknown };
+    return typeof payload.sid === "string" && payload.sid ? payload.sid : null;
+  } catch {
+    return null;
+  }
+}
+
 async function checkTrustedLogoutUri(uri: string, clientId: string | null): Promise<boolean> {
   if (!uri) return true;
   // 站内相对路径：必须拒绝反斜杠/控制字符（"/\evil.com" 会被浏览器解析为跨站）
@@ -79,7 +93,9 @@ function LogoutContent() {
   // id_token_hint 验签通过但其 sub 与当前 SSO 会话用户不一致时给出提示
   const [hintMismatch, setHintMismatch] = useState(false);
   // 会话探测：无会话时无需确认，直接回跳
-  const [sessionState, setSessionState] = useState<"unknown" | "active" | "none">("unknown");
+  const [sessionState, setSessionState] = useState<"probing" | "unknown" | "active" | "none">(
+    "probing"
+  );
 
   // 取消/无会话时的回跳：优先回可信的 post_logout_redirect_uri（附 state），否则回首页
   const goBack = () => {
@@ -103,7 +119,7 @@ function LogoutContent() {
   // refresh cookie 复核（/api/auth/logout 本身也支持仅凭 refresh cookie 登出）。
   useEffect(() => {
     let cancelled = false;
-    const setIfActive = (state: "active" | "none") => {
+    const setSession = (state: "active" | "none" | "unknown") => {
       if (!cancelled) setSessionState(state);
     };
     (async () => {
@@ -111,22 +127,29 @@ function LogoutContent() {
         const res = await fetch("/api/user/profile", { credentials: "include" });
         if (res.ok) {
           const data = await res.json().catch(() => null);
-          if (data?.success) return setIfActive("active");
+          if (data?.success) return setSession("active");
+        } else if (res.status === 429 || res.status >= 500) {
+          // 限流/服务异常不能当作“无会话”，否则会跳过登出并留下服务端会话。
+          return setSession("unknown");
         }
       } catch {
         // access 探测失败：继续尝试 refresh 复核
       }
       try {
         const csrfToken = await ensureCsrfToken();
-        if (!csrfToken) return setIfActive("none");
+        if (!csrfToken) return setSession("unknown");
         const refreshRes = await fetch("/api/auth/refresh", {
           method: "POST",
           headers: { "X-CSRF-Token": csrfToken },
           credentials: "include",
         });
-        setIfActive(refreshRes.ok ? "active" : "none");
+        if (refreshRes.ok) return setSession("active");
+        if (refreshRes.status === 429 || refreshRes.status >= 500) {
+          return setSession("unknown");
+        }
+        setSession("none");
       } catch {
-        setIfActive("none");
+        setSession("unknown");
       }
     })();
     return () => {
@@ -189,6 +212,10 @@ function LogoutContent() {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       headers["X-CSRF-Token"] = csrfToken;
 
+      // 从 id_token_hint 解出 sid：把 RP 发起的登出精确收窄到当前设备；
+      // 未携带 hint / hint 无 sid 时回退为撤销该 client 全部会话（兼容旧行为）。
+      const clientSessionId = idTokenHint ? extractSidFromIdToken(idTokenHint) : null;
+
       const res = await fetch("/api/auth/logout", {
         method: "POST",
         headers,
@@ -198,7 +225,11 @@ function LogoutContent() {
         // 用户勾选"退出所有设备"时升级为全设备登出（通知全部已授权平台）。
         // clientId 用于闭环撤销该子站的 OAuth 会话/refresh token（主站会话多为
         // 内部登录，refresh token 无 clientId，需按发起方兜底撤销）
-        body: JSON.stringify({ allDevices, ...(clientId ? { clientId } : {}) }),
+        body: JSON.stringify({
+          allDevices,
+          ...(clientId ? { clientId } : {}),
+          ...(clientSessionId ? { clientSessionId } : {}),
+        }),
       });
 
       if (!res.ok) {
@@ -206,9 +237,21 @@ function LogoutContent() {
         throw new Error(data.error?.message || "登出失败");
       }
 
-      // 清除所有客户端存储数据（auth_hint、偏好等）
+      // 仅清除认证相关存储，避免误删同源业务数据/用户偏好。
       try {
-        localStorage.clear();
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (
+            key &&
+            (key.startsWith("nihplod_sso_") ||
+              key === "auth_hint" ||
+              key === "__nihplod_refresh_fail_count")
+          ) {
+            keysToRemove.push(key);
+          }
+        }
+        for (const key of keysToRemove) localStorage.removeItem(key);
       } catch {}
 
       // 跳转到 frontchannel logout 确认页（仅传递可信的重定向地址）
@@ -231,7 +274,7 @@ function LogoutContent() {
   };
 
   // 会话探测中 / 无会话正在回跳：显示加载态而非确认框
-  if (sessionState !== "active") {
+  if (sessionState === "probing" || sessionState === "none") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />

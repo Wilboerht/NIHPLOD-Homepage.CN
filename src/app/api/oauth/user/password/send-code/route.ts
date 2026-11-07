@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const auth = await authenticateOAuthUserRequest(request, "POST", {
-      scope: "profile:write",
+      scope: "password:write",
       action: "password_set_send_code",
     });
     if (!auth.ok) return auth.response;

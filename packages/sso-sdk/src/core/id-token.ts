@@ -148,7 +148,22 @@ export async function fetchJwks(baseUrl: string, options: FetchJwksOptions = {})
   }
 
   const discovery = await fetchDiscoveryDoc(baseUrl);
-  const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
+  // Discovery 文档中的 jwks_uri 必须与 baseUrl 同源：否则被篡改的文档可把验签公钥
+  // 指向攻击者服务器，从而伪造任意 ID Token。跨源 JWKS 请由服务端显式代理。
+  let jwksUri = `${baseUrl}/api/oauth/jwks`;
+  if (discovery?.jwks_uri) {
+    try {
+      if (new URL(discovery.jwks_uri).origin === new URL(baseUrl).origin) {
+        jwksUri = discovery.jwks_uri;
+      } else {
+        console.warn(
+          "[SSO SDK] Discovery 的 jwks_uri 与 ssoBaseUrl 不同源，已忽略并使用默认 JWKS 端点"
+        );
+      }
+    } catch {
+      // 非法 URL：使用默认端点
+    }
+  }
 
   try {
     const res = await fetch(jwksUri, {

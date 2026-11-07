@@ -48,6 +48,10 @@ import {
   readJsonBody,
 } from "@/lib/request-body";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
+import {
+  enqueueBackchannelLogoutNotifications,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
@@ -557,7 +561,7 @@ export async function POST(request: NextRequest) {
         const activeSessions = await prisma.oAuthSession.findMany({
           where: { userId: user.id, clientId: client_id, revokedAt: null },
           orderBy: { createdAt: "asc" },
-          select: { id: true },
+          select: { id: true, sessionId: true },
         });
         if (activeSessions.length >= MAX_OAUTH_SESSIONS_PER_CLIENT) {
           const sessionsToRevoke = activeSessions.slice(
@@ -568,6 +572,20 @@ export async function POST(request: NextRequest) {
             where: { id: { in: sessionsToRevoke.map((s) => s.id) } },
             data: { revokedAt: new Date() },
           });
+
+          // 设备数超限淘汰：逐 sid 通知 RP，避免被淘汰设备残留登录态。
+          if (client.backchannelLogoutUri) {
+            await enqueueBackchannelLogoutNotifications(
+              sessionsToRevoke.map((s) => ({
+                userId: user.id,
+                clientId: client_id,
+                sid: s.sessionId,
+                logoutUri: client.backchannelLogoutUri,
+              })),
+              { perSession: true }
+            );
+            scheduleBackchannelRedelivery();
+          }
         }
         sessionId = crypto.randomUUID();
         await prisma.oAuthSession.create({
@@ -582,6 +600,10 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // 原始认证时间：ID Token / access token / refresh token 共用，
+      // 保证后续 refresh 不会把 auth_time 重置为刷新时间（OIDC max_age 依赖此值）。
+      const authTime = codeData.authTime ?? undefined;
+
       // 签发 Access Token（OAuth 类型），使用 client 自定义 TTL，携带 sid claim
       const accessToken = await signOAuthAccessToken({
         id: user.id,
@@ -591,9 +613,10 @@ export async function POST(request: NextRequest) {
         expiresIn: `${client.accessTokenTtlSeconds}s`,
         dpopJkt,
         sid: sessionId,
+        authTime,
       });
 
-      // 签发 Refresh Token（携带 client_id / scope，用于所有权校验；
+      // 签发 Refresh Token（携带 client_id / scope / auth_time，用于所有权校验；
       // 同时携带 sid 与 DPoP 绑定 jkt，使刷新/撤销时能定位会话并延续 DPoP 绑定）
       const refreshToken = await signRefreshToken({
         id: user.id,
@@ -601,6 +624,7 @@ export async function POST(request: NextRequest) {
         scope: scopeStr,
         sid: sessionId,
         dpopJkt,
+        authTime,
       });
 
       // 保存 Refresh Token（复用现有设备管理）
@@ -614,28 +638,31 @@ export async function POST(request: NextRequest) {
         sessionId
       );
 
-      // 签发 ID Token（含 at_hash / sid / auth_time）
-      const idTokenClaims: IdTokenClaims = {
-        sub: user.id,
-        aud: client_id,
-        scope: scopeStr,
-        at_hash: computeAtHash(accessToken),
-        // sid 与 access token 的 sid claim 一致，使 RP 能用 backchannel logout 的 sid 定位会话
-        sid: sessionId,
-      };
-      if (codeData.authTime) idTokenClaims.auth_time = codeData.authTime;
-      if (codeData.nonce) idTokenClaims.nonce = codeData.nonce;
-      if (scopeSet.has("phone")) idTokenClaims.phone = maskPhone(user.phone);
-      if (scopeSet.has("profile")) {
-        if (user.nickname) idTokenClaims.nickname = user.nickname;
-        // 未自定义头像时回退默认头像的绝对 URL（与 userinfo 口径一致）
-        idTokenClaims.avatar = resolveSsoAvatar(user.avatar);
+      // 签发 ID Token（含 at_hash / sid / auth_time）。
+      // 仅在 scope 包含 openid 时签名，避免无 OIDC 需求时白付一次签名开销。
+      let idToken: string | null = null;
+      if (scopeSet.has("openid")) {
+        const idTokenClaims: IdTokenClaims = {
+          sub: user.id,
+          aud: client_id,
+          scope: scopeStr,
+          at_hash: computeAtHash(accessToken),
+          // sid 与 access token 的 sid claim 一致，使 RP 能用 backchannel logout 的 sid 定位会话
+          sid: sessionId,
+        };
+        if (codeData.authTime) idTokenClaims.auth_time = codeData.authTime;
+        if (codeData.nonce) idTokenClaims.nonce = codeData.nonce;
+        if (scopeSet.has("phone")) idTokenClaims.phone = maskPhone(user.phone);
+        if (scopeSet.has("profile")) {
+          if (user.nickname) idTokenClaims.nickname = user.nickname;
+          // 未自定义头像时回退默认头像的绝对 URL（与 userinfo 口径一致）
+          idTokenClaims.avatar = resolveSsoAvatar(user.avatar);
+        }
+        if (scopeSet.has("membership") && user) {
+          if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
+        }
+        idToken = await signIdToken(idTokenClaims);
       }
-      if (scopeSet.has("membership") && user) {
-        if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
-      }
-
-      const idToken = await signIdToken(idTokenClaims);
 
       // 审计日志
       scheduleSsoEvent({
@@ -657,14 +684,15 @@ export async function POST(request: NextRequest) {
 
       const tokenResponse: Record<string, unknown> = {
         access_token: accessToken,
-        token_type: "Bearer",
+        // RFC 9449：DPoP 绑定的 token 必须声明 token_type=DPoP，资源服务器据此强制 proof
+        token_type: dpopJkt ? "DPoP" : "Bearer",
         expires_in: expiresIn,
         refresh_token: refreshToken,
         refresh_expires_in: 30 * 24 * 60 * 60,
         scope: scopeStr,
       };
       // OIDC：仅当授权 scope 包含 openid 时才返回 id_token
-      if (codeData.scopes.includes("openid")) {
+      if (idToken) {
         tokenResponse.id_token = idToken;
       }
 
@@ -966,6 +994,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // OIDC auth_time 必须跨刷新保持不变：优先继承 refresh token 上的原始认证时间，
+      // 旧 token 未携带时回退其 iat（首次换发时刻）。该值同时写入新 access/refresh token。
+      const authTime = refreshPayload.auth_time ?? refreshPayload.iat;
+
       const newAccessToken = await signOAuthAccessToken({
         id: refreshPayload.id,
         phone: user.phone,
@@ -974,9 +1006,10 @@ export async function POST(request: NextRequest) {
         expiresIn: `${client.accessTokenTtlSeconds}s`,
         dpopJkt,
         sid: session.sessionId,
+        authTime,
       });
 
-      // 签发新的 Refresh Token 并原子化轮换（继承所有权、scope、sid 与 DPoP 绑定）。
+      // 签发新的 Refresh Token 并原子化轮换（继承所有权、scope、sid、auth_time 与 DPoP 绑定）。
       // 硬顶：OAuthSession 是固定过期的授权会话，refresh token 滚动续期不得越过
       // session.expiresAt——否则会话到期后 refresh token 仍能继续换新 access token。
       const sessionTtlSeconds = Math.max(
@@ -990,6 +1023,7 @@ export async function POST(request: NextRequest) {
           scope: scopeStr,
           sid: session.sessionId,
           dpopJkt,
+          authTime,
         },
         { expiresInSeconds: sessionTtlSeconds }
       );
@@ -1023,30 +1057,32 @@ export async function POST(request: NextRequest) {
 
       // 用户信息已在上方查询并校验状态（签发 access/refresh token 前置），此处直接复用
 
-      // 签发新的 ID Token（含 at_hash / sid / auth_time）
-      const idTokenClaims: IdTokenClaims = {
-        sub: refreshPayload.id,
-        aud: client_id,
-        scope: scopeStr,
-        at_hash: computeAtHash(newAccessToken),
-        // 刷新场景会话不变：sid 沿用原会话，auth_time 沿用原始认证时间
-        sid: refreshPayload.sid ?? session.sessionId,
-      };
-      const authTime = refreshPayload.auth_time ?? refreshPayload.iat;
-      if (authTime) idTokenClaims.auth_time = authTime;
-      if (scopeSet.has("phone") && user) {
-        idTokenClaims.phone = maskPhone(user.phone);
+      // 签发新的 ID Token（含 at_hash / sid / auth_time）。
+      // 仅在 scope 包含 openid 时签名，避免无 OIDC 需求时白付一次签名开销。
+      let idToken: string | null = null;
+      if (scopeSet.has("openid")) {
+        const idTokenClaims: IdTokenClaims = {
+          sub: refreshPayload.id,
+          aud: client_id,
+          scope: scopeStr,
+          at_hash: computeAtHash(newAccessToken),
+          // 刷新场景会话不变：sid 沿用原会话，auth_time 沿用原始认证时间
+          sid: refreshPayload.sid ?? session.sessionId,
+        };
+        if (authTime) idTokenClaims.auth_time = authTime;
+        if (scopeSet.has("phone") && user) {
+          idTokenClaims.phone = maskPhone(user.phone);
+        }
+        if (scopeSet.has("profile") && user) {
+          if (user.nickname) idTokenClaims.nickname = user.nickname;
+          // 未自定义头像时回退默认头像的绝对 URL（与 userinfo 口径一致）
+          idTokenClaims.avatar = resolveSsoAvatar(user.avatar);
+        }
+        if (scopeSet.has("membership") && user) {
+          if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
+        }
+        idToken = await signIdToken(idTokenClaims);
       }
-      if (scopeSet.has("profile") && user) {
-        if (user.nickname) idTokenClaims.nickname = user.nickname;
-        // 未自定义头像时回退默认头像的绝对 URL（与 userinfo 口径一致）
-        idTokenClaims.avatar = resolveSsoAvatar(user.avatar);
-      }
-      if (scopeSet.has("membership") && user) {
-        if (user.membershipLevel) idTokenClaims.membership_level = user.membershipLevel;
-      }
-
-      const idToken = await signIdToken(idTokenClaims);
 
       scheduleSsoEvent({
         event: "token",
@@ -1065,14 +1101,15 @@ export async function POST(request: NextRequest) {
 
       const refreshResponse: Record<string, unknown> = {
         access_token: newAccessToken,
-        token_type: "Bearer",
+        // RFC 9449：DPoP 绑定的 token 必须声明 token_type=DPoP
+        token_type: dpopJkt ? "DPoP" : "Bearer",
         expires_in: newExpiresIn,
         refresh_token: newRefreshToken,
         refresh_expires_in: refreshExpiresIn,
         scope: scopeStr,
       };
       // OIDC：仅当原授权 scope 包含 openid 时才返回 id_token
-      if (scopeStr.split(" ").filter(Boolean).includes("openid")) {
+      if (idToken) {
         refreshResponse.id_token = idToken;
       }
 

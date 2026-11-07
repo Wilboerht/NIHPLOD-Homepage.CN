@@ -21,6 +21,8 @@ import {
 import { MAX_PENDING_PER_USER } from "@/lib/spent-adjustment-meta";
 import { guardOAuthUserActive } from "@/lib/oauth-user-guard";
 import { rateLimit } from "@/lib/ratelimit";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -124,7 +126,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json().catch(() => null);
+    let body: unknown;
+    try {
+      body = await readJsonBody(request, BODY_LIMITS.oauthJson);
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
+      return resJson(
+        { success: false, error: { code: "INVALID_PARAMS", message: "请求体不是合法 JSON" } },
+        400
+      );
+    }
     const parsed = createSpentApplicationSchema.safeParse(body);
     if (!parsed.success) {
       return resJson(

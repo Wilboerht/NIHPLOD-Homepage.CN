@@ -19,6 +19,10 @@ import {
   type WechatExchangePayload,
 } from "@/lib/jwt";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
+import {
+  enqueueBackchannelLogoutNotifications,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 import { checkUserStatus } from "@/lib/auth";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
 import { verifySmsCodeWithLimit, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
@@ -159,7 +163,7 @@ export async function issueOAuthTokens(
   const activeSessions = await prisma.oAuthSession.findMany({
     where: { userId: user.id, clientId, revokedAt: null },
     orderBy: { createdAt: "asc" },
-    select: { id: true },
+    select: { id: true, sessionId: true },
   });
   if (activeSessions.length >= MAX_OAUTH_SESSIONS_PER_CLIENT) {
     const sessionsToRevoke = activeSessions.slice(
@@ -170,8 +174,27 @@ export async function issueOAuthTokens(
       where: { id: { in: sessionsToRevoke.map((s) => s.id) } },
       data: { revokedAt: new Date() },
     });
+
+    // 设备数超限淘汰：逐 sid 通知 RP 清理被淘汰设备的本地会话。
+    const client = await prisma.oAuthClient.findUnique({
+      where: { clientId },
+      select: { backchannelLogoutUri: true },
+    });
+    if (client?.backchannelLogoutUri) {
+      await enqueueBackchannelLogoutNotifications(
+        sessionsToRevoke.map((s) => ({
+          userId: user.id,
+          clientId,
+          sid: s.sessionId,
+          logoutUri: client.backchannelLogoutUri,
+        })),
+        { perSession: true }
+      );
+      scheduleBackchannelRedelivery();
+    }
   }
   const sessionId = crypto.randomUUID();
+  const authTime = Math.floor(Date.now() / 1000);
   await prisma.oAuthSession.create({
     data: {
       userId: user.id,
@@ -189,8 +212,15 @@ export async function issueOAuthTokens(
     scope,
     expiresIn: `${accessTokenTtlSeconds}s`,
     sid: sessionId,
+    authTime,
   });
-  const refreshToken = await signRefreshToken({ id: user.id, clientId, scope, sid: sessionId });
+  const refreshToken = await signRefreshToken({
+    id: user.id,
+    clientId,
+    scope,
+    sid: sessionId,
+    authTime,
+  });
   await saveRefreshToken(
     user.id,
     refreshToken,

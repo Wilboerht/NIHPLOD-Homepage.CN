@@ -319,12 +319,21 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
           body.set("client_secret", clientSecret);
         }
         // 3s 超时兜底：撤销是 best-effort，主站缓慢时不得拖住登出流程
-        await fetch(revokeUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: body.toString(),
-          signal: AbortSignal.timeout(3000),
-        });
+        const doRevoke = () =>
+          fetch(revokeUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString(),
+            signal: AbortSignal.timeout(3000),
+          });
+        let revokeRes = await doRevoke();
+        if (!revokeRes.ok && (revokeRes.status >= 500 || revokeRes.status === 429)) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          revokeRes = await doRevoke();
+        }
+        if (!revokeRes.ok) {
+          console.warn(`[SSO SDK] 登出撤销 refresh_token 失败（HTTP ${revokeRes.status}）`);
+        }
       } catch {
         // 撤销失败不影响本地登出
       }

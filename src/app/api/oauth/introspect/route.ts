@@ -98,6 +98,13 @@ export async function POST(request: NextRequest) {
     }
     const client = verifyResult.client;
 
+    // 已认证阶段：client 级桶。子站服务端通常共享出口 IP，IP 桶只防未认证滥用；
+    // 认证通过后的正常 introspection 流量按 client 塑形，避免多个子站互相挤占。
+    const clientLimitResult = await rateLimit(`client:${client_id}`, "oauth-introspect");
+    if (!clientLimitResult.success) {
+      return resJson({ error: "rate_limited", error_description: "子项目请求过于频繁" }, 429);
+    }
+
     const token = body.token;
     if (!token) {
       return resJson({ active: false });
@@ -146,15 +153,26 @@ export async function POST(request: NextRequest) {
       detail: { active: true },
     });
 
+    const cnf = (payload as Record<string, unknown>).cnf as { jkt?: string } | undefined;
+    const clientType = (payload as { client_type?: string }).client_type ?? null;
+    const sid = (payload as { sid?: string }).sid;
+    const authTime = (payload as { auth_time?: number }).auth_time;
+    const isDpopBound = !!cnf?.jkt;
+
     return resJson({
       active: true,
-      token_type: "Bearer",
+      // RFC 9449 §7.1：DPoP 绑定的 token 必须告知资源服务器，并返回 cnf 供其校验 proof
+      token_type: isDpopBound ? "DPoP" : "Bearer",
       sub: payload.id,
       client_id: payload.client_id,
-      scope: payload.scope || "openid",
+      scope: payload.scope ?? "",
       exp: payload.exp,
       iat: payload.iat,
       iss: getIssuer(),
+      ...(clientType ? { client_type: clientType } : {}),
+      ...(sid ? { sid } : {}),
+      ...(typeof authTime === "number" ? { auth_time: authTime } : {}),
+      ...(isDpopBound ? { cnf } : {}),
     });
   } catch (error) {
     if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);

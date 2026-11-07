@@ -465,10 +465,14 @@ export async function saveRefreshToken(
     // 使子站在 access token 自然过期前即时登出被挤出设备
     if (evictedSessions.length > 0) {
       const evictedClientId = evictedSessions[0].clientId;
+      // 一次淘汰可能命中多个会话：必须逐 sid 通知，否则 RP 只清掉其中一个设备。
+      const evictedSids = evictedSessions
+        .filter((s) => s.clientId === evictedClientId)
+        .map((s) => s.sessionId);
       void import("./backchannel-logout")
         .then(({ sendBackchannelLogout }) =>
           sendBackchannelLogout(userId, [evictedClientId], {
-            sids: { [evictedClientId]: evictedSessions[0].sessionId },
+            sids: { [evictedClientId]: evictedSids },
             includeInactive: true,
           })
         )
@@ -828,10 +832,14 @@ export async function atomicallyRotateRefreshToken(
     // 使子站在 access token 自然过期前即时登出被挤出设备
     if (evictedSessions.length > 0) {
       const evictedClientId = evictedSessions[0].clientId;
+      // 一次淘汰可能命中多个会话：逐 sid 通知，避免 RP 只清掉其中一个设备。
+      const evictedSids = evictedSessions
+        .filter((s) => s.clientId === evictedClientId)
+        .map((s) => s.sessionId);
       void import("./backchannel-logout")
         .then(({ sendBackchannelLogout }) =>
           sendBackchannelLogout(userId, [evictedClientId], {
-            sids: { [evictedClientId]: evictedSessions[0].sessionId },
+            sids: { [evictedClientId]: evictedSids },
             includeInactive: true,
           })
         )

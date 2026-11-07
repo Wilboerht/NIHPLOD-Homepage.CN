@@ -11,6 +11,8 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
 import { rateLimit } from "@/lib/ratelimit";
 import { setPasswordSchema, setPassword } from "@/lib/password-manage";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +20,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const auth = await authenticateOAuthUserRequest(request, "POST", {
-      scope: "profile:write",
+      scope: "password:write",
       action: "password_set",
     });
     if (!auth.ok) return auth.response;
@@ -35,7 +37,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await readJsonBody(request, BODY_LIMITS.oauthJson);
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
+      return auth.resJson(
+        { success: false, error: { code: "INVALID_PARAMS", message: "请求体不是合法 JSON" } },
+        400
+      );
+    }
     const parsed = setPasswordSchema.safeParse(body);
     if (!parsed.success) {
       return auth.resJson(

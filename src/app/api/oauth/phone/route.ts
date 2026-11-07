@@ -13,6 +13,8 @@ import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
 import { rateLimit } from "@/lib/ratelimit";
 import { changePhoneSchema, changeUserPhone } from "@/lib/phone-rebind";
 import { maskPhone } from "@/lib/mask-phone";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +22,7 @@ export const dynamic = "force-dynamic";
 export async function PUT(request: NextRequest) {
   try {
     const auth = await authenticateOAuthUserRequest(request, "PUT", {
-      scope: "phone",
+      scope: "phone:write",
       action: "phone_rebind",
     });
     if (!auth.ok) return auth.response;
@@ -37,7 +39,16 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await readJsonBody(request, BODY_LIMITS.oauthJson);
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
+      return auth.resJson(
+        { success: false, error: { code: "INVALID_PARAMS", message: "请求体不是合法 JSON" } },
+        400
+      );
+    }
     const parsed = changePhoneSchema.safeParse(body);
     if (!parsed.success) {
       return auth.resJson(

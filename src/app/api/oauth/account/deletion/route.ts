@@ -40,7 +40,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const READ_SCOPE = "profile";
-const WRITE_SCOPE = "profile:write";
+const WRITE_SCOPE = "account:delete";
 
 const requestSchema = z.object({
   reason: z.string().max(500, "注销原因最多 500 字").optional(),

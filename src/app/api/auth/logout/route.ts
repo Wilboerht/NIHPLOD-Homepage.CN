@@ -57,6 +57,12 @@ export async function POST(request: NextRequest) {
       // （/api/user/oauth/revoke），伪造 clientId 无法越权影响其他用户。
       const requestedClientId =
         typeof body.clientId === "string" && body.clientId ? body.clientId : null;
+      // RP-Initiated Logout 页面从 id_token_hint 解出的 sid：仅用于把撤销范围
+      // 收窄到“当前设备”；伪造 sid 只会影响本人会话，无法越权影响其他用户。
+      const requestedClientSessionId =
+        typeof body.clientSessionId === "string" && body.clientSessionId
+          ? body.clientSessionId
+          : null;
 
       const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
 
@@ -105,7 +111,13 @@ export async function POST(request: NextRequest) {
         // 闭环撤销该 client 的 OAuthSession 与 refresh token 并广播 backchannel logout
         const targetClientId = refreshRecord?.clientId ?? requestedClientId;
         if (targetClientId) {
-          await revokeOAuthClientSessions(user.id, targetClientId, { reason: "logout" });
+          await revokeOAuthClientSessions(
+            user.id,
+            targetClientId,
+            requestedClientSessionId
+              ? { reason: "logout", sid: requestedClientSessionId }
+              : { reason: "logout" }
+          );
         }
         // 当前会话无关联 OAuth client 且未指定 clientId（普通浏览器登录）：
         // 单设备登出不触碰其他客户端的第三方授权会话；仅 allDevices 时才全量广播
@@ -116,7 +128,9 @@ export async function POST(request: NextRequest) {
         });
         if (activeSessions.length > 0) {
           const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-          await sendBackchannelLogout(user.id, clientIds);
+          // 全设备登出：发送 sub-only token，让 RP 清除该用户全部会话；
+          // 携带 sid 只会命中一个设备，其他设备会残留登录态。
+          await sendBackchannelLogout(user.id, clientIds, { omitSid: true });
           await prisma.oAuthSession.updateMany({
             where: { userId: user.id, revokedAt: null },
             data: { revokedAt: new Date() },
@@ -151,11 +165,19 @@ export async function POST(request: NextRequest) {
               // 主站内部登录会话（clientId=null）以发起方 clientId 兜底，保证登出闭环
               const requestedClientId =
                 typeof body.clientId === "string" && body.clientId ? body.clientId : null;
+              const requestedClientSessionId =
+                typeof body.clientSessionId === "string" && body.clientSessionId
+                  ? body.clientSessionId
+                  : null;
               const targetClientId = refreshRecord.clientId ?? requestedClientId;
               if (targetClientId) {
-                await revokeOAuthClientSessions(refreshPayload.id, targetClientId, {
-                  reason: "logout",
-                });
+                await revokeOAuthClientSessions(
+                  refreshPayload.id,
+                  targetClientId,
+                  requestedClientSessionId
+                    ? { reason: "logout", sid: requestedClientSessionId }
+                    : { reason: "logout" }
+                );
               }
             }
           }

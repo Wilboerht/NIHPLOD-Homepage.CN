@@ -561,6 +561,7 @@ export async function registerAgentWithIdJag(
     scope: scopes.join(" "),
     expiresIn: `${ttlSeconds}s`,
     sid: sessionId,
+    authTime: typeof payload.auth_time === "number" ? payload.auth_time : undefined,
   });
   const expiresIn = getExpiresInFromToken(credential) ?? ttlSeconds;
   const registrationId = `reg_${randomUUID().replace(/-/g, "").slice(0, 24)}`;

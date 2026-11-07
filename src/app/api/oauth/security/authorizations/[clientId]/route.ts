@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const auth = await authenticateOAuthUserRequest(request, "DELETE", {
-      scope: "profile:write",
+      scope: "security:manage",
       action: "security_authorization_revoke",
     });
     if (!auth.ok) return auth.response;

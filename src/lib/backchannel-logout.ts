@@ -73,7 +73,20 @@ export function isSafeBackchannelUrl(uri: string): boolean {
 export async function sendBackchannelLogout(
   userId: string,
   clientIds: string[],
-  options?: { includeInactive?: boolean; sids?: Record<string, string> }
+  options?: {
+    includeInactive?: boolean;
+    /**
+     * 指定 client 对应的会话 sid（可传数组以逐会话通知）。
+     * 提供后不再回库查询；传单个字符串保持向后兼容。
+     */
+    sids?: Record<string, string | string[]>;
+    /**
+     * 强制发送不带 sid 的 logout_token（sub-only）。
+     * 用于全设备登出、client 停用/缩权、批量终止会话等“该用户全部会话失效”场景：
+     * 带 sid 的 token 只应让 RP 结束对应会话，无法覆盖同用户其他会话。
+     */
+    omitSid?: boolean;
+  }
 ): Promise<void> {
   if (clientIds.length === 0) return;
 
@@ -91,106 +104,125 @@ export async function sendBackchannelLogout(
     select: { clientId: true, backchannelLogoutUri: true },
   });
 
-  // 各 client 下该用户的最新活跃 session（用于 sid 声明）
-  let sidByClient = new Map<string, string>();
-  if (options?.sids) {
-    sidByClient = new Map(Object.entries(options.sids));
-  } else {
-    const sessions = await prisma.oAuthSession.findMany({
-      where: {
-        userId,
-        clientId: { in: uniqueClientIds },
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      select: { clientId: true, sessionId: true },
-      orderBy: { createdAt: "desc" },
-    });
-    for (const s of sessions) {
-      if (!sidByClient.has(s.clientId)) sidByClient.set(s.clientId, s.sessionId);
+  // 各 client 下需要通知的 sid 列表（omitSid 时为空，发送 sub-only token）
+  const sidByClient = new Map<string, string[]>();
+  if (!options?.omitSid) {
+    if (options?.sids) {
+      for (const [clientId, value] of Object.entries(options.sids)) {
+        const values = (Array.isArray(value) ? value : [value]).filter(
+          (sid): sid is string => typeof sid === "string" && sid.length > 0
+        );
+        if (values.length > 0) sidByClient.set(clientId, values);
+      }
+    } else {
+      const sessions = await prisma.oAuthSession.findMany({
+        where: {
+          userId,
+          clientId: { in: uniqueClientIds },
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { clientId: true, sessionId: true },
+        orderBy: { createdAt: "desc" },
+      });
+      // 默认只取最新一条（兼容旧行为）；需要逐会话通知时调用方显式传 sids 数组。
+      for (const s of sessions) {
+        if (!sidByClient.has(s.clientId)) sidByClient.set(s.clientId, [s.sessionId]);
+      }
     }
   }
 
-  // 并行通知：每个 client 独立处理，失败不影响其他 client
-  const deliveryTasks = clients
-    .filter((c) => c.backchannelLogoutUri && isSafeBackchannelUrl(c.backchannelLogoutUri))
-    .map(async (client) => {
-      if (!client.backchannelLogoutUri) return;
+  // 单次投递（一个 client + 可选 sid）：最多 2 次尝试，失败落补偿队列。
+  const deliverLogoutToken = async (
+    clientId: string,
+    logoutUri: string,
+    sid: string | undefined
+  ): Promise<void> => {
+    try {
+      const jti = crypto.randomUUID();
+      const logoutToken = await signLogoutToken({
+        sub: userId,
+        aud: clientId,
+        events: { "http://schemas.openid.net/event/backchannel-logout": {} },
+        jti,
+        sid,
+      });
 
-      try {
-        const jti = crypto.randomUUID();
-        const sid = sidByClient.get(client.clientId);
-        const logoutToken = await signLogoutToken({
-          sub: userId,
-          aud: client.clientId,
-          events: { "http://schemas.openid.net/event/backchannel-logout": {} },
-          jti,
-          sid,
-        });
-
-        let delivered = false;
-        let failureReason = "http_request_failed_after_retry";
-        for (let attempt = 0; attempt < 2; attempt++) {
-          try {
-            const res = await postPublicHttps(client.backchannelLogoutUri, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({ logout_token: logoutToken }),
-              signal: AbortSignal.timeout(5000),
-            });
-            if (res.ok) {
-              delivered = true;
-              break;
-            }
-            // RP 返回非 2xx：视为投递失败，进入重试
-            failureReason = `http_${res.status}_after_retry`;
-            if (attempt < 1) await new Promise((r) => setTimeout(r, 2000));
-          } catch {
-            if (attempt < 1) await new Promise((r) => setTimeout(r, 2000));
+      let delivered = false;
+      let failureReason = "http_request_failed_after_retry";
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await postPublicHttps(logoutUri, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ logout_token: logoutToken }),
+            signal: AbortSignal.timeout(5000),
+          });
+          if (res.ok) {
+            delivered = true;
+            break;
           }
+          // RP 返回非 2xx：视为投递失败，进入重试
+          failureReason = `http_${res.status}_after_retry`;
+          if (attempt < 1) await new Promise((r) => setTimeout(r, 2000));
+        } catch {
+          if (attempt < 1) await new Promise((r) => setTimeout(r, 2000));
         }
-
-        if (!delivered) {
-          apiConsole.warn(`[SLO] Backchannel logout 通知失败（已重试）(${client.clientId})`);
-          // lib 内部不保证有 request scope，无法使用 scheduleSsoEvent(after)，
-          // 保持 fire-and-forget；投递本身已重试，审计丢失风险可接受
-          recordSsoEvent({
-            event: "backchannel_logout",
-            userId,
-            clientId: client.clientId,
-            success: false,
-            detail: { reason: failureReason },
-          });
-          // 落库补偿队列，由 cron 任务周期重投（fire-and-forget，不阻断撤销流程）
-          prisma.backchannelLogoutFailure
-            .create({
-              data: {
-                userId,
-                clientId: client.clientId,
-                payload: { sid: sid ?? null },
-                nextRetryAt: new Date(Date.now() + REDELIVERY_BASE_DELAY_MS),
-              },
-            })
-            .catch((err) => {
-              apiConsole.warn(
-                `[SLO] Backchannel logout 失败记录落库失败 (${client.clientId}):`,
-                err
-              );
-            });
-        } else {
-          // 成功投递也记录一条审计事件，便于核对通知过哪些 RP
-          // （lib 内部无 request scope，保持 fire-and-forget，见上方失败分支注释）
-          recordSsoEvent({
-            event: "backchannel_logout",
-            userId,
-            clientId: client.clientId,
-            success: true,
-          });
-        }
-      } catch (err) {
-        apiConsole.warn(`[SLO] Backchannel logout token 签发失败 (${client.clientId}):`, err);
       }
-    });
+
+      if (!delivered) {
+        apiConsole.warn(`[SLO] Backchannel logout 通知失败（已重试）(${clientId})`);
+        // lib 内部不保证有 request scope，无法使用 scheduleSsoEvent(after)，
+        // 保持 fire-and-forget；投递本身已重试，审计丢失风险可接受
+        recordSsoEvent({
+          event: "backchannel_logout",
+          userId,
+          clientId,
+          success: false,
+          detail: sid ? { reason: failureReason, sid } : { reason: failureReason },
+        });
+        // 落库补偿队列，由 cron 任务周期重投（fire-and-forget，不阻断撤销流程）
+        prisma.backchannelLogoutFailure
+          .create({
+            data: {
+              userId,
+              clientId,
+              payload: { sid: sid ?? null },
+              nextRetryAt: new Date(Date.now() + REDELIVERY_BASE_DELAY_MS),
+            },
+          })
+          .catch((err) => {
+            apiConsole.warn(`[SLO] Backchannel logout 失败记录落库失败 (${clientId}):`, err);
+          });
+      } else {
+        // 成功投递也记录一条审计事件，便于核对通知过哪些 RP
+        // （lib 内部无 request scope，保持 fire-and-forget，见上方失败分支注释）
+        recordSsoEvent({
+          event: "backchannel_logout",
+          userId,
+          clientId,
+          success: true,
+          ...(sid ? { detail: { sid } } : {}),
+        });
+      }
+    } catch (err) {
+      apiConsole.warn(`[SLO] Backchannel logout token 签发失败 (${clientId}):`, err);
+    }
+  };
+
+  // 并行通知：每个 client/sid 独立处理，失败不影响其他通知
+  const deliveryTasks: Promise<void>[] = [];
+  for (const client of clients) {
+    if (!client.backchannelLogoutUri || !isSafeBackchannelUrl(client.backchannelLogoutUri)) {
+      continue;
+    }
+    const sids = options?.omitSid
+      ? [undefined]
+      : (sidByClient.get(client.clientId) ?? [undefined]);
+    for (const sid of sids) {
+      deliveryTasks.push(deliverLogoutToken(client.clientId, client.backchannelLogoutUri, sid));
+    }
+  }
 
   await Promise.allSettled(deliveryTasks);
 }
@@ -214,17 +246,26 @@ export async function enqueueBackchannelLogoutNotifications(
     sid?: string | null;
     /** 入队时 client 的 backchannelLogoutUri 快照：client 被删除后仍可投递 */
     logoutUri?: string | null;
-  }[]
+  }[],
+  options?: {
+    /**
+     * 按会话维度入队（key 含 sid）。设备淘汰等“只失效部分会话”场景传 true；
+     * 默认按 user+client 去重（全量撤销场景只需一条 sub-only / 代表 sid 通知）。
+     */
+    perSession?: boolean;
+  }
 ): Promise<number> {
   if (entries.length === 0) return 0;
 
-  // 同一 user+client 只保留一条（sid 用于 RP 定位会话；重复投递幂等，无需逐 session 通知）
+  // 默认同一 user+client 只保留一条；perSession=true 时按 sid 分别入队。
   const unique = new Map<
     string,
     { userId: string; clientId: string; sid?: string | null; logoutUri?: string | null }
   >();
   for (const e of entries) {
-    const key = `${e.userId}:${e.clientId}`;
+    const key = options?.perSession
+      ? `${e.userId}:${e.clientId}:${e.sid ?? ""}`
+      : `${e.userId}:${e.clientId}`;
     if (!unique.has(key)) unique.set(key, e);
   }
   const rows = [...unique.values()];
@@ -261,6 +302,18 @@ export async function enqueueBackchannelLogoutForActiveSessions(params: {
   clientId?: string;
   userId?: string;
   pageSize?: number;
+  /**
+   * 发送不带 sid 的 sub-only logout_token（全设备/全 client 会话撤销场景）。
+   * 默认 false 时按 user+client 去重并携带一个代表 sid（兼容旧行为）。
+   */
+  omitSid?: boolean;
+  /** 按会话维度入队（仅部分会话失效时使用，例如设备数超限淘汰） */
+  perSession?: boolean;
+  /**
+   * 扫描“在指定时间之后被撤销”的会话（撤销事务提交后再入队，避免事务失败误发登出）。
+   * 不传时扫描当前仍活跃的会话（撤销前入队）。
+   */
+  revokedSince?: Date;
 }): Promise<{ sessionCount: number; userClientCount: number }> {
   // 先取目标 client 的 backchannelLogoutUri（含已停用 client；删除场景下调用方仍在删除前）
   const clients = await prisma.oAuthClient.findMany({
@@ -283,8 +336,9 @@ export async function enqueueBackchannelLogoutForActiveSessions(params: {
   for (;;) {
     const page = await prisma.oAuthSession.findMany({
       where: {
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
+        ...(params.revokedSince
+          ? { revokedAt: { gte: params.revokedSince } }
+          : { revokedAt: null, expiresAt: { gt: new Date() } }),
         clientId: params.clientId ? params.clientId : { in: [...uriByClient.keys()] },
         ...(params.userId ? { userId: params.userId } : {}),
       },
@@ -301,9 +355,11 @@ export async function enqueueBackchannelLogoutForActiveSessions(params: {
       page.map((s) => ({
         userId: s.userId,
         clientId: s.clientId,
-        sid: s.sessionId,
+        // omitSid：全量撤销场景发送 sub-only token；否则携带代表 sid
+        sid: params.omitSid ? null : s.sessionId,
         logoutUri: uriByClient.get(s.clientId),
-      }))
+      })),
+      { perSession: params.perSession === true }
     );
 
     cursor = page[page.length - 1].id;

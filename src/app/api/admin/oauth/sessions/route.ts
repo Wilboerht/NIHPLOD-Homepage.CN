@@ -508,7 +508,7 @@ export async function DELETE(request: NextRequest) {
 
     // 分页扫描活跃会话并写入 backchannel 补偿队列（撤销前扫描；由 cron 异步批量投递，
     // 避免全量会话读入内存 + 逐用户串行 HTTP 导致请求超时）
-    const enqueued = await enqueueBackchannelLogoutForActiveSessions({});
+    const enqueued = await enqueueBackchannelLogoutForActiveSessions({ omitSid: true });
 
     // 批量撤销
     const [sessionResult, refreshResult] = await Promise.all([

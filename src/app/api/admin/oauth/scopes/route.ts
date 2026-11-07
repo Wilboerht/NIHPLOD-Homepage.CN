@@ -16,10 +16,17 @@ export const dynamic = "force-dynamic";
 const SCOPE_LABELS: Record<string, { label: string; desc: string }> = {
   openid: { label: "OpenID", desc: "基础身份标识（必选）" },
   profile: { label: "个人信息", desc: "昵称、头像" },
-  phone: { label: "手机号", desc: "脱敏手机号（138****1234）、换绑手机号（需短信验证）" },
+  phone: { label: "手机号读取", desc: "脱敏手机号（138****1234）" },
   membership: { label: "会员信息", desc: "会员等级、累计消费、积分与兑换、收货地址（读/写）" },
   birthday: { label: "生日", desc: "生日日期（ISO 8601 格式）" },
-  "profile:write": { label: "资料修改", desc: "允许修改你的昵称、头像、生日、性别、密码" },
+  "profile:write": { label: "资料修改", desc: "允许修改你的昵称、头像、生日、性别" },
+  "security:manage": {
+    label: "安全中心管理",
+    desc: "撤销其他应用授权、强制下线设备、解绑第三方身份（高危）",
+  },
+  "phone:write": { label: "手机号换绑", desc: "换绑手机号（需当前/新手机号短信验证，高危）" },
+  "account:delete": { label: "账号注销", desc: "提交/撤回账号注销申请（需短信验证，高危）" },
+  "password:write": { label: "密码管理", desc: "修改或设置登录密码（高危）" },
 };
 
 export async function GET(request: NextRequest) {

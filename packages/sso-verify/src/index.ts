@@ -169,6 +169,25 @@ export interface SsoVerifierOptions {
    * 仅在对接不返回归属字段的第三方端点时才需要显式设为 false（不推荐）。
    */
   strictAudience?: boolean;
+
+  /**
+   * 验证模式（默认 "auto"）：
+   * - "auto"：配置了 introspectionEndpoint + clientId 时使用 Introspection（可实时感知撤销）；
+   *   未配置时回退本地 JWT 验签。
+   * - "introspection"：强制 Introspection；未配置端点时回退本地验签。
+   * - "local"：仅本地 HS256/RS256 验签（不感知撤销，仅建议非敏感、高吞吐场景）。
+   * - "hybrid"：先本地验签，失败后再 Introspection（旧版行为，性能优先）。
+   *
+   * 涉及账户状态/授权撤销的鉴权建议使用 "auto" 或 "introspection"。
+   */
+  verificationMode?: "auto" | "introspection" | "local" | "hybrid";
+
+  /**
+   * 是否允许 M2M（client_credentials）token 通过用户态校验（默认 false）。
+   * M2M token 的 sub 为 `client:<client_id>`，不是用户 ID；若业务确实需要
+   * 校验 M2M token，请显式设为 true 并自行区分 client_type。
+   */
+  allowM2mTokens?: boolean;
 }
 
 /**
@@ -193,6 +212,16 @@ export interface VerifiedTokenPayload extends JWTPayload {
   client_id?: string;
   scope?: string;
   phone?: string;
+  /** 身份类型：m2m = client_credentials，user = 用户授权码流程 */
+  client_type?: "m2m" | "user";
+  /** OAuthSession ID；携带 sid 的 token 可被会话级撤销 */
+  sid?: string;
+  /** 原始认证时间（Unix 秒），供 max_age 判断 */
+  auth_time?: number;
+  /** DPoP 绑定（RFC 9449 cnf.jkt） */
+  cnf?: { jkt?: string };
+  /** introspection 返回的 token 类型（Bearer / DPoP） */
+  token_type?: "Bearer" | "DPoP";
 }
 
 /**
@@ -234,6 +263,11 @@ interface IntrospectResponse {
   client_id?: string;
   scope?: string;
   exp?: number;
+  token_type?: string;
+  client_type?: "m2m" | "user";
+  sid?: string;
+  auth_time?: number;
+  cnf?: { jkt?: string };
   [key: string]: unknown;
 }
 
@@ -300,6 +334,8 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     clockToleranceSeconds = 60,
     logoutJtiStore,
     strictAudience = true,
+    verificationMode = "auto",
+    allowM2mTokens = false,
   } = options;
 
   // 一次性告警标志：使用废弃的 accessTokenSecret 回退验证 logout_token 时提示迁移
@@ -466,7 +502,10 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         return null;
       }
       if (!response.ok) {
-        if (response.status >= 500 && attempt < introspectRetries) continue;
+        // 5xx 与 429（限流）可重试；429 通常需要更长窗口，但仍先短退避尝试一次
+        if ((response.status >= 500 || response.status === 429) && attempt < introspectRetries) {
+          continue;
+        }
         return null;
       }
       // 响应体非法 JSON（网关/代理返回 HTML、空体、截断 JSON 等）按端点不可用处理：
@@ -510,6 +549,10 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         client_id: data.client_id,
         scope: data.scope,
         exp: data.exp,
+        ...(data.client_type ? { client_type: data.client_type } : {}),
+        ...(data.sid ? { sid: data.sid } : {}),
+        ...(typeof data.auth_time === "number" ? { auth_time: data.auth_time } : {}),
+        ...(data.cnf ? { cnf: data.cnf } : {}),
       } as VerifiedTokenPayload;
     }
 
@@ -615,41 +658,77 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     }
   }
 
+  const hasIntrospection = Boolean(introspectionEndpoint && clientId);
+
+  /**
+   * M2M token 默认拒绝用户态校验：其 sub 是 `client:<id>`，不是用户 ID。
+   * 需要校验 M2M token 的服务显式设置 allowM2mTokens: true，并自行区分 client_type。
+   */
+  const rejectM2mPayload = (payload: VerifiedTokenPayload | null): VerifiedTokenPayload | null => {
+    if (!payload || allowM2mTokens) return payload;
+    const isM2m = payload.client_type === "m2m" || payload.sub.startsWith("client:");
+    return isM2m ? null : payload;
+  };
+
+  const verifyLocallyBoth = async (rawToken: string): Promise<VerifiedTokenPayload | null> => {
+    // 1. HS256 本地验证（适用于共享 secret 的内部服务）
+    if (accessTokenSecret) {
+      const local = await verifyLocally(rawToken);
+      if (local) return local;
+    }
+    // 2. RS256 本地验证（适用于已迁移到非对称签名的子项目）
+    return verifyWithRS256(rawToken);
+  };
+
+  const verifyViaIntrospection = async (rawToken: string): Promise<VerifiedTokenPayload | null> => {
+    const result = await introspect(rawToken);
+    // active 必须严格为 true，且必须携带非空 sub，否则视为无效（防 confused deputy）
+    if (result?.active !== true || !result.sub) return null;
+    return {
+      sub: result.sub,
+      aud: audience,
+      iss: issuer,
+      client_id: result.client_id,
+      scope: result.scope,
+      exp: result.exp,
+      ...(result.client_type ? { client_type: result.client_type } : {}),
+      ...(result.sid ? { sid: result.sid } : {}),
+      ...(typeof result.auth_time === "number" ? { auth_time: result.auth_time } : {}),
+      ...(result.cnf ? { cnf: result.cnf } : {}),
+      ...(result.token_type ? { token_type: result.token_type } : {}),
+    } as VerifiedTokenPayload;
+  };
+
   return {
     /**
      * 验证 Access Token
      *
-     * 验证顺序：
-     * 1. 若配置了 accessTokenSecret，先尝试 HS256 本地验证
-     * 2. 若配置了 accessTokenPublicKey 或 jwksUri，尝试 RS256 本地验证
-     * 3. 若上述均失败/未配置，调用 Introspection 端点
+     * 模式由 verificationMode 控制（默认 "auto"）：
+     * - auto：配置了 Introspection 时优先 Introspection（实时感知撤销）；否则本地验签。
+     * - introspection：强制 Introspection（未配置端点时回退本地）。
+     * - local：仅本地验签（不感知撤销）。
+     * - hybrid：本地优先，失败后 Introspection（旧版行为）。
      *
      * @returns token payload 或者 null（验证失败）
      */
-    async verify(token: string): Promise<VerifiedTokenPayload | null> {
-      // 1. HS256 本地验证（优先速度，适用于共享 secret 的内部服务）
-      if (accessTokenSecret) {
-        const local = await verifyLocally(token);
-        if (local) return local;
+    async verify(rawToken: string): Promise<VerifiedTokenPayload | null> {
+      const runLocal = async () => rejectM2mPayload(await verifyLocallyBoth(rawToken));
+      const runIntrospection = async () =>
+        rejectM2mPayload(await verifyViaIntrospection(rawToken));
+
+      if (verificationMode === "local") {
+        return await runLocal();
       }
-
-      // 2. RS256 本地验证（适用于已迁移到非对称签名的子项目）
-      const rs256Result = await verifyWithRS256(token);
-      if (rs256Result) return rs256Result;
-
-      // 3. Introspection 验证（兜底方案）
-      const result = await introspect(token);
-      // active 必须严格为 true，且必须携带非空 sub，否则视为无效（防 confused deputy）
-      if (result?.active !== true || !result.sub) return null;
-
-      return {
-        sub: result.sub,
-        aud: audience,
-        iss: issuer,
-        client_id: result.client_id,
-        scope: result.scope,
-        exp: result.exp,
-      } as VerifiedTokenPayload;
+      if (verificationMode === "introspection") {
+        return hasIntrospection ? await runIntrospection() : await runLocal();
+      }
+      if (verificationMode === "hybrid") {
+        const local = await runLocal();
+        if (local) return local;
+        return hasIntrospection ? await runIntrospection() : null;
+      }
+      // auto：Introspection 配置存在时默认走 Introspection，避免本地验签绕过撤销。
+      return hasIntrospection ? await runIntrospection() : await runLocal();
     },
 
     /**

@@ -185,7 +185,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     // scope 缩权：updateOAuthClient 已在事务内撤销该 client 全部 session/refresh token
     // 并收窄 consent；这里立即补投 backchannel，避免等待 cron 周期。
-    if (client.scopesChanged) {
+    if (client.scopesRemoved) {
       scheduleBackchannelRedelivery();
     }
 
@@ -300,6 +300,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     // 否则未配置 backchannelLogoutUri 的 client 被删后，用户会话仍可继续使用。
     const enqueued = await enqueueBackchannelLogoutForActiveSessions({
       clientId: client.clientId,
+      omitSid: true,
     });
     await prisma.oAuthSession.updateMany({
       where: { clientId: client.clientId, revokedAt: null },

@@ -1275,6 +1275,11 @@ export async function signOAuthAccessToken(payload: {
   sid?: string;
   /** M2M token 的 client scope 版本；与 OAuthClient.scopeVersion 不匹配即失效 */
   scopeVersion?: number;
+  /**
+   * 原始认证时间（Unix 秒）。写入 access token 的 auth_time claim，
+   * 供 introspection 与资源服务器判断 max_age；刷新时由调用方透传旧值。
+   */
+  authTime?: number;
 }): Promise<string> {
   const scopes = payload.scope.split(" ").filter(Boolean);
   const isM2m = payload.id.startsWith("client:");
@@ -1287,6 +1292,10 @@ export async function signOAuthAccessToken(payload: {
     client_type: isM2m ? "m2m" : "user",
     ...(isM2m && payload.scopeVersion !== undefined ? { scv: payload.scopeVersion } : {}),
   };
+
+  if (!isM2m && typeof payload.authTime === "number") {
+    claims.auth_time = payload.authTime;
+  }
 
   if (scopes.includes("phone")) {
     // 与 userinfo / ID Token 策略一致：access token 中的手机号同样脱敏，避免明文泄漏

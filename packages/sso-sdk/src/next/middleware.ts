@@ -230,6 +230,8 @@ const INTROSPECT_TIMEOUT_MS = 5_000; // introspect 请求超时，避免 SSO 中
 
 // 客户端认证失败（clientSecret/clientId 配置错误）只告警一次，避免日志刷屏
 let warnedIntrospectClientAuthFailure = false;
+// 限流（429）只告警一次：继续按 unreachable 处理（见下方说明），但不能再静默
+let warnedIntrospectRateLimited = false;
 
 /** 计算 token 的 SHA-256 hex（Edge Runtime Web Crypto），用作缓存 key 避免跨用户碰撞 */
 async function introspectCacheKey(token: string, clientId: string): Promise<string> {
@@ -300,6 +302,18 @@ async function introspectAccessToken(
     });
 
     if (!res.ok) {
+      if (res.status === 429) {
+        // 限流表示“未确证 token 是否有效”，不能当作 inactive 清 Cookie，也不能静默：
+        // 按 unreachable 处理并告警，提醒运维放宽/拆分 client 级限流配额。
+        if (!warnedIntrospectRateLimited) {
+          warnedIntrospectRateLimited = true;
+          console.warn(
+            "[SSO SDK] introspection 被限流（HTTP 429）：请为子站 BFF 配置独立的 client 级配额，" +
+              "或降低 middleware introspection 频率。本次按 unreachable 处理（默认 fail-open）。"
+          );
+        }
+        return "unreachable";
+      }
       if (res.status !== 401 && res.status !== 403) {
         // 非认证错误（如 500）：introspect 不可达，不缓存，让下次请求重试
         return "unreachable";

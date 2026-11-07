@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
 import { changePasswordSchema, changePassword } from "@/lib/password-manage";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -18,12 +20,21 @@ export const dynamic = "force-dynamic";
 export async function PUT(request: NextRequest) {
   try {
     const auth = await authenticateOAuthUserRequest(request, "PUT", {
-      scope: "profile:write",
+      scope: "password:write",
       action: "password_change",
     });
     if (!auth.ok) return auth.response;
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await readJsonBody(request, BODY_LIMITS.oauthJson);
+    } catch (error) {
+      if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
+      return auth.resJson(
+        { success: false, error: { code: "INVALID_PARAMS", message: "请求体不是合法 JSON" } },
+        400
+      );
+    }
     const parsed = changePasswordSchema.safeParse(body);
     if (!parsed.success) {
       return auth.resJson(

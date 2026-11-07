@@ -106,6 +106,12 @@ export async function POST(request: NextRequest) {
     }
     const client = verifyResult.client;
 
+    // 已认证阶段：client 级桶，避免共享出口 IP 的子站服务端互相挤占配额
+    const clientLimitResult = await rateLimit(`client:${client_id}`, "oauth-revoke");
+    if (!clientLimitResult.success) {
+      return resJson({ error: "rate_limited", error_description: "子项目请求过于频繁" }, 429);
+    }
+
     if (!token) {
       // RFC 7009: 即使 token 不存在也返回 200（防止信息泄漏），但仅在 client 认证通过后
       return resJson({});

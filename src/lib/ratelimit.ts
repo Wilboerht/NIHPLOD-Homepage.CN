@@ -163,16 +163,20 @@ export const RATE_LIMIT_PRESETS = {
   "admin-totp": { maxRequests: 3, windowMs: 5 * 60 * 1000 },
   /** OAuth 授权端点 - 每分钟 30 次 */
   "oauth-authorize": { maxRequests: 30, windowMs: 60 * 1000 },
-  /** OAuth Token 端点 - 每分钟 60 次 */
-  "oauth-token": { maxRequests: 60, windowMs: 60 * 1000 },
-  /** OAuth UserInfo 端点 - 每分钟 120 次 */
-  "oauth-userinfo": { maxRequests: 120, windowMs: 60 * 1000 },
-  /** OAuth Introspection 端点 - 每分钟 120 次 */
-  "oauth-introspect": { maxRequests: 120, windowMs: 60 * 1000 },
+  /**
+   * OAuth Token 端点 - 每分钟 600 次。
+   * 该预设同时用于 IP 桶与 client 桶：子站 BFF/服务端通常共享出口 IP，
+   * 60 次/分钟会在用户量上来后误伤合法流量。认证成功后另有 client 桶塑形。
+   */
+  "oauth-token": { maxRequests: 600, windowMs: 60 * 1000 },
+  /** OAuth UserInfo 资源端点 - 每分钟 600 次（服务端 BFF 共享出口 IP 场景） */
+  "oauth-userinfo": { maxRequests: 600, windowMs: 60 * 1000 },
+  /** OAuth Introspection 端点 - 每分钟 1200 次（IP 桶 + client 桶同预设） */
+  "oauth-introspect": { maxRequests: 1200, windowMs: 60 * 1000 },
   /** OAuth JWKS 端点 - 每分钟 60 次（公钥端点不宜过高） */
   "oauth-jwks": { maxRequests: 60, windowMs: 60 * 1000 },
-  /** OAuth Token Revocation 端点 - 每分钟 30 次 */
-  "oauth-revoke": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** OAuth Token Revocation 端点 - 每分钟 300 次（IP 桶 + client 桶同预设） */
+  "oauth-revoke": { maxRequests: 300, windowMs: 60 * 1000 },
   /** 微信 OAuth 回调 - 每分钟 30 次 */
   "wechat-callback": { maxRequests: 30, windowMs: 60 * 1000 },
   /** 抖音 OAuth 回调 - 每分钟 30 次（与 wechat-callback 口径一致） */

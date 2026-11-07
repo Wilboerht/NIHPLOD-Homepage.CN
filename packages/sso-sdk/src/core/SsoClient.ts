@@ -293,6 +293,23 @@ export class SsoClient {
     if (!authorizationOk) bad.push("authorization_endpoint");
     if (!sameOrigin(d.token_endpoint)) bad.push("token_endpoint");
     if (!sameOrigin(d.userinfo_endpoint)) bad.push("userinfo_endpoint");
+    // 其余端点同样可能把凭证/浏览器跳转导向攻击者，必须一并校验 origin。
+    if (d.jwks_uri && !sameOrigin(d.jwks_uri)) bad.push("jwks_uri");
+    if (d.revocation_endpoint && !sameOrigin(d.revocation_endpoint)) {
+      bad.push("revocation_endpoint");
+    }
+    if (d.introspection_endpoint && !sameOrigin(d.introspection_endpoint)) {
+      bad.push("introspection_endpoint");
+    }
+    if (d.end_session_endpoint) {
+      try {
+        if (new URL(d.end_session_endpoint).origin !== publicOrigin) {
+          bad.push("end_session_endpoint");
+        }
+      } catch {
+        bad.push("end_session_endpoint");
+      }
+    }
     if (bad.length > 0) {
       if (!this._discoveryOriginWarned) {
         this._discoveryOriginWarned = true;
@@ -738,6 +755,21 @@ export class SsoClient {
       throw new SsoError("state_mismatch", "State 参数不匹配，可能存在 CSRF 攻击");
     }
 
+    // RFC 9207：校验授权响应中的 iss，防止混合 IdP / 错误 IdP 的回调被本应用接受。
+    // 仅在响应携带 iss 时校验；以 Discovery 的 issuer 为准，回退 ssoBaseUrl。
+    const returnedIss = params.get("iss");
+    if (returnedIss) {
+      const discovery = await this._getDiscovery();
+      const expectedIssuer = (discovery?.issuer || this.config.ssoBaseUrl).replace(/\/+$/, "");
+      if (returnedIss.replace(/\/+$/, "") !== expectedIssuer) {
+        removeOAuthState(this.config.clientId);
+        removeOAuthNonce(this.config.clientId);
+        removePkceVerifier(this.config.clientId);
+        removeSilentProbe(this.config.clientId);
+        throw new SsoError("issuer_mismatch", "授权响应 issuer 不匹配，可能存在 IdP 混叠攻击");
+      }
+    }
+
     // state 校验通过：读取登录时保存的 OIDC nonce（validateIdToken 时 fail-closed 校验，
     // 成功后才随 state/verifier 一并清除——验签失败重试仍需它）
     const expectedNonce = getOAuthNonce(this.config.clientId) ?? undefined;
@@ -1076,15 +1108,25 @@ export class SsoClient {
         if (this.config.clientSecret) {
           revokeBody.set("client_secret", this.config.clientSecret);
         }
-        await fetchWithTimeout(
-          revokeUrl,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: revokeBody.toString(),
-          },
-          REVOKE_TIMEOUT_MS
-        );
+        const doRevoke = () =>
+          fetchWithTimeout(
+            revokeUrl,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: revokeBody.toString(),
+            },
+            REVOKE_TIMEOUT_MS
+          );
+        let res = await doRevoke();
+        // 5xx/429 可重试：服务端 503 明确要求客户端重试，避免 refresh_token 残留。
+        if (!res.ok && (res.status >= 500 || res.status === 429)) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          res = await doRevoke();
+        }
+        if (!res.ok) {
+          this.debugLog("logout: 服务端撤销 refresh_token 失败", { status: res.status });
+        }
       } catch {
         // 撤销失败不影响本地登出（best-effort）
       }

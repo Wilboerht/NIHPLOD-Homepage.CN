@@ -16,7 +16,7 @@ import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-const WRITE_SCOPE = "profile:write";
+const WRITE_SCOPE = "account:delete";
 const CODE_EXPIRE_MINUTES = 5;
 const SEND_INTERVAL_SECONDS = 60;
 const MAX_SEND_PER_HOUR = 5;

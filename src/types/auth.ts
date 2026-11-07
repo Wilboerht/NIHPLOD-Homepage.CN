@@ -182,6 +182,10 @@ export interface OAuthAccessTokenPayload extends JWTPayload {
   cnf?: { jkt?: string };
   /** 关联的 OAuthSession.sessionId，验证时按此查会话状态实现撤销即时失效 */
   sid?: string;
+  /** 原始认证时间（Unix 秒），供 introspection / 资源服务器执行 max_age */
+  auth_time?: number;
+  /** 身份类型：m2m = client_credentials，user = 用户授权码流程 */
+  client_type?: "m2m" | "user";
 }
 
 /**

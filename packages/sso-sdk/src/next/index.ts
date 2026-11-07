@@ -14,6 +14,9 @@ export type { SsoMiddlewareConfig } from "./middleware";
 export { createCallbackRouteHandler } from "./callback";
 export type { CallbackRouteConfig } from "./callback";
 
+export { createRefreshRouteHandler } from "./refresh";
+export type { RefreshRouteConfig } from "./refresh";
+
 export { createLogoutRouteHandler } from "./logout";
 export type { LogoutRouteConfig } from "./logout";
 

@@ -51,8 +51,11 @@ import { apiConsole } from "@/lib/logger";
 const PROVIDER = "wechat_miniprogram";
 
 // 小程序登录所需 scope（实际签发 = 本集合 ∩ OAuthClient.scopes）
-// profile:write：资料编辑（PATCH /api/oauth/userinfo，昵称/头像）；birthday：生日回显
-const MP_OAUTH_SCOPE = "openid profile phone membership profile:write birthday";
+// profile:write：资料编辑；birthday：生日回显；
+// security:manage / phone:write / account:delete / password:write：高危写能力独立授权
+const MP_OAUTH_SCOPE =
+  "openid profile phone membership profile:write birthday " +
+  "security:manage phone:write account:delete password:write";
 
 /**
  * 读取指定小程序 OAuth Client。缺失/停用/非 public 属部署配置错误：

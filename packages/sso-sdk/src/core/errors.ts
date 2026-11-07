@@ -6,6 +6,7 @@
 export type SsoErrorCode =
   | "invalid_config"
   | "state_mismatch"
+  | "issuer_mismatch"
   | "pkce_required"
   | "token_request_failed"
   | "session_expired"

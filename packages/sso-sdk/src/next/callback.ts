@@ -23,7 +23,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { validateIdToken } from "../core/id-token";
+import { fetchDiscoveryDoc, validateIdToken } from "../core/id-token";
 import { isTrustedReturnUrl, timingSafeEqualString } from "../core/security";
 import { fetchWithTimeout } from "../core/http";
 import {
@@ -380,6 +380,22 @@ export function createCallbackRouteHandler(config: CallbackRouteConfig) {
         "登录会话校验失败，请重新发起授权请求",
         config.renderErrorPage
       );
+    }
+
+    // RFC 9207：校验授权响应中的 iss，防止混合 IdP / 错误 IdP 的回调被本应用接受。
+    const returnedIss = searchParams.get("iss");
+    if (returnedIss) {
+      const discovery = await fetchDiscoveryDoc(normalizedBase);
+      const expectedIssuer = (discovery?.issuer || normalizedBase).replace(/\/+$/, "");
+      if (returnedIss.replace(/\/+$/, "") !== expectedIssuer) {
+        return buildErrorResponse(
+          request,
+          400,
+          "issuer_mismatch",
+          "授权响应 issuer 不匹配，请重新发起登录",
+          config.renderErrorPage
+        );
+      }
     }
 
     // 读取 middleware 发起授权时写入的 OIDC nonce（httpOnly cookie）。

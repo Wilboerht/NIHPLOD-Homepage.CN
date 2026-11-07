@@ -10,7 +10,7 @@ import { randomBytes } from "crypto";
 import { getInternalApiKeys } from "./internal-api";
 import { apiConsole } from "@/lib/logger";
 import { enqueueBackchannelLogoutForActiveSessions, isBlockedHostname } from "./backchannel-logout";
-import { SUPPORTED_SCOPES } from "./oauth-constants";
+import { OIDC_IMPLICIT_SCOPES, SUPPORTED_SCOPES } from "./oauth-constants";
 
 // ============================================
 // 参数校验
@@ -132,8 +132,10 @@ export interface OAuthClientData {
   accessTokenTtlSeconds: number;
   /** 最近一次密钥轮换时间（判断密钥是否处于轮换过渡期） */
   secretRotatedAt?: Date | null;
-  /** 本次更新是否发生 scope 缩权（调用方据此触发队列投递） */
+  /** 本次更新是否发生 scope 变更（新增或移除） */
   scopesChanged?: boolean;
+  /** 本次更新是否移除了 scope（需要撤销会话/刷新 token） */
+  scopesRemoved?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -455,22 +457,22 @@ export async function updateOAuthClient(
     });
     if (!previous) return null;
 
-    const scopesChanged =
-      parsed.scopes !== undefined &&
-      (parsed.scopes.length !== previous.scopes.length ||
-        parsed.scopes.some((scope) => !previous.scopes.includes(scope)));
+    const nextScopeList = parsed.scopes;
+    const addedScopes = nextScopeList
+      ? nextScopeList.filter((scope) => !previous.scopes.includes(scope))
+      : [];
+    const removedScopes = nextScopeList
+      ? previous.scopes.filter((scope) => !nextScopeList.includes(scope))
+      : [];
+    const scopesChanged = addedScopes.length > 0 || removedScopes.length > 0;
+    const scopesRemoved = removedScopes.length > 0;
     // 停用与缩权同等处理：必须在同一事务内撤销全部会话/刷新令牌，避免部分撤销被吞掉。
+    // 仅新增 scope 不应撤销现有会话：旧 token 的权限是旧 scope 的子集，仍然安全；
+    // 强制撤销会造成管理员加一个可选 scope 就把所有用户踢下线。
     const disabling = previous.isActive && parsed.isActive === false;
-    const shouldRevoke = scopesChanged || disabling;
-
-    if (shouldRevoke) {
-      // 先入队：事务内撤销会话后就查不到活跃会话了；入队失败不阻断安全撤销。
-      await enqueueBackchannelLogoutForActiveSessions({ clientId: previous.clientId }).catch(
-        (err) => {
-          apiConsole.error("[OAuthClient] 入队 backchannel 失败:", err);
-        }
-      );
-    }
+    const shouldRevoke = scopesRemoved || disabling;
+    // 事务提交后按“本事务撤销时间以后被撤销的会话”入队，避免事务失败时误发登出。
+    const revokeStartedAt = new Date();
 
     const client = await prisma.$transaction(async (tx) => {
       const updated = await tx.oAuthClient.update({
@@ -478,34 +480,37 @@ export async function updateOAuthClient(
         data: {
           ...parsed,
           ...(shouldRevoke
-            ? { scopeVersion: { increment: 1 }, sessionsInvalidatedAt: new Date() }
+            ? { scopeVersion: { increment: 1 }, sessionsInvalidatedAt: revokeStartedAt }
             : {}),
         },
       });
 
       if (shouldRevoke) {
-        const now = new Date();
         await tx.oAuthSession.updateMany({
           where: { clientId: updated.clientId, revokedAt: null },
-          data: { revokedAt: now },
+          data: { revokedAt: revokeStartedAt },
         });
         await tx.refreshToken.updateMany({
           where: { clientId: updated.clientId, revokedAt: null },
           data: {
-            revokedAt: now,
-            revokedReason: scopesChanged ? "scope_changed" : "client_disabled",
+            revokedAt: revokeStartedAt,
+            revokedReason: scopesRemoved ? "scope_changed" : "client_disabled",
           },
         });
       }
 
-      if (scopesChanged) {
-        // consent 收窄到新 scope 集合，避免旧授权继续覆盖已移除的字段
+      if (scopesRemoved) {
+        // consent 收窄到新 scope 集合，避免旧授权继续覆盖已移除的字段。
+        // openid 是 OIDC 隐式 scope：即便 client.scopes 未显式配置也必须保留，
+        // 否则 refresh 会不再返回 ID Token、auto-approve 也会重新弹 consent。
         const consents = await tx.userConsent.findMany({
           where: { clientId: updated.clientId },
           select: { id: true, scopes: true },
         });
         for (const consent of consents) {
-          const nextScopes = consent.scopes.filter((scope) => updated.scopes.includes(scope));
+          const nextScopes = consent.scopes.filter(
+            (scope) => updated.scopes.includes(scope) || OIDC_IMPLICIT_SCOPES.includes(scope)
+          );
           if (nextScopes.length !== consent.scopes.length) {
             await tx.userConsent.update({
               where: { id: consent.id },
@@ -517,6 +522,18 @@ export async function updateOAuthClient(
 
       return updated;
     });
+
+    if (shouldRevoke) {
+      // 事务已提交：扫描本事务撤销的会话（revokedSince）写入 backchannel 补偿队列。
+      // 失败不影响已完成的撤销，由管理员重试/人工核查。
+      await enqueueBackchannelLogoutForActiveSessions({
+        clientId: client.clientId,
+        omitSid: true,
+        revokedSince: revokeStartedAt,
+      }).catch((err) => {
+        apiConsole.error("[OAuthClient] 入队 backchannel 失败:", err);
+      });
+    }
 
     // isActive/scopeVersion 变更可能影响 M2M token 有效性：主动失效进程内缓存
     if (parsed.isActive !== undefined || scopesChanged) {
@@ -539,6 +556,7 @@ export async function updateOAuthClient(
       accessTokenTtlSeconds: client.accessTokenTtlSeconds,
       secretRotatedAt: client.secretRotatedAt ?? null,
       scopesChanged,
+      scopesRemoved,
       createdAt: client.createdAt,
       updatedAt: client.updatedAt,
     };
@@ -559,7 +577,10 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
     // 删除前将活跃会话的 Backchannel Logout 通知写入补偿队列（分页 + 异步投递）。
     // client 行删除后重投任务查不到 client，会按 target_unavailable 丢弃，属预期行为。
     if (client.backchannelLogoutUri) {
-      await enqueueBackchannelLogoutForActiveSessions({ clientId: client.clientId });
+      await enqueueBackchannelLogoutForActiveSessions({
+        clientId: client.clientId,
+        omitSid: true,
+      });
     }
 
     await prisma.$transaction(async (tx) => {

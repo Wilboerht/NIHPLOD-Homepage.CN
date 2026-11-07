@@ -12,6 +12,12 @@ export const SUPPORTED_SCOPES: readonly string[] = [
   "membership",
   "birthday",
   "profile:write",
+  // 高危写能力独立 scope：避免只申请“改资料”的第三方 client 获得
+  // 撤销其他应用授权 / 强制下线 / 解绑身份 / 注销账号 / 改密 / 换绑手机号等能力。
+  "security:manage",
+  "phone:write",
+  "account:delete",
+  "password:write",
 ];
 
 /**

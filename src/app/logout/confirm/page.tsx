@@ -29,6 +29,7 @@ function LogoutConfirmContent() {
   const state = searchParams.get("state");
   const clientId = searchParams.get("client_id");
   const [redirectUri, setRedirectUri] = useState<string | null>(null);
+  const [checkDone, setCheckDone] = useState(false);
   const [done, setDone] = useState(false);
 
   const getFinalRedirectUrl = useCallback(() => {
@@ -44,11 +45,13 @@ function LogoutConfirmContent() {
     deferInEffect(() => {
       if (!rawRedirectUri) {
         setRedirectUri(null);
+        setCheckDone(true);
         return;
       }
 
       if (isSafeRelativePath(rawRedirectUri)) {
         setRedirectUri(rawRedirectUri);
+        setCheckDone(true);
         return;
       }
 
@@ -62,12 +65,16 @@ function LogoutConfirmContent() {
         .then((data) => {
           setRedirectUri(data.trusted ? rawRedirectUri : null);
         })
-        .catch(() => setRedirectUri(null));
+        .catch(() => setRedirectUri(null))
+        .finally(() => setCheckDone(true));
     });
   }, [rawRedirectUri, clientId]);
 
   useEffect(() => {
-    // 等打勾动画播完（约 0.7s）再自动跳回发起方，兼顾反馈感与停留感；
+    // 必须等可信回跳地址校验完成后再启动自动跳转：
+    // 否则慢网络下 900ms 定时器会带着 null 跳回首页，丢失 RP 回跳。
+    if (!checkDone) return;
+    // 等打勾动画播完（约 0.9s）再自动跳回发起方；
     // 页面与底部文字链接保留为自动跳转失败时的兜底
     const timer = setTimeout(() => {
       setDone(true);
@@ -79,7 +86,7 @@ function LogoutConfirmContent() {
       }
     }, 900);
     return () => clearTimeout(timer);
-  }, [redirectUri, router, getFinalRedirectUrl]);
+  }, [checkDone, redirectUri, router, getFinalRedirectUrl]);
 
   const handleManualRedirect = () => {
     const finalUrl = getFinalRedirectUrl();
