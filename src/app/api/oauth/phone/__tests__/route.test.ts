@@ -1,11 +1,7 @@
 /**
- * OAuth 换绑手机号端点测试
- * PUT  /api/oauth/phone            - 双验证码换绑（Bearer + scope=phone）
- * POST /api/oauth/phone/send-code  - 发送换绑验证码
+ * OAuth 换绑手机号端点测�? * PUT  /api/oauth/phone            - 双验证码换绑（Bearer + scope=phone�? * POST /api/oauth/phone/send-code  - 发送换绑验证码
  *
- * 业务核心与主站会话路由共用（src/lib/phone-rebind.ts，已有覆盖）；
- * 本文件聚焦 OAuth 通道接线：scope 校验、限流、错误映射、无 Cookie 全撤会话。
- */
+ * 业务核心与主站会话路由共用（src/lib/phone-rebind.ts，已有覆盖）�? * 本文件聚�?OAuth 通道接线：scope 校验、限流、错误映射、无 Cookie 全撤会话�? */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -92,14 +88,14 @@ const mockRevoke = mocks.revokeOtherSessions;
 const mockUserUpdate = mocks.userUpdate;
 const mockSmsCreate = mocks.smsCreate;
 
-/** 简化版 OAuth 鉴权成功上下文（响应工厂带 no-store，与真实实现同形） */
+/** 简化版 OAuth 鉴权成功上下文（响应工厂�?no-store，与真实实现同形�?*/
 function authOk() {
   return {
     ok: true as const,
     payload: {
       id: AUTH_CONTEXT.id,
       client_id: "client-1",
-      scope: "openid phone",
+      scope: "openid phone phone:write",
       type: "access_token",
     },
     ip: "127.0.0.1",
@@ -122,7 +118,7 @@ function createRequest(url: string, body: unknown, method = "POST"): NextRequest
 
 const CODE_RECORD = { id: "code-1", codeHash: "hashed-code", ipAddress: "127.0.0.1" };
 
-describe("OAuth 换绑手机号", () => {
+describe("OAuth 换绑手机�?, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("NODE_ENV", "test");
@@ -145,9 +141,9 @@ describe("OAuth 换绑手机号", () => {
   });
 
   describe("PUT /api/oauth/phone", () => {
-    it("鉴权失败时直接返回鉴权响应，且请求 scope=phone", async () => {
+    it("鉴权失败时直接返回鉴权响应，且请�?scope=phone", async () => {
       const denied = NextResponse.json(
-        { error: "insufficient_scope", error_description: "需要 phone scope" },
+        { error: "insufficient_scope", error_description: "需�?phone scope" },
         { status: 403 }
       );
       mockAuthenticate.mockResolvedValue({ ok: false, response: denied });
@@ -163,12 +159,12 @@ describe("OAuth 换绑手机号", () => {
       expect(mockAuthenticate).toHaveBeenCalledWith(
         expect.anything(),
         "PUT",
-        expect.objectContaining({ scope: "phone" })
+        expect.objectContaining({ scope: "phone:write" })
       );
       expect(mocks.findUnique).not.toHaveBeenCalled();
     });
 
-    it("参数非法应返回 400 INVALID_PARAMS", async () => {
+    it("参数非法应返�?400 INVALID_PARAMS", async () => {
       const res = await PUT(
         createRequest(
           "/api/oauth/phone",
@@ -193,7 +189,7 @@ describe("OAuth 换绑手机号", () => {
       expect(mocks.findUnique).not.toHaveBeenCalled();
     });
 
-    it("双验证码通过后更新手机号；无 Cookie 通道会话全撤（currentRefreshToken=null）", async () => {
+    it("双验证码通过后更新手机号；无 Cookie 通道会话全撤（currentRefreshToken=null�?, async () => {
       mocks.smsFindFirst.mockResolvedValue(CODE_RECORD);
       const res = await PUT(
         createRequest(
@@ -230,7 +226,7 @@ describe("OAuth 换绑手机号", () => {
       expect(mockRevoke).not.toHaveBeenCalled();
     });
 
-    it("新手机号已被注册且双验证码有效时应返回 PHONE_IN_USE（占用检查在双码校验之后）", async () => {
+    it("新手机号已被注册且双验证码有效时应返�?PHONE_IN_USE（占用检查在双码校验之后�?, async () => {
       mocks.findUnique.mockImplementation(async (args: { where: Record<string, unknown> }) =>
         "id" in args.where ? { id: "user-1", phone: "13800138000" } : { id: "user-2" }
       );
@@ -251,7 +247,7 @@ describe("OAuth 换绑手机号", () => {
       expect(mockRevoke).not.toHaveBeenCalled();
     });
 
-    it("新手机号已被注册但验证码错误应返回 CODE_INVALID（不泄露占用状态）", async () => {
+    it("新手机号已被注册但验证码错误应返�?CODE_INVALID（不泄露占用状态）", async () => {
       mocks.findUnique.mockImplementation(async (args: { where: Record<string, unknown> }) =>
         "id" in args.where ? { id: "user-1", phone: "13800138000" } : { id: "user-2" }
       );
@@ -271,7 +267,7 @@ describe("OAuth 换绑手机号", () => {
   });
 
   describe("POST /api/oauth/phone/send-code", () => {
-    it("鉴权失败时直接返回鉴权响应", async () => {
+    it("鉴权失败时直接返回鉴权响�?, async () => {
       const denied = NextResponse.json({ error: "invalid_token" }, { status: 401 });
       mockAuthenticate.mockResolvedValue({ ok: false, response: denied });
       const res = await POST(createRequest("/api/oauth/phone/send-code", { target: "current" }));
@@ -279,11 +275,11 @@ describe("OAuth 换绑手机号", () => {
       expect(mockAuthenticate).toHaveBeenCalledWith(
         expect.anything(),
         "POST",
-        expect.objectContaining({ scope: "phone" })
+        expect.objectContaining({ scope: "phone:write" })
       );
     });
 
-    it("target=current 成功：写入 rebind-current 验证码并返回有效期", async () => {
+    it("target=current 成功：写�?rebind-current 验证码并返回有效�?, async () => {
       const res = await POST(createRequest("/api/oauth/phone/send-code", { target: "current" }));
       const body = await res.json();
       expect(res.status).toBe(200);
@@ -293,7 +289,7 @@ describe("OAuth 换绑手机号", () => {
       });
     });
 
-    it("target=new 成功：写入 rebind-new 验证码", async () => {
+    it("target=new 成功：写�?rebind-new 验证�?, async () => {
       const res = await POST(
         createRequest("/api/oauth/phone/send-code", { target: "new", newPhone: "13900139000" })
       );
@@ -312,11 +308,10 @@ describe("OAuth 换绑手机号", () => {
       );
       const body = await res.json();
 
-      // 与真实发送相同的响应（不返回 PHONE_IN_USE，避免 OAuth 通道成为注册状态探测通道）
-      expect(res.status).toBe(200);
+      // 与真实发送相同的响应（不返回 PHONE_IN_USE，避�?OAuth 通道成为注册状态探测通道�?      expect(res.status).toBe(200);
       expect(body.success).toBe(true);
       expect(body.data.expiresIn).toBe(300);
-      // 写 used=true 限流占位记录（冷却/小时计数口径一致），但不发真实短信
+      // �?used=true 限流占位记录（冷�?小时计数口径一致），但不发真实短信
       expect(mocks.recordFakeSmsThrottleEntry).toHaveBeenCalledWith(
         "13900139000",
         "rebind-new",

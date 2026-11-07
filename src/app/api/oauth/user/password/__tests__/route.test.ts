@@ -1,12 +1,8 @@
 /**
  * OAuth 密码管理端点测试
- * PUT  /api/oauth/user/password            - 修改密码（旧密码）
- * POST /api/oauth/user/password/set        - 首次设置密码（短信验证码）
- * POST /api/oauth/user/password/send-code  - 发送设置密码验证码
+ * PUT  /api/oauth/user/password            - 修改密码（旧密码�? * POST /api/oauth/user/password/set        - 首次设置密码（短信验证码�? * POST /api/oauth/user/password/send-code  - 发送设置密码验证码
  *
- * 业务核心与主站会话路由共用（src/lib/password-manage.ts，已有覆盖）；
- * 本文件聚焦 OAuth 通道接线：scope=profile:write、错误映射、无 Cookie 全撤会话。
- */
+ * 业务核心与主站会话路由共用（src/lib/password-manage.ts，已有覆盖）�? * 本文件聚�?OAuth 通道接线：scope=profile:write、错误映射、无 Cookie 全撤会话�? */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -109,7 +105,7 @@ function authOk() {
     payload: {
       id: "user-1",
       client_id: "client-1",
-      scope: "openid profile:write",
+      scope: "openid password:write",
       type: "access_token",
     },
     ip: "127.0.0.1",
@@ -159,7 +155,7 @@ describe("OAuth 密码管理", () => {
   });
 
   describe("PUT /api/oauth/user/password", () => {
-    it("鉴权失败时直接返回鉴权响应，且请求 scope=profile:write", async () => {
+    it("鉴权失败时直接返回鉴权响应，且请�?scope=profile:write", async () => {
       const denied = NextResponse.json({ error: "insufficient_scope" }, { status: 403 });
       mockAuthenticate.mockResolvedValue({ ok: false, response: denied });
 
@@ -168,18 +164,18 @@ describe("OAuth 密码管理", () => {
       expect(mockAuthenticate).toHaveBeenCalledWith(
         expect.anything(),
         "PUT",
-        expect.objectContaining({ scope: "profile:write" })
+        expect.objectContaining({ scope: "password:write" })
       );
       expect(mocks.findUnique).not.toHaveBeenCalled();
     });
 
-    it("参数非法应返回 400 INVALID_PARAMS", async () => {
+    it("参数非法应返�?400 INVALID_PARAMS", async () => {
       const res = await PUT(createRequest("/api/oauth/user/password", { oldPassword: "" }, "PUT"));
       expect(res.status).toBe(400);
       expect((await res.json()).error.code).toBe("INVALID_PARAMS");
     });
 
-    it("改密成功：更新密码并全撤会话（currentRefreshToken=null）", async () => {
+    it("改密成功：更新密码并全撤会话（currentRefreshToken=null�?, async () => {
       mocks.findUnique.mockResolvedValue({
         id: "user-1",
         phone: "13800138000",
@@ -229,7 +225,7 @@ describe("OAuth 密码管理", () => {
       });
     });
 
-    it("验证码错误应返回 400 CODE_INVALID 并记录单码失败", async () => {
+    it("验证码错误应返回 400 CODE_INVALID 并记录单码失�?, async () => {
       mocks.smsFindFirst.mockResolvedValue(CODE_RECORD);
       mocks.verifySmsCodeWithLimit.mockReturnValue(false);
       const res = await SET(createRequest("/api/oauth/user/password/set", setBody));
@@ -245,7 +241,7 @@ describe("OAuth 密码管理", () => {
       expect(mocks.revokeOtherSessions).not.toHaveBeenCalled();
     });
 
-    it("已设置过密码应返回 400 PASSWORD_ALREADY_SET", async () => {
+    it("已设置过密码应返�?400 PASSWORD_ALREADY_SET", async () => {
       mocks.findUnique.mockResolvedValue({
         id: "user-1",
         phone: "13800138000",
@@ -259,7 +255,7 @@ describe("OAuth 密码管理", () => {
   });
 
   describe("POST /api/oauth/user/password/send-code", () => {
-    it("成功发送：向本人手机号写入 reset 验证码", async () => {
+    it("成功发送：向本人手机号写入 reset 验证�?, async () => {
       mocks.findUnique.mockResolvedValue({ id: "user-1", phone: "13800138000" });
       const res = await SEND_CODE(createRequest("/api/oauth/user/password/send-code", {}));
       const body = await res.json();
@@ -272,7 +268,7 @@ describe("OAuth 密码管理", () => {
       expect(mockAuthenticate).toHaveBeenCalledWith(
         expect.anything(),
         "POST",
-        expect.objectContaining({ scope: "profile:write" })
+        expect.objectContaining({ scope: "password:write" })
       );
     });
 
