@@ -39,6 +39,7 @@ export const ADMIN_PERMISSIONS = [
   "applications:read",
   "applications:write",
   "applications:delete",
+  "applications:sensitive:read",
 
   "messages:read",
   "messages:sensitive:read",
@@ -141,6 +142,7 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
       "applications:read",
       "applications:write",
       "applications:delete",
+      "applications:sensitive:read",
     ],
   },
   {
@@ -218,9 +220,10 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "jobs:write": "职位编辑/发布",
   "jobs:delete": "职位删除",
   "jobs:batch-delete": "职位批量删除",
-  "applications:read": "简历查看（含候选人 PII）",
+  "applications:read": "简历查看",
   "applications:write": "简历状态/备注/文件夹",
   "applications:delete": "简历删除",
+  "applications:sensitive:read": "查看候选人完整手机号（敏感，写审计）",
   "messages:read": "留言查看",
   "messages:sensitive:read": "查看留言完整手机号（敏感）",
   "messages:write": "留言备注/标记",
@@ -302,6 +305,7 @@ export const ROLE_TEMPLATES: Record<
     "applications:read",
     "applications:write",
     "applications:delete",
+    "applications:sensitive:read",
     "messages:read",
     "messages:sensitive:read",
     "messages:write",
@@ -367,6 +371,7 @@ export const ROLE_TEMPLATES: Record<
     "applications:read",
     "applications:write",
     "applications:delete",
+    "applications:sensitive:read",
     "amap:read",
   ],
   finance: [

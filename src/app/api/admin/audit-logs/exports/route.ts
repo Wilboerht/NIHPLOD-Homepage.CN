@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit";
 import { createAuditExportJob } from "@/lib/audit-export";
 import { apiConsole } from "@/lib/logger";
+import { parseUtc8DateBoundary } from "@/lib/timezone";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, private",
@@ -98,6 +99,20 @@ export async function POST(request: NextRequest) {
     if (stepUp) return stepUp;
 
     const body = createSchema.parse(await request.json());
+    const rawStartDate = body.filters.startDate;
+    const rawEndDate = body.filters.endDate;
+    if (typeof rawStartDate === "string" && rawStartDate && !parseUtc8DateBoundary(rawStartDate, false)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_DATE", message: "开始日期格式错误" } },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
+    }
+    if (typeof rawEndDate === "string" && rawEndDate && !parseUtc8DateBoundary(rawEndDate, true)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_DATE", message: "结束日期格式错误" } },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
+    }
     if (body.stream === "sso" && !hasAdminPermission(admin, "sso:read")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：SSO 审计查看" } },

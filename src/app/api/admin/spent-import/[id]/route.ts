@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(1000)),
-  status: z.enum(["ALL", "SUCCESS", "DUPLICATE", "ERROR"]).default("ALL"),
+  status: z.enum(["ALL", "PENDING", "SUCCESS", "DUPLICATE", "ERROR"]).default("ALL"),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };

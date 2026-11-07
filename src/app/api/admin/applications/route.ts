@@ -7,6 +7,7 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLogStrict } from "@/lib/audit";
 import { cuidSchema } from "@/lib/validation";
+import { maskPhone } from "@/lib/mask-phone";
 
 const folderIdSchema = z.union([z.literal("uncategorized"), cuidSchema]);
 
@@ -97,6 +98,8 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    const canViewSensitive = hasAdminPermission(admin, "applications:sensitive:read");
+
     // 查询数据
     // pendingCount 需要基于当前过滤条件（搜索、职位、分类夹）统计待处理数量，
     // 避免与当前列表的过滤条件不一致导致数字矛盾。
@@ -166,8 +169,10 @@ export async function GET(request: NextRequest) {
         data: {
           items: applications.map(({ resumePath, ...application }) => ({
             ...application,
+            phone: canViewSensitive ? application.phone : maskPhone(application.phone),
             hasResume: Boolean(resumePath),
           })),
+          canViewSensitive,
           pagination: {
             page,
             pageSize,

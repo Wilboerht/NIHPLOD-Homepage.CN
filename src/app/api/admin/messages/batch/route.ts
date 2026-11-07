@@ -7,6 +7,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
@@ -50,6 +51,10 @@ export async function POST(request: NextRequest) {
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：留言操作" } },
         { status: 403 }
       );
+    }
+    if (action === "delete") {
+      const stepUp = await requireAdminStepUp(request, admin);
+      if (stepUp) return stepUp;
     }
 
     let count = 0;

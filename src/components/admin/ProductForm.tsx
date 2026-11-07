@@ -438,6 +438,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         uploaded.push({
           id: img.id,
           url: img.url,
+          derivedUrls: img.derivedUrls ?? [],
           alt: img.alt,
           order: img.order,
         });

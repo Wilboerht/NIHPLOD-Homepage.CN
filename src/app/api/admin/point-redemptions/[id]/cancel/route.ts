@@ -66,12 +66,28 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
+    // 非 owner 必须先判断状态再判断审批阈值，避免已履约记录返回误导性提示。
     if (isAdminApprovalEnforced() && admin.role !== "owner") {
       const redemption = await prisma.pointRedemption.findUnique({
         where: { id },
-        select: { points: true },
+        select: { points: true, status: true },
       });
-      if (redemption && isRedemptionCancelApprovalRequired(redemption.points)) {
+      if (!redemption) {
+        return NextResponse.json(
+          { success: false, error: { code: "NOT_FOUND", message: "兑换记录不存在" } },
+          { status: 404 }
+        );
+      }
+      if (redemption.status !== "PENDING") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "ALREADY_PROCESSED", message: "该兑换已处理，无法取消" },
+          },
+          { status: 409 }
+        );
+      }
+      if (isRedemptionCancelApprovalRequired(redemption.points)) {
         return NextResponse.json(
           {
             success: false,
@@ -148,9 +164,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       note: parsed.data.note ?? null,
     });
 
+    const message =
+      result.points && result.points > 0
+        ? `已取消兑换并退还 ${result.points} 积分`
+        : "已取消兑换；用户已注销，未退还积分";
     return NextResponse.json({
       success: true,
-      data: { message: `已取消兑换并退还 ${result.points} 积分`, refundedPoints: result.points },
+      data: { message, refundedPoints: result.points ?? 0 },
     });
   } catch (error) {
     apiConsole.error("[AdminPointRedemptions] 取消失败:", error);

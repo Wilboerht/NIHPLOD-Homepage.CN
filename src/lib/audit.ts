@@ -70,6 +70,7 @@ export type AuditAction =
   | "advisor_user_update"
   | "advisor_report_view"
   | "application_detail_view"
+  | "application_sensitive_view"
   | "resume_download"
   | "step_up_granted"
   | "user_birthday_update"
@@ -151,6 +152,7 @@ export type AuditAction =
   | "admin_approval_cancelled"
   | "admin_approval_expired"
   | "admin_approval_retried"
+  | "admin_approval_reassigned"
   | "admin_approval_executed"
   | "admin_approval_execution_failed"
   | "admin_approval_stale"
@@ -234,6 +236,7 @@ export const AUDIT_ACTIONS = [
   "advisor_user_update",
   "advisor_report_view",
   "application_detail_view",
+  "application_sensitive_view",
   "resume_download",
   "step_up_granted",
   "user_birthday_update",
@@ -317,6 +320,7 @@ export const AUDIT_ACTIONS = [
   "admin_approval_cancelled",
   "admin_approval_expired",
   "admin_approval_retried",
+  "admin_approval_reassigned",
   "admin_approval_executed",
   "admin_approval_execution_failed",
   "admin_approval_stale",
@@ -645,7 +649,46 @@ export function decodeAuditCursor(cursor?: string | null): AuditCursor | null {
   }
 }
 
-export function buildAuditWhere(options: AuditLogQueryOptions): Prisma.AuditLogWhereInput {
+export interface ActiveAuditLegalHold {
+  targetType: string | null;
+  targetId: string | null;
+  userId: string | null;
+  adminId: string | null;
+}
+
+/**
+ * 读取当前生效的法律保留规则。
+ * `legalHold` 筛选必须以 AuditLegalHold 表为准：AuditLog.legalHold 是历史遗留字段，
+ * 创建/解除保留时不会回写，直接按布尔值筛选会永远为空。
+ */
+export async function getActiveAuditLegalHolds(): Promise<ActiveAuditLegalHold[]> {
+  const holds = await prisma.auditLegalHold.findMany({
+    where: { active: true, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    select: { targetType: true, targetId: true, userId: true, adminId: true },
+  });
+  return holds.filter(
+    (hold) => (hold.targetType && hold.targetId) || hold.userId || hold.adminId
+  );
+}
+
+function legalHoldConditions(
+  holds: readonly ActiveAuditLegalHold[]
+): Prisma.AuditLogWhereInput[] {
+  return holds.map((hold) => ({
+    OR: [
+      ...(hold.targetType && hold.targetId
+        ? [{ targetType: hold.targetType, targetId: hold.targetId }]
+        : []),
+      ...(hold.userId ? [{ userId: hold.userId }] : []),
+      ...(hold.adminId ? [{ adminId: hold.adminId }] : []),
+    ],
+  }));
+}
+
+export function buildAuditWhere(
+  options: AuditLogQueryOptions,
+  legalHolds: readonly ActiveAuditLegalHold[] = []
+): Prisma.AuditLogWhereInput {
   const where: Prisma.AuditLogWhereInput = {};
   if (options.action) where.action = options.action;
   if (options.targetType) where.targetType = options.targetType;
@@ -661,7 +704,6 @@ export function buildAuditWhere(options: AuditLogQueryOptions): Prisma.AuditLogW
   if (options.targetId) where.targetId = options.targetId;
   if (options.requestId) where.requestId = options.requestId;
   if (options.ipAddress) where.ipAddress = options.ipAddress;
-  if (options.legalHold !== undefined) where.legalHold = options.legalHold;
   if (options.startDate || options.endDate) {
     where.createdAt = {};
     if (options.startDate) where.createdAt.gte = options.startDate;
@@ -682,6 +724,16 @@ export function buildAuditWhere(options: AuditLogQueryOptions): Prisma.AuditLogW
       ],
     });
   }
+
+  if (options.legalHold !== undefined) {
+    const conditions = legalHoldConditions(legalHolds);
+    if (options.legalHold) {
+      and.push(conditions.length > 0 ? { OR: conditions } : { id: { in: [] } });
+    } else if (conditions.length > 0) {
+      and.push({ NOT: { OR: conditions } });
+    }
+  }
+
   if (and.length > 0) where.AND = and;
   return where;
 }
@@ -692,7 +744,9 @@ export function buildAuditWhere(options: AuditLogQueryOptions): Prisma.AuditLogW
  */
 export async function listAuditLogs(options: AuditLogQueryOptions) {
   const pageSize = Math.min(Math.max(options.pageSize ?? 20, 1), 100);
-  const baseWhere = buildAuditWhere(options);
+  const legalHolds =
+    options.legalHold !== undefined ? await getActiveAuditLegalHolds() : [];
+  const baseWhere = buildAuditWhere(options, legalHolds);
   const cursor = decodeAuditCursor(options.cursor);
   if (options.cursor && !cursor) throw new Error("INVALID_CURSOR");
 

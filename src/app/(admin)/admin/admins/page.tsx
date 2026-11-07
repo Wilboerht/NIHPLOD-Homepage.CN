@@ -2,7 +2,17 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, RefreshCw, Pencil, Trash2, Plus, X, KeyRound, Copy } from "lucide-react";
+import {
+  Search,
+  RefreshCw,
+  Pencil,
+  Trash2,
+  Plus,
+  X,
+  KeyRound,
+  Copy,
+  Power,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -71,6 +81,7 @@ interface AdminItem {
   email: string;
   name: string;
   role: string;
+  status: string;
   permissions: string[];
   totpEnabled: boolean;
   totpResetRequired: boolean;
@@ -347,6 +358,26 @@ function AdminAdminsContent() {
     }
   };
 
+  const [togglingStatusId, setTogglingStatusId] = useState<string | null>(null);
+
+  const toggleAdminStatus = async (target: AdminItem) => {
+    if (togglingStatusId) return;
+    const nextStatus = target.status === "DISABLED" ? "ACTIVE" : "DISABLED";
+    setTogglingStatusId(target.id);
+    try {
+      const result = await withStepUp(() =>
+        apiPut(`/api/admin/admins`, { id: target.id, status: nextStatus })
+      );
+      if (result === null) return;
+      success(nextStatus === "ACTIVE" ? "管理员已启用" : "管理员已禁用");
+      await fetchAdmins();
+    } catch (err) {
+      error(err instanceof Error ? err.message : "状态修改失败");
+    } finally {
+      setTogglingStatusId(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -594,6 +625,27 @@ function AdminAdminsContent() {
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
+                      {isOwnerActor && admin.id !== currentAdminId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          loading={togglingStatusId === admin.id}
+                          aria-label={
+                            admin.status === "DISABLED"
+                              ? `启用 ${admin.name}`
+                              : `禁用 ${admin.name}`
+                          }
+                          title={admin.status === "DISABLED" ? "启用管理员" : "禁用管理员"}
+                          onClick={() => void toggleAdminStatus(admin)}
+                        >
+                          <Power
+                            className={cn(
+                              "h-4 w-4",
+                              admin.status === "DISABLED" ? "text-emerald-600" : "text-red-500"
+                            )}
+                          />
+                        </Button>
+                      )}
                       {isOwnerActor &&
                         admin.id !== currentAdminId &&
                         (admin.totpEnabled || admin.totpResetRequired) && (
@@ -760,6 +812,28 @@ function AdminAdminsContent() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
+                          {isOwnerActor && admin.id !== currentAdminId && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              loading={togglingStatusId === admin.id}
+                              aria-label={
+                                admin.status === "DISABLED"
+                                  ? `启用 ${admin.name}`
+                                  : `禁用 ${admin.name}`
+                              }
+                              onClick={() => void toggleAdminStatus(admin)}
+                            >
+                              <Power
+                                className={cn(
+                                  "h-4 w-4",
+                                  admin.status === "DISABLED"
+                                    ? "text-emerald-600"
+                                    : "text-red-500"
+                                )}
+                              />
+                            </Button>
+                          )}
                           {isOwnerActor &&
                             admin.id !== currentAdminId &&
                             (admin.totpEnabled || admin.totpResetRequired) && (

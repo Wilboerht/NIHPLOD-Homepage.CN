@@ -11,7 +11,10 @@
  */
 import { prisma } from "@/lib/prisma";
 import { maskIp } from "@/lib/mask-phone";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import {
+  enqueueBackchannelLogoutNotifications,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { apiConsole } from "@/lib/logger";
 
@@ -137,11 +140,6 @@ export async function forceLogoutDevice(params: {
     };
   }
 
-  const sidByClient =
-    target.clientId && target.oauthSessionId
-      ? { [target.clientId]: target.oauthSessionId }
-      : undefined;
-
   await prisma.$transaction(async (tx) => {
     await tx.refreshToken.update({
       where: { id: target.id },
@@ -160,9 +158,26 @@ export async function forceLogoutDevice(params: {
   // Backchannel Logout（best-effort）：让 RP 即时清除本地会话；失败不阻断主流程
   if (target.clientId) {
     try {
-      await sendBackchannelLogout(userId, [target.clientId], { sids: sidByClient });
+      const client = await prisma.oAuthClient.findUnique({
+        where: { clientId: target.clientId },
+        select: { backchannelLogoutUri: true },
+      });
+      if (client?.backchannelLogoutUri) {
+        await enqueueBackchannelLogoutNotifications(
+          [
+            {
+              userId,
+              clientId: target.clientId,
+              sid: target.oauthSessionId ?? null,
+              logoutUri: client.backchannelLogoutUri,
+            },
+          ],
+          { perSession: !!target.oauthSessionId }
+        );
+        scheduleBackchannelRedelivery();
+      }
     } catch (err) {
-      apiConsole.warn("[ForceLogoutDevice] Backchannel logout 通知失败:", err);
+      apiConsole.warn("[ForceLogoutDevice] Backchannel logout 入队失败:", err);
     }
   }
 

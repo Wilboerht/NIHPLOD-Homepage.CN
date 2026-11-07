@@ -27,6 +27,13 @@ export const dynamic = "force-dynamic";
  * 仍必须与该 client 注册列表精确匹配；它不会用于授予任何登录/免确认权限。
  * 这样即使 hint 已过期，标准 OIDC RP 的 post_logout_redirect_uri 也不会丢失。
  */
+function redirectNoStore(url: URL | string): NextResponse {
+  return NextResponse.redirect(url, {
+    status: 302,
+    headers: { "Cache-Control": "no-store" },
+  });
+}
+
 function extractAudienceUnverified(idTokenHint: string): string | null {
   try {
     const payload = decodeJwt(idTokenHint);
@@ -126,7 +133,7 @@ export async function GET(request: NextRequest) {
               ? new URL(postLogoutRedirectUri, baseOrigin)
               : new URL("/", baseOrigin);
           if (state) target.searchParams.set("state", state);
-          return NextResponse.redirect(target, 302);
+          return redirectNoStore(target);
         }
       } catch (fastPathError) {
         // 快速通道失败不阻断登出：回落到下方 /logout 确认页流程
@@ -161,10 +168,10 @@ export async function GET(request: NextRequest) {
       logoutUrl.hash = new URLSearchParams({ id_token_hint: idTokenHint }).toString();
     }
 
-    return NextResponse.redirect(logoutUrl, 302);
+    return redirectNoStore(logoutUrl);
   } catch (error) {
     apiConsole.error("[EndSession] 异常:", error);
     const origin = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-    return NextResponse.redirect(new URL("/logout", origin), 302);
+    return redirectNoStore(new URL("/logout", origin));
   }
 }

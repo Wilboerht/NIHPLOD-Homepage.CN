@@ -46,12 +46,14 @@ export interface AdminStatsData {
   pendingApplicationsOldestAt?: string;
   /** 本周新增简历数（applications:read） */
   newApplicationsThisWeek?: number;
-  /** 注销失败人工队列数（users:security:write） */
+  /** 注销失败人工队列数（users:read，与注销队列页面权限一致） */
   failedAccountDeletions?: number;
   /** Webhook 失败队列条数（webhooks:read） */
   webhookFailures?: number;
   /** 近 24 小时定时任务失败次数（cron:read） */
   cronFailures24h?: number;
+  /** 待审批/待执行数量（approvals:review 或 approvals:request） */
+  pendingApprovals?: number;
 }
 
 /** 内部聚合快照（不含权限裁剪） */
@@ -106,7 +108,7 @@ export function buildAdminStatsData(
     data.totalUsers = counts.totalUsersCount;
     data.newUsersToday = counts.newUsersTodayCount;
   }
-  // 注销失败队列需要人工重试，仅对有安全写入权限的角色展示
+  // 注销失败属于需要人工干预的安全告警，仅对有安全写入权限的角色展示。
   if (can("users:security:write")) {
     data.failedAccountDeletions = counts.failedAccountDeletionsCount;
   }

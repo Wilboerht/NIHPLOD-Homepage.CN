@@ -105,6 +105,12 @@ export async function GET(request: NextRequest) {
     const userMap = new Map(users.map((u) => [u.id, u]));
     const clientMap = new Map(clients.map((c) => [c.clientId, c]));
 
+    const lastErrorOf = (payload: unknown): string | null => {
+      if (!payload || typeof payload !== "object") return null;
+      const value = (payload as { lastError?: unknown }).lastError;
+      return typeof value === "string" ? value.slice(0, 500) : null;
+    };
+
     return NextResponse.json({
       success: true,
       data: {
@@ -125,6 +131,7 @@ export async function GET(request: NextRequest) {
             // 不回传 payload：其中含手机号等用户资料快照（PII），
             // 仅保留定位所需元数据；需要排查时走服务端日志。
             hasPayload: Boolean(item.payload),
+            lastError: lastErrorOf(item.payload),
           };
         }),
         pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
@@ -215,6 +222,10 @@ export async function POST(request: NextRequest) {
     }
 
     // WebhookDeliveryFailure 同时承载“资料变更”和“账户状态变更”两类 payload。
+    // 手动重投会立即向外部端点发送含用户资料的 payload，与丢弃一致要求 step-up。
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
+
     // 手动重投必须按 event 分流，否则状态事件会被资料重试逻辑误判为无可投递字段而丢弃。
     let isStatusWebhook = false;
     if (kind === "webhook") {

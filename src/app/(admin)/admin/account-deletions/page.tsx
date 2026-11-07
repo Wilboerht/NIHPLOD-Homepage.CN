@@ -99,7 +99,8 @@ function AdminAccountDeletionsContent() {
   const { can: canAdmin, role } = useAdminPermissions();
   const isOwnerActor = role === "owner";
   const { requireTotp, totpModal } = useTotpConfirm();
-  const canRetry = canAdmin("users:delete");
+  const canRetry =
+    canAdmin("users:delete") && (isOwnerActor || canAdmin("approvals:request"));
   const statusParam = get("status", "FAILED");
   const status: DeletionStatus = STATUS_TABS.some((tab) => tab.key === statusParam)
     ? (statusParam as DeletionStatus)
@@ -112,6 +113,7 @@ function AdminAccountDeletionsContent() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [retryTarget, setRetryTarget] = useState<DeletionItem | null>(null);
   const [forceRetry, setForceRetry] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<DeletionItem | null>(null);
 
   const takeLatest = useLatestRequest();
   const fetchItems = useCallback(
@@ -202,6 +204,21 @@ function AdminAccountDeletionsContent() {
     } catch (e) {
       // 失败（如达到重试上限返回 409）时保留弹窗，便于勾选「强制重试」后再次提交
       showError(e instanceof ApiError ? e.message : "重试失败");
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleCancel = async (item: DeletionItem) => {
+    setActioningId(item.id);
+    try {
+      await apiPost(`/api/admin/account-deletions/${item.id}/cancel`, {});
+      success("注销申请已撤回");
+      setCancelTarget(null);
+      window.dispatchEvent(new Event("admin:nav-counts-refresh"));
+      fetchItems(status, page);
+    } catch (e) {
+      showError(e instanceof ApiError ? e.message : "撤回失败");
     } finally {
       setActioningId(null);
     }
@@ -320,6 +337,16 @@ function AdminAccountDeletionsContent() {
                 ) : (
                   <span className="text-xs text-brand-charcoal/65">只读</span>
                 )
+              ) : item.status === "PENDING" && isOwnerActor ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  loading={actioningId === item.id}
+                  disabled={actioningId !== null && actioningId !== item.id}
+                  onClick={() => setCancelTarget(item)}
+                >
+                  撤回申请
+                </Button>
               ) : (
                 <span className="text-xs text-brand-charcoal/65">—</span>
               )}
@@ -439,6 +466,16 @@ function AdminAccountDeletionsContent() {
                       ) : (
                         <span className="text-xs text-brand-charcoal/65">只读</span>
                       )
+                    ) : item.status === "PENDING" && isOwnerActor ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        loading={actioningId === item.id}
+                        disabled={actioningId !== null && actioningId !== item.id}
+                        onClick={() => setCancelTarget(item)}
+                      >
+                        撤回申请
+                      </Button>
                     ) : (
                       <span className="text-xs text-brand-charcoal/65">—</span>
                     )}
@@ -511,6 +548,17 @@ function AdminAccountDeletionsContent() {
           </span>
         </label>
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={() => (cancelTarget ? handleCancel(cancelTarget) : undefined)}
+        title="撤回注销申请"
+        description={`确定撤回用户「${cancelTarget?.userNickname || cancelTarget?.userPhone || cancelTarget?.userId}」的注销申请吗？撤回后账号保持可用。`}
+        confirmText="确认撤回"
+        type="warning"
+        loading={actioningId === cancelTarget?.id}
+      />
       {totpModal}
     </div>
   );

@@ -179,6 +179,10 @@ describe("GET /api/admin/oauth/scopes", () => {
       "membership",
       "birthday",
       "profile:write",
+      "security:manage",
+      "phone:write",
+      "account:delete",
+      "password:write",
     ]);
     // 每项带 label/desc，供管理端 Wizard 渲染
     expect(data.data.scopes[0]).toHaveProperty("label");

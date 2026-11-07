@@ -21,6 +21,7 @@ import {
   readJsonBody,
 } from "@/lib/request-body";
 import { logger } from "@/lib/logger";
+import { recordSsoEvent } from "@/lib/sso-audit";
 
 export const dynamic = "force-dynamic";
 
@@ -224,6 +225,15 @@ export async function POST(request: NextRequest) {
       clientId: config.clientId,
       advisorRole,
       totpEnabled: admin.totpEnabled,
+    });
+    void recordSsoEvent({
+      event: "token",
+      userId: admin.id,
+      clientId: config.clientId,
+      clientName: "测肤子站",
+      ip: getClientIP(request),
+      success: true,
+      detail: { admin_sso: true, advisorRole },
     });
 
     return NextResponse.json(

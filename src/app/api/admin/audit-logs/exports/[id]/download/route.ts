@@ -51,16 +51,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         { status: 403 }
       );
     }
-    if (job.status !== "SUCCEEDED" || !job.filePath) {
-      return NextResponse.json(
-        { success: false, error: { code: "NOT_READY", message: "导出文件尚未生成" } },
-        { status: 409 }
-      );
-    }
     if (job.expiresAt && job.expiresAt.getTime() < Date.now()) {
       return NextResponse.json(
         { success: false, error: { code: "EXPIRED", message: "导出文件已过期" } },
         { status: 410 }
+      );
+    }
+    if (job.status !== "SUCCEEDED" || !job.filePath) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_READY", message: "导出文件尚未生成" } },
+        { status: 409 }
       );
     }
 

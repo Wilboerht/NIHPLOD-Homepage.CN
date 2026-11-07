@@ -173,6 +173,29 @@ export function notifyAuditExportFailure(params: {
 }
 
 /** 审计链完整性校验失败 */
+/** 审计保留清理完成/失败：高风险删除任务必须有可观测的结果通知 */
+export function notifyAuditRetentionResult(params: {
+  jobId: string;
+  status: "SUCCEEDED" | "FAILED";
+  deletedCount?: number;
+  error?: string | null;
+}): void {
+  notifyWithCooldown({
+    ruleKey: `audit-retention:${params.status}`,
+    count: 1,
+    cooldownMs: 10 * MINUTE,
+    type: "admin",
+    title: params.status === "SUCCEEDED" ? "审计保留清理完成" : "审计保留清理失败",
+    lines: [
+      `- 任务：${params.jobId}`,
+      `- 时间：${nowText()}`,
+      ...(params.status === "SUCCEEDED"
+        ? [`- 已删除：${params.deletedCount ?? 0} 条`]
+        : [`- 错误：${truncate(params.error)}`]),
+    ],
+  });
+}
+
 export function notifyAuditIntegrityFailure(
   results: Array<{ stream: string; day: string; error?: string }>
 ): void {

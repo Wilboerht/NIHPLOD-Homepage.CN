@@ -232,9 +232,9 @@ describe("POST /api/admin/oauth-clients/[id]/rotate-secret", () => {
     expect(typeof data.data.plainSecret).toBe("string");
     expect(data.data.plainSecret.length).toBeGreaterThan(60);
 
-    // 数据库写入的是新 secret 的哈希，而非明文，也不等于旧哈希
-    expect(prismaMock.oAuthClient.update).toHaveBeenCalledWith({
-      where: { id: "client-db-id-1" },
+    // 数据库以 CAS 写入新 secret 哈希，而非明文，也不等于旧哈希
+    expect(prismaMock.oAuthClient.updateMany).toHaveBeenCalledWith({
+      where: { id: "client-db-id-1", clientSecret: "hashed:old-plain-secret" },
       data: { clientSecret: `hashed:${data.data.plainSecret}` },
     });
 

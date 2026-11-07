@@ -37,6 +37,7 @@ interface Message {
   reply: string | null;
   repliedAt: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 const MESSAGE_TYPE_LABELS: Record<string, string> = {
@@ -178,8 +179,18 @@ function AdminMessagesContent() {
     if (message.read || !canWriteMessages) return;
 
     try {
-      await apiPatch(`/api/admin/messages/${message.id}`, { read: true });
-      setDetailMessage((prev) => (prev && prev.id === message.id ? { ...prev, read: true } : prev));
+      const saved = await apiPatch<{ updatedAt?: string }>(`/api/admin/messages/${message.id}`, {
+        read: true,
+      });
+      setDetailMessage((prev) =>
+        prev && prev.id === message.id
+          ? {
+              ...prev,
+              read: true,
+              updatedAt: saved?.updatedAt ?? prev.updatedAt,
+            }
+          : prev
+      );
       fetchMessages();
     } catch {
       showError("标记失败");
@@ -241,18 +252,22 @@ function AdminMessagesContent() {
 
     setReplying(true);
     try {
-      await apiPatch(`/api/admin/messages/${detailMessage.id}`, { reply });
+      const saved = await apiPatch<{ updatedAt?: string }>(
+        `/api/admin/messages/${detailMessage.id}`,
+        { reply, expectedUpdatedAt: detailMessage.updatedAt }
+      );
       success(detailMessage.reply ? "备注已更新" : "备注已保存");
       const updated = {
         ...detailMessage,
         reply,
         repliedAt: new Date().toISOString(),
         read: true,
+        updatedAt: saved?.updatedAt ?? new Date().toISOString(),
       };
       setDetailMessage(updated);
       fetchMessages();
-    } catch {
-      showError("备注保存失败");
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "备注保存失败");
     } finally {
       setReplying(false);
     }
@@ -262,10 +277,19 @@ function AdminMessagesContent() {
   const toggleRead = async (message: Message) => {
     const nextRead = !message.read;
     try {
-      await apiPatch(`/api/admin/messages/${message.id}`, { read: nextRead });
+      const saved = await apiPatch<{ updatedAt?: string }>(
+        `/api/admin/messages/${message.id}`,
+        { read: nextRead }
+      );
       success(nextRead ? "已标记为已读" : "已标记为未读");
       setDetailMessage((prev) =>
-        prev && prev.id === message.id ? { ...prev, read: nextRead } : prev
+        prev && prev.id === message.id
+          ? {
+              ...prev,
+              read: nextRead,
+              updatedAt: saved?.updatedAt ?? prev.updatedAt,
+            }
+          : prev
       );
       fetchMessages();
     } catch {
@@ -279,7 +303,15 @@ function AdminMessagesContent() {
 
     setDeleting(true);
     try {
-      await apiDelete(`/api/admin/messages/${deleteTarget.id}`);
+      const remove = () => apiDelete(`/api/admin/messages/${deleteTarget.id}`);
+      try {
+        await remove();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        await remove();
+      }
       success("留言已删除");
       setDeleteTarget(null);
       // 删光当前页最后一条时回退一页
@@ -288,8 +320,8 @@ function AdminMessagesContent() {
       } else {
         fetchMessages();
       }
-    } catch {
-      showError("删除失败");
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "删除失败");
     } finally {
       setDeleting(false);
     }
@@ -301,10 +333,20 @@ function AdminMessagesContent() {
     setBatchActionLoading(action);
 
     try {
-      const data = await apiPost<{ message: string }>("/api/admin/messages/batch", {
-        ids: Array.from(selection.selectedIds),
-        action,
-      });
+      const submit = () =>
+        apiPost<{ message: string }>("/api/admin/messages/batch", {
+          ids: Array.from(selection.selectedIds),
+          action,
+        });
+      let data: { message: string };
+      try {
+        data = await submit();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return false;
+        data = await submit();
+      }
 
       success(data.message);
       // 批量删光当前页时回退一页

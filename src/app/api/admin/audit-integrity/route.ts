@@ -7,6 +7,7 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { getArchiveConfig } from "@/lib/audit-archive";
+import { previousUtc8Day } from "@/lib/audit-integrity";
 import { apiConsole } from "@/lib/logger";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store, private" } as const;
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       prisma.auditLogAnchor.findMany({
         where: { signatureVersion: 2 },
         orderBy: [{ day: "desc" }, { stream: "asc" }],
-        take: 180,
+        take: 730,
       }),
       prisma.auditLog.count({ where: { outcome: "PENDING" } }),
       prisma.auditLogAnchor.findFirst({
@@ -50,6 +51,24 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // 锚点链连续性检查（列表内从新到旧）：当前锚点 prevAnchorHash 必须等于
+    // 前一日锚点 digest，且日期必须连续；否则说明中间锚点/日志可能被删除。
+    const chainErrors: string[] = [];
+    for (const stream of ["audit", "sso"] as const) {
+      const list = anchors.filter((anchor) => anchor.stream === stream);
+      for (let i = 0; i < list.length - 1; i += 1) {
+        const current = list[i];
+        const previous = list[i + 1];
+        if (current.prevAnchorHash !== previous.digest) {
+          chainErrors.push(`${stream}/${current.day}: prevAnchorHash 与前一锚点不一致`);
+          continue;
+        }
+        if (previous.day !== previousUtc8Day(current.day)) {
+          chainErrors.push(`${stream}/${current.day}: 锚点日期不连续（前一日为 ${previous.day}）`);
+        }
+      }
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -57,6 +76,8 @@ export async function GET(request: NextRequest) {
           config: getArchiveConfig(),
           pendingCount: pending,
           latest: { audit: latestAudit, sso: latestSso },
+          chainVerified: chainErrors.length === 0,
+          chainErrors: chainErrors.slice(0, 20),
           anchors: anchors.map((anchor) => ({
             ...anchor,
             createdAt: anchor.createdAt.toISOString(),

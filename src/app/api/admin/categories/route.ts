@@ -8,6 +8,7 @@ import { CategorySchema } from "@/schemas/product";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
 
@@ -94,6 +95,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
+
     const body = await request.json();
     const validated = CategorySchema.parse(body);
 
@@ -142,6 +146,8 @@ export async function POST(request: NextRequest) {
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
     revalidatePath("/products");
+    revalidatePath("/sitemap.xml");
+    revalidatePath("/guide");
     pushSearchEngines(["/products"]);
 
     return NextResponse.json({

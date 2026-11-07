@@ -127,7 +127,20 @@ export async function POST(request: NextRequest) {
       orderNo: row.orderNo,
       purchasedAt: row.purchasedAt,
       note: row.note,
+      rowIndex: row.rowIndex,
     }));
+    const rejectedRows = rows
+      .filter((row) => row.error)
+      .map((row) => ({
+        rowIndex: row.rowIndex,
+        phone: row.phone,
+        amount: row.amount,
+        channel: row.channel,
+        orderNo: row.orderNo,
+        purchasedAt: row.purchasedAt,
+        note: row.note,
+        error: row.error as string,
+      }));
     if (resolvedRows.length === 0) {
       return NextResponse.json(
         { success: false, error: { code: "NO_ROWS", message: "没有可导入的行" } },
@@ -173,6 +186,7 @@ export async function POST(request: NextRequest) {
     try {
       result = await executeImportBatch({
         rows: resolvedRows,
+        rejectedRows,
         fileName,
         fileHash,
         reason,

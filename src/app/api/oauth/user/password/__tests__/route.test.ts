@@ -109,7 +109,7 @@ function authOk() {
     payload: {
       id: "user-1",
       client_id: "client-1",
-      scope: "openid profile:write",
+      scope: "openid password:write",
       type: "access_token",
     },
     ip: "127.0.0.1",
@@ -168,7 +168,7 @@ describe("OAuth 密码管理", () => {
       expect(mockAuthenticate).toHaveBeenCalledWith(
         expect.anything(),
         "PUT",
-        expect.objectContaining({ scope: "profile:write" })
+        expect.objectContaining({ scope: "password:write" })
       );
       expect(mocks.findUnique).not.toHaveBeenCalled();
     });
@@ -272,7 +272,7 @@ describe("OAuth 密码管理", () => {
       expect(mockAuthenticate).toHaveBeenCalledWith(
         expect.anything(),
         "POST",
-        expect.objectContaining({ scope: "profile:write" })
+        expect.objectContaining({ scope: "password:write" })
       );
     });
 

@@ -23,6 +23,8 @@ vi.mock("@/lib/prisma", () => {
       externalIdentity: { findUnique: vi.fn() },
       // OAuth 签发路径的会话句柄
       oAuthSession: { findMany: vi.fn(), updateMany: vi.fn(), create: vi.fn() },
+      // 会话淘汰时查询 client 的 backchannelLogoutUri
+      oAuthClient: { findUnique: vi.fn().mockResolvedValue(null) },
       // 事务 mock：直接以 txClient 执行回调，并暴露给测试断言
       $transaction: vi.fn(async (fn: (tx: typeof txClient) => Promise<unknown>) => fn(txClient)),
       __tx: txClient,
@@ -48,6 +50,11 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/auth-security", () => ({
   saveRefreshToken: vi.fn().mockResolvedValue(undefined),
   extractDeviceInfo: vi.fn().mockReturnValue({ deviceName: "test" }),
+}));
+
+vi.mock("@/lib/backchannel-logout", () => ({
+  enqueueBackchannelLogoutNotifications: vi.fn().mockResolvedValue(0),
+  scheduleBackchannelRedelivery: vi.fn(),
 }));
 
 vi.mock("@/lib/jwt", () => ({
@@ -509,6 +516,7 @@ describe("resolveWechatBinding OAuth 签发路径", () => {
       scope: "openid profile phone membership",
       expiresIn: "28800s",
       sid: sessionId,
+      authTime: expect.any(Number),
     });
     // Refresh Token：携带 client_id/scope/sid
     expect(mockSignRefreshToken).toHaveBeenCalledWith({
@@ -516,6 +524,7 @@ describe("resolveWechatBinding OAuth 签发路径", () => {
       clientId: "wechat-mp-skin",
       scope: "openid profile phone membership",
       sid: sessionId,
+      authTime: expect.any(Number),
     });
     // 落库 refresh token 按 client 维度隔离（第 5 参为 clientId）
     expect(mockSaveRefreshToken).toHaveBeenCalledWith(

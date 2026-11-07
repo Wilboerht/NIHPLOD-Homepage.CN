@@ -130,7 +130,7 @@ export async function authenticateOAuthResourceRequest(
     };
   }
 
-  // 检查 access token 黑名单（封禁后 15 分钟窗口期内的 token）
+  // 检查 access token 黑名单（封禁后 access token 剩余 TTL 内的 token）
   const blacklisted = await isTokenBlacklisted(payload.id);
   if (blacklisted) {
     scheduleSsoEvent({

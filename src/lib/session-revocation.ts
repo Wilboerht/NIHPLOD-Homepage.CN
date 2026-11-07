@@ -11,7 +11,11 @@
  */
 import { prisma } from "@/lib/prisma";
 import { hashRefreshToken } from "@/lib/auth-security";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import {
+  enqueueBackchannelLogoutForActiveSessions,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
+import { apiConsole } from "@/lib/logger";
 
 export async function revokeOtherSessionsAfterCredentialChange(params: {
   userId: string;
@@ -46,12 +50,17 @@ export async function revokeOtherSessionsAfterCredentialChange(params: {
     where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
     select: { clientId: true, sessionId: true },
   });
+  // 撤销前入队 sub-only 通知；撤销后由 cron/after 异步投递，避免阻塞改密响应。
+  if (activeSessions.length > 0) {
+    await enqueueBackchannelLogoutForActiveSessions({ userId, omitSid: true }).catch((err) =>
+      apiConsole.warn("[SessionRevocation] backchannel 入队失败:", err)
+    );
+  }
   await prisma.oAuthSession.updateMany({
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
   if (activeSessions.length > 0) {
-    const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-    await sendBackchannelLogout(userId, clientIds);
+    scheduleBackchannelRedelivery();
   }
 }

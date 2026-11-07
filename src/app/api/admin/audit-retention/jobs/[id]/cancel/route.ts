@@ -5,6 +5,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { createAuditLogTx } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { requireFreshAdminTotp } from "@/lib/admin-totp";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store, private" } as const;
 
@@ -29,6 +30,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
+    const body = (await request.json().catch(() => ({}))) as { totpCode?: string };
+    const totpFailure = await requireFreshAdminTotp(admin.id, body.totpCode);
+    if (totpFailure) return totpFailure;
     const { id } = await params;
     const result = await prisma.$transaction(async (tx) => {
       const updated = await tx.auditRetentionJob.updateMany({

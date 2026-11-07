@@ -235,6 +235,13 @@ if (!appUrl) {
         message: "不能为 localhost（子项目 Discovery 会拿到不可达地址）",
         fix: "改为公网域名，如 https://nihplod.cn",
       });
+    } else if (parsed.pathname !== "/" || parsed.search || parsed.hash) {
+      check({
+        status: "FAIL",
+        name: "NEXT_PUBLIC_APP_URL",
+        message: "必须是纯 origin，不能带路径/查询/fragment（否则 issuer 与所有端点 URL 会拼错）",
+        fix: "改为 https://nihplod.cn（不要附加 /api 或路径）",
+      });
     } else {
       check({ status: "PASS", name: "NEXT_PUBLIC_APP_URL", message: `已配置：${parsed.origin}` });
     }

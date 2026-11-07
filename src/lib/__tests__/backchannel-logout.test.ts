@@ -272,6 +272,23 @@ describe("backchannel-logout", () => {
     expect(mockSignLogoutToken).toHaveBeenCalledWith(expect.objectContaining({ sid: "sid-123" }));
   });
 
+  it("omitSid=true 时发送 sub-only logout_token，不回查 session", async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        clientId: "client-1",
+        backchannelLogoutUri: "https://client.example.com/logout",
+      },
+    ]);
+    mockSignLogoutToken.mockResolvedValue("logout-token-jwt");
+
+    await sendBackchannelLogout("user-1", ["client-1"], { omitSid: true });
+
+    expect(mockSessionFindMany).not.toHaveBeenCalled();
+    expect(mockSignLogoutToken).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: "user-1", aud: "client-1", sid: undefined })
+    );
+  });
+
   it("调用方传入 sids 时不再回库查询，logout_token 直接携带 sid（撤销路径）", async () => {
     mockFindMany.mockResolvedValue([
       {

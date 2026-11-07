@@ -94,7 +94,10 @@ const getCachedCounts = unstable_cache(
       }),
       prisma.jobApplication.count({ where: { createdAt: { gte: weekStart } } }),
       prisma.accountDeletionRequest.count({ where: { status: "FAILED" } }),
-      prisma.webhookDeliveryFailure.count(),
+      Promise.all([
+        prisma.webhookDeliveryFailure.count(),
+        prisma.backchannelLogoutFailure.count(),
+      ]).then(([webhook, backchannel]) => webhook + backchannel),
       prisma.cronTaskRun.count({ where: { success: false, startedAt: { gte: last24h } } }),
     ]);
 
@@ -154,12 +157,33 @@ export async function getAdminStats(admin: AdminUser): Promise<AdminStatsData> {
   const dateKey = getUtc8DateKey();
   const canReadMessages = hasAdminPermission(admin, "messages:read");
 
-  const [counts, recentMessages] = await Promise.all([
+  const canReviewApprovals = hasAdminPermission(admin, "approvals:review");
+  const canRequestApprovals = hasAdminPermission(admin, "approvals:request");
+
+  const [counts, recentMessages, pendingApprovals] = await Promise.all([
     getCachedCounts(dateKey),
     canReadMessages ? getCachedRecentMessages(dateKey) : Promise.resolve(undefined),
+    canReviewApprovals || canRequestApprovals
+      ? prisma.adminApprovalRequest.count({
+          where: {
+            expiresAt: { gt: new Date() },
+            ...(canReviewApprovals
+              ? { status: "PENDING" as const }
+              : {
+                  requesterId: admin.id,
+                  OR: [
+                    { status: "PENDING" as const },
+                    { status: "APPROVED" as const, executionMode: "REQUESTER" as const },
+                  ],
+                }),
+          },
+        })
+      : Promise.resolve(undefined),
   ]);
 
-  return buildAdminStatsData(admin, counts, recentMessages);
+  const data = buildAdminStatsData(admin, counts, recentMessages);
+  if (pendingApprovals !== undefined) data.pendingApprovals = pendingApprovals;
+  return data;
 }
 
 const getCachedSsoStats = unstable_cache(

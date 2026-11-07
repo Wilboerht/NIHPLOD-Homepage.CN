@@ -88,13 +88,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const fileStat = await stat(download.path);
     const stream = Readable.toWeb(createReadStream(download.path)) as unknown as ReadableStream;
+    const inline =
+      new URL(request.url).searchParams.get("inline") === "1" &&
+      download.filename.toLowerCase().endsWith(".pdf");
+    const disposition = contentDispositionAttachment(download.filename);
+    const inlineDisposition = inline
+      ? disposition.replace(/^attachment/i, "inline")
+      : disposition;
 
     return new NextResponse(stream, {
       headers: {
         ...NO_STORE_HEADERS,
-        "Content-Type": "application/pdf",
+        "Content-Type": download.filename.toLowerCase().endsWith(".pdf")
+          ? "application/pdf"
+          : "application/octet-stream",
         "Content-Length": String(fileStat.size),
-        "Content-Disposition": contentDispositionAttachment(download.filename),
+        "Content-Disposition": inlineDisposition,
       },
     });
   } catch (error) {

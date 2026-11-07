@@ -31,6 +31,7 @@ __export(next_exports, {
   createBackchannelLogoutRouteHandler: () => createBackchannelLogoutRouteHandler,
   createCallbackRouteHandler: () => createCallbackRouteHandler,
   createLogoutRouteHandler: () => createLogoutRouteHandler,
+  createRefreshRouteHandler: () => createRefreshRouteHandler,
   createSsoMiddleware: () => createSsoMiddleware,
   getHostCookieOptions: () => getHostCookieOptions,
   getSecureCookieOptions: () => getSecureCookieOptions,
@@ -126,6 +127,7 @@ var INTROSPECT_CACHE_TTL_MS = 3e4;
 var INTROSPECT_CACHE_MAX_ENTRIES = 500;
 var INTROSPECT_TIMEOUT_MS = 5e3;
 var warnedIntrospectClientAuthFailure = false;
+var warnedIntrospectRateLimited = false;
 async function introspectCacheKey(token, clientId) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
   const hex = Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -176,6 +178,15 @@ async function introspectAccessToken(token, ssoBaseUrl, clientId, clientSecret) 
       signal: AbortSignal.timeout(INTROSPECT_TIMEOUT_MS)
     });
     if (!res.ok) {
+      if (res.status === 429) {
+        if (!warnedIntrospectRateLimited) {
+          warnedIntrospectRateLimited = true;
+          console.warn(
+            "[SSO SDK] introspection \u88AB\u9650\u6D41\uFF08HTTP 429\uFF09\uFF1A\u8BF7\u4E3A\u5B50\u7AD9 BFF \u914D\u7F6E\u72EC\u7ACB\u7684 client \u7EA7\u914D\u989D\uFF0C\u6216\u964D\u4F4E middleware introspection \u9891\u7387\u3002\u672C\u6B21\u6309 unreachable \u5904\u7406\uFF08\u9ED8\u8BA4 fail-open\uFF09\u3002"
+          );
+        }
+        return "unreachable";
+      }
       if (res.status !== 401 && res.status !== 403) {
         return "unreachable";
       }
@@ -417,7 +428,19 @@ async function fetchJwks(baseUrl, options = {}) {
     return cachedJwks.jwks;
   }
   const discovery = await fetchDiscoveryDoc(baseUrl);
-  const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
+  let jwksUri = `${baseUrl}/api/oauth/jwks`;
+  if (discovery?.jwks_uri) {
+    try {
+      if (new URL(discovery.jwks_uri).origin === new URL(baseUrl).origin) {
+        jwksUri = discovery.jwks_uri;
+      } else {
+        console.warn(
+          "[SSO SDK] Discovery \u7684 jwks_uri \u4E0E ssoBaseUrl \u4E0D\u540C\u6E90\uFF0C\u5DF2\u5FFD\u7565\u5E76\u4F7F\u7528\u9ED8\u8BA4 JWKS \u7AEF\u70B9"
+        );
+      }
+    } catch {
+    }
+  }
   try {
     const res = await fetch(jwksUri, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -783,6 +806,20 @@ function createCallbackRouteHandler(config) {
         config.renderErrorPage
       );
     }
+    const returnedIss = searchParams.get("iss");
+    if (returnedIss) {
+      const discovery = await fetchDiscoveryDoc(normalizedBase);
+      const expectedIssuer = (discovery?.issuer || normalizedBase).replace(/\/+$/, "");
+      if (returnedIss.replace(/\/+$/, "") !== expectedIssuer) {
+        return buildErrorResponse(
+          request,
+          400,
+          "issuer_mismatch",
+          "\u6388\u6743\u54CD\u5E94 issuer \u4E0D\u5339\u914D\uFF0C\u8BF7\u91CD\u65B0\u53D1\u8D77\u767B\u5F55",
+          config.renderErrorPage
+        );
+      }
+    }
     const expectedNonce = readTransientCookie(nonceCookieName);
     const verifier = readTransientCookie(verifierCookieName);
     if (!verifier) {
@@ -928,8 +965,169 @@ function createCallbackRouteHandler(config) {
   }
 }
 
-// src/next/logout.ts
+// src/next/refresh.ts
 var import_server3 = require("next/server");
+function noStoreJson(body, status = 200) {
+  return import_server3.NextResponse.json(body, {
+    status,
+    headers: { "Cache-Control": "no-store", Pragma: "no-cache" }
+  });
+}
+function clearAuthCookies(response, names, secureCookies) {
+  response.cookies.set(names.access, "", getHostCookieOptions(0, secureCookies));
+  response.cookies.set(names.refresh, "", getHostCookieOptions(0, secureCookies));
+  response.cookies.set(names.idToken, "", getHostCookieOptions(0, secureCookies));
+  return response;
+}
+function createRefreshRouteHandler(config) {
+  const {
+    clientId,
+    ssoBaseUrl,
+    redirectUri,
+    clientSecret,
+    insecureLocalDev: insecureLocalDevOpt = false,
+    debug = false
+  } = config;
+  const insecureLocalDev = resolveInsecureLocalDev(insecureLocalDevOpt, ssoBaseUrl);
+  const secureCookies = !insecureLocalDev;
+  const pickName = (explicit, fallback) => insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
+  const accessTokenCookieName = pickName(
+    config.accessTokenCookieName,
+    DEFAULT_ACCESS_TOKEN_COOKIE_NAME
+  );
+  const refreshTokenCookieName = pickName(
+    config.refreshTokenCookieName,
+    DEFAULT_REFRESH_TOKEN_COOKIE_NAME
+  );
+  const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
+  const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
+  const normalizedServerBase = (config.serverBaseUrl ?? ssoBaseUrl).replace(/\/+$/, "");
+  const callbackOrigin = new URL(redirectUri).origin;
+  const cookieNames = {
+    access: accessTokenCookieName,
+    refresh: refreshTokenCookieName,
+    idToken: idTokenCookieName
+  };
+  return async function POST(request) {
+    const requestOrigin = request.headers.get("origin");
+    if (requestOrigin && requestOrigin !== callbackOrigin) {
+      return noStoreJson({ error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" }, 403);
+    }
+    const secFetchSite = request.headers.get("sec-fetch-site");
+    if (!requestOrigin && secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "none") {
+      return noStoreJson({ error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" }, 403);
+    }
+    const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
+    if (!refreshToken) {
+      return noStoreJson({ error: "no_refresh_token", error_description: "\u7F3A\u5C11 refresh_token" }, 401);
+    }
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: clientId
+    });
+    if (clientSecret) body.set("client_secret", clientSecret);
+    let res = null;
+    let lastError;
+    try {
+      res = await fetchWithTimeout(
+        `${normalizedServerBase}/api/oauth/token`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body.toString()
+        },
+        1e4
+      );
+    } catch (err) {
+      lastError = err;
+    }
+    if (lastError || !res) {
+      if (debug) console.warn("[SSO SDK] refresh: token \u8BF7\u6C42\u5931\u8D25", lastError);
+      return noStoreJson(
+        { error: "server_error", error_description: "\u5237\u65B0\u670D\u52A1\u6682\u65F6\u4E0D\u53EF\u7528" },
+        502
+      );
+    }
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+    }
+    if (!res.ok) {
+      const error = typeof data.error === "string" ? data.error : "";
+      const status = res.status === 429 ? 429 : res.status >= 500 ? 502 : 401;
+      const response2 = noStoreJson(
+        {
+          error: error || "refresh_failed",
+          error_description: data.error_description || "\u5237\u65B0\u767B\u5F55\u6001\u5931\u8D25\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55"
+        },
+        status
+      );
+      if (res.status === 400 || res.status === 401) {
+        return clearAuthCookies(response2, cookieNames, secureCookies);
+      }
+      return response2;
+    }
+    if (!data.access_token || typeof data.expires_in !== "number" || !Number.isFinite(data.expires_in) || data.expires_in <= 0) {
+      return clearAuthCookies(
+        noStoreJson({ error: "server_error", error_description: "\u5237\u65B0\u54CD\u5E94\u4E0D\u5B8C\u6574" }, 502),
+        cookieNames,
+        secureCookies
+      );
+    }
+    if (data.id_token) {
+      try {
+        await validateIdToken(
+          data.id_token,
+          data.access_token,
+          normalizedBase,
+          clientId
+        );
+      } catch (err) {
+        if (debug) console.warn("[SSO SDK] refresh: ID Token \u6821\u9A8C\u5931\u8D25", err);
+        return clearAuthCookies(
+          noStoreJson({ error: "id_token_invalid", error_description: "\u767B\u5F55\u6821\u9A8C\u5931\u8D25" }, 401),
+          cookieNames,
+          secureCookies
+        );
+      }
+    }
+    const response = noStoreJson({ success: true, expires_in: data.expires_in });
+    response.cookies.set(accessTokenCookieName, data.access_token, {
+      ...getHostCookieOptions(data.expires_in, secureCookies)
+    });
+    response.cookies.set(refreshTokenCookieName, data.refresh_token || refreshToken, {
+      ...getHostCookieOptions(
+        typeof data.refresh_expires_in === "number" && data.refresh_expires_in > 0 ? data.refresh_expires_in : 30 * 24 * 60 * 60,
+        secureCookies
+      )
+    });
+    if (data.id_token) {
+      let idTokenMaxAge = 3600;
+      try {
+        const payload = JSON.parse(
+          Buffer.from(data.id_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
+            "utf8"
+          )
+        );
+        if (typeof payload.exp === "number") {
+          idTokenMaxAge = payload.exp - Math.floor(Date.now() / 1e3);
+        }
+      } catch {
+      }
+      if (idTokenMaxAge > 0) {
+        response.cookies.set(idTokenCookieName, data.id_token, {
+          ...getHostCookieOptions(idTokenMaxAge, secureCookies)
+        });
+      }
+    }
+    return response;
+  };
+}
+
+// src/next/logout.ts
+var import_server4 = require("next/server");
 
 // src/core/discovery.ts
 var DISCOVERY_CACHE_TTL_MS = 5 * 60 * 1e3;
@@ -1000,6 +1198,14 @@ function generateRandomString2(length) {
   }
   return result;
 }
+function trustedSameOriginEndpoint(endpoint, baseUrl) {
+  if (!endpoint) return null;
+  try {
+    return new URL(endpoint).origin === new URL(baseUrl).origin ? endpoint : null;
+  } catch {
+    return null;
+  }
+}
 function createLogoutRouteHandler(config) {
   const {
     clientId,
@@ -1038,31 +1244,31 @@ function createLogoutRouteHandler(config) {
     if (returnedState) {
       const savedState = request.cookies.get(logoutStateCookieName)?.value;
       if (!savedState || !timingSafeEqualString(savedState, returnedState)) {
-        return import_server3.NextResponse.json(
+        return import_server4.NextResponse.json(
           { error: "invalid_request", error_description: "Logout state \u4E0D\u5339\u914D" },
           { status: 400 }
         );
       }
-      const res = import_server3.NextResponse.redirect(callbackOrigin + "/");
+      const res = import_server4.NextResponse.redirect(callbackOrigin + "/");
       res.cookies.set(logoutStateCookieName, "", getHostCookieOptions(0, secureCookies));
       return res;
     }
     if (request.method === "GET") {
-      return new import_server3.NextResponse(buildLogoutConfirmHtml(), {
+      return new import_server4.NextResponse(buildLogoutConfirmHtml(), {
         status: 200,
         headers: { "content-type": "text/html; charset=utf-8" }
       });
     }
     const requestOrigin = request.headers.get("origin");
     if (requestOrigin && requestOrigin !== callbackOrigin) {
-      return import_server3.NextResponse.json(
+      return import_server4.NextResponse.json(
         { error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" },
         { status: 403 }
       );
     }
     const secFetchSite = request.headers.get("sec-fetch-site");
     if (!requestOrigin && secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "none") {
-      return import_server3.NextResponse.json(
+      return import_server4.NextResponse.json(
         { error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" },
         { status: 403 }
       );
@@ -1078,7 +1284,7 @@ function createLogoutRouteHandler(config) {
     if (refreshToken) {
       try {
         const discovery = config.serverBaseUrl ? null : await fetchDiscoveryCached(normalizedServerBase);
-        const revokeUrl = config.serverBaseUrl ? `${normalizedServerBase}/api/oauth/revoke` : discovery?.revocation_endpoint || `${normalizedBase}/api/oauth/revoke`;
+        const revokeUrl = (config.serverBaseUrl ? `${normalizedServerBase}/api/oauth/revoke` : trustedSameOriginEndpoint(discovery?.revocation_endpoint, normalizedBase)) || `${normalizedBase}/api/oauth/revoke`;
         const body = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",
@@ -1087,12 +1293,20 @@ function createLogoutRouteHandler(config) {
         if (clientSecret) {
           body.set("client_secret", clientSecret);
         }
-        await fetch(revokeUrl, {
+        const doRevoke = () => fetch(revokeUrl, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: body.toString(),
           signal: AbortSignal.timeout(3e3)
         });
+        let revokeRes = await doRevoke();
+        if (!revokeRes.ok && (revokeRes.status >= 500 || revokeRes.status === 429)) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          revokeRes = await doRevoke();
+        }
+        if (!revokeRes.ok) {
+          console.warn(`[SSO SDK] \u767B\u51FA\u64A4\u9500 refresh_token \u5931\u8D25\uFF08HTTP ${revokeRes.status}\uFF09`);
+        }
       } catch {
       }
     }
@@ -1124,7 +1338,7 @@ function createLogoutRouteHandler(config) {
     };
     if (effectiveScope === "global") {
       const discovery = await fetchDiscoveryCached(normalizedServerBase);
-      const endSessionEndpoint = discovery?.end_session_endpoint || `${normalizedBase}/api/oauth/end-session`;
+      const endSessionEndpoint = trustedSameOriginEndpoint(discovery?.end_session_endpoint, normalizedBase) || `${normalizedBase}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", clientId);
       logoutUrl.searchParams.set(
@@ -1136,18 +1350,18 @@ function createLogoutRouteHandler(config) {
       }
       const logoutState = generateRandomString2(32);
       logoutUrl.searchParams.set("state", logoutState);
-      const res = clearCookies(import_server3.NextResponse.redirect(logoutUrl.toString()));
+      const res = clearCookies(import_server4.NextResponse.redirect(logoutUrl.toString()));
       res.cookies.set(logoutStateCookieName, logoutState, getHostCookieOptions(600, secureCookies));
       return res;
     }
     return clearCookies(
-      import_server3.NextResponse.redirect(callbackOrigin + "/")
+      import_server4.NextResponse.redirect(callbackOrigin + "/")
     );
   };
 }
 
 // src/next/backchannel-logout.ts
-var import_server4 = require("next/server");
+var import_server5 = require("next/server");
 
 // src/core/logout-token.ts
 var BACKCHANNEL_LOGOUT_EVENT = "http://schemas.openid.net/event/backchannel-logout";
@@ -1259,6 +1473,12 @@ async function verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId, opti
   if (Date.now() >= payload.exp * 1e3 + 6e4) {
     throw new SsoError("logout_token_expired", "Logout Token \u5DF2\u8FC7\u671F");
   }
+  if (typeof payload.iat !== "number") {
+    throw new SsoError("logout_token_invalid", "Logout Token \u7F3A\u5C11 iat \u58F0\u660E");
+  }
+  if (payload.nonce !== void 0) {
+    throw new SsoError("logout_token_invalid", "Logout Token \u4E0D\u5F97\u643A\u5E26 nonce");
+  }
   if (payload.type !== "logout_token") {
     throw new SsoError(
       "logout_token_invalid",
@@ -1337,7 +1557,7 @@ function createBackchannelLogoutRouteHandler(config) {
   );
   return async function handler(request) {
     if (request.method !== "POST") {
-      return import_server4.NextResponse.json(
+      return import_server5.NextResponse.json(
         { error: "method_not_allowed", error_description: "\u4EC5\u63A5\u53D7 POST \u8BF7\u6C42" },
         { status: 405 }
       );
@@ -1346,7 +1566,7 @@ function createBackchannelLogoutRouteHandler(config) {
       "logout_token"
     );
     if (!logoutToken) {
-      return import_server4.NextResponse.json(
+      return import_server5.NextResponse.json(
         { error: "invalid_request", error_description: "\u7F3A\u5C11 logout_token" },
         { status: 400 }
       );
@@ -1359,7 +1579,7 @@ function createBackchannelLogoutRouteHandler(config) {
     } catch (err) {
       const code = err instanceof SsoError ? err.code : "logout_token_invalid";
       const description = err instanceof SsoError ? err.description : "Logout Token \u9A8C\u8BC1\u5931\u8D25";
-      return import_server4.NextResponse.json(
+      return import_server5.NextResponse.json(
         { error: code, error_description: description },
         { status: 400 }
       );
@@ -1372,12 +1592,12 @@ function createBackchannelLogoutRouteHandler(config) {
         "[SSO SDK] backchannel logout onLogout \u94A9\u5B50\u6267\u884C\u5931\u8D25:",
         err
       );
-      return import_server4.NextResponse.json(
+      return import_server5.NextResponse.json(
         { error: "server_error", error_description: "onLogout \u5904\u7406\u5931\u8D25" },
         { status: 500 }
       );
     }
-    const res = new import_server4.NextResponse(null, { status: 200 });
+    const res = new import_server5.NextResponse(null, { status: 200 });
     res.cookies.set(accessTokenCookieName, "", getHostCookieOptions(0, secureCookies));
     res.cookies.set(refreshTokenCookieName, "", getHostCookieOptions(0, secureCookies));
     res.cookies.set(idTokenCookieName, "", getHostCookieOptions(0, secureCookies));
@@ -1397,6 +1617,7 @@ function createBackchannelLogoutRouteHandler(config) {
   createBackchannelLogoutRouteHandler,
   createCallbackRouteHandler,
   createLogoutRouteHandler,
+  createRefreshRouteHandler,
   createSsoMiddleware,
   getHostCookieOptions,
   getSecureCookieOptions,

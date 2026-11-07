@@ -327,7 +327,44 @@ export async function anchorMissingAuditDays(options: { maxDays?: number } = {})
   return { created, lastDay: yesterday };
 }
 
-/** 验证某流某日：摘要 + 签名 + 归档/备份。 */
+/**
+ * 校验锚点链连续性：当前锚点的 prevAnchorHash 必须等于前一日锚点的 digest，
+ * 且前一日锚点必须实际存在。单日签名校验无法发现“删除中间锚点/日志”的篡改。
+ */
+async function verifyAnchorChain(anchor: {
+  stream: string;
+  day: string;
+  signatureVersion: number;
+  prevAnchorHash: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (anchor.signatureVersion !== 2) return { ok: true };
+  const previous = await prisma.auditLogAnchor.findFirst({
+    where: {
+      stream: anchor.stream,
+      signatureVersion: 2,
+      day: { lt: anchor.day },
+    },
+    orderBy: { day: "desc" },
+    select: { day: true, digest: true },
+  });
+  if (!previous) {
+    return anchor.prevAnchorHash
+      ? { ok: false, error: "ANCHOR_CHAIN_PREV_MISSING" }
+      : { ok: true };
+  }
+  // 防御异常/测试替身返回当前锚点自身；生产查询带 day < 条件不会命中。
+  if (previous.day >= anchor.day) return { ok: true };
+  if (anchor.prevAnchorHash !== previous.digest) {
+    return { ok: false, error: "ANCHOR_CHAIN_HASH_MISMATCH" };
+  }
+  const expectedPreviousDay = previousUtc8Day(anchor.day);
+  if (previous.day !== expectedPreviousDay) {
+    return { ok: false, error: `ANCHOR_CHAIN_DAY_GAP:${previous.day}` };
+  }
+  return { ok: true };
+}
+
+/** 验证某流某日：摘要 + 签名 + 链连续性 + 归档/备份。 */
 export async function verifyAuditDay(
   stream: AuditStream,
   day: string
@@ -391,6 +428,27 @@ export async function verifyAuditDay(
       archiveVerified: false,
       backupVerified: false,
       error: "ANCHOR_SIGNATURE_INVALID",
+    };
+  }
+
+  const chain = await verifyAnchorChain({
+    stream,
+    day: anchor.day,
+    signatureVersion: anchor.signatureVersion,
+    prevAnchorHash: anchor.prevAnchorHash,
+  });
+  if (!chain.ok) {
+    return {
+      stream,
+      day,
+      verified: false,
+      count: anchor.count,
+      digest: anchor.digest,
+      signatureVersion: anchor.signatureVersion,
+      keyVersion: anchor.keyVersion,
+      archiveVerified: false,
+      backupVerified: false,
+      error: chain.error,
     };
   }
 
@@ -478,7 +536,9 @@ export async function verifyRecentAuditDays(now = new Date()): Promise<RecentAud
   return {
     day,
     results,
-    failed: results.filter((result) => !result.verified),
+    failed: results.filter(
+      (result) => !result.verified || (result.archiveVerified && !result.backupVerified)
+    ),
   };
 }
 

@@ -523,7 +523,9 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       expect(res.status).toBe(200);
       expect(data.data.sessionsRevoked).toBe(3);
       expect(data.data.refreshTokensRevoked).toBe(5);
-      expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledWith({});
+      expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledWith({
+        omitSid: true,
+      });
       expect(prismaMock.oAuthSession.updateMany).toHaveBeenCalledWith({
         where: { revokedAt: null },
         data: { revokedAt: expect.any(Date) },

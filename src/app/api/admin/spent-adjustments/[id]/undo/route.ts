@@ -19,7 +19,10 @@ import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { undoApplication, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
 
 const undoBodySchema = z
-  .object({ totpCode: z.string().max(20).optional() })
+  .object({
+    totpCode: z.string().max(20).optional(),
+    reason: z.string().trim().max(200).optional(),
+  })
   .optional()
   .default({});
 
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       action: "undo_spent_adjustment",
       targetType: "spent_adjustment",
       targetId: id,
-      detail: { decision: "undo" },
+      detail: { decision: "undo", reason: parsedBody.data?.reason?.trim() || null },
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -123,6 +126,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         NOT_FOUND: 404,
         ALREADY_REVIEWED: 409,
         NOT_APPROVED: 409,
+        USER_DELETED: 409,
+        REVERSAL_EXCEEDS_BALANCE: 409,
       };
       return NextResponse.json(
         { success: false, error: { code: result.code, message: result.message } },

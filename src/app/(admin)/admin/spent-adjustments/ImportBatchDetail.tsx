@@ -11,7 +11,7 @@ import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { buildNeedsAttentionCsv, type SpentImportRowResult } from "@/lib/spent-import-rows";
 
 type RowStatus = "PENDING" | "SUCCESS" | "DUPLICATE" | "ERROR";
-type StatusFilter = "ALL" | Exclude<RowStatus, "PENDING">;
+type StatusFilter = "ALL" | RowStatus;
 
 interface BatchSummary {
   id: string;
@@ -229,7 +229,11 @@ export function ImportBatchDetailModal({
                         : "success"
                 }
               >
-                {batch.undoneAt ? "已撤销" : BATCH_STATUS_LABELS[batch.status]}
+                {batch.undoneAt
+                  ? "已撤销"
+                  : batch.status === "FAILED" && batch.successRows > 0
+                    ? "处理中断（部分入账）"
+                    : BATCH_STATUS_LABELS[batch.status]}
               </Badge>
               <span className="text-xs text-brand-charcoal/55">{batch.adminName}</span>
               <span className="text-xs text-brand-charcoal/45">
@@ -256,6 +260,7 @@ export function ImportBatchDetailModal({
               {(
                 [
                   ["ALL", "全部"],
+                  ["PENDING", "处理中断"],
                   ["SUCCESS", "成功"],
                   ["DUPLICATE", "重复"],
                   ["ERROR", "失败"],
@@ -329,9 +334,15 @@ export function ImportBatchDetailModal({
                         {row.orderNo || "—"}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2">
-                        <Badge variant={STATUS_VARIANTS[row.status]} size="sm">
-                          {STATUS_LABELS[row.status]}
-                        </Badge>
+                        {row.revertedAt ? (
+                          <Badge variant="secondary" size="sm">
+                            已冲正
+                          </Badge>
+                        ) : (
+                          <Badge variant={STATUS_VARIANTS[row.status]} size="sm">
+                            {STATUS_LABELS[row.status]}
+                          </Badge>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-brand-charcoal/70">
                         {row.appliedDelta == null ? "—" : `¥${row.appliedDelta.toLocaleString()}`}

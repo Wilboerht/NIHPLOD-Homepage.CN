@@ -141,7 +141,7 @@ export interface SsoVerifierOptions {
 
   /**
    * Introspection 请求失败重试次数，默认 1。
-   * 仅对网络错误与 5xx 响应重试（短退避），4xx 不重试。
+   * 仅对网络错误、5xx 与 429（限流）响应重试（短退避），其余 4xx 不重试。
    * 设为 0 表示不重试。
    */
   introspectRetries?: number;
@@ -765,8 +765,14 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
         if ((payload as { type?: string }).type !== "logout_token") {
           return null;
         }
-        // 规范要求 logout_token 必须携带 exp
+        // 规范要求 logout_token 必须携带 exp / iat，且不得携带 nonce
         if (typeof (payload as { exp?: unknown }).exp !== "number") {
+          return null;
+        }
+        if (typeof (payload as { iat?: unknown }).iat !== "number") {
+          return null;
+        }
+        if ((payload as { nonce?: unknown }).nonce !== undefined) {
           return null;
         }
         const events = (payload as { events?: Record<string, unknown> }).events;

@@ -228,6 +228,7 @@ export async function undoApplication(params: {
         reviewNote: true,
         reviewedById: true,
         reviewedAt: true,
+        user: { select: { status: true } },
       },
     });
 
@@ -240,6 +241,13 @@ export async function undoApplication(params: {
         ok: false,
         code: "NOT_APPROVED",
         message: "仅已通过的申请可撤销审核",
+      };
+    }
+    if (application.user?.status === "DELETED") {
+      return {
+        ok: false,
+        code: "USER_DELETED",
+        message: "用户已注销，不能撤销补录审核并回写积分/等级",
       };
     }
 

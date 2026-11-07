@@ -237,6 +237,9 @@ export async function DELETE(
       return csrfForbiddenResponse();
     }
 
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
+
     const { id } = await params;
 
     if (!validateCUID(id)) {

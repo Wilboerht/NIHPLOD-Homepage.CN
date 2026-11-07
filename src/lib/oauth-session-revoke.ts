@@ -11,7 +11,11 @@
  */
 import { prisma } from "@/lib/prisma";
 import { revokeRefreshToken, type RefreshTokenRevokedReason } from "@/lib/auth-security";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { apiConsole } from "@/lib/logger";
+import {
+  enqueueBackchannelLogoutNotifications,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 
 export async function revokeOAuthClientSessions(
   userId: string,
@@ -59,9 +63,25 @@ export async function revokeOAuthClientSessions(
     });
     if (activeSessions.length > 0) {
       // 携带 sid：RP 只应结束对应会话，不应清掉该用户在其他设备上的会话。
-      await sendBackchannelLogout(userId, [clientId], {
-        sids: { [clientId]: options.sid },
+      // 异步入队投递，避免 RP 不可达时阻塞登出响应。
+      const client = await prisma.oAuthClient.findUnique({
+        where: { clientId },
+        select: { backchannelLogoutUri: true },
       });
+      if (client?.backchannelLogoutUri) {
+        await enqueueBackchannelLogoutNotifications(
+          [
+            {
+              userId,
+              clientId,
+              sid: options.sid,
+              logoutUri: client.backchannelLogoutUri,
+            },
+          ],
+          { perSession: true }
+        ).catch((err) => apiConsole.warn("[OAuthSessionRevoke] backchannel 入队失败:", err));
+        scheduleBackchannelRedelivery();
+      }
     }
     return {
       sessionCount: activeSessions.length,
@@ -79,8 +99,23 @@ export async function revokeOAuthClientSessions(
   await revokeRefreshToken(userId, undefined, clientId, options?.reason);
 
   if (activeSessions.length > 0) {
-    // 全量撤销：sub-only token，要求 RP 清除该用户在该 client 的全部会话
-    await sendBackchannelLogout(userId, [clientId], { omitSid: true });
+    // 全量撤销：sub-only token，要求 RP 清除该用户在该 client 的全部会话。
+    // 异步入队投递，避免 RP 不可达时阻塞登出响应。
+    const client = await prisma.oAuthClient.findUnique({
+      where: { clientId },
+      select: { backchannelLogoutUri: true },
+    });
+    if (client?.backchannelLogoutUri) {
+      await enqueueBackchannelLogoutNotifications([
+        {
+          userId,
+          clientId,
+          sid: null,
+          logoutUri: client.backchannelLogoutUri,
+        },
+      ]).catch((err) => apiConsole.warn("[OAuthSessionRevoke] backchannel 入队失败:", err));
+      scheduleBackchannelRedelivery();
+    }
   }
 
   return { sessionCount: activeSessions.length, latestSid: activeSessions[0]?.sessionId ?? null };

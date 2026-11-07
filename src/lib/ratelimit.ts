@@ -121,6 +121,12 @@ const DEFAULT_OPTIONS: RateLimitOptions = {
   windowMs: 60 * 1000, // 1 分钟
 };
 
+/** 读取限流环境变量（正整数，非法值回退默认），便于按部署规模调整 OAuth 配额 */
+function envRateLimit(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
+
 /** 预定义的限制配置 */
 export const RATE_LIMIT_PRESETS = {
   /** 默认 API 限制 */
@@ -161,22 +167,37 @@ export const RATE_LIMIT_PRESETS = {
   "admin-login": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** 管理员 TOTP 二次验证限制 - 每 5 分钟 3 次 */
   "admin-totp": { maxRequests: 3, windowMs: 5 * 60 * 1000 },
-  /** OAuth 授权端点 - 每分钟 30 次 */
-  "oauth-authorize": { maxRequests: 30, windowMs: 60 * 1000 },
+  /** OAuth 授权端点 - 每分钟 30 次（OAUTH_AUTHORIZE_RATE_LIMIT 可覆盖） */
+  "oauth-authorize": {
+    maxRequests: envRateLimit("OAUTH_AUTHORIZE_RATE_LIMIT", 30),
+    windowMs: 60 * 1000,
+  },
   /**
-   * OAuth Token 端点 - 每分钟 600 次。
+   * OAuth Token 端点 - 默认每分钟 600 次（OAUTH_TOKEN_RATE_LIMIT 可覆盖）。
    * 该预设同时用于 IP 桶与 client 桶：子站 BFF/服务端通常共享出口 IP，
    * 60 次/分钟会在用户量上来后误伤合法流量。认证成功后另有 client 桶塑形。
    */
-  "oauth-token": { maxRequests: 600, windowMs: 60 * 1000 },
-  /** OAuth UserInfo 资源端点 - 每分钟 600 次（服务端 BFF 共享出口 IP 场景） */
-  "oauth-userinfo": { maxRequests: 600, windowMs: 60 * 1000 },
-  /** OAuth Introspection 端点 - 每分钟 1200 次（IP 桶 + client 桶同预设） */
-  "oauth-introspect": { maxRequests: 1200, windowMs: 60 * 1000 },
+  "oauth-token": {
+    maxRequests: envRateLimit("OAUTH_TOKEN_RATE_LIMIT", 600),
+    windowMs: 60 * 1000,
+  },
+  /** OAuth UserInfo 资源端点 - 默认 600 次/分钟（OAUTH_USERINFO_RATE_LIMIT 可覆盖） */
+  "oauth-userinfo": {
+    maxRequests: envRateLimit("OAUTH_USERINFO_RATE_LIMIT", 600),
+    windowMs: 60 * 1000,
+  },
+  /** OAuth Introspection 端点 - 默认 1200 次/分钟（OAUTH_INTROSPECT_RATE_LIMIT 可覆盖） */
+  "oauth-introspect": {
+    maxRequests: envRateLimit("OAUTH_INTROSPECT_RATE_LIMIT", 1200),
+    windowMs: 60 * 1000,
+  },
   /** OAuth JWKS 端点 - 每分钟 60 次（公钥端点不宜过高） */
   "oauth-jwks": { maxRequests: 60, windowMs: 60 * 1000 },
-  /** OAuth Token Revocation 端点 - 每分钟 300 次（IP 桶 + client 桶同预设） */
-  "oauth-revoke": { maxRequests: 300, windowMs: 60 * 1000 },
+  /** OAuth Token Revocation 端点 - 默认 300 次/分钟（OAUTH_REVOKE_RATE_LIMIT 可覆盖） */
+  "oauth-revoke": {
+    maxRequests: envRateLimit("OAUTH_REVOKE_RATE_LIMIT", 300),
+    windowMs: 60 * 1000,
+  },
   /** 微信 OAuth 回调 - 每分钟 30 次 */
   "wechat-callback": { maxRequests: 30, windowMs: 60 * 1000 },
   /** 抖音 OAuth 回调 - 每分钟 30 次（与 wechat-callback 口径一致） */

@@ -318,6 +318,10 @@ export async function POST(request: NextRequest) {
         where: { userId: session.userId, clientId: session.clientId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      // 未消费的授权码仍可在 TTL 内换发新会话，必须一并作废。
+      await prisma.oAuthAuthorizationCode?.deleteMany({
+        where: { userId: session.userId, clientId: session.clientId, used: false },
+      });
 
       // 同步撤销该用户+client 下的活跃 RefreshToken
       await revokeRefreshToken(session.userId, undefined, session.clientId, "admin_revoke");
@@ -403,6 +407,9 @@ export async function POST(request: NextRequest) {
     await prisma.oAuthSession.updateMany({
       where: sessionWhere,
       data: { revokedAt: new Date() },
+    });
+    await prisma.oAuthAuthorizationCode?.deleteMany({
+      where: { userId, ...(clientId ? { clientId } : {}), used: false },
     });
 
     await revokeRefreshToken(userId, undefined, clientId, "admin_revoke");
@@ -511,7 +518,7 @@ export async function DELETE(request: NextRequest) {
     const enqueued = await enqueueBackchannelLogoutForActiveSessions({ omitSid: true });
 
     // 批量撤销
-    const [sessionResult, refreshResult] = await Promise.all([
+    const [sessionResult, refreshResult, codeResult] = await Promise.all([
       prisma.oAuthSession.updateMany({
         where: { revokedAt: null },
         data: { revokedAt: new Date() },
@@ -522,6 +529,8 @@ export async function DELETE(request: NextRequest) {
         where: { revokedAt: null, clientId: { not: null } },
         data: { revokedAt: new Date(), revokedReason: "admin_revoke" },
       }),
+      prisma.oAuthAuthorizationCode?.deleteMany({ where: { used: false } }) ??
+        Promise.resolve({ count: 0 }),
     ]);
 
     // Backchannel Logout：通知已批量入队，由 cron 重投任务投递；已签发 access token 的
@@ -539,6 +548,7 @@ export async function DELETE(request: NextRequest) {
         action: "sessions_terminated_all",
         sessionsRevoked: sessionResult.count,
         refreshTokensRevoked: refreshResult.count,
+        authorizationCodesRevoked: codeResult?.count ?? 0,
         notificationsEnqueued: enqueued.userClientCount,
         adminId: admin.id,
       },

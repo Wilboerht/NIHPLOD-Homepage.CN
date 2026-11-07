@@ -37,6 +37,15 @@ export async function POST(request: NextRequest) {
     const result = await pushAdvisorProductSnapshot({ trigger: "manual" });
 
     if (result.skipped) {
+      await createAuditLog({
+        action: "sync_products_to_advisor",
+        targetType: "product",
+        targetId: "all",
+        outcome: "SUCCESS",
+        detail: { skipped: true, reason: result.reason },
+        adminId: admin.id,
+        request,
+      }).catch((error) => apiConsole.error("[AuditLog] 同步跳过审计写入失败:", error));
       return NextResponse.json({
         success: true,
         data: { skipped: true, reason: result.reason },
@@ -44,6 +53,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (!result.ok) {
+      await createAuditLog({
+        action: "sync_products_to_advisor",
+        targetType: "product",
+        targetId: "all",
+        outcome: "FAILURE",
+        detail: {
+          code: result.code ?? null,
+          status: result.status ?? null,
+          message: result.message ?? null,
+        },
+        adminId: admin.id,
+        request,
+      }).catch((error) => apiConsole.error("[AuditLog] 同步失败审计写入失败:", error));
       const status =
         result.code === "NOT_CONFIGURED"
           ? 503

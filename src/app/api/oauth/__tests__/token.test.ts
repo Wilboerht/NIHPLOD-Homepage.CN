@@ -15,6 +15,23 @@ vi.mock("@/lib/prisma", () => {
     },
     oAuthClient: {
       findMany: vi.fn().mockResolvedValue([]),
+      // 消费 code 后的 client 活性/scope 复核默认返回启用且全量 scope
+      findUnique: vi.fn().mockResolvedValue({
+        isActive: true,
+        sessionsInvalidatedAt: null,
+        scopes: [
+          "openid",
+          "profile",
+          "phone",
+          "membership",
+          "birthday",
+          "profile:write",
+          "security:manage",
+          "phone:write",
+          "account:delete",
+          "password:write",
+        ],
+      }),
     },
     user: {
       findUnique: vi.fn(),
@@ -1219,6 +1236,50 @@ describe("POST /api/oauth/token", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(decodeJwt(body.access_token).sid).toBe("sess-refresh-1");
+    });
+
+    it("刷新必须继承原始 auth_time，不得被刷新时间重置", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: true,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-auth-time-1",
+        scopes: ["openid", "phone"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: "n",
+        avatar: null,
+        membershipLevel: null,
+        status: "ACTIVE",
+      });
+
+      const originalAuthTime = 1700000000;
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        clientId: "test-client",
+        scope: "openid phone",
+        sid: "sess-auth-time-1",
+        authTime: originalAuthTime,
+      });
+
+      const req = createRequest({
+        grant_type: "refresh_token",
+        client_id: "test-client",
+        client_secret: "secret",
+        refresh_token: refreshToken,
+      });
+      const res = await POST(req as unknown as NextRequest);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+
+      expect(decodeJwt(body.access_token).auth_time).toBe(originalAuthTime);
+      expect(decodeJwt(body.refresh_token).auth_time).toBe(originalAuthTime);
+      expect(decodeJwt(body.id_token).auth_time).toBe(originalAuthTime);
     });
 
     it("无活跃 OAuthSession 时应拒绝刷新（fail-closed），不执行轮换", async () => {

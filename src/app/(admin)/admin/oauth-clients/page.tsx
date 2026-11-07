@@ -793,11 +793,14 @@ function OAuthClientsPage() {
     setTestLoading(true);
     setTestResult(null);
     try {
-      const data = await apiPost<TestResultData>("/api/admin/oauth-clients/test", {
-        clientId: testClient.clientId,
-        clientSecret: testSecret.trim(),
-        redirectUri: testRedirectUri.trim(),
-      });
+      const data = await withStepUp(() =>
+        apiPost<TestResultData>("/api/admin/oauth-clients/test", {
+          clientId: testClient.clientId,
+          clientSecret: testSecret.trim(),
+          redirectUri: testRedirectUri.trim(),
+        })
+      );
+      if (data === null) return;
       setTestResult(data);
       const allPassed = data.allPassed ?? data.steps.every((s) => s.status === "passed");
       if (allPassed) toast.success("连接测试全部通过！");

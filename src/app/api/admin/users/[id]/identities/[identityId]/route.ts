@@ -12,6 +12,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 
@@ -62,6 +63,31 @@ export async function DELETE(
       );
     }
 
+    // 与用户侧 unbindSecurityIdentity 保持同一安全边界：
+    // 占位手机号账号没有真实手机号，解绑第三方身份后可能永久无法登录。
+    let account: { phone: string | null } | null = null;
+    try {
+      account =
+        (await prisma.user?.findUnique({
+          where: { id },
+          select: { phone: true },
+        })) ?? null;
+    } catch {
+      account = null;
+    }
+    if (account && (!account.phone || account.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX))) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "UNBIND_NOT_ALLOWED",
+            message: "该账号尚未绑定真实手机号，解绑后将无法登录；请先让用户绑定手机号",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     const auditId = await beginAuditLog({
       action: "user_identity_unbind",
       targetType: "user",
@@ -86,7 +112,14 @@ export async function DELETE(
     // 事务：删除身份 + 清理失去身份支撑的微信旧列（双写一致性）。
     // 若不清旧列，微信开放平台/服务号回调仅按旧列查找用户，会绕过解绑直接登录并重建身份。
     const clearedLegacy = await prisma.$transaction(async (tx) => {
-      await tx.externalIdentity.delete({ where: { id: identityId } });
+      try {
+        await tx.externalIdentity.delete({ where: { id: identityId } });
+      } catch (error) {
+        if ((error as { code?: string }).code === "P2025") {
+          throw new Error("IDENTITY_GONE");
+        }
+        throw error;
+      }
 
       const cleared: { wechatOpenId?: true; wechatUnionId?: true } = {};
       if (identity.provider.startsWith("wechat")) {
@@ -130,6 +163,12 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, data: { message: "已解绑该外部身份" } });
   } catch (error) {
+    if (error instanceof Error && error.message === "IDENTITY_GONE") {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "外部身份不存在或已解绑" } },
+        { status: 404 }
+      );
+    }
     apiConsole.error("[AdminIdentityUnbind] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器错误" } },

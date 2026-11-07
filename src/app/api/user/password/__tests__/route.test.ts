@@ -11,7 +11,8 @@ const mockUserFindUnique = vi.fn();
 const mockRefreshTokenUpdateMany = vi.fn();
 const mockOAuthSessionFindMany = vi.fn();
 const mockOAuthSessionUpdateMany = vi.fn();
-const mockSendBackchannelLogout = vi.fn();
+const mockEnqueueBackchannelForSessions = vi.fn();
+const mockScheduleBackchannelRedelivery = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -53,7 +54,10 @@ vi.mock("@/lib/sms", () => ({
 }));
 
 vi.mock("@/lib/backchannel-logout", () => ({
-  sendBackchannelLogout: (...args: unknown[]) => mockSendBackchannelLogout(...args),
+  enqueueBackchannelLogoutForActiveSessions: (...args: unknown[]) =>
+    mockEnqueueBackchannelForSessions(...args),
+  scheduleBackchannelRedelivery: (...args: unknown[]) =>
+    mockScheduleBackchannelRedelivery(...args),
 }));
 
 vi.mock("@/lib/auth-logger", () => ({
@@ -104,7 +108,7 @@ describe("PUT /api/user/password - 改密后 backchannel logout", () => {
     });
     mockRefreshTokenUpdateMany.mockResolvedValue({ count: 1 });
     mockOAuthSessionUpdateMany.mockResolvedValue({ count: 1 });
-    mockSendBackchannelLogout.mockResolvedValue(undefined);
+    mockEnqueueBackchannelForSessions.mockResolvedValue(1);
   });
 
   it("改密成功且存在活跃 OAuth 会话：撤销后按 clientId 通知子站（携带 sid）", async () => {
@@ -119,8 +123,11 @@ describe("PUT /api/user/password - 改密后 backchannel logout", () => {
     expect(res.status).toBe(200);
     expect(mockOAuthSessionUpdateMany).toHaveBeenCalled();
     // 全量撤销只按 sub 通知，RP 清除该用户全部本地会话
-    expect(mockSendBackchannelLogout).toHaveBeenCalledTimes(1);
-    expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["advisor", "mall"]);
+    expect(mockEnqueueBackchannelForSessions).toHaveBeenCalledTimes(1);
+    expect(mockEnqueueBackchannelForSessions).toHaveBeenCalledWith({
+      userId: "user-1",
+      omitSid: true,
+    });
   });
 
   it("无活跃 OAuth 会话时不发送 backchannel logout", async () => {
@@ -129,12 +136,12 @@ describe("PUT /api/user/password - 改密后 backchannel logout", () => {
     const res = await PUT(putRequest(validBody));
 
     expect(res.status).toBe(200);
-    expect(mockSendBackchannelLogout).not.toHaveBeenCalled();
+    expect(mockEnqueueBackchannelForSessions).not.toHaveBeenCalled();
   });
 
   it("backchannel logout 投递失败不阻断改密成功响应", async () => {
     mockOAuthSessionFindMany.mockResolvedValue([{ clientId: "advisor", sessionId: "sid-1" }]);
-    mockSendBackchannelLogout.mockRejectedValue(new Error("network down"));
+    mockEnqueueBackchannelForSessions.mockRejectedValue(new Error("network down"));
 
     const res = await PUT(putRequest(validBody));
 

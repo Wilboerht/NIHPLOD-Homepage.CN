@@ -209,6 +209,55 @@ interface CallbackRouteConfig {
 declare function createCallbackRouteHandler(config: CallbackRouteConfig): (request: NextRequest) => Promise<NextResponse<unknown>>;
 
 /**
+ * App Router Refresh Route Handler
+ *
+ * 使用 httpOnly refresh cookie 在服务端换取新的 access/refresh/id token，
+ * 并更新 Cookie。适用于 Next.js BFF/Confidential Client：token 不暴露给浏览器 JS。
+ *
+ * 用法 (src/app/api/auth/refresh/route.ts):
+ * ```ts
+ * import { createRefreshRouteHandler } from "@nihplod/sso-sdk/next";
+ *
+ * export const POST = createRefreshRouteHandler({
+ *   clientId: process.env.SSO_CLIENT_ID!,
+ *   clientSecret: process.env.SSO_CLIENT_SECRET,
+ *   ssoBaseUrl: "https://nihplod.cn",
+ *   redirectUri: "https://myapp.com/api/auth/callback",
+ * });
+ * ```
+ */
+
+interface RefreshRouteConfig {
+    /** OAuth Client ID */
+    clientId: string;
+    /** SSO 中心地址 */
+    ssoBaseUrl: string;
+    /** 回调 URL（用于同源校验，必须与注册的 redirect_uri 一致） */
+    redirectUri: string;
+    /** OAuth Client Secret（Confidential Client 必填） */
+    clientSecret?: string;
+    /** Access Token Cookie 名称，默认 __Host-nihplod_sso_at */
+    accessTokenCookieName?: string;
+    /** Refresh Token Cookie 名称，默认 __Host-nihplod_sso_rt */
+    refreshTokenCookieName?: string;
+    /** ID Token Cookie 名称，默认 __Host-nihplod_sso_id */
+    idTokenCookieName?: string;
+    /**
+     * 本地 HTTP 开发模式（默认 false）。必须与 middleware / callback / logout 配置一致。
+     * 生产环境（NODE_ENV=production 且 ssoBaseUrl 为 https）下会被强制忽略并告警。
+     */
+    insecureLocalDev?: boolean;
+    /**
+     * 服务端到服务端调用的内网地址（可选，如 http://127.0.0.1:3000）。
+     * 仅用于 token 交换；浏览器跳转仍使用 ssoBaseUrl 公网地址。
+     */
+    serverBaseUrl?: string;
+    /** 调试日志开关（默认 false） */
+    debug?: boolean;
+}
+declare function createRefreshRouteHandler(config: RefreshRouteConfig): (request: NextRequest) => Promise<NextResponse>;
+
+/**
  * App Router 登出 Route Handler
  *
  * 在 /api/auth/logout 路由中处理本地登出 + RP-Initiated Logout：
@@ -427,4 +476,4 @@ declare function getSecureCookieOptions(maxAge?: number, path?: string, secure?:
     maxAge?: number;
 };
 
-export { type BackchannelLogoutRouteConfig, type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_ID_TOKEN_COOKIE_NAME, DEFAULT_LOGOUT_STATE_COOKIE_NAME, DEFAULT_NONCE_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutJtiStore, type LogoutRouteConfig, type SsoMiddlewareConfig, createBackchannelLogoutRouteHandler, createCallbackRouteHandler, createLogoutRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions, toInsecureCookieName };
+export { type BackchannelLogoutRouteConfig, type CallbackRouteConfig, DEFAULT_ACCESS_TOKEN_COOKIE_NAME, DEFAULT_ID_TOKEN_COOKIE_NAME, DEFAULT_LOGOUT_STATE_COOKIE_NAME, DEFAULT_NONCE_COOKIE_NAME, DEFAULT_REFRESH_TOKEN_COOKIE_NAME, DEFAULT_RETURN_COOKIE_NAME, DEFAULT_STATE_COOKIE_NAME, DEFAULT_VERIFIER_COOKIE_NAME, type LogoutJtiStore, type LogoutRouteConfig, type RefreshRouteConfig, type SsoMiddlewareConfig, createBackchannelLogoutRouteHandler, createCallbackRouteHandler, createLogoutRouteHandler, createRefreshRouteHandler, createSsoMiddleware, getHostCookieOptions, getSecureCookieOptions, toInsecureCookieName };

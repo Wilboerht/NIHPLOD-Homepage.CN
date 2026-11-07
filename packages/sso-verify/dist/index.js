@@ -58,7 +58,9 @@ function createTokenVerifier(options) {
     introspectRetries = 1,
     clockToleranceSeconds = 60,
     logoutJtiStore,
-    strictAudience = true
+    strictAudience = true,
+    verificationMode = "auto",
+    allowM2mTokens = false
   } = options;
   let warnedLegacyLogoutSecret = false;
   if (allowLegacyAccessTokenSecretFallback && accessTokenSecret && !logoutTokenSecret) {
@@ -186,7 +188,9 @@ function createTokenVerifier(options) {
         return null;
       }
       if (!response.ok) {
-        if (response.status >= 500 && attempt < introspectRetries) continue;
+        if ((response.status >= 500 || response.status === 429) && attempt < introspectRetries) {
+          continue;
+        }
         return null;
       }
       try {
@@ -222,7 +226,11 @@ function createTokenVerifier(options) {
         iss: issuer,
         client_id: data.client_id,
         scope: data.scope,
-        exp: data.exp
+        exp: data.exp,
+        ...data.client_type ? { client_type: data.client_type } : {},
+        ...data.sid ? { sid: data.sid } : {},
+        ...typeof data.auth_time === "number" ? { auth_time: data.auth_time } : {},
+        ...data.cnf ? { cnf: data.cnf } : {}
       };
     }
     let ttl = introspectCacheTtl;
@@ -297,34 +305,63 @@ function createTokenVerifier(options) {
       return null;
     }
   }
+  const hasIntrospection = Boolean(introspectionEndpoint && clientId);
+  const rejectM2mPayload = (payload) => {
+    if (!payload || allowM2mTokens) return payload;
+    const isM2m = payload.client_type === "m2m" || payload.sub.startsWith("client:");
+    return isM2m ? null : payload;
+  };
+  const verifyLocallyBoth = async (rawToken) => {
+    if (accessTokenSecret) {
+      const local = await verifyLocally(rawToken);
+      if (local) return local;
+    }
+    return verifyWithRS256(rawToken);
+  };
+  const verifyViaIntrospection = async (rawToken) => {
+    const result = await introspect(rawToken);
+    if (result?.active !== true || !result.sub) return null;
+    return {
+      sub: result.sub,
+      aud: audience,
+      iss: issuer,
+      client_id: result.client_id,
+      scope: result.scope,
+      exp: result.exp,
+      ...result.client_type ? { client_type: result.client_type } : {},
+      ...result.sid ? { sid: result.sid } : {},
+      ...typeof result.auth_time === "number" ? { auth_time: result.auth_time } : {},
+      ...result.cnf ? { cnf: result.cnf } : {},
+      ...result.token_type ? { token_type: result.token_type } : {}
+    };
+  };
   return {
     /**
      * 验证 Access Token
      *
-     * 验证顺序：
-     * 1. 若配置了 accessTokenSecret，先尝试 HS256 本地验证
-     * 2. 若配置了 accessTokenPublicKey 或 jwksUri，尝试 RS256 本地验证
-     * 3. 若上述均失败/未配置，调用 Introspection 端点
+     * 模式由 verificationMode 控制（默认 "auto"）：
+     * - auto：配置了 Introspection 时优先 Introspection（实时感知撤销）；否则本地验签。
+     * - introspection：强制 Introspection（未配置端点时回退本地）。
+     * - local：仅本地验签（不感知撤销）。
+     * - hybrid：本地优先，失败后 Introspection（旧版行为）。
      *
      * @returns token payload 或者 null（验证失败）
      */
-    async verify(token) {
-      if (accessTokenSecret) {
-        const local = await verifyLocally(token);
-        if (local) return local;
+    async verify(rawToken) {
+      const runLocal = async () => rejectM2mPayload(await verifyLocallyBoth(rawToken));
+      const runIntrospection = async () => rejectM2mPayload(await verifyViaIntrospection(rawToken));
+      if (verificationMode === "local") {
+        return await runLocal();
       }
-      const rs256Result = await verifyWithRS256(token);
-      if (rs256Result) return rs256Result;
-      const result = await introspect(token);
-      if (result?.active !== true || !result.sub) return null;
-      return {
-        sub: result.sub,
-        aud: audience,
-        iss: issuer,
-        client_id: result.client_id,
-        scope: result.scope,
-        exp: result.exp
-      };
+      if (verificationMode === "introspection") {
+        return hasIntrospection ? await runIntrospection() : await runLocal();
+      }
+      if (verificationMode === "hybrid") {
+        const local = await runLocal();
+        if (local) return local;
+        return hasIntrospection ? await runIntrospection() : null;
+      }
+      return hasIntrospection ? await runIntrospection() : await runLocal();
     },
     /**
      * 直接调用 Introspection 端点
@@ -356,6 +393,12 @@ function createTokenVerifier(options) {
           return null;
         }
         if (typeof payload.exp !== "number") {
+          return null;
+        }
+        if (typeof payload.iat !== "number") {
+          return null;
+        }
+        if (payload.nonce !== void 0) {
           return null;
         }
         const events = payload.events;

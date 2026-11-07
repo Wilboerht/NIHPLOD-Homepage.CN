@@ -4,6 +4,7 @@
  * Next.js App Router 绑定：
  * - createSsoMiddleware: Next.js Middleware 辅助函数
  * - createCallbackRouteHandler: App Router 回调 Route Handler
+ * - createRefreshRouteHandler: App Router 刷新 Route Handler（httpOnly refresh cookie）
  * - createLogoutRouteHandler: App Router 登出 Route Handler
  * - createBackchannelLogoutRouteHandler: App Router Backchannel Logout 接收端
  */

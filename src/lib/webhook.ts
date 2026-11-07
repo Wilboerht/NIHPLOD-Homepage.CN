@@ -373,6 +373,10 @@ export async function retryFailedStatusWebhooks(limit = 50): Promise<number> {
         data: {
           attempts,
           nextRetryAt: new Date(Date.now() + Math.min(60_000 * 2 ** attempts, 60 * 60 * 1000)),
+          payload: {
+            ...((failure.payload ?? {}) as Record<string, unknown>),
+            lastError: "重投失败",
+          },
         },
       });
     }

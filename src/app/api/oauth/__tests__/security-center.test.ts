@@ -40,7 +40,8 @@ vi.mock("@/lib/logger", () => ({
 
 // === Mock security 核心的外部依赖 ===
 vi.mock("@/lib/backchannel-logout", () => ({
-  sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
+  enqueueBackchannelLogoutNotifications: vi.fn().mockResolvedValue(1),
+  scheduleBackchannelRedelivery: vi.fn(),
 }));
 vi.mock("@/lib/auth-logger", () => ({
   logAuthEvent: vi.fn(),
@@ -55,7 +56,10 @@ const prismaMock = vi.hoisted(() => {
   const m = {
     refreshToken: { findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     oAuthSession: { findMany: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn() },
-    oAuthClient: { findMany: vi.fn() },
+    oAuthClient: {
+      findMany: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue({ backchannelLogoutUri: null }),
+    },
     userConsent: { updateMany: vi.fn() },
     externalIdentity: { findMany: vi.fn(), findFirst: vi.fn(), deleteMany: vi.fn() },
     user: { findUnique: vi.fn(), update: vi.fn() },
@@ -106,7 +110,7 @@ function context<T extends Record<string, string>>(params: T) {
 const activePayload = {
   id: "user-1",
   client_id: "wechat-mp-points",
-  scope: "openid profile profile:write",
+  scope: "openid profile profile:write security:manage",
 };
 
 const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);

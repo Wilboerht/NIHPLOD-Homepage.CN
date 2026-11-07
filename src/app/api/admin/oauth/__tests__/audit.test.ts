@@ -221,7 +221,9 @@ describe("GET /api/admin/oauth/audit", () => {
     expect([...buf.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     const csv = new TextDecoder("utf-8", { ignoreBOM: true }).decode(buf);
     const lines = csv.split("\n");
-    expect(lines[0]).toBe("\uFEFFid,event,userId,clientId,clientName,ip,success,createdAt");
+    expect(lines[0]).toBe(
+      "\uFEFFid,event,userId,clientId,clientName,ip,userAgent,requestId,detail,success,createdAt"
+    );
     // 防护顺序：先加 ' 前缀（'=HYPERLINK...），内部双引号转义为 ""，
     // 因含逗号整体再用双引号包裹。绝不允许多行文本中出现裸 = 开头单元格。
     expect(csv).toContain(`"'=HYPERLINK(""https://evil.com""),x"`);

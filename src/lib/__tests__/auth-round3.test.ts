@@ -78,7 +78,10 @@ vi.mock("@/lib/token-blacklist", () => ({
 }));
 
 vi.mock("@/lib/backchannel-logout", () => ({
-  sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
+  enqueueBackchannelLogoutForActiveSessions: vi
+    .fn()
+    .mockResolvedValue({ sessionCount: 2, userClientCount: 2 }),
+  scheduleBackchannelRedelivery: vi.fn(),
 }));
 
 vi.mock("@/lib/oauth-session-revoke", () => ({
@@ -88,7 +91,7 @@ vi.mock("@/lib/oauth-session-revoke", () => ({
 import { prisma } from "@/lib/prisma";
 import { recordLoginAttempt } from "@/lib/auth-security";
 import { verifyUserAuth } from "@/lib/auth";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { enqueueBackchannelLogoutForActiveSessions } from "@/lib/backchannel-logout";
 import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 import { USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 import { POST as registerPost } from "@/app/api/auth/register/route";
@@ -101,7 +104,7 @@ const mockSessionFindMany = prisma.oAuthSession.findMany as ReturnType<typeof vi
 const mockSessionUpdateMany = prisma.oAuthSession.updateMany as ReturnType<typeof vi.fn>;
 const mockRtFindFirst = prisma.refreshToken.findFirst as ReturnType<typeof vi.fn>;
 const mockVerifyUserAuth = verifyUserAuth as ReturnType<typeof vi.fn>;
-const mockBackchannel = sendBackchannelLogout as ReturnType<typeof vi.fn>;
+const mockBackchannel = enqueueBackchannelLogoutForActiveSessions as ReturnType<typeof vi.fn>;
 const mockRevokeOAuthClientSessions = revokeOAuthClientSessions as ReturnType<typeof vi.fn>;
 
 function createJsonRequest(url: string, body: unknown, headers: Record<string, string> = {}) {
@@ -208,7 +211,10 @@ describe("POST /api/auth/logout（第三轮修复）", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(mockBackchannel).toHaveBeenCalledWith("user-1", ["client-1", "client-2"]);
+    expect(mockBackchannel).toHaveBeenCalledWith({
+      userId: "user-1",
+      omitSid: true,
+    });
     expect(mockSessionUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1", revokedAt: null },
       data: { revokedAt: expect.any(Date) },

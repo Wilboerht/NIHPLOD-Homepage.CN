@@ -64,7 +64,8 @@ function parseDurationToSeconds(duration: string): number {
   return value * multipliers[unit];
 }
 
-const adminExpiresIn = process.env.JWT_EXPIRES_IN || "1d";
+// 与 lib/jwt.ts 的默认 JWT 有效期保持一致（默认 12h）
+const adminExpiresIn = process.env.JWT_EXPIRES_IN || "12h";
 
 export const COOKIE_OPTIONS = {
   httpOnly: true,

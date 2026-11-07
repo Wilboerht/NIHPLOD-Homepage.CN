@@ -257,6 +257,28 @@ export const GET = createCallbackRouteHandler({
 });
 ```
 
+### 刷新 Route Handler（可选，BFF 推荐）
+
+回调 handler 会把 refresh_token 写入 httpOnly Cookie；如需在服务端主动刷新（而不是等
+middleware 静默重授权），可挂载刷新路由：
+
+```typescript
+// src/app/api/auth/refresh/route.ts
+import { createRefreshRouteHandler } from "@nihplod/sso-sdk/next";
+
+export const runtime = "nodejs";
+
+export const POST = createRefreshRouteHandler({
+  clientId: process.env.SSO_CLIENT_ID!,
+  clientSecret: process.env.SSO_CLIENT_SECRET,
+  ssoBaseUrl: process.env.SSO_BASE_URL || "https://nihplod.cn",
+  redirectUri: process.env.SSO_REDIRECT_URI || "https://yourapp.com/api/auth/callback",
+});
+```
+
+该端点仅接受同源 POST，使用 refresh cookie 换取新 token 并更新 Cookie，不向浏览器 JS
+返回 token；`invalid_grant` 等不可恢复错误会清除认证 Cookie。
+
 ### 登出 Route Handler
 
 ```typescript
@@ -298,9 +320,9 @@ SSO 中心区分两种退出语义，子项目应按场景选择：
 
 走 OIDC RP-Initiated Logout：重定向到 end_session_endpoint（SDK 的 `sso.logout(true)` / `createLogoutRouteHandler` 的 `redirectToSso: true`）。用户在官网 `/logout` 确认后，SSO 中心清除 IdP 会话、撤销 refresh token，并通过 Backchannel Logout 通知相关 RP。
 
-官网 `/logout` 确认页默认只退出**当前设备**（撤销发起方 client 的 OAuthSession/refresh_token 并 backchannel 通知该 client）；用户可勾选"同时退出所有设备和已授权的平台"升级为全设备登出（撤销全部 refresh token 并通知**所有**已授权的活跃 client）。官网账户中心的"强制下线设备"也会对被踢设备关联的 client 发送 backchannel 通知。
+官网 `/logout` 确认页默认只退出**当前设备**：能从 `id_token_hint` 解析出 `sid` 时，仅撤销该 sid 的 OAuthSession/refresh_token 并 backchannel 通知该 client；无 `sid` 的旧流程回退为撤销该 client 的全部会话。用户可勾选"同时退出所有设备和已授权的平台"升级为全设备登出（撤销全部 refresh token 并通知**所有**已授权的活跃 client）。官网账户中心的"强制下线设备"也会对被踢设备关联的 client 发送 backchannel 通知。
 
-**RP 级登出语义**：子项目调 `end_session_endpoint` 的免确认快速通道（`id_token_hint` 未过期、`aud` 匹配且 `sub` 与当前会话一致）只退出**该子项目**的 SSO 会话（撤销该 client 的 OAuthSession 并 backchannel 通知），**不再清除主站登录态**（主站 Cookie 与主站 refresh token 保持不变）。需要全站退出时，应引导用户到官网 `/logout` 确认页由用户显式确认（快速通道不满足条件时也会自动回落到该确认页）。
+**RP 级登出语义**：子项目调 `end_session_endpoint` 的免确认快速通道（`id_token_hint` 未过期、`aud` 匹配且 `sub` 与当前会话一致）只退出**该子项目当前会话**：`id_token_hint` 携带 `sid` 时仅撤销该 sid 的 OAuthSession 并 backchannel 通知；旧 token 无 `sid` 时回退为撤销该 client 的全部会话。**不再清除主站登录态**（主站 Cookie 与主站 refresh token 保持不变）。需要全站退出时，应引导用户到官网 `/logout` 确认页由用户显式确认（快速通道不满足条件时也会自动回落到该确认页）。
 
 ### 推荐 UI 模式
 
@@ -379,8 +401,13 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 - `membership` — 会员等级（`membership_level`）、累计消费金额（`total_spent`，number，单位元）、积分兑礼率（`points_redeem_rate`）；同时是积分余额/流水、兑换与收货地址、消费补录等资源端点的准入 scope（**高敏感，授予前请评估**）
 - `birthday` — 生日（ISO 8601 格式，未设置时为 `null`）
 - `profile:write` — 允许子站调用 `PATCH /api/oauth/userinfo` 修改昵称、头像、生日、性别（写操作独立 scope，不随 `profile` 隐含）
+- `security:manage` — 安全中心管理：撤销其他应用授权、强制下线设备、解绑第三方身份（**高敏感**）
+- `phone:write` — 换绑手机号（需当前/新手机号短信验证，**高敏感**）
+- `account:delete` — 提交/撤回账号注销申请（需短信验证，**高敏感**）
+- `password:write` — 修改或设置登录密码（**高敏感**）
 
-示例：商城项目 `"openid profile phone"`，论坛项目 `"openid profile"`
+示例：商城项目 `"openid profile phone"`，论坛项目 `"openid profile"`。
+需要账户中心/安全中心能力的项目按需追加 `security:manage phone:write account:delete password:write`，不要直接复用 `profile:write`。
 
 > ⚠️ `profile` scope 的 userinfo 响应还包含 `gender`（未设置为 null）与 `has_password`（是否已设置密码的布尔值），`birthday` scope 返回 `birthday`。
 
@@ -388,8 +415,8 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 
 ### Token 刷新
 
-- access_token 有效期 15 分钟
-- SDK 自动在过期前 60 秒静默刷新
+- access_token 默认有效期 8 小时（可在管理后台按 client 调整；高敏感项目建议设为 900 秒）
+- SDK 自动在过期前刷新（`SsoClient` 提前 10 秒，`SsoProvider` 默认提前 60 秒）
 - 刷新使用互斥锁防止并发
 - refresh_token 采用原子轮换（旧 token 立即作废）
 - **Refresh Token 所有权校验**：OAuth 场景下 refresh token 会携带 `client_id` 与 `scope` 声明，
@@ -832,7 +859,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ### 官网侧配置
 
-1. SSO 后台创建 **public** OAuth Client，scopes 建议 `openid profile phone membership profile:write birthday`（`membership` 为积分/地址端点必需；`profile:write`/`birthday` 供小程序「资料编辑」；未配置的 scope 会在登录签发时被交集剔除，不影响其余功能）；
+1. SSO 后台创建 **public** OAuth Client，scopes 建议 `openid profile phone membership profile:write birthday security:manage phone:write account:delete password:write`（`membership` 为积分/地址端点必需；`profile:write`/`birthday` 供「资料编辑」；后四个高危 scope 供账户/安全中心；未配置的 scope 会在登录签发时被交集剔除，不影响其余功能）；
    - 注意：管理端创建时 **clientId 为随机生成且不可编辑**，创建后需在数据库改为约定值 `wechat-mp-points`（小程序登录与凭证分发均按 clientId 精确匹配）：
    ```sql
    UPDATE "OAuthClient"
@@ -891,11 +918,11 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | GET | `/api/oauth/membership` | 会员等级/权益/升级进度（需 `membership`） |
 | GET | `/api/oauth/skin-test-usage` | AI 测肤用量（已用/剩余/每日上限/今日测肤与打卡状态；来源测肤子站，未配置/超时/异常时 `usage: null`，调用方自行 fail-soft；需 `membership`） |
 | GET | `/api/oauth/account/deletion` | 查询进行中的账号注销申请（无则 `request: null`；需 `profile`） |
-| POST | `/api/oauth/account/deletion` | 提交账号注销申请（冷静期默认 7 天、可随时撤回、幂等；需 `profile:write`；不做密码校验，以微信身份 + 冷静期撤回为安全边界） |
-| DELETE | `/api/oauth/account/deletion` | 撤回注销申请（需 `profile:write`；无进行中申请返回 409 `NO_PENDING_REQUEST`） |
-| GET/DELETE | `/api/oauth/security/devices[/{id}]` | 安全中心 · 设备管理：活跃设备列表（脱敏 IP；OAuth 无 Cookie 场景优先把当前 client 最近活跃会话标记为当前）/ 强制下线（当前设备与当前小程序自身设备不可下线，需 `profile:write`） |
-| GET/DELETE | `/api/oauth/security/authorizations[/{clientId}]` | 安全中心 · 授权管理：已授权应用列表（`isCurrentClient` 标记当前小程序）/ 撤销授权（禁止撤销当前小程序自身，需 `profile:write`） |
-| GET/DELETE | `/api/oauth/security/identities[/{id}]` | 安全中心 · 账号绑定：第三方绑定列表 / 解绑（服务端要求账号已绑定真实手机号，需 `profile:write`） |
+| POST | `/api/oauth/account/deletion` | 提交账号注销申请（冷静期默认 7 天、可随时撤回、幂等；需 `account:delete`；不做密码校验，以微信身份 + 冷静期撤回为安全边界） |
+| DELETE | `/api/oauth/account/deletion` | 撤回注销申请（需 `account:delete`；无进行中申请返回 409 `NO_PENDING_REQUEST`） |
+| GET/DELETE | `/api/oauth/security/devices[/{id}]` | 安全中心 · 设备管理：活跃设备列表（脱敏 IP；OAuth 无 Cookie 场景优先把当前 client 最近活跃会话标记为当前）/ 强制下线（当前设备与当前小程序自身设备不可下线，写操作需 `security:manage`） |
+| GET/DELETE | `/api/oauth/security/authorizations[/{clientId}]` | 安全中心 · 授权管理：已授权应用列表（`isCurrentClient` 标记当前小程序）/ 撤销授权（禁止撤销当前小程序自身，写操作需 `security:manage`） |
+| GET/DELETE | `/api/oauth/security/identities[/{id}]` | 安全中心 · 账号绑定：第三方绑定列表 / 解绑（服务端要求账号已绑定真实手机号，写操作需 `security:manage`） |
 | GET | `/api/oauth/security/login-history` | 安全中心 · 登录历史（最近 50 条登录尝试，脱敏 IP） |
 
 ### 错误码
@@ -1001,8 +1028,11 @@ const payload = await verifier.verify(token);
 ```
 
 > ⚠️ **不要将 `JWT_ACCESS_SECRET`（HS256 对称密钥）分发给外部子项目。** 外部子项目请优先使用 Introspection；本地 JWT 验证仅适用于已与主站安全共享 RS256 公钥的内部服务。
+>
+> `@nihplod/sso-verify` 默认 `verificationMode: "auto"`：同时配置 `introspectionEndpoint + clientId` 时**优先 Introspection**（实时感知撤销）；仅配置公钥时走本地验签。若需旧版"本地优先"行为，显式设置 `verificationMode: "hybrid"`；高吞吐但非敏感场景可设 `"local"`，并自行承担撤销延迟。
+> M2M（client_credentials）token 默认被用户态校验拒绝（其 `sub` 为 `client:<client_id>`）；确需校验 M2M token 时显式设置 `allowM2mTokens: true`，并自行判断 `client_type`。
 
-> ⚠️ **本地 JWKS 验签无法实时感知撤销。** 用户撤销授权或管理员终止会话后，access token 在主站侧会立即失效（按 token 的 `sid` claim 校验会话状态），但本地验签只做离线签名校验，被撤销的 token 在其 TTL（默认 15 分钟）内仍会通过。需要即时获知撤销的子项目（如涉及敏感操作）应改用 Introspection 端点验证。
+> ⚠️ **本地 JWKS 验签无法实时感知撤销。** 用户撤销授权或管理员终止会话后，access token 在主站侧会立即失效（按 token 的 `sid` claim 校验会话状态），但本地验签只做离线签名校验，被撤销的 token 在其 TTL（默认 8 小时，可在后台按 client 调低）内仍会通过。需要即时获知撤销的子项目（如涉及敏感操作）应改用 Introspection 端点验证，或设置 `verificationMode: "introspection"` / 将 TTL 调至分钟级。
 
 ### Q: Public Client（SPA）调用 logout(true) 后，SSO 中心会话是否立即失效？
 

@@ -18,10 +18,12 @@ import {
 } from "@/lib/spent-import";
 import { BODY_LIMITS } from "@/lib/body-limits";
 import { isBodyTooLargeError, payloadTooLargeResponse, readFormDataBody } from "@/lib/request-body";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  if (!validateCSRFToken(request)) return csrfForbiddenResponse();
   try {
     const admin = await verifyAuth(request);
     if (!admin) {

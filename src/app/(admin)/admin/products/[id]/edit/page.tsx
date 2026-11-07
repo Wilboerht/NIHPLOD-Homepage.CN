@@ -26,6 +26,7 @@ interface Category {
 interface ImageItem {
   id: string;
   url: string;
+  derivedUrls?: string[];
   alt: string | null;
   order: number;
 }
@@ -97,6 +98,7 @@ function EditProductContent() {
           images: data.images.map((img: ImageItem) => ({
             id: img.id,
             url: img.url,
+            derivedUrls: img.derivedUrls ?? [],
             alt: img.alt,
             order: img.order,
           })),

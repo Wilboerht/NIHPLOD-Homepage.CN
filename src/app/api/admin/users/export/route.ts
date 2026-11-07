@@ -140,7 +140,12 @@ export async function GET(request: NextRequest) {
 
     const canReadSensitive = hasAdminPermission(admin, "users:sensitive:read");
     const canReadAdvisor = hasAdminPermission(admin, "advisor:users:read");
-    const normalized = normalizeUserExportGroups(includeRaw, canReadAdvisor);
+    const canReadAdvisorReport = hasAdminPermission(admin, "advisor:report:read");
+    const normalized = normalizeUserExportGroups(
+      includeRaw,
+      canReadAdvisor,
+      canReadAdvisorReport
+    );
     if (normalized.invalid.length > 0) {
       return NextResponse.json(
         {
@@ -163,8 +168,9 @@ export async function GET(request: NextRequest) {
       );
     }
     if (
-      normalized.groups.includes("advisorFullAnalysis") &&
-      !hasAdminPermission(admin, "advisor:report:read")
+      (normalized.groups.includes("advisorFullAnalysis") ||
+        normalized.groups.includes("advisorDiary")) &&
+      !canReadAdvisorReport
     ) {
       return NextResponse.json(
         {

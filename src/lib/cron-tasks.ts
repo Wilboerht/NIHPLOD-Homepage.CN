@@ -429,6 +429,25 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
+    name: "Process Audit Retention Jobs",
+    cronExpression: "* * * * *",
+    isCleanup: true,
+    handler: async () => {
+      // 审计保留使用独立高权限数据库角色；未配置时跳过，不影响其他 cron。
+      if (!process.env.AUDIT_RETENTION_DATABASE_URL) return;
+      try {
+        const { processAuditRetentionJobs } = await import("./audit-retention-worker");
+        const count = await processAuditRetentionJobs();
+        if (count > 0) {
+          apiConsole.info(`[Cron] 审计保留任务处理: ${count} 个`);
+        }
+      } catch (error) {
+        apiConsole.error("[Cron] 审计保留任务处理失败:", error);
+        throw error;
+      }
+    },
+  },
+  {
     name: "Audit Anomaly Scan",
     cronExpression: "*/5 * * * *",
     isCleanup: true,

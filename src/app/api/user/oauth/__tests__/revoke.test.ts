@@ -22,6 +22,8 @@ const {
   mockRevokeRefreshToken,
   mockBlacklistUserTokens,
   mockSendBackchannelLogout,
+  mockEnqueueBackchannel,
+  mockScheduleBackchannelRedelivery,
   mockRecordSsoEvent,
   mockLogAuthEvent,
   prismaMock,
@@ -37,11 +39,14 @@ const {
     mockRevokeRefreshToken: vi.fn(),
     mockBlacklistUserTokens: vi.fn(),
     mockSendBackchannelLogout: vi.fn(),
+    mockEnqueueBackchannel: vi.fn(),
+    mockScheduleBackchannelRedelivery: vi.fn(),
     mockRecordSsoEvent: vi.fn(),
     mockLogAuthEvent: vi.fn(),
     prismaMock: {
       oAuthSession: createMockModel(),
       userConsent: createMockModel(),
+      oAuthClient: { findUnique: vi.fn() },
       // 审计日志 identifier 改按 id 查库（access token 不再携带明文手机号）
       user: { findUnique: vi.fn() },
     } as Record<string, Record<string, ReturnType<typeof vi.fn>>>,
@@ -104,6 +109,9 @@ vi.mock("@/lib/token-blacklist", () => ({
 
 vi.mock("@/lib/backchannel-logout", () => ({
   sendBackchannelLogout: (...args: unknown[]) => mockSendBackchannelLogout(...args),
+  enqueueBackchannelLogoutNotifications: (...args: unknown[]) => mockEnqueueBackchannel(...args),
+  scheduleBackchannelRedelivery: (...args: unknown[]) =>
+    mockScheduleBackchannelRedelivery(...args),
   isBlockedHostname: vi.fn().mockReturnValue(false),
 }));
 
@@ -136,8 +144,12 @@ describe("POST /api/user/oauth/revoke", () => {
     mockRevokeRefreshToken.mockResolvedValue(undefined);
     mockBlacklistUserTokens.mockResolvedValue(undefined);
     mockSendBackchannelLogout.mockResolvedValue(undefined);
+    mockEnqueueBackchannel.mockResolvedValue(undefined);
     mockRecordSsoEvent.mockResolvedValue(undefined);
     prismaMock.user.findUnique.mockResolvedValue({ phone: USER.phone });
+    prismaMock.oAuthClient.findUnique.mockResolvedValue({
+      backchannelLogoutUri: "https://rp.example/cb",
+    });
   });
 
   it("CSRF 校验失败应返回 403", async () => {
@@ -223,8 +235,15 @@ describe("POST /api/user/oauth/revoke", () => {
     // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
     // access token 即时失效由 sid 会话校验承担
     expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-    // user+client 全量撤销只按 sub 通知 RP 清除全部本地会话
-    expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"]);
+    // user+client 全量撤销只按 sub 通知 RP 清除全部本地会话（异步入队）
+    expect(mockEnqueueBackchannel).toHaveBeenCalledWith([
+      {
+        userId: "user-1",
+        clientId: "client-abc",
+        sid: null,
+        logoutUri: "https://rp.example/cb",
+      },
+    ]);
     // 审计：SSO 事件 + 用户认证日志
     expect(mockRecordSsoEvent).toHaveBeenCalledWith(
       expect.objectContaining({

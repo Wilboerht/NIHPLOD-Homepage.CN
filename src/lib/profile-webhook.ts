@@ -392,7 +392,14 @@ export async function retryFailedWebhookDeliveries(
         const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
         await prisma.webhookDeliveryFailure.update({
           where: { id: failure.id },
-          data: { attempts, nextRetryAt: new Date(Date.now() + backoff) },
+          data: {
+            attempts,
+            nextRetryAt: new Date(Date.now() + backoff),
+            payload: {
+              ...((failure.payload ?? {}) as Record<string, unknown>),
+              lastError: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+            },
+          },
         });
         failed++;
         apiConsole.warn(`[ProfileWebhook] 重投失败 (${failure.clientId})，第 ${attempts} 次:`, err);
@@ -420,8 +427,12 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
   const failure = await prisma.webhookDeliveryFailure.findUnique({ where: { id } });
   if (!failure) return { ok: false, status: "not_found" };
 
-  // 原子认领：删除成功（count=1）才继续，防止手动重投与 cron 重投并发导致重复投递
-  const claimed = await prisma.webhookDeliveryFailure.deleteMany({ where: { id } });
+  // 原子认领：把 nextRetryAt 后移作为租约，防止手动重投与 cron 重投并发导致重复投递。
+  const claimUntil = new Date(Date.now() + 5 * 60_000);
+  const claimed = await prisma.webhookDeliveryFailure.updateMany({
+    where: { id, nextRetryAt: failure.nextRetryAt },
+    data: { nextRetryAt: claimUntil },
+  });
   if (claimed.count === 0) return { ok: false, status: "not_found" };
 
   const client = await prisma.oAuthClient.findUnique({
@@ -430,6 +441,7 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
   });
   const uri = client?.webhookUri;
   if (!uri || !isSafeBackchannelUrl(uri)) {
+    await prisma.webhookDeliveryFailure.deleteMany({ where: { id } });
     recordSsoEvent({
       event: "profile_webhook",
       userId: failure.userId,
@@ -443,6 +455,7 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
   // consent 已撤销 / 用户已注销 / client 已停用：不得继续投递资料快照
   const effectiveScopes = await getProfileDeliveryScopes(failure.userId, failure.clientId);
   if (!client?.isActive || !effectiveScopes) {
+    await prisma.webhookDeliveryFailure.deleteMany({ where: { id } });
     recordSsoEvent({
       event: "profile_webhook",
       userId: failure.userId,
@@ -489,6 +502,7 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
     });
     if (!res.ok) throw new Error(`http_${res.status}`);
 
+    await prisma.webhookDeliveryFailure.deleteMany({ where: { id } });
     recordSsoEvent({
       event: "profile_webhook",
       userId: failure.userId,
@@ -500,6 +514,7 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
   } catch (err) {
     const attempts = failure.attempts + 1;
     if (attempts >= REDELIVERY_MAX_ATTEMPTS) {
+      await prisma.webhookDeliveryFailure.deleteMany({ where: { id } });
       recordSsoEvent({
         event: "profile_webhook",
         userId: failure.userId,
@@ -510,18 +525,21 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
       return { ok: false, status: "dropped", error: "已达到最大重试次数，记录已丢弃" };
     }
     const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
-    // 已认领（记录已删除）：失败时重建记录并递增 attempts / 退避
+    // 认领后失败：直接更新原记录（不再删除重建），保留原 id 和并发认领语义。
     await prisma.webhookDeliveryFailure
-      .create({
+      .update({
+        where: { id },
         data: {
-          userId: failure.userId,
-          clientId: failure.clientId,
-          payload: failure.payload ?? {},
           attempts,
           nextRetryAt: new Date(Date.now() + backoff),
+          payload: {
+            ...((failure.payload ?? {}) as Record<string, unknown>),
+            lastError:
+              err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+          },
         },
       })
-      .catch((e) => apiConsole.warn("[ProfileWebhook] 重建失败记录出错:", e));
+      .catch((e) => apiConsole.warn("[ProfileWebhook] 更新失败记录出错:", e));
     return {
       ok: false,
       status: "failed",

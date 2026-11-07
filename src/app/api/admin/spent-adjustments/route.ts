@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           user: { select: { id: true, phone: true, nickname: true, membershipLevel: true } },
           reviewedBy: { select: { name: true, email: true } },
-          createdByAdmin: { select: { name: true, email: true } },
+          createdByAdmin: { select: { id: true, name: true, email: true } },
         },
       }),
       prisma.spentAdjustmentApplication.count({ where }),

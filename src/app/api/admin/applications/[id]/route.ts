@@ -10,6 +10,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { beginAuditLog, createAuditLogStrict, finishAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { maskPhone } from "@/lib/mask-phone";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,6 +19,24 @@ interface RouteParams {
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, private",
 } as const;
+
+async function withFileDeleteRetry<T>(
+  action: () => Promise<T>,
+  attempts = 3
+): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await action();
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** i));
+      }
+    }
+  }
+  throw lastError;
+}
 
 const statusSchema = z.enum(["pending", "reviewed", "interviewed", "rejected", "hired"]);
 
@@ -126,8 +145,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       request,
     });
 
+    const canViewSensitive = hasAdminPermission(admin, "applications:sensitive:read");
     return NextResponse.json(
-      { success: true, data: { ...safeApplication, hasResume } },
+      {
+        success: true,
+        data: {
+          ...safeApplication,
+          phone: canViewSensitive ? safeApplication.phone : maskPhone(safeApplication.phone),
+          hasResume,
+          canViewSensitive,
+        },
+      },
       { headers: NO_STORE_HEADERS }
     );
   } catch (error) {
@@ -420,10 +448,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     let resumeFileDeleted = true;
-    if (application.resumePath) {
-      if (isPrivateResumeKey(application.resumePath)) {
+    const resumePath = application.resumePath;
+    if (resumePath) {
+      if (isPrivateResumeKey(resumePath)) {
         try {
-          await deleteResumeFile(application.resumePath);
+          await withFileDeleteRetry(() => deleteResumeFile(resumePath));
         } catch (error) {
           resumeFileDeleted = false;
           apiConsole.error("[AdminApplicationDelete] 私有简历文件删除失败，需人工清理:", {
@@ -432,7 +461,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
           });
         }
       } else {
-        resumeFileDeleted = await deleteUploadedFile(application.resumePath).catch((error) => {
+        resumeFileDeleted = await withFileDeleteRetry(() =>
+          deleteUploadedFile(resumePath)
+        ).catch((error) => {
           apiConsole.error("[AdminApplicationDelete] 旧公开简历删除失败:", {
             applicationId: id,
             error,

@@ -6,14 +6,17 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { createAuditLog } from "@/lib/audit";
+import { createAuditLog, createAuditLogStrict } from "@/lib/audit";
 import { maskPhone } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 
 // 更新留言 Schema
 const UpdateSchema = z.object({
   read: z.boolean().optional(),
   reply: z.string().max(5000).optional(),
+  /** 乐观锁：客户端读取到的 updatedAt；不匹配时返回 409，避免多人覆盖备注 */
+  expectedUpdatedAt: z.string().datetime().optional(),
 });
 
 // GET /api/admin/messages/[id] - 获取留言详情
@@ -127,10 +130,34 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       updateData.repliedAt = reply ? new Date() : null;
     }
 
-    const message = await prisma.contactMessage.update({
-      where: { id },
+    const updated = await prisma.contactMessage.updateMany({
+      where: {
+        id,
+        ...(validated.expectedUpdatedAt
+          ? { updatedAt: new Date(validated.expectedUpdatedAt) }
+          : {}),
+      },
       data: updateData,
     });
+    if (updated.count === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "STALE_UPDATE",
+            message: "该留言已被其他管理员修改，请刷新后再试",
+          },
+        },
+        { status: 409 }
+      );
+    }
+    const message = await prisma.contactMessage.findUnique({ where: { id } });
+    if (!message) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "留言不存在" } },
+        { status: 404 }
+      );
+    }
 
     revalidateTag("admin-stats", "max");
 
@@ -151,6 +178,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         phone: maskPhone(message.phone),
         repliedAt: message.repliedAt?.toISOString() ?? null,
         createdAt: message.createdAt.toISOString(),
+        updatedAt: message.updatedAt.toISOString(),
       },
     });
   } catch (error) {
@@ -202,6 +230,10 @@ export async function DELETE(
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
+    // 删除留言不可恢复：与产品/职位/简历删除一致，要求 step-up。
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
+
     // 检查是否存在
     const existing = await prisma.contactMessage.findUnique({ where: { id } });
     if (!existing) {
@@ -211,17 +243,25 @@ export async function DELETE(
       );
     }
 
-    // 删除留言
-    await prisma.contactMessage.delete({ where: { id } });
-
-    createAuditLog({
+    // 审计写失败则拒绝删除（高危操作不可无痕）。
+    await createAuditLogStrict({
       action: "delete_message",
       targetType: "message",
       targetId: id,
-      detail: {},
+      detail: { phone: maskPhone(existing.phone) },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "step_up",
+      sessionJti: admin.jti ?? null,
+      source: "WEB",
       adminId: admin.id,
       request,
-    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
+    });
+
+    // 删除留言
+    await prisma.contactMessage.delete({ where: { id } });
 
     revalidateTag("admin-stats", "max");
 

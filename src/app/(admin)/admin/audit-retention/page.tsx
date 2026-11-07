@@ -95,6 +95,7 @@ function RetentionContent() {
   const [localOnlyAck, setLocalOnlyAck] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [cancelTargetJob, setCancelTargetJob] = useState<string | null>(null);
+  const [cancelCode, setCancelCode] = useState("");
   const [holdOpen, setHoldOpen] = useState(false);
   const [holdForm, setHoldForm] = useState({
     targetType: "",
@@ -102,6 +103,7 @@ function RetentionContent() {
     userId: "",
     adminId: "",
     reason: "",
+    expiresAt: "",
     totpCode: "",
   });
   const [releaseHold, setReleaseHold] = useState<LegalHold | null>(null);
@@ -151,7 +153,7 @@ function RetentionContent() {
         localOnlyAck: true,
         previewHash: data.preview.previewHash,
       });
-      toast.success("清理任务已创建，worker 将在 1 分钟内执行");
+      toast.success("清理任务已创建，后台 worker 将按调度执行");
       setExecuteOpen(false);
       setReason("");
       setConfirmation("");
@@ -174,6 +176,9 @@ function RetentionContent() {
         userId: holdForm.userId || undefined,
         adminId: holdForm.adminId || undefined,
         reason: holdForm.reason,
+        expiresAt: holdForm.expiresAt
+          ? new Date(`${holdForm.expiresAt}T23:59:59.999+08:00`).toISOString()
+          : undefined,
         totpCode: holdForm.totpCode,
       });
       toast.success("法律保留已设置");
@@ -184,6 +189,7 @@ function RetentionContent() {
         userId: "",
         adminId: "",
         reason: "",
+        expiresAt: "",
         totpCode: "",
       });
       await load();
@@ -197,8 +203,9 @@ function RetentionContent() {
   const cancelJob = async (id: string) => {
     setSubmitting(true);
     try {
-      await apiPost(`/api/admin/audit-retention/jobs/${id}/cancel`, {});
+      await apiPost(`/api/admin/audit-retention/jobs/${id}/cancel`, { totpCode: cancelCode });
       toast.success("清理任务已取消");
+      setCancelCode("");
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "取消失败");
@@ -236,10 +243,12 @@ function RetentionContent() {
         : !data.allowLocalOnly
           ? "未确认本地唯一副本"
           : data.preview.expectedCount === 0
-            ? "当前没有到期数据"
-            : !isOwner
-              ? "仅 owner 可执行"
-              : "";
+            ? "当前没有可安全清理的到期数据（未归档/校验失败日期已跳过）"
+            : !data.preview.ready
+              ? "预览未就绪，请检查警告"
+              : !isOwner
+                ? "仅 owner 可执行"
+                : "";
 
   return (
     <div className="flex flex-col gap-6">
@@ -518,10 +527,27 @@ function RetentionContent() {
                       <td className="py-2 pr-3 text-xs">
                         {formatDate(hold.createdAt)}
                         <span className="ml-1 text-brand-charcoal/50">{hold.createdByEmail}</span>
+                        {hold.expiresAt && (
+                          <span className="ml-1 block text-brand-charcoal/50">
+                            到期：{formatDate(hold.expiresAt)}
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 pr-3 text-center">
-                        <Badge variant={hold.active ? "danger" : "secondary"}>
-                          {hold.active ? "生效中" : "已解除"}
+                        <Badge
+                          variant={
+                            hold.expiresAt && new Date(hold.expiresAt) <= new Date()
+                              ? "warning"
+                              : hold.active
+                                ? "danger"
+                                : "secondary"
+                          }
+                        >
+                          {hold.expiresAt && new Date(hold.expiresAt) <= new Date()
+                            ? "已过期"
+                            : hold.active
+                              ? "生效中"
+                              : "已解除"}
                         </Badge>
                       </td>
                       <td className="py-2 text-right">
@@ -638,6 +664,12 @@ function RetentionContent() {
             onChange={(e) => setHoldForm({ ...holdForm, reason: e.target.value })}
           />
           <Input
+            label="到期时间（可选，留空表示永久）"
+            type="date"
+            value={holdForm.expiresAt}
+            onChange={(e) => setHoldForm({ ...holdForm, expiresAt: e.target.value })}
+          />
+          <Input
             label="TOTP 验证码"
             value={holdForm.totpCode}
             onChange={(e) => setHoldForm({ ...holdForm, totpCode: e.target.value.trim() })}
@@ -714,7 +746,16 @@ function RetentionContent() {
         description="取消后该清理任务不会再执行；如需清理需重新预览并提交。确定取消吗？"
         confirmText="确认取消"
         loading={submitting}
-      />
+        confirmDisabled={cancelCode.length < 6}
+      >
+        <Input
+          label="TOTP 验证码"
+          placeholder="6 位动态验证码或备用码"
+          value={cancelCode}
+          onChange={(e) => setCancelCode(e.target.value.trim())}
+          autoComplete="one-time-code"
+        />
+      </ConfirmDialog>
     </div>
   );
 }

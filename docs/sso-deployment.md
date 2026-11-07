@@ -201,7 +201,7 @@ JWKS 端点支持同时暴露当前与上一代公钥，实现无感轮换：
    - 对应变量：`JWT_OAUTH_ACCESS_PREV_PUBLIC_KEY`、`JWT_OAUTH_ID_TOKEN_PREV_PUBLIC_KEY`、`JWT_LOGOUT_TOKEN_PREV_PUBLIC_KEY`
    - kid 默认值：当前 `access-token-rs256-v1` / `id-token-rs256-v1` / `logout-token-rs256-v1`，上一代默认 `-v0`
 3. 再将新密钥对配置为当前密钥（`*_PRIVATE_KEY` / `*_PUBLIC_KEY`），发布上线。过渡期内验证侧按 kid 匹配，旧 token 仍可验签；
-4. 待旧密钥签发的 token 全部过期后，移除 `*_PREV_*` 配置。access token 有效期默认为 15 分钟（按 Client 可通过 `accessTokenTtlSeconds` 配置，范围 60–86400 秒），id_token 固定为 1 小时（`src/lib/jwt.ts` 硬编码），按实际配置的最大值等待即可。
+4. 待旧密钥签发的 token 全部过期后，移除 `*_PREV_*` 配置。access token 有效期默认为 8 小时（按 Client 可通过 `accessTokenTtlSeconds` 配置，范围 60–86400 秒），id_token 固定为 1 小时（`src/lib/jwt.ts` 硬编码），按实际配置的最大值等待即可。
 
 **`INTERNAL_API_KEYS` 轮换（零停机）**：官网条目支持可选 `previousSecrets` 字段（上一代 secret 数组），宽限期内官网同时接受新旧 secret 签名的请求，子站无需感知：
 
@@ -349,7 +349,7 @@ PostgreSQL 枚举值无法安全删除，因此**不要**尝试手工回退枚�
 
 ### 4.2 sid 会话机制的向后兼容
 
-新签发的 token 携带 `sid` claim 关联 `OAuthSession`，撤销后即时失效。上线前签发的旧 token **没有 sid**，验证时会跳过 sid 校验，按其原有过期时间自然过期（access token 默认 15 分钟，按 Client 的 `accessTokenTtlSeconds` 配置，上限 86400 秒；id_token 固定 1 小时），不会因为上线新机制而被强制失效，也不会绕过撤销检查以外的任何校验。回滚代码后，带 sid 的 token 由旧代码忽略 sid 字段，同样按原逻辑验证，无兼容问题。
+新签发的 token 携带 `sid` claim 关联 `OAuthSession`，撤销后即时失效。上线前签发的旧 token **没有 sid**，验证时会跳过 sid 校验，按其原有过期时间自然过期（access token 默认 8 小时，按 Client 的 `accessTokenTtlSeconds` 配置，上限 86400 秒；id_token 固定 1 小时），不会因为上线新机制而被强制失效，也不会绕过撤销检查以外的任何校验。回滚代码后，带 sid 的 token 由旧代码忽略 sid 字段，同样按原逻辑验证，无兼容问题。
 
 ### 4.3 配置回滚
 

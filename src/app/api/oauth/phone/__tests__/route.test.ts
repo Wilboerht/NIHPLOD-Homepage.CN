@@ -99,7 +99,7 @@ function authOk() {
     payload: {
       id: AUTH_CONTEXT.id,
       client_id: "client-1",
-      scope: "openid phone",
+      scope: "openid phone phone:write",
       type: "access_token",
     },
     ip: "127.0.0.1",
@@ -163,7 +163,7 @@ describe("OAuth 换绑手机号", () => {
       expect(mockAuthenticate).toHaveBeenCalledWith(
         expect.anything(),
         "PUT",
-        expect.objectContaining({ scope: "phone" })
+        expect.objectContaining({ scope: "phone:write" })
       );
       expect(mocks.findUnique).not.toHaveBeenCalled();
     });
@@ -279,7 +279,7 @@ describe("OAuth 换绑手机号", () => {
       expect(mockAuthenticate).toHaveBeenCalledWith(
         expect.anything(),
         "POST",
-        expect.objectContaining({ scope: "phone" })
+        expect.objectContaining({ scope: "phone:write" })
       );
     });
 

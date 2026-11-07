@@ -694,6 +694,8 @@ describe("管理端 OAuth Client CRUD", () => {
       // 通知写入补偿队列（分页 + 异步投递，不在请求内逐用户同步 HTTP）
       expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledWith({
         clientId: previous.clientId,
+        omitSid: true,
+        revokedSince: expect.any(Date),
       });
       expect(mockSendBackchannelLogout).not.toHaveBeenCalled();
     });
@@ -841,6 +843,7 @@ describe("管理端 OAuth Client CRUD", () => {
       // access token 即时失效由 sid 会话校验承担
       expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledWith({
         clientId: record.clientId,
+        omitSid: true,
       });
       expect(mockSendBackchannelLogout).not.toHaveBeenCalled();
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();

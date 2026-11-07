@@ -455,6 +455,36 @@ export async function createApprovalRequest(input: CreateApprovalRequestInput) {
       throw new AdminApprovalError("DUPLICATE_REQUEST", "已有相同的待审批申请", 409);
     }
 
+    // 积分调整额外按“目标 + 金额”聚合去重：备注不同会改变 payloadHash，
+    // 仅靠上面的 hash 去重仍可拆成两笔先后执行，导致重复加/扣分。
+    if (policy.key === "points.adjust" && target.targetId) {
+      const amount = (payload as { amount?: unknown }).amount;
+      if (typeof amount === "number") {
+        const active =
+          (await tx.adminApprovalRequest.findMany({
+            where: {
+              policyKey: policy.key,
+              targetId: target.targetId,
+              status: { in: ["PENDING", "APPROVED", "EXECUTING", "EXECUTION_FAILED"] },
+              expiresAt: { gt: new Date() },
+            },
+            select: { payload: true, status: true },
+          })) ?? [];
+        const conflict = active.find(
+          (item) =>
+            typeof (item.payload as { amount?: unknown })?.amount === "number" &&
+            (item.payload as { amount: number }).amount === amount
+        );
+        if (conflict) {
+          throw new AdminApprovalError(
+            "DUPLICATE_REQUEST",
+            "该用户已有相同金额的待处理积分调整申请",
+            409
+          );
+        }
+      }
+    }
+
     return tx.adminApprovalRequest.create({
       data: {
         policyKey: policy.key,
@@ -812,6 +842,16 @@ export async function retryApprovalRequest(input: ApprovalDecisionInput) {
   if (request.expiresAt.getTime() <= Date.now()) {
     throw new AdminApprovalError("EXPIRED", "审批申请已过期，无法重试", 409);
   }
+  if (
+    request.targetId === input.admin.id &&
+    (request.policyKey === "admin.delete" || request.policyKey === "totp.recovery.issue")
+  ) {
+    throw new AdminApprovalError(
+      "SELF_APPROVAL_FORBIDDEN",
+      "不能重试针对自己的高风险申请",
+      400
+    );
+  }
 
   if (request.executionMode === "AUTO") {
     if (input.admin.role !== "owner" || !hasAdminPermission(input.admin, "approvals:review")) {
@@ -830,6 +870,51 @@ export async function retryApprovalRequest(input: ApprovalDecisionInput) {
     }
     if (!hasAdminPermission(input.admin, policy.actionPermission)) {
       throw new AdminApprovalError("FORBIDDEN", "审批对应的执行权限已失效", 403);
+    }
+  }
+
+  // 原审批人离职/降级后，EXECUTION_FAILED 申请不能永久卡死：
+  // 允许当前 owner 以新的 TOTP 审批动作接管执行（仅 AUTO 模式）。
+  if (request.executionMode === "AUTO") {
+    const approverActive = await prisma.admin.findFirst({
+      where: {
+        id: request.approverId ?? "",
+        role: "owner",
+        status: "ACTIVE",
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    if (!approverActive) {
+      await prisma.adminApprovalRequest.updateMany({
+        where: { id: request.id, status: "EXECUTION_FAILED" },
+        data: {
+          approverId: input.admin.id,
+          approverEmail: input.admin.email,
+          approverName: input.admin.name,
+          approvedAt: new Date(),
+          decisionNote: request.decisionNote
+            ? `${request.decisionNote}（原审批人失效，由 ${input.admin.name} 接管重试）`
+            : `原审批人失效，由 ${input.admin.name} 接管重试`,
+        },
+      });
+      await createAuditLog({
+        action: "admin_approval_reassigned",
+        targetType: "system",
+        targetId: request.id,
+        targetLabel: request.policyKey,
+        detail: {
+          approvalId: request.id,
+          previousApproverId: request.approverId,
+          newApproverId: input.admin.id,
+        },
+        actorType: "ADMIN",
+        actorEmail: input.admin.email,
+        actorName: input.admin.name,
+        actorRole: input.admin.role,
+        authMethod: "totp",
+        adminId: input.admin.id,
+      }).catch((error) => apiConsole.warn("[AdminApproval] 改派审计写入失败:", error));
     }
   }
 
@@ -1113,11 +1198,16 @@ export async function reconcileStaleApprovedApprovals(now = new Date()): Promise
       if (outcome.ok) executed += 1;
     } catch (error) {
       // 并发下可能已被其他任务/请求执行；记录后继续处理下一条
+      const message = error instanceof Error ? error.message : String(error);
       apiConsole.warn(
         "[AdminApproval] 补偿执行 APPROVED 申请失败:",
         request.id,
         error instanceof Error ? error.message : error
       );
+      void notifyApprovalEvent("审批补偿执行失败", [
+        `- 审批单：${request.id}`,
+        `- 错误：${message}`,
+      ]);
     }
   }
   return executed;

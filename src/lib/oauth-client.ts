@@ -6,7 +6,8 @@
  */
 import { prisma } from "./prisma";
 import { z } from "zod";
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
+import { LRUCache } from "lru-cache";
 import { getInternalApiKeys } from "./internal-api";
 import { apiConsole } from "@/lib/logger";
 import { enqueueBackchannelLogoutForActiveSessions, isBlockedHostname } from "./backchannel-logout";
@@ -218,6 +219,26 @@ export const SECRET_ROTATION_GRACE_MS = 5 * 60 * 1000;
 const oldSecretCache = new Map<string, { oldHash: string; expiresAt: number }>();
 
 /**
+ * client_secret 成功校验结果的短 TTL 缓存（key 为 clientId + secret 的 SHA-256）。
+ * introspect 端点每个 token 都会做一次 client 认证；直接 bcrypt 会形成 CPU 热点。
+ * 缓存 30 秒：client 密钥轮换（旧密钥本身有 5 分钟宽限）或停用最迟 30 秒生效，
+ * 且停用校验在 DB 查询之后仍会先拒绝 isActive=false，不会绕过停用。
+ */
+const clientSecretVerifyCache = new LRUCache<string, true>({
+  max: 10000,
+  ttl: 30 * 1000,
+});
+
+function clientSecretCacheKey(clientId: string, secret: string, currentHash: string): string {
+  // 绑定当前 clientSecret hash：密钥被替换后旧缓存 key 自然失效
+  return `${clientId}:${createHash("sha256").update(secret).digest("hex")}:${createHash(
+    "sha256"
+  )
+    .update(currentHash)
+    .digest("hex")}`;
+}
+
+/**
  * 缓存并持久化旧 secret hash，供 verifyOAuthClientSecret 在过渡期内回退匹配。
  * 轮换密钥时由 rotate-secret API 调用（同步签名保持不变）。
  *
@@ -363,24 +384,32 @@ export async function verifyOAuthClientSecret(
   if (client.isPublic && options?.allowPublic && !secret) {
     valid = true;
   } else if (secret) {
-    // 优先匹配当前 hash
-    valid = await verifySecret(secret, client.clientSecret);
+    const cacheKey = clientSecretCacheKey(clientId, secret, client.clientSecret);
+    if (clientSecretVerifyCache.get(cacheKey)) {
+      valid = true;
+    } else {
+      // 优先匹配当前 hash；只有当前 hash 匹配才缓存。
+      // 旧密钥回退路径不缓存：其有效期由 secretRotatedAt 的 5 分钟宽限严格约束，
+      // 避免缓存把宽限期额外延长。
+      valid = await verifySecret(secret, client.clientSecret);
+      if (valid) clientSecretVerifyCache.set(cacheKey, true);
 
-    // 回退 1：进程内缓存（发起轮换的实例在 DB 写入完成前的快速路径）
-    if (!valid) {
-      const cached = oldSecretCache.get(clientId);
-      if (cached && Date.now() < cached.expiresAt) {
-        valid = await verifySecret(secret, cached.oldHash);
+      // 回退 1：进程内缓存（发起轮换的实例在 DB 写入完成前的快速路径）
+      if (!valid) {
+        const cached = oldSecretCache.get(clientId);
+        if (cached && Date.now() < cached.expiresAt) {
+          valid = await verifySecret(secret, cached.oldHash);
+        }
       }
-    }
 
-    // 回退 2：DB 持久化的 previousSecretHash（多实例共享的权威过渡期状态）。
-    // 仅在 secretRotatedAt 起 5 分钟过渡期内接受旧 secret；
-    // 过渡期后 previousSecretHash 留存在行内但不再被接受（惰性失效，无需清理任务）。
-    if (!valid && client.previousSecretHash && client.secretRotatedAt) {
-      const graceElapsed = Date.now() - client.secretRotatedAt.getTime();
-      if (graceElapsed >= 0 && graceElapsed <= SECRET_ROTATION_GRACE_MS) {
-        valid = await verifySecret(secret, client.previousSecretHash);
+      // 回退 2：DB 持久化的 previousSecretHash（多实例共享的权威过渡期状态）。
+      // 仅在 secretRotatedAt 起 5 分钟过渡期内接受旧 secret；
+      // 过渡期后 previousSecretHash 留存在行内但不再被接受（惰性失效，无需清理任务）。
+      if (!valid && client.previousSecretHash && client.secretRotatedAt) {
+        const graceElapsed = Date.now() - client.secretRotatedAt.getTime();
+        if (graceElapsed >= 0 && graceElapsed <= SECRET_ROTATION_GRACE_MS) {
+          valid = await verifySecret(secret, client.previousSecretHash);
+        }
       }
     }
   }

@@ -430,6 +430,8 @@ export async function POST(request: NextRequest) {
           avatar: true,
           membershipLevel: true,
           status: true,
+          passwordChangedAt: true,
+          sessionsInvalidatedAt: true,
         },
       });
 
@@ -444,6 +446,53 @@ export async function POST(request: NextRequest) {
           detail: { grant_type, reason: "user_inactive" },
         });
         return resJson({ error: "invalid_grant", error_description: "用户账户不可用" }, 400);
+      }
+
+      // 授权码签发后用户改密/全设备登出：该 code 属于旧凭据，不得再换取 token。
+      const credentialCutoffMs = Math.max(
+        user.passwordChangedAt?.getTime() ?? 0,
+        user.sessionsInvalidatedAt?.getTime() ?? 0
+      );
+      if (
+        pendingCode &&
+        credentialCutoffMs > 0 &&
+        pendingCode.createdAt.getTime() < credentialCutoffMs
+      ) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: user.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "credential_changed_after_code" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "凭据已变更，请重新授权" },
+          400
+        );
+      }
+
+      // 消费授权码后重新读取 client：防止校验 client 之后、创建 session 之前
+      // 管理员停用/缩权 client 的竞态（停用事务只撤销已存在的 session）。
+      const freshClient = await prisma.oAuthClient.findUnique({
+        where: { clientId: client_id },
+        select: { isActive: true, scopes: true, sessionsInvalidatedAt: true },
+      });
+      if (!freshClient || !freshClient.isActive) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: user.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "client_inactive_after_code_consume" },
+        });
+        return resJson(
+          { error: "invalid_grant", error_description: "应用已被停用，请重新授权" },
+          400
+        );
       }
 
       const scopeStr = codeData.scopes.join(" ");
@@ -472,9 +521,9 @@ export async function POST(request: NextRequest) {
       }
       // client 在授权码签发后缩权/停用：拒绝已缩权的 code，防止 in-flight 授权绕过
       if (
-        client.sessionsInvalidatedAt &&
+        freshClient.sessionsInvalidatedAt &&
         pendingCode &&
-        pendingCode.createdAt <= client.sessionsInvalidatedAt
+        pendingCode.createdAt <= freshClient.sessionsInvalidatedAt
       ) {
         scheduleSsoEvent({
           event: "token",
@@ -495,7 +544,7 @@ export async function POST(request: NextRequest) {
       const allScopesCovered = codeData.scopes.every(
         (s) =>
           OIDC_IMPLICIT_SCOPES.includes(s) ||
-          (grantedScopes.includes(s) && client.scopes.includes(s))
+          (grantedScopes.includes(s) && freshClient.scopes.includes(s))
       );
       if (!allScopesCovered) {
         scheduleSsoEvent({

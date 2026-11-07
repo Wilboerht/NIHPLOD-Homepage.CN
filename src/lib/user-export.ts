@@ -190,7 +190,8 @@ export function isUserExportGroup(value: string): value is UserExportGroup {
 
 export function normalizeUserExportGroups(
   raw: string | null | undefined,
-  canReadAdvisor: boolean
+  canReadAdvisor: boolean,
+  canReadAdvisorReport: boolean = canReadAdvisor
 ): { groups: UserExportGroup[]; invalid: string[]; requestedAdvisor: boolean } {
   const values = raw
     ? raw
@@ -203,6 +204,12 @@ export function normalizeUserExportGroups(
 
   if (!raw && !canReadAdvisor) {
     for (const group of ADVISOR_EXPORT_GROUPS) requested.delete(group);
+  }
+  // 日记原文/完整报告属于报告级敏感数据；没有 advisor:report:read 时
+  // 默认导出不得包含，显式请求由 API 返回 403。
+  if (!canReadAdvisorReport) {
+    requested.delete("advisorDiary");
+    requested.delete("advisorFullAnalysis");
   }
   const requestedAdvisor = [...requested].some((group) => ADVISOR_EXPORT_GROUPS.includes(group));
 

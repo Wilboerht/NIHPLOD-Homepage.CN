@@ -89,7 +89,8 @@ function AdminCategoriesContent() {
 
     setDeleting(true);
     try {
-      await apiDelete(`/api/admin/categories/${category.id}`);
+      const result = await withStepUp(() => apiDelete(`/api/admin/categories/${category.id}`));
+      if (result === null) return;
       success("分类已删除");
       setDeleteConfirm({ open: false });
       fetchCategories();
@@ -128,9 +129,15 @@ function AdminCategoriesContent() {
     setCategories(updated);
     setSavingOrder(true);
     try {
-      await apiPut("/api/admin/categories/order", {
-        items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
-      });
+      const result = await withStepUp(() =>
+        apiPut("/api/admin/categories/order", {
+          items: updated.map((cat) => ({ id: cat.id, order: cat.order })),
+        })
+      );
+      if (result === null) {
+        fetchCategories();
+        return;
+      }
       success("排序已保存");
     } catch {
       showError("保存排序失败");

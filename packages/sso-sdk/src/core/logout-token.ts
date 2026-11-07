@@ -248,6 +248,13 @@ export async function verifyLogoutTokenDetailed(
   if (Date.now() >= payload.exp * 1000 + 60_000) {
     throw new SsoError("logout_token_expired", "Logout Token 已过期");
   }
+  if (typeof payload.iat !== "number") {
+    throw new SsoError("logout_token_invalid", "Logout Token 缺少 iat 声明");
+  }
+  // OIDC Back-Channel Logout 1.0：logout_token 禁止携带 nonce（与主站校验对齐）
+  if (payload.nonce !== undefined) {
+    throw new SsoError("logout_token_invalid", "Logout Token 不得携带 nonce");
+  }
 
   // type 必须为 logout_token：防止拿其他用途的 token（如 access_token /
   // profile_event token）冒充 logout_token 触发登出（与 sso-verify 对齐）

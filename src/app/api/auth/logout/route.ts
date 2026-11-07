@@ -28,7 +28,10 @@ import {
 } from "@/lib/request-body";
 import { validateCSRFToken, csrfForbiddenResponse, CSRF_COOKIE_NAME } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import {
+  enqueueBackchannelLogoutForActiveSessions,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 
 // 强制动态渲染，禁止静态预渲染
@@ -127,10 +130,13 @@ export async function POST(request: NextRequest) {
           select: { clientId: true },
         });
         if (activeSessions.length > 0) {
-          const clientIds = [...new Set(activeSessions.map((s) => s.clientId))];
-          // 全设备登出：发送 sub-only token，让 RP 清除该用户全部会话；
+          // 全设备登出：入队 sub-only 通知（异步投递），让 RP 清除该用户全部会话；
           // 携带 sid 只会命中一个设备，其他设备会残留登录态。
-          await sendBackchannelLogout(user.id, clientIds, { omitSid: true });
+          await enqueueBackchannelLogoutForActiveSessions({
+            userId: user.id,
+            omitSid: true,
+          });
+          scheduleBackchannelRedelivery();
           await prisma.oAuthSession.updateMany({
             where: { userId: user.id, revokedAt: null },
             data: { revokedAt: new Date() },

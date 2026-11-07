@@ -75,6 +75,9 @@ export function buildOpenIdConfiguration() {
       "membership_level",
       "total_spent",
       "points_redeem_rate",
+      // OIDC 标准声明：认证时间与会话 ID（支持 RP 侧 max_age / backchannel logout）
+      "auth_time",
+      "sid",
     ],
     claims_parameter_supported: false,
     request_parameter_supported: false,

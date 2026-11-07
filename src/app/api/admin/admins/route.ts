@@ -64,6 +64,7 @@ const updateSchema = z.object({
   email: z.string().email().optional(),
   name: z.string().min(1).optional(),
   role: roleSchema.optional(),
+  status: z.enum(["ACTIVE", "DISABLED"]).optional(),
   password: passwordSchema.optional(),
   permissions: z.array(z.string().max(60)).max(100).optional(),
 });
@@ -440,7 +441,10 @@ export const PUT = withAuth(async (request, admin) => {
     // 自锁保护：不允许通过本接口修改自己的角色/密码/权限（防最后 owner 自降级或误删权限导致锁死）
     if (
       data.id === admin.id &&
-      (data.role !== undefined || data.password !== undefined || data.permissions !== undefined)
+      (data.role !== undefined ||
+        data.status !== undefined ||
+        data.password !== undefined ||
+        data.permissions !== undefined)
     ) {
       return NextResponse.json(
         {
@@ -472,7 +476,7 @@ export const PUT = withAuth(async (request, admin) => {
     // 目标管理员必须存在且未删除（避免 update 抛 P2025 变成 500）
     const targetAdmin = await prisma.admin.findUnique({
       where: { id: data.id, deletedAt: null },
-      select: { id: true, email: true, name: true, role: true, permissions: true },
+      select: { id: true, email: true, name: true, role: true, status: true, permissions: true },
     });
     if (!targetAdmin) {
       return NextResponse.json(
@@ -601,6 +605,7 @@ export const PUT = withAuth(async (request, admin) => {
     const nameChanged = data.name !== undefined && data.name !== targetAdmin.name;
     const roleChanged = data.role !== undefined && data.role !== targetAdmin.role;
     const passwordChanged = Boolean(data.password);
+    const statusChanged = data.status !== undefined && data.status !== targetAdmin.status;
     const samePermissions = (a: string[], b: string[] | null | undefined) => {
       const right = [...(b ?? [])].sort();
       if (a.length !== right.length) return false;
@@ -616,11 +621,12 @@ export const PUT = withAuth(async (request, admin) => {
     if (roleChanged) updateData.role = data.role;
     if (passwordChanged) updateData.password = await hashPassword(data.password!);
     if (permissionsChanged) updateData.permissions = permissionOverrides;
+    if (statusChanged) updateData.status = data.status;
 
     // 只有真实变化才递增 tokenVersion：页面会原样提交 email/permissions，
     // 仅改姓名不应把目标（或 owner 自己）踢下线。
     const invalidatesSessions =
-      roleChanged || passwordChanged || emailChanged || permissionsChanged;
+      roleChanged || passwordChanged || emailChanged || permissionsChanged || statusChanged;
     if (invalidatesSessions) {
       updateData.tokenVersion = { increment: 1 };
     }
@@ -640,6 +646,8 @@ export const PUT = withAuth(async (request, admin) => {
         updatedFields: Object.keys(updateData).filter((k) => k !== "password"),
         roleBefore: targetAdmin.role,
         roleAfter: data.role ?? targetAdmin.role,
+        statusBefore: targetAdmin.status,
+        statusAfter: data.status ?? targetAdmin.status,
         permissionsChanged: permissionOverrides !== undefined,
         permissionOverrides: permissionOverrides ?? null,
         passwordChanged: Boolean(data.password),
@@ -666,7 +674,8 @@ export const PUT = withAuth(async (request, admin) => {
     // owner 降级在事务内加 advisory lock 二次校验，避免并发降级不同 owner 导致零 owner
     // （与 admin-safety.ts 的删除路径使用同一锁名）
     const demotingOwner =
-      targetAdmin.role === "owner" && data.role !== undefined && data.role !== "owner";
+      targetAdmin.role === "owner" &&
+      ((data.role !== undefined && data.role !== "owner") || data.status === "DISABLED");
     const updatedAdmin = await prisma
       .$transaction(async (tx) => {
         if (emailChanged) {
@@ -693,7 +702,11 @@ export const PUT = withAuth(async (request, admin) => {
             throw new AdminUpdateError("NOT_FOUND", "管理员不存在", 404);
           }
           if (current.role === "owner" && ownerCount <= 1) {
-            throw new AdminUpdateError("LAST_OWNER", "不能降级最后一个 owner 账号", 409);
+            throw new AdminUpdateError(
+              "LAST_OWNER",
+              "不能降级或禁用最后一个 owner 账号",
+              409
+            );
           }
         }
         return tx.admin.update({
@@ -704,6 +717,7 @@ export const PUT = withAuth(async (request, admin) => {
             email: true,
             name: true,
             role: true,
+            status: true,
             permissions: true,
             createdAt: true,
             updatedAt: true,

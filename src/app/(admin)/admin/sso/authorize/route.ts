@@ -12,6 +12,7 @@ import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { getIssuer } from "@/lib/oauth-constants";
 import { logger } from "@/lib/logger";
+import { recordSsoEvent } from "@/lib/sso-audit";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,14 @@ export async function GET(request: NextRequest) {
       adminId: admin.id,
       request,
     }).catch(() => {});
+    void recordSsoEvent({
+      event: "authorize",
+      userId: admin.id,
+      clientId,
+      ip: getClientIP(request),
+      success: false,
+      detail: { admin_sso: true, reason: "no_advisor_access" },
+    });
     return redirectToDenied("forbidden");
   }
 
@@ -163,6 +172,15 @@ export async function GET(request: NextRequest) {
       clientId: config.clientId,
       redirectUri: config.redirectUri,
       advisorRole,
+    });
+    void recordSsoEvent({
+      event: "authorize",
+      userId: admin.id,
+      clientId: config.clientId,
+      clientName: "测肤子站",
+      ip: getClientIP(request),
+      success: true,
+      detail: { admin_sso: true, advisorRole },
     });
 
     const target = new URL(config.redirectUri);

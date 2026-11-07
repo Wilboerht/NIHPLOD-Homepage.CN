@@ -115,7 +115,7 @@ interface SsoVerifierOptions {
     logoutTokenPublicKey?: string;
     /**
      * Introspection 请求失败重试次数，默认 1。
-     * 仅对网络错误与 5xx 响应重试（短退避），4xx 不重试。
+     * 仅对网络错误、5xx 与 429（限流）响应重试（短退避），其余 4xx 不重试。
      * 设为 0 表示不重试。
      */
     introspectRetries?: number;
@@ -140,6 +140,23 @@ interface SsoVerifierOptions {
      * 仅在对接不返回归属字段的第三方端点时才需要显式设为 false（不推荐）。
      */
     strictAudience?: boolean;
+    /**
+     * 验证模式（默认 "auto"）：
+     * - "auto"：配置了 introspectionEndpoint + clientId 时使用 Introspection（可实时感知撤销）；
+     *   未配置时回退本地 JWT 验签。
+     * - "introspection"：强制 Introspection；未配置端点时回退本地验签。
+     * - "local"：仅本地 HS256/RS256 验签（不感知撤销，仅建议非敏感、高吞吐场景）。
+     * - "hybrid"：先本地验签，失败后再 Introspection（旧版行为，性能优先）。
+     *
+     * 涉及账户状态/授权撤销的鉴权建议使用 "auto" 或 "introspection"。
+     */
+    verificationMode?: "auto" | "introspection" | "local" | "hybrid";
+    /**
+     * 是否允许 M2M（client_credentials）token 通过用户态校验（默认 false）。
+     * M2M token 的 sub 为 `client:<client_id>`，不是用户 ID；若业务确实需要
+     * 校验 M2M token，请显式设为 true 并自行区分 client_type。
+     */
+    allowM2mTokens?: boolean;
 }
 /**
  * Logout Token jti 防重放存储接口（可注入 Redis 等共享存储实现）。
@@ -162,6 +179,18 @@ interface VerifiedTokenPayload extends JWTPayload {
     client_id?: string;
     scope?: string;
     phone?: string;
+    /** 身份类型：m2m = client_credentials，user = 用户授权码流程 */
+    client_type?: "m2m" | "user";
+    /** OAuthSession ID；携带 sid 的 token 可被会话级撤销 */
+    sid?: string;
+    /** 原始认证时间（Unix 秒），供 max_age 判断 */
+    auth_time?: number;
+    /** DPoP 绑定（RFC 9449 cnf.jkt） */
+    cnf?: {
+        jkt?: string;
+    };
+    /** introspection 返回的 token 类型（Bearer / DPoP） */
+    token_type?: "Bearer" | "DPoP";
 }
 /**
  * Logout Token Payload（RFC 7519 + OIDC Back-Channel Logout 1.0）
@@ -201,20 +230,28 @@ interface IntrospectResponse {
     client_id?: string;
     scope?: string;
     exp?: number;
+    token_type?: string;
+    client_type?: "m2m" | "user";
+    sid?: string;
+    auth_time?: number;
+    cnf?: {
+        jkt?: string;
+    };
     [key: string]: unknown;
 }
 declare function createTokenVerifier(options: SsoVerifierOptions): {
     /**
      * 验证 Access Token
      *
-     * 验证顺序：
-     * 1. 若配置了 accessTokenSecret，先尝试 HS256 本地验证
-     * 2. 若配置了 accessTokenPublicKey 或 jwksUri，尝试 RS256 本地验证
-     * 3. 若上述均失败/未配置，调用 Introspection 端点
+     * 模式由 verificationMode 控制（默认 "auto"）：
+     * - auto：配置了 Introspection 时优先 Introspection（实时感知撤销）；否则本地验签。
+     * - introspection：强制 Introspection（未配置端点时回退本地）。
+     * - local：仅本地验签（不感知撤销）。
+     * - hybrid：本地优先，失败后 Introspection（旧版行为）。
      *
      * @returns token payload 或者 null（验证失败）
      */
-    verify(token: string): Promise<VerifiedTokenPayload | null>;
+    verify(rawToken: string): Promise<VerifiedTokenPayload | null>;
     /**
      * 直接调用 Introspection 端点
      */

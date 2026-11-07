@@ -319,7 +319,20 @@ async function executeSpentImport(ctx: ApprovalExecutorContext): Promise<Approva
     orderNo: row.orderNo,
     purchasedAt: row.purchasedAt,
     note: row.note,
+    rowIndex: row.rowIndex,
   }));
+  const rejectedRows = rows
+    .filter((row) => row.error)
+    .map((row) => ({
+      rowIndex: row.rowIndex,
+      phone: row.phone,
+      amount: row.amount,
+      channel: row.channel,
+      orderNo: row.orderNo,
+      purchasedAt: row.purchasedAt,
+      note: row.note,
+      error: row.error as string,
+    }));
   if (resolvedRows.length === 0) {
     throw new AdminApprovalError("NO_ROWS", "审批申请没有可导入的行", 400);
   }
@@ -366,6 +379,7 @@ async function executeSpentImport(ctx: ApprovalExecutorContext): Promise<Approva
 
   const result = await executeImportBatch({
     rows: resolvedRows,
+    rejectedRows,
     fileName,
     fileHash,
     reason: payload.reason,
@@ -611,7 +625,17 @@ async function executeUserDelete(ctx: ApprovalExecutorContext): Promise<Approval
   });
 
   const result = await executeAccountDeletion(deletionRequest.id, { notifyUser: false });
-  if (result !== "completed") {
+  if (result === "skipped") {
+    // skipped 可能表示另一 worker 已完成注销，也可能表示申请被撤回。
+    // 只有确认用户已 DELETED 才视为幂等成功，否则按失败处理。
+    const latest = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { status: true },
+    });
+    if (latest?.status !== "DELETED") {
+      throw new AdminApprovalError("DELETION_IN_PROGRESS", "注销申请状态已变化，请刷新后处理", 409);
+    }
+  } else if (result !== "completed") {
     throw new AdminApprovalError("DELETION_FAILED", "注销执行失败，申请已转入人工队列", 502);
   }
 

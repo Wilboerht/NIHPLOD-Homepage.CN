@@ -45,7 +45,8 @@ function defaultGroups(canReadAdvisor: boolean, canReadAdvisorReport: boolean): 
   return DEFAULT_USER_EXPORT_GROUPS.filter(
     (group) =>
       (canReadAdvisor || !ADVISOR_EXPORT_GROUPS.includes(group)) &&
-      (canReadAdvisorReport || group !== "advisorFullAnalysis")
+      (canReadAdvisorReport ||
+        (group !== "advisorFullAnalysis" && group !== "advisorDiary"))
   );
 }
 
@@ -237,7 +238,11 @@ export function UserExportDialog({
                   key={group}
                   group={group}
                   checked={selected.has(group)}
-                  disabled={loading || (group === "advisorFullAnalysis" && !canReadAdvisorReport)}
+                  disabled={
+                    loading ||
+                    ((group === "advisorFullAnalysis" || group === "advisorDiary") &&
+                      !canReadAdvisorReport)
+                  }
                   onChange={(checked) => toggle(group, checked)}
                 />
               ))}

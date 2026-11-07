@@ -35,6 +35,7 @@ interface FailureItem {
   nextRetryAt: string;
   createdAt: string;
   hasPayload: boolean;
+  lastError: string | null;
 }
 
 const KIND_TABS: { key: Kind; label: string }[] = [
@@ -137,10 +138,20 @@ function AdminWebhookFailuresContent() {
   const handleRetry = async (item: FailureItem) => {
     setActioningId(item.id);
     try {
-      const data = await apiPost<{ status: string; message: string; error: string | null }>(
-        "/api/admin/webhook-failures",
-        { kind, id: item.id, action: "retry" }
-      );
+      const submit = () =>
+        apiPost<{ status: string; message: string; error: string | null }>(
+          "/api/admin/webhook-failures",
+          { kind, id: item.id, action: "retry" }
+        );
+      let data: { status: string; message: string; error: string | null };
+      try {
+        data = await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        data = await submit();
+      }
       if (data.status === "failed") {
         // 附带目标端返回的具体错误（HTTP 状态/错误内容），便于定位失败原因
         showError(data.error ? `${data.message}：${data.error}` : data.message);
@@ -277,8 +288,13 @@ function AdminWebhookFailuresContent() {
               <span>下次：{formatDateTime(item.nextRetryAt)}</span>
               <span>首次：{formatDateTime(item.createdAt)}</span>
               <span className="col-span-2">
-                载荷：{item.hasPayload ? "已隐藏（含用户资料）" : "—"}
+                载荷：{item.hasPayload ? "已保存（含用户资料）" : "无"}
               </span>
+              {item.lastError && (
+                <span className="col-span-2 text-red-600" title={item.lastError}>
+                  最近错误：{item.lastError}
+                </span>
+              )}
             </div>
             <div className="mt-2 flex justify-end gap-2 border-t border-brand-charcoal/10 pt-2">
               {canWrite ? (
@@ -371,8 +387,16 @@ function AdminWebhookFailuresContent() {
                   </td>
                   <td className="max-w-[16rem] px-4 py-3">
                     <p className="truncate text-xs text-brand-charcoal/65">
-                      {item.hasPayload ? "已隐藏（含用户资料）" : "—"}
+                      {item.hasPayload ? "已保存（含用户资料）" : "无"}
                     </p>
+                    {item.lastError && (
+                      <p
+                        className="truncate text-xs text-red-600"
+                        title={item.lastError}
+                      >
+                        {item.lastError}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {canWrite ? (

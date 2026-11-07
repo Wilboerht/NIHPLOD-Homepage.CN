@@ -401,9 +401,18 @@ export function SsoProvider({
 
       // 计算距离过期还有多少秒
       const remainingSec = (tokenData.expires_at - Date.now()) / 1000;
+      // 提前量不得超过 token 寿命的 1/3：避免 client 配置 60s TTL 时每秒刷新一次
+      const lifetimeSec = Math.max(
+        1,
+        (tokenData.expires_at - tokenData.issued_at) / 1000
+      );
+      const effectiveThreshold = Math.max(
+        1,
+        Math.min(refreshThreshold, Math.floor(lifetimeSec / 3))
+      );
 
       // 已过期或即将过期：短延迟后带锁刷新（统一经定时器，保证失败后仍会重新排程）
-      if (remainingSec <= 0 || remainingSec <= refreshThreshold) {
+      if (remainingSec <= 0 || remainingSec <= effectiveThreshold) {
         refreshTimerRef.current = setTimeout(
           () => {
             if (active) void attemptRefresh();
@@ -413,8 +422,8 @@ export function SsoProvider({
         return;
       }
 
-      // 在过期前 refreshThreshold 秒触发刷新
-      const delayMs = Math.max((remainingSec - refreshThreshold) * 1000, minDelayMs, 1000);
+      // 在过期前 effectiveThreshold 秒触发刷新
+      const delayMs = Math.max((remainingSec - effectiveThreshold) * 1000, minDelayMs, 1000);
 
       refreshTimerRef.current = setTimeout(() => {
         if (!active) return;
@@ -422,7 +431,7 @@ export function SsoProvider({
         if (!td) return;
 
         const secLeft = (td.expires_at - Date.now()) / 1000;
-        if (secLeft <= refreshThreshold) {
+        if (secLeft <= effectiveThreshold) {
           void attemptRefresh();
         } else {
           // token 已被其他 Tab 刷新（storage 事件同步），按新过期时间重新排程

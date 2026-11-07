@@ -31,6 +31,14 @@ import {
 import { prisma } from "@/lib/prisma";
 import { createHmac, timingSafeEqual, createHash, randomBytes } from "crypto";
 
+/** 302 重定向同样禁止缓存（避免带 code/state 的 Location 被中间层缓存） */
+function redirectNoStore(url: URL | string): NextResponse {
+  return NextResponse.redirect(url, {
+    status: 302,
+    headers: { "Cache-Control": "no-store" },
+  });
+}
+
 /** JSON 响应统一禁止缓存（授权参数/错误信息含敏感上下文） */
 function noStoreJson(
   body: unknown,
@@ -155,9 +163,10 @@ async function ensureUserConsent(
 
 /** 获取公网 origin（反向代理后 request.url 可能为 localhost） */
 function getPublicOrigin(request: NextRequest): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin
-  );
+  const configured = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
+  if (configured) return configured.replace(/\/$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return request.nextUrl.origin;
 }
 
 // 支持的 scope 列表（从共享常量导入）
@@ -179,7 +188,7 @@ function buildErrorRedirect(
   url.searchParams.set("error_description", errorDescription);
   if (state) url.searchParams.set("state", state);
   url.searchParams.set("iss", getIssuer());
-  return NextResponse.redirect(url, 302);
+  return redirectNoStore(url);
 }
 
 export async function GET(request: NextRequest) {
@@ -282,10 +291,27 @@ export async function GET(request: NextRequest) {
 
     // 自此 redirect_uri 已验证为合法，后续所有参数错误均通过 302 回传
     const safeRedirectUri = redirect_uri;
+    // 失败也必须写 SSO 审计：否则授权成功率只统计成功事件，长期虚高。
+    const failRedirect = (
+      uri: string,
+      error: string,
+      description: string,
+      stateValue?: string | null
+    ) => {
+      scheduleSsoEvent({
+        event: "authorize",
+        clientId: client.clientId,
+        clientName: client.name,
+        ip,
+        success: false,
+        detail: { error, error_description: description, method: "GET" },
+      });
+      return buildErrorRedirect(uri, error, description, stateValue);
+    };
 
     // Client 已停用：通过 302 回传错误
     if (!client.isActive) {
-      return buildErrorRedirect(safeRedirectUri, "unauthorized_client", "Client 已停用", state);
+      return failRedirect(safeRedirectUri, "unauthorized_client", "Client 已停用", state);
     }
 
     // 4. 其余参数校验与错误 302 回传
@@ -301,7 +327,7 @@ export async function GET(request: NextRequest) {
     const popupNonce = searchParams.get("popup_nonce");
 
     if (response_type !== "code") {
-      return buildErrorRedirect(
+      return failRedirect(
         safeRedirectUri,
         "unsupported_response_type",
         "response_type 必须为 code",
@@ -309,20 +335,20 @@ export async function GET(request: NextRequest) {
       );
     }
     if (!scope.trim()) {
-      return buildErrorRedirect(safeRedirectUri, "invalid_request", "缺少 scope", state);
+      return failRedirect(safeRedirectUri, "invalid_request", "缺少 scope", state);
     }
     // 参数长度限制（防滥用）
     if (scope.length > 256) {
-      return buildErrorRedirect(safeRedirectUri, "invalid_request", "scope 参数过长", state);
+      return failRedirect(safeRedirectUri, "invalid_request", "scope 参数过长", state);
     }
     if (nonce && nonce.length > 128) {
-      return buildErrorRedirect(safeRedirectUri, "invalid_request", "nonce 参数过长", state);
+      return failRedirect(safeRedirectUri, "invalid_request", "nonce 参数过长", state);
     }
     if (popupNonce && popupNonce.length > 64) {
-      return buildErrorRedirect(safeRedirectUri, "invalid_request", "popup_nonce 参数过长", state);
+      return failRedirect(safeRedirectUri, "invalid_request", "popup_nonce 参数过长", state);
     }
     if (!state || state.length < 32 || state.length > 512) {
-      return buildErrorRedirect(
+      return failRedirect(
         safeRedirectUri,
         "invalid_request",
         "state 参数无效或长度不足",
@@ -330,7 +356,7 @@ export async function GET(request: NextRequest) {
       );
     }
     if (code_challenge.length !== 43) {
-      return buildErrorRedirect(
+      return failRedirect(
         safeRedirectUri,
         "invalid_request",
         "code_challenge 长度必须为 43",
@@ -338,7 +364,7 @@ export async function GET(request: NextRequest) {
       );
     }
     if (code_challenge_method !== "S256") {
-      return buildErrorRedirect(
+      return failRedirect(
         safeRedirectUri,
         "invalid_request",
         "code_challenge_method 必须为 S256",
@@ -346,7 +372,7 @@ export async function GET(request: NextRequest) {
       );
     }
     if (prompt && !["none", "login", "consent"].includes(prompt)) {
-      return buildErrorRedirect(
+      return failRedirect(
         safeRedirectUri,
         "invalid_request",
         "prompt 参数无效，仅支持 none/login/consent",
@@ -357,7 +383,7 @@ export async function GET(request: NextRequest) {
     if (maxAgeRaw !== null) {
       maxAge = parseInt(maxAgeRaw, 10);
       if (!Number.isFinite(maxAge) || maxAge < 0) {
-        return buildErrorRedirect(
+        return failRedirect(
           safeRedirectUri,
           "invalid_request",
           "max_age 参数无效，必须为非负整数",
@@ -371,7 +397,7 @@ export async function GET(request: NextRequest) {
     const requestedScopes = scope.split(" ").filter(Boolean);
     for (const s of requestedScopes) {
       if (!SUPPORTED_SCOPES.includes(s)) {
-        return buildErrorRedirect(
+        return failRedirect(
           safeRedirectUri,
           "invalid_scope",
           `权限范围 '${s}' 不受支持`,
@@ -379,7 +405,7 @@ export async function GET(request: NextRequest) {
         );
       }
       if (!client.scopes.includes(s) && !OIDC_IMPLICIT_SCOPES.includes(s)) {
-        return buildErrorRedirect(
+        return failRedirect(
           safeRedirectUri,
           "invalid_scope",
           `该应用未被授予权限范围 '${s}'`,
@@ -464,7 +490,7 @@ export async function GET(request: NextRequest) {
     // 8. prompt=none：未登录或 max_age 超期时按 OIDC 回传 login_required，而非 302 到交互页
     if (prompt === "none" && !isLoggedIn) {
       return withRefreshedSession(
-        buildErrorRedirect(safeRedirectUri, "login_required", "用户未登录或会话已过期", state)
+        failRedirect(safeRedirectUri, "login_required", "用户未登录或会话已过期", state)
       );
     }
 
@@ -475,7 +501,7 @@ export async function GET(request: NextRequest) {
       loginUrl.searchParams.set("return_to", returnTo);
       loginUrl.searchParams.set("client_name", client.name);
       if (loginHint) loginUrl.searchParams.set("login_hint", loginHint);
-      return withRefreshedSession(NextResponse.redirect(loginUrl, 302));
+      return withRefreshedSession(redirectNoStore(loginUrl));
     }
 
     // isLoggedIn 为 true 时 userPayload 必已在第 6/6.1 步赋值
@@ -493,7 +519,7 @@ export async function GET(request: NextRequest) {
       loginUrl.searchParams.set("client_name", client.name);
       loginUrl.searchParams.set("reauth", "1");
       if (loginHint) loginUrl.searchParams.set("login_hint", loginHint);
-      return withRefreshedSession(NextResponse.redirect(loginUrl, 302));
+      return withRefreshedSession(redirectNoStore(loginUrl));
     }
 
     // 11. 已登录 → 查询用户是否已授权过该 client 且 scope 未扩大
@@ -523,7 +549,7 @@ export async function GET(request: NextRequest) {
       } catch (codeErr) {
         apiConsole.error("[OAuth Authorize GET] 创建授权码失败:", codeErr);
         return withRefreshedSession(
-          buildErrorRedirect(safeRedirectUri, "server_error", "服务器内部错误", state)
+          failRedirect(safeRedirectUri, "server_error", "服务器内部错误", state)
         );
       }
 
@@ -545,13 +571,13 @@ export async function GET(request: NextRequest) {
         detail: { scope, scopes: requestedScopes, auto_approved: true },
       });
 
-      return withRefreshedSession(NextResponse.redirect(redirectUrl, 302));
+      return withRefreshedSession(redirectNoStore(redirectUrl));
     }
 
     // prompt=none 且需要 consent 交互：按 OIDC 回传 consent_required，而非 302 到 consent 页
     if (prompt === "none") {
       return withRefreshedSession(
-        buildErrorRedirect(
+        failRedirect(
           safeRedirectUri,
           "consent_required",
           "需要用户授权交互，prompt=none 无法静默完成",
@@ -572,7 +598,7 @@ export async function GET(request: NextRequest) {
     consentUrl.searchParams.set("redirect_uri", redirect_uri);
     consentUrl.searchParams.set("state", state);
 
-    return withRefreshedSession(NextResponse.redirect(consentUrl, 302));
+    return withRefreshedSession(redirectNoStore(consentUrl));
   } catch (error) {
     apiConsole.error("[OAuth Authorize GET] 异常:", error);
     // 浏览器直接访问时渲染品牌化错误页，API 调用返回 JSON
@@ -690,15 +716,31 @@ export async function POST(request: NextRequest) {
 
     // 自此 redirect_uri 已验证为合法，后续所有参数错误均通过 302 回传
     const safeRedirectUri = redirect_uri;
+    const failRedirect = (
+      uri: string,
+      error: string,
+      description: string,
+      stateValue?: string | null
+    ) => {
+      scheduleSsoEvent({
+        event: "authorize",
+        clientId: client.clientId,
+        clientName: client.name,
+        ip,
+        success: false,
+        detail: { error, error_description: description, method: "POST" },
+      });
+      return buildErrorRedirect(uri, error, description, stateValue);
+    };
 
     // Client 已停用：通过 302 回传错误
     if (!client.isActive) {
-      return buildErrorRedirect(safeRedirectUri, "unauthorized_client", "Client 已停用", state);
+      return failRedirect(safeRedirectUri, "unauthorized_client", "Client 已停用", state);
     }
 
     // action 校验
     if (action !== "approve" && action !== "deny") {
-      return buildErrorRedirect(
+      return failRedirect(
         safeRedirectUri,
         "invalid_request",
         "action 必须为 approve 或 deny",
@@ -716,13 +758,13 @@ export async function POST(request: NextRequest) {
 
     // 参数长度限制（与 GET 对齐）
     if (scope.length > 256) {
-      return buildErrorRedirect(safeRedirectUri, "invalid_request", "scope 参数过长", state);
+      return failRedirect(safeRedirectUri, "invalid_request", "scope 参数过长", state);
     }
     if (nonce && nonce.length > 128) {
-      return buildErrorRedirect(safeRedirectUri, "invalid_request", "nonce 参数过长", state);
+      return failRedirect(safeRedirectUri, "invalid_request", "nonce 参数过长", state);
     }
     if (popup_nonce.length > 64) {
-      return buildErrorRedirect(safeRedirectUri, "invalid_request", "popup_nonce 参数过长", state);
+      return failRedirect(safeRedirectUri, "invalid_request", "popup_nonce 参数过长", state);
     }
 
     // 纵深防御：携带 oauth_id 时，客户端回传的授权参数必须与 GET 阶段
@@ -779,8 +821,11 @@ export async function POST(request: NextRequest) {
       (request.headers.get("accept") || "").includes("application/json");
     const respondWithRedirect = (url: URL) =>
       wantsJsonRedirect
-        ? NextResponse.json({ success: true, data: { redirectUrl: url.toString() } })
-        : NextResponse.redirect(url, 302);
+        ? NextResponse.json(
+            { success: true, data: { redirectUrl: url.toString() } },
+            { headers: { "Cache-Control": "no-store" } }
+          )
+        : redirectNoStore(url);
 
     if (action === "deny") {
       redirectUrl.searchParams.set("error", "access_denied");
@@ -807,12 +852,12 @@ export async function POST(request: NextRequest) {
 
     // scope 非空校验：空授权无意义，且会导致签发无权限的授权码
     if (requestedScopes.length === 0) {
-      return buildErrorRedirect(safeRedirectUri, "invalid_scope", "scope 参数不能为空", state);
+      return failRedirect(safeRedirectUri, "invalid_scope", "scope 参数不能为空", state);
     }
 
     // PKCE: 强制要求 code_challenge + S256
     if (!code_challenge || code_challenge_method !== "S256") {
-      return buildErrorRedirect(
+      return failRedirect(
         safeRedirectUri,
         "invalid_request",
         "缺少 code_challenge（必须为 S256）",
@@ -820,7 +865,7 @@ export async function POST(request: NextRequest) {
       );
     }
     if (code_challenge.length !== 43) {
-      return buildErrorRedirect(
+      return failRedirect(
         safeRedirectUri,
         "invalid_request",
         "code_challenge 长度必须为 43",
@@ -831,7 +876,7 @@ export async function POST(request: NextRequest) {
     // 校验 scope：openid 始终允许，拒绝超出 client 允许范围或系统不支持的 scope
     for (const s of requestedScopes) {
       if (!SUPPORTED_SCOPES.includes(s)) {
-        return buildErrorRedirect(
+        return failRedirect(
           safeRedirectUri,
           "invalid_scope",
           `权限范围 '${s}' 不受支持`,
@@ -839,7 +884,7 @@ export async function POST(request: NextRequest) {
         );
       }
       if (!client.scopes.includes(s) && !OIDC_IMPLICIT_SCOPES.includes(s)) {
-        return buildErrorRedirect(
+        return failRedirect(
           safeRedirectUri,
           "invalid_scope",
           `该应用未被授予权限范围 '${s}'`,
@@ -876,7 +921,7 @@ export async function POST(request: NextRequest) {
       });
     } catch (codeErr) {
       apiConsole.error("[OAuth Authorize POST] 创建授权码失败:", codeErr);
-      return buildErrorRedirect(safeRedirectUri, "server_error", "服务器内部错误", state);
+      return failRedirect(safeRedirectUri, "server_error", "服务器内部错误", state);
     }
 
     redirectUrl.searchParams.set("code", codeData.code);

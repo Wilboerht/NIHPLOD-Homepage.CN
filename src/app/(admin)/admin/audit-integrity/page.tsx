@@ -32,6 +32,8 @@ interface IntegrityData {
     audit: { day: string; count: number } | null;
     sso: { day: string; count: number } | null;
   };
+  chainVerified: boolean;
+  chainErrors: string[];
   anchors: AnchorItem[];
 }
 
@@ -204,6 +206,17 @@ function IntegrityContent() {
           </Button>
         }
       />
+
+      {data && !data.chainVerified && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-medium">锚点链连续性异常</p>
+          <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs">
+            {data.chainErrors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">

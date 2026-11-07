@@ -210,7 +210,7 @@ describe("POST /api/admin/account-deletions（人工重试）", () => {
     const body = await res.json();
     expect(body.data.status).toBe("completed");
 
-    expect(executeAccountDeletion).toHaveBeenCalledWith(failedItem.id);
+    expect(executeAccountDeletion).toHaveBeenCalledWith(failedItem.id, { notifyUser: false });
     expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "account_deletion_retry",

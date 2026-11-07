@@ -112,6 +112,12 @@ vi.mock("@/lib/prisma", () => {
     },
     oAuthClient: {
       findMany: vi.fn().mockResolvedValue([]),
+      // token 端点在消费 code 后会复核 client 活性/scope
+      findUnique: vi.fn().mockResolvedValue({
+        isActive: true,
+        sessionsInvalidatedAt: null,
+        scopes: ["openid", "phone", "profile"],
+      }),
     },
     // verifyUserToken 的 jti 撤销检查会查 tokenBlacklist，默认无撤销记录
     tokenBlacklist: {

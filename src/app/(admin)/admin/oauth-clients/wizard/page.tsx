@@ -195,11 +195,14 @@ function OAuthWizardContent() {
     setTestResult(null);
 
     try {
-      const data = await apiPost<TestResultData>("/api/admin/oauth-clients/test", {
-        clientId: result.clientId,
-        clientSecret: result.plainSecret,
-        redirectUri: redirectUri.trim(),
-      });
+      const data = await withStepUp(() =>
+        apiPost<TestResultData>("/api/admin/oauth-clients/test", {
+          clientId: result.clientId,
+          clientSecret: result.plainSecret,
+          redirectUri: redirectUri.trim(),
+        })
+      );
+      if (data === null) return;
 
       setTestResult(data);
       const allPassed = data.allPassed ?? data.steps.every((s) => s.status === "passed");

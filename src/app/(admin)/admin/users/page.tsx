@@ -855,6 +855,17 @@ function AdminUsersContent() {
         await fetchUsers();
       }
     } catch (err) {
+      if (err instanceof ApiError && err.code === "ALREADY_DELETED") {
+        // 首次请求可能已成功但响应丢失；重试命中终态时按成功处理并刷新。
+        toast.info("该用户已是注销状态");
+        setDeleteTarget(null);
+        if (detailUser?.id === id) {
+          setDetailOpen(false);
+          setDetailUser(null);
+        }
+        await fetchUsers();
+        return;
+      }
       toast.error(err instanceof Error ? err.message : "删除用户失败");
     } finally {
       setDeleteLoading(false);
@@ -864,16 +875,24 @@ function AdminUsersContent() {
   const confirmStatusChange = async () => {
     if (!statusTarget) return;
     const { id, status } = statusTarget;
-    const target = userStatusMap[status];
     setStatusLoading(true);
     try {
-      const result = await runWithStepUp(() => apiPatch(`/api/admin/users/${id}`, { status }));
+      const result = await runWithStepUp(() =>
+        apiPatch<{ user?: { status?: UserStatus } }>(`/api/admin/users/${id}`, { status })
+      );
       if (result === null) return;
-      toast.success(`已设置用户状态为「${target.label}」`);
+      // 服务端 CAS 冲突时会返回最新真实状态，不能继续提示请求状态。
+      const actualStatus = result?.user?.status ?? status;
+      const actualLabel = userStatusMap[actualStatus].label;
+      if (actualStatus === status) {
+        toast.success(`已设置用户状态为「${actualLabel}」`);
+      } else {
+        toast.info(`状态已变化，当前实际状态为「${actualLabel}」`);
+      }
       setStatusTarget(null);
       await fetchUsers();
       if (detailUser?.id === id) {
-        setDetailUser((prev) => (prev ? { ...prev, status } : prev));
+        setDetailUser((prev) => (prev ? { ...prev, status: actualStatus } : prev));
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "状态修改失败");
@@ -1088,6 +1107,17 @@ function AdminUsersContent() {
     }
     if (!isOwnerActor && canRequestApproval) {
       const approvalItems: DropdownItem[] = [];
+      if (detailUser.status !== "ACTIVE") {
+        approvalItems.push({
+          label: "申请恢复正常",
+          icon: <CheckCircle className="h-3.5 w-3.5" />,
+          onClick: () =>
+            setApprovalTarget({
+              policyKey: "user.status",
+              values: { userId: detailUser.id, status: "ACTIVE" },
+            }),
+        });
+      }
       approvalItems.push({
         label: "申请调整积分",
         icon: <Sparkles className="h-3.5 w-3.5" />,
@@ -1599,7 +1629,8 @@ function AdminUsersContent() {
                   </div>
                 </div>
                 <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
-                  {canWriteUsers &&
+                  {isOwnerActor &&
+                    canWriteUsers &&
                     detailUser.status !== "ACTIVE" &&
                     detailUser.status !== "DELETED" && (
                       <Button

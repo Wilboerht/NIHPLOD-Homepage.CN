@@ -16,13 +16,15 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     refreshToken: { findFirst: vi.fn(), update: vi.fn() },
     oAuthSession: { findFirst: vi.fn(), updateMany: vi.fn() },
+    oAuthClient: { findUnique: vi.fn() },
     user: { findUnique: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
 
 vi.mock("@/lib/backchannel-logout", () => ({
-  sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
+  enqueueBackchannelLogoutNotifications: vi.fn().mockResolvedValue(undefined),
+  scheduleBackchannelRedelivery: vi.fn(),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -45,7 +47,7 @@ vi.mock("@/lib/validation", () => ({
 
 import { verifyUserAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import { enqueueBackchannelLogoutNotifications } from "@/lib/backchannel-logout";
 import { USER_REFRESH_COOKIE_NAME } from "@/types/auth";
 import { DELETE } from "@/app/api/user/devices/[id]/route";
 
@@ -53,7 +55,7 @@ const mockVerifyUserAuth = verifyUserAuth as ReturnType<typeof vi.fn>;
 const mockRefreshFindFirst = prisma.refreshToken.findFirst as ReturnType<typeof vi.fn>;
 const mockSessionFindFirst = prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>;
 const mockTransaction = prisma.$transaction as ReturnType<typeof vi.fn>;
-const mockSendBackchannel = sendBackchannelLogout as ReturnType<typeof vi.fn>;
+const mockEnqueueBackchannel = enqueueBackchannelLogoutNotifications as ReturnType<typeof vi.fn>;
 
 const TARGET_ID = "cltarget1234567890abcde";
 // 与目标会话不同的当前会话 token，避免触发"不能下线当前设备"分支
@@ -80,6 +82,9 @@ describe("DELETE /api/user/devices/:id", () => {
     mockTransaction.mockImplementation(async (cb: (tx: unknown) => Promise<void>) => cb(prisma));
     (prisma.refreshToken.update as ReturnType<typeof vi.fn>).mockResolvedValue({});
     (prisma.oAuthSession.updateMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 1 });
+    (prisma.oAuthClient.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      backchannelLogoutUri: "https://rp.example/cb",
+    });
   });
 
   it("被踢会话有关联 OAuth client：撤销后发送 Backchannel Logout（带 sid 映射）", async () => {
@@ -96,12 +101,20 @@ describe("DELETE /api/user/devices/:id", () => {
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(mockSendBackchannel).toHaveBeenCalledWith("user-1", ["oauth-client-1"], {
-      sids: { "oauth-client-1": "sid-1" },
-    });
-    // 通知发生在撤销事务之后（mock.calls 顺序：$transaction 先于 sendBackchannelLogout）
+    expect(mockEnqueueBackchannel).toHaveBeenCalledWith(
+      [
+        {
+          userId: "user-1",
+          clientId: "oauth-client-1",
+          sid: "sid-1",
+          logoutUri: "https://rp.example/cb",
+        },
+      ],
+      { perSession: true }
+    );
+    // 通知发生在撤销事务之后（mock.calls 顺序：$transaction 先于入队）
     expect(mockTransaction.mock.invocationCallOrder[0]).toBeLessThan(
-      mockSendBackchannel.mock.invocationCallOrder[0]
+      mockEnqueueBackchannel.mock.invocationCallOrder[0]
     );
   });
 
@@ -116,7 +129,7 @@ describe("DELETE /api/user/devices/:id", () => {
 
     expect(res.status).toBe(200);
     expect(mockSessionFindFirst).not.toHaveBeenCalled();
-    expect(mockSendBackchannel).not.toHaveBeenCalled();
+    expect(mockEnqueueBackchannel).not.toHaveBeenCalled();
   });
 
   it("Backchannel Logout 通知抛错：不阻断主流程，仍返回成功", async () => {
@@ -126,17 +139,25 @@ describe("DELETE /api/user/devices/:id", () => {
       clientId: "oauth-client-1",
     });
     mockSessionFindFirst.mockResolvedValue(null);
-    mockSendBackchannel.mockRejectedValue(new Error("db down"));
+    mockEnqueueBackchannel.mockRejectedValue(new Error("db down"));
 
     const res = await DELETE(createRequest(), context);
     const data = await res.json();
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    // 无活跃 OAuthSession 可映射时 sid 缺省（undefined）
-    expect(mockSendBackchannel).toHaveBeenCalledWith("user-1", ["oauth-client-1"], {
-      sids: undefined,
-    });
+    // 无活跃 OAuthSession 可映射时 sid 缺省（null）
+    expect(mockEnqueueBackchannel).toHaveBeenCalledWith(
+      [
+        {
+          userId: "user-1",
+          clientId: "oauth-client-1",
+          sid: null,
+          logoutUri: "https://rp.example/cb",
+        },
+      ],
+      { perSession: false }
+    );
   });
 
   it("目标为当前会话自身：返回 400，不撤销也不通知", async () => {
@@ -152,6 +173,6 @@ describe("DELETE /api/user/devices/:id", () => {
     expect(res.status).toBe(400);
     expect(data.error.code).toBe("CURRENT_SESSION");
     expect(mockTransaction).not.toHaveBeenCalled();
-    expect(mockSendBackchannel).not.toHaveBeenCalled();
+    expect(mockEnqueueBackchannel).not.toHaveBeenCalled();
   });
 });

@@ -138,6 +138,90 @@ describe("createTokenVerifier", () => {
       expect(body).toContain("client_secret=test-secret");
     });
 
+    it("introspection 响应中的 DPoP/sid/auth_time 会透传给调用方", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          active: true,
+          sub: "user-789",
+          client_id: audience,
+          scope: "openid",
+          exp: Math.floor(Date.now() / 1000) + 900,
+          token_type: "DPoP",
+          cnf: { jkt: "jkt-1" },
+          sid: "sid-1",
+          auth_time: 1700000000,
+        }),
+      } as Response);
+
+      const verifier = createTokenVerifier({
+        audience,
+        issuer,
+        introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+        clientId: audience,
+        clientSecret: "test-secret",
+      });
+
+      const payload = await verifier.verify("dpop-token");
+      expect(payload).not.toBeNull();
+      expect(payload!.token_type).toBe("DPoP");
+      expect(payload!.cnf).toEqual({ jkt: "jkt-1" });
+      expect(payload!.sid).toBe("sid-1");
+      expect(payload!.auth_time).toBe(1700000000);
+    });
+
+    it("M2M token 默认拒绝用户态校验，显式 allowM2mTokens 才放行", async () => {
+      const m2mResponse = () =>
+        ({
+          ok: true,
+          json: async () => ({
+            active: true,
+            sub: "client:agent-auth",
+            client_id: audience,
+            client_type: "m2m",
+            scope: "openid",
+            exp: Math.floor(Date.now() / 1000) + 900,
+          }),
+        }) as Response;
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(m2mResponse())
+        .mockResolvedValueOnce(m2mResponse());
+
+      const base = {
+        audience,
+        issuer,
+        introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+        clientId: audience,
+        clientSecret: "test-secret",
+      };
+      const strict = createTokenVerifier(base);
+      expect(await strict.verify("m2m-token-1")).toBeNull();
+
+      const permissive = createTokenVerifier({ ...base, allowM2mTokens: true });
+      const payload = await permissive.verify("m2m-token-2");
+      expect(payload).not.toBeNull();
+      expect(payload!.client_type).toBe("m2m");
+    });
+
+    it("auto 模式同时配置本地密钥与 introspection 时优先 introspection（撤销可感知）", async () => {
+      const mockFetch = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ active: false }),
+      } as Response);
+      const token = await createAccessToken();
+      const verifier = createTokenVerifier({
+        audience,
+        issuer,
+        accessTokenSecret: accessSecretString,
+        introspectionEndpoint: "https://nihplod.cn/api/oauth/introspect",
+        clientId: audience,
+        clientSecret: "test-secret",
+      });
+
+      expect(await verifier.verify(token)).toBeNull();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
     it("introspection 返回 active=false 时拒绝", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
         ok: true,

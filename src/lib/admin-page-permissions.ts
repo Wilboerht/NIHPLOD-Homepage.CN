@@ -82,11 +82,17 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
   { match: (pathname) => pathname === "/admin/messages", allOf: ["messages:read"] },
   {
     match: (pathname) => pathname === "/admin/spent-adjustments",
-    anyOf: ["spent:read", "spent:import", "spent:create"],
+    anyOf: ["spent:read", "spent:import", "spent:create", "spent:review"],
   },
   {
     match: (pathname) => pathname === "/admin/point-gifts",
-    anyOf: ["redemptions:read", "gifts:read"],
+    anyOf: [
+      "redemptions:read",
+      "redemptions:fulfill",
+      "redemptions:cancel",
+      "gifts:read",
+      "gifts:write",
+    ],
   },
   {
     match: (pathname) => pathname === "/admin/approvals",

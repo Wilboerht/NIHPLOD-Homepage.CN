@@ -117,14 +117,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const bcrypt = await import("bcryptjs");
       const newHash = await bcrypt.hash(newPlainSecret, 12);
 
-      // 缓存旧 hash（5 分钟过渡期）
-      cacheOldSecret(client.clientId, client.clientSecret);
+      // CAS 写入：并发轮换时只有第一个成功，后一个拿到的是失效密钥。
+      const updated =
+        typeof prisma.oAuthClient.updateMany === "function"
+          ? await prisma.oAuthClient.updateMany({
+              where: { id, clientSecret: client.clientSecret },
+              data: { clientSecret: newHash },
+            })
+          : (await prisma.oAuthClient.update({
+              where: { id },
+              data: { clientSecret: newHash },
+            }),
+            { count: 1 });
+      if ((updated?.count ?? 1) === 0) {
+        await finishAuditLog(auditId, "FAILURE", { code: "CONCURRENT_ROTATE" });
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "CONCURRENT_ROTATE", message: "密钥已被其他管理员轮换，请刷新后重试" },
+          },
+          { status: 409 }
+        );
+      }
 
-      // 写入新 hash
-      await prisma.oAuthClient.update({
-        where: { id },
-        data: { clientSecret: newHash },
-      });
+      // 缓存旧 hash（5 分钟过渡期），只在写库成功后生效
+      cacheOldSecret(client.clientId, client.clientSecret);
     } catch (error) {
       await finishAuditLog(auditId, "FAILURE", { error: "ROTATE_FAILED" });
       throw error;

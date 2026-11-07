@@ -147,7 +147,10 @@ export const ProductSchema = z
       .array(z.string().min(1, "功效标签不能为空").max(50))
       .max(20, "最多添加20个功效标签")
       .optional(),
-    images: z.array(ProductImageSchema).min(1, "请至少上传一张产品图片"),
+    images: z
+      .array(ProductImageSchema)
+      .min(1, "请至少上传一张产品图片")
+      .max(10, "最多上传 10 张产品图片"),
     order: z.number().int().min(0).default(0),
     published: z.boolean().default(false),
     // GEO FAQ 数据

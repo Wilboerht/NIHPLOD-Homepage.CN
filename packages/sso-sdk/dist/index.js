@@ -464,7 +464,19 @@ async function fetchJwks(baseUrl, options = {}) {
     return cachedJwks.jwks;
   }
   const discovery = await fetchDiscoveryDoc(baseUrl);
-  const jwksUri = discovery?.jwks_uri || `${baseUrl}/api/oauth/jwks`;
+  let jwksUri = `${baseUrl}/api/oauth/jwks`;
+  if (discovery?.jwks_uri) {
+    try {
+      if (new URL(discovery.jwks_uri).origin === new URL(baseUrl).origin) {
+        jwksUri = discovery.jwks_uri;
+      } else {
+        console.warn(
+          "[SSO SDK] Discovery \u7684 jwks_uri \u4E0E ssoBaseUrl \u4E0D\u540C\u6E90\uFF0C\u5DF2\u5FFD\u7565\u5E76\u4F7F\u7528\u9ED8\u8BA4 JWKS \u7AEF\u70B9"
+        );
+      }
+    } catch {
+    }
+  }
   try {
     const res = await fetch(jwksUri, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -721,6 +733,22 @@ var _SsoClient = class _SsoClient {
     if (!authorizationOk) bad.push("authorization_endpoint");
     if (!sameOrigin(d.token_endpoint)) bad.push("token_endpoint");
     if (!sameOrigin(d.userinfo_endpoint)) bad.push("userinfo_endpoint");
+    if (d.jwks_uri && !sameOrigin(d.jwks_uri)) bad.push("jwks_uri");
+    if (d.revocation_endpoint && !sameOrigin(d.revocation_endpoint)) {
+      bad.push("revocation_endpoint");
+    }
+    if (d.introspection_endpoint && !sameOrigin(d.introspection_endpoint)) {
+      bad.push("introspection_endpoint");
+    }
+    if (d.end_session_endpoint) {
+      try {
+        if (new URL(d.end_session_endpoint).origin !== publicOrigin) {
+          bad.push("end_session_endpoint");
+        }
+      } catch {
+        bad.push("end_session_endpoint");
+      }
+    }
     if (bad.length > 0) {
       if (!this._discoveryOriginWarned) {
         this._discoveryOriginWarned = true;
@@ -1074,6 +1102,18 @@ var _SsoClient = class _SsoClient {
       removeSilentProbe(this.config.clientId);
       throw new SsoError("state_mismatch", "State \u53C2\u6570\u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 CSRF \u653B\u51FB");
     }
+    const returnedIss = params.get("iss");
+    if (returnedIss) {
+      const discovery = await this._getDiscovery();
+      const expectedIssuer = (discovery?.issuer || this.config.ssoBaseUrl).replace(/\/+$/, "");
+      if (returnedIss.replace(/\/+$/, "") !== expectedIssuer) {
+        removeOAuthState(this.config.clientId);
+        removeOAuthNonce(this.config.clientId);
+        removePkceVerifier(this.config.clientId);
+        removeSilentProbe(this.config.clientId);
+        throw new SsoError("issuer_mismatch", "\u6388\u6743\u54CD\u5E94 issuer \u4E0D\u5339\u914D\uFF0C\u53EF\u80FD\u5B58\u5728 IdP \u6DF7\u53E0\u653B\u51FB");
+      }
+    }
     const expectedNonce = getOAuthNonce(this.config.clientId) ?? void 0;
     const verifier = getPkceVerifier(this.config.clientId);
     if (!verifier) {
@@ -1338,7 +1378,7 @@ var _SsoClient = class _SsoClient {
         if (this.config.clientSecret) {
           revokeBody.set("client_secret", this.config.clientSecret);
         }
-        await fetchWithTimeout(
+        const doRevoke = () => fetchWithTimeout(
           revokeUrl,
           {
             method: "POST",
@@ -1347,6 +1387,14 @@ var _SsoClient = class _SsoClient {
           },
           REVOKE_TIMEOUT_MS
         );
+        let res = await doRevoke();
+        if (!res.ok && (res.status >= 500 || res.status === 429)) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          res = await doRevoke();
+        }
+        if (!res.ok) {
+          this.debugLog("logout: \u670D\u52A1\u7AEF\u64A4\u9500 refresh_token \u5931\u8D25", { status: res.status });
+        }
       } catch {
       }
     }

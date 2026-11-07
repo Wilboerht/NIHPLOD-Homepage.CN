@@ -8,8 +8,12 @@
 import { prisma } from "@/lib/prisma";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { logAuthEvent } from "@/lib/auth-logger";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import {
+  enqueueBackchannelLogoutNotifications,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 import { revokeRefreshToken } from "@/lib/auth-security";
+import { apiConsole } from "@/lib/logger";
 
 export interface SecurityAuthorizationView {
   clientId: string;
@@ -120,7 +124,22 @@ export async function revokeSecurityAuthorization(params: {
   });
 
   // user+client 全量撤销只带 sub，通知 RP 清除该用户的全部本地会话。
-  await sendBackchannelLogout(userId, [clientId]);
+  // 异步入队投递：RP 不可达时不阻塞安全中心的撤销请求。
+  const client = await prisma.oAuthClient.findUnique({
+    where: { clientId },
+    select: { backchannelLogoutUri: true },
+  });
+  if (client?.backchannelLogoutUri) {
+    await enqueueBackchannelLogoutNotifications([
+      {
+        userId,
+        clientId,
+        sid: null,
+        logoutUri: client.backchannelLogoutUri,
+      },
+    ]).catch((err) => apiConsole.warn("[SecurityAuthorization] backchannel 入队失败:", err));
+    scheduleBackchannelRedelivery();
+  }
 
   return { ok: true };
 }

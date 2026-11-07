@@ -189,14 +189,16 @@ export function createRefreshRouteHandler(config: RefreshRouteConfig) {
 
     if (!res.ok) {
       const error = typeof data.error === "string" ? data.error : "";
-      // invalid_grant / invalid_client 等不可恢复：清除本地 Cookie，避免无限重试
+      // 限流/上游故障可重试：保留 Cookie，不要误判为登录态失效
+      const status = res.status === 429 ? 429 : res.status >= 500 ? 502 : 401;
       const response = noStoreJson(
         {
           error: error || "refresh_failed",
           error_description: data.error_description || "刷新登录态失败，请重新登录",
         },
-        401
+        status
       );
+      // invalid_grant / invalid_client 等不可恢复：清除本地 Cookie，避免无限重试
       if (res.status === 400 || res.status === 401) {
         return clearAuthCookies(response, cookieNames, secureCookies);
       }

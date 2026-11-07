@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
             expiresAt: job.expiresAt.toISOString(),
             totpVerifiedAt: job.totpVerifiedAt.toISOString(),
             cutoff: job.cutoff.toISOString(),
+            // 内部租约/签名不返回给只读用户
+            leaseToken: undefined,
+            heartbeatAt: undefined,
             approvalSignature: undefined,
           })),
         },

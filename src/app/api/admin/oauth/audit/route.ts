@@ -151,7 +151,8 @@ export async function GET(request: NextRequest) {
         take: 5000,
       });
 
-      const csvHeaders = "id,event,userId,clientId,clientName,ip,success,createdAt\n";
+      const csvHeaders =
+        "id,event,userId,clientId,clientName,ip,userAgent,requestId,detail,success,createdAt\n";
       const csvRows = items
         .map((item) =>
           [
@@ -161,6 +162,9 @@ export async function GET(request: NextRequest) {
             escapeCSV(item.clientId || ""),
             escapeCSV(item.clientName || ""),
             escapeCSV(canViewSensitive ? item.ip || "" : item.ip ? maskIp(item.ip) : ""),
+            escapeCSV(canViewSensitive ? item.userAgent || "" : ""),
+            escapeCSV(item.requestId || ""),
+            escapeCSV(canViewSensitive && item.detail ? JSON.stringify(item.detail) : ""),
             String(item.success),
             item.createdAt.toISOString(),
           ].join(",")

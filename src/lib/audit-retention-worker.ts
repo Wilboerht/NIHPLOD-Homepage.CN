@@ -15,7 +15,10 @@ import {
   type RetentionStreamCutoff,
 } from "./audit-retention";
 import { computeAuditEntryHash, getAuditIntegrityKeyVersion } from "./audit-chain";
+import { parseUtc8DateBoundary } from "./timezone";
+import { notifyAuditRetentionResult } from "./admin-alert";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
 const BATCH_SIZE = 5000;
 const JOB_LIMIT = 3;
 
@@ -51,50 +54,72 @@ function ssoHoldExclusionSql(): string {
   )`;
 }
 
+interface RetentionDayRange {
+  fromAt: Date;
+  toAt: Date;
+}
+
+function toDayRanges(days: readonly string[]): RetentionDayRange[] {
+  return days
+    .map((day) => {
+      const fromAt = parseUtc8DateBoundary(day, false);
+      return fromAt ? { fromAt, toAt: new Date(fromAt.getTime() + DAY_MS) } : null;
+    })
+    .filter((range): range is RetentionDayRange => range !== null);
+}
+
 async function deleteAuditStream(
   client: pg.Client,
-  cutoff: Date,
+  ranges: readonly RetentionDayRange[],
   onProgress: (deleted: number) => Promise<void>
 ): Promise<number> {
   let deleted = 0;
-  for (;;) {
-    const result = await client.query(
-      `DELETE FROM "AuditLog" AS a
-       WHERE a."id" IN (
-         SELECT t."id" FROM "AuditLog" AS t
-         WHERE t."createdAt" < ($1::timestamptz AT TIME ZONE 'UTC') AND ${auditHoldExclusionSql()}
-         LIMIT $2
-       )`,
-      [cutoff, BATCH_SIZE]
-    );
-    const count = result.rowCount ?? 0;
-    deleted += count;
-    await onProgress(deleted);
-    if (count < BATCH_SIZE) break;
+  for (const range of ranges) {
+    for (;;) {
+      const result = await client.query(
+        `DELETE FROM "AuditLog" AS a
+         WHERE a."id" IN (
+           SELECT t."id" FROM "AuditLog" AS t
+           WHERE t."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC')
+             AND t."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC')
+             AND ${auditHoldExclusionSql()}
+           LIMIT $3
+         )`,
+        [range.fromAt, range.toAt, BATCH_SIZE]
+      );
+      const count = result.rowCount ?? 0;
+      deleted += count;
+      await onProgress(deleted);
+      if (count < BATCH_SIZE) break;
+    }
   }
   return deleted;
 }
 
 async function deleteSsoStream(
   client: pg.Client,
-  cutoff: Date,
+  ranges: readonly RetentionDayRange[],
   onProgress: (deleted: number) => Promise<void>
 ): Promise<number> {
   let deleted = 0;
-  for (;;) {
-    const result = await client.query(
-      `DELETE FROM "SsoAuditEvent" AS a
-       WHERE a."id" IN (
-         SELECT t."id" FROM "SsoAuditEvent" AS t
-         WHERE t."createdAt" < ($1::timestamptz AT TIME ZONE 'UTC') AND ${ssoHoldExclusionSql()}
-         LIMIT $2
-       )`,
-      [cutoff, BATCH_SIZE]
-    );
-    const count = result.rowCount ?? 0;
-    deleted += count;
-    await onProgress(deleted);
-    if (count < BATCH_SIZE) break;
+  for (const range of ranges) {
+    for (;;) {
+      const result = await client.query(
+        `DELETE FROM "SsoAuditEvent" AS a
+         WHERE a."id" IN (
+           SELECT t."id" FROM "SsoAuditEvent" AS t
+           WHERE t."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC')
+             AND t."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC')
+             AND ${ssoHoldExclusionSql()}
+           LIMIT $3
+         )`,
+        [range.fromAt, range.toAt, BATCH_SIZE]
+      );
+      const count = result.rowCount ?? 0;
+      deleted += count;
+      await onProgress(deleted);
+      if (count < BATCH_SIZE) break;
+    }
   }
   return deleted;
 }
@@ -243,6 +268,7 @@ async function processOne(jobId: string): Promise<void> {
   const fail = async (error: string) => {
     await finish("FAILED", { error: error.slice(0, 2000), finishedAt: new Date() });
     apiConsole.error(`[AuditRetention] job ${job.id} 失败:`, error);
+    notifyAuditRetentionResult({ jobId: job.id, status: "FAILED", error });
   };
 
   try {
@@ -293,14 +319,27 @@ async function processOne(jobId: string): Promise<void> {
       };
 
       for (const entry of cutoffs) {
-        const cutoff = new Date(entry.cutoff);
         const before = deleted;
+        // 只删除通过归档 + 备份校验的日期桶；未验证日期在预览中 eligible=0，
+        // 不会被这里选中，从而避免一条坏数据阻断全部清理。
+        const eligibleDays = preview.buckets
+          .filter(
+            (bucket) =>
+              bucket.stream === entry.stream &&
+              bucket.eligible > 0 &&
+              bucket.archiveVerified &&
+              bucket.backupVerified
+          )
+          .map((bucket) => bucket.day)
+          .sort();
+        if (eligibleDays.length === 0) continue;
+        const ranges = toDayRanges(eligibleDays);
         if (entry.stream === "audit") {
-          deleted += await deleteAuditStream(client, cutoff, async (n) => {
+          deleted += await deleteAuditStream(client, ranges, async (n) => {
             await updateProgress(n - (deleted - before));
           });
         } else {
-          deleted += await deleteSsoStream(client, cutoff, async (n) => {
+          deleted += await deleteSsoStream(client, ranges, async (n) => {
             await updateProgress(n - (deleted - before));
           });
         }
@@ -309,7 +348,7 @@ async function processOne(jobId: string): Promise<void> {
       const deletedBytes = Math.round(
         job.expectedBytes * (deleted / Math.max(1, job.expectedCount))
       );
-      const holdsExcluded = Math.max(0, job.expectedCount - deleted);
+      const holdsExcluded = preview.holdsExcluded;
       const archiveManifests = preview.buckets.map((bucket) => ({
         stream: bucket.stream,
         day: bucket.day,
@@ -344,6 +383,7 @@ async function processOne(jobId: string): Promise<void> {
       apiConsole.info(
         `[AuditRetention] job ${job.id} 完成: 删除 ${deleted} 条，hold 排除 ${holdsExcluded} 条`
       );
+      notifyAuditRetentionResult({ jobId: job.id, status: "SUCCEEDED", deletedCount: deleted });
     } catch (error) {
       await client.query("ROLLBACK").catch(() => {});
       throw error;

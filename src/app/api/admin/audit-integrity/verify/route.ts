@@ -10,6 +10,8 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyAuditDay } from "@/lib/audit-integrity";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
+import { notifyAuditIntegrityFailure } from "@/lib/admin-alert";
 
 const NO_STORE_HEADERS = { "Cache-Control": "no-store, private" } as const;
 
@@ -41,6 +43,34 @@ export async function POST(request: NextRequest) {
 
     const body = schema.parse(await request.json());
     const result = await verifyAuditDay(body.stream, body.day);
+
+    // 手工校验也必须落库并触发告警，否则页面状态永远停留在 PENDING/旧结果。
+    if (result.signatureVersion > 0) {
+      await prisma.auditLogAnchor
+        .updateMany({
+          where: {
+            stream: body.stream,
+            day: body.day,
+            signatureVersion: result.signatureVersion,
+          },
+          data: {
+            verifyStatus: result.verified ? "VERIFIED" : "FAILED",
+            verifiedAt: new Date(),
+          },
+        })
+        .catch((error) => {
+          apiConsole.warn("[AuditIntegrity] 校验状态回写失败:", error);
+        });
+    }
+    if (!result.verified || (result.archiveVerified && !result.backupVerified)) {
+      notifyAuditIntegrityFailure([
+        {
+          stream: body.stream,
+          day: body.day,
+          error: result.error ?? (result.backupVerified ? "UNKNOWN" : "BACKUP_VERIFICATION_FAILED"),
+        },
+      ]);
+    }
 
     await createAuditLog({
       action: "audit_integrity_verify",

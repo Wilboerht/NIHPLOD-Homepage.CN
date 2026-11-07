@@ -527,8 +527,8 @@ export async function GET(request: NextRequest) {
             },
             token_type: {
               type: "string",
-              enum: ["Bearer"],
-              description: "Token 类型",
+              enum: ["Bearer", "DPoP"],
+              description: "Token 类型；DPoP 绑定的 token 返回 DPoP，资源请求需携带 DPoP proof",
             },
             expires_in: {
               type: "integer",
@@ -613,6 +613,23 @@ export async function GET(request: NextRequest) {
             client_id: { type: "string" },
             scope: { type: "string" },
             exp: { type: "integer" },
+            token_type: {
+              type: "string",
+              enum: ["Bearer", "DPoP"],
+              description: "Token 类型；DPoP 绑定的 token 必须携带 DPoP proof",
+            },
+            client_type: {
+              type: "string",
+              enum: ["user", "m2m"],
+              description: "身份类型；m2m 的 sub 为 client:<client_id>，不是用户 ID",
+            },
+            sid: { type: "string", description: "OAuthSession ID（可用于会话级登出）" },
+            auth_time: { type: "integer", description: "原始认证时间（Unix 秒）" },
+            cnf: {
+              type: "object",
+              description: "DPoP 绑定信息",
+              properties: { jkt: { type: "string" } },
+            },
           },
         },
         RevokeRequest: {

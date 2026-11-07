@@ -269,7 +269,8 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      result = await executeAccountDeletion(id);
+      // 管理端重试属于管理员替代操作，不再向原手机号发送注销回执。
+      result = await executeAccountDeletion(id, { notifyUser: false });
     } catch (error) {
       await finishAuditLog(auditId, "FAILURE", { requestId: id, error: "EXCEPTION" });
       throw error;

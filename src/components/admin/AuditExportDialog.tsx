@@ -19,6 +19,7 @@ interface ExportJob {
   sha256: string | null;
   error: string | null;
   expiresAt: string | null;
+  createdAt?: string;
 }
 
 export function AuditExportDialog({
@@ -35,7 +36,25 @@ export function AuditExportDialog({
   const [format, setFormat] = useState<"csv" | "jsonl">("csv");
   const [creating, setCreating] = useState(false);
   const [job, setJob] = useState<ExportJob | null>(null);
+  const [history, setHistory] = useState<ExportJob[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollFailuresRef = useRef(0);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const data = await apiGet<{ items: ExportJob[] }>("/api/admin/audit-logs/exports");
+      setHistory(data.items);
+    } catch {
+      // 历史加载失败不阻断当前导出
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    // 延迟到当前渲染提交后执行，避免 effect 内同步 setState 触发级联渲染。
+    const timer = window.setTimeout(() => void loadHistory(), 0);
+    return () => window.clearTimeout(timer);
+  }, [open, loadHistory]);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -90,9 +109,11 @@ export function AuditExportDialog({
         expiresAt: null,
       });
       stopPolling();
+      pollFailuresRef.current = 0;
       pollRef.current = setInterval(async () => {
         try {
           const data = await apiGet<ExportJob>(`/api/admin/audit-logs/exports/${created.id}`);
+          pollFailuresRef.current = 0;
           setJob(data);
           if (
             data.status === "SUCCEEDED" ||
@@ -100,9 +121,17 @@ export function AuditExportDialog({
             data.status === "EXPIRED"
           ) {
             stopPolling();
+            void loadHistory();
           }
         } catch {
-          stopPolling();
+          // 单次网络抖动不应让任务永久卡在 QUEUED/RUNNING；
+          // 连续失败 5 次才停止轮询并提示用户可从历史列表继续下载。
+          pollFailuresRef.current += 1;
+          if (pollFailuresRef.current >= 5) {
+            stopPolling();
+            toast.error("导出状态查询连续失败，请稍后从历史任务中查看结果");
+            void loadHistory();
+          }
         }
       }, 1500);
     } catch (error) {
@@ -112,26 +141,22 @@ export function AuditExportDialog({
     }
   };
 
-  const download = async () => {
-    if (!job) return;
-    try {
-      await downloadFromUrl(
-        `/api/admin/audit-logs/exports/${job.id}/download`,
-        `audit-export-${job.id}.${job.format}`
+  const download = async (target: ExportJob | null = job) => {
+    if (!target) return;
+    const run = () =>
+      downloadFromUrl(
+        `/api/admin/audit-logs/exports/${target.id}/download`,
+        `audit-export-${target.id}.${target.format}`
       );
+    try {
+      await run();
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (isTotpRequired(error) || message.includes("二次验证") || message.includes("TOTP")) {
         const verified = await requireTotp("TOTP_REQUIRED");
-        if (!verified) {
-          handleClose();
-          return;
-        }
+        if (!verified) return;
         try {
-          await downloadFromUrl(
-            `/api/admin/audit-logs/exports/${job.id}/download`,
-            `audit-export-${job.id}.${job.format}`
-          );
+          await run();
         } catch (retryError) {
           toast.error(retryError instanceof Error ? retryError.message : "下载失败");
         }
@@ -189,6 +214,41 @@ export function AuditExportDialog({
               )}
             </div>
           ) : null}
+
+          {history.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-brand-charcoal/70">历史导出任务</p>
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-brand-charcoal/10">
+                {history.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2 border-b border-brand-charcoal/5 px-3 py-2 text-xs last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-brand-charcoal/75">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleString("zh-CN") : item.id}
+                        <span className="ml-2 text-brand-charcoal/50">{item.format}</span>
+                      </p>
+                      <p className="text-brand-charcoal/50">
+                        {item.status}
+                        {item.status === "RUNNING" &&
+                          `（${item.processedRows}/${item.totalRows}）`}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={item.status !== "SUCCEEDED"}
+                      onClick={() => void download(item)}
+                    >
+                      下载
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={handleClose}>
               关闭

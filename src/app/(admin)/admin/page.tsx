@@ -13,6 +13,7 @@ import {
   TrendingUp,
   ClipboardCheck,
   Gift,
+  BadgeCheck,
   ChevronRight,
 } from "lucide-react";
 import {
@@ -138,6 +139,15 @@ export default async function AdminDashboard() {
         href: "/admin/applications?status=pending",
         icon: UserCheck,
         oldestAt: stats.pendingApplicationsOldestAt,
+      });
+    }
+    if (stats.pendingApprovals !== undefined) {
+      pendingQueueItems.push({
+        key: "approvals",
+        label: "待审批申请",
+        count: stats.pendingApprovals,
+        href: "/admin/approvals?status=PENDING",
+        icon: BadgeCheck,
       });
     }
   }

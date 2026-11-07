@@ -169,6 +169,16 @@ function generateRandomString(length: number): string {
   return result;
 }
 
+/** 仅接受与 SSO base 同源的 Discovery 端点，防止被篡改的文档把凭证导向攻击者 */
+function trustedSameOriginEndpoint(endpoint: string | undefined, baseUrl: string): string | null {
+  if (!endpoint) return null;
+  try {
+    return new URL(endpoint).origin === new URL(baseUrl).origin ? endpoint : null;
+  } catch {
+    return null;
+  }
+}
+
 // ============================================
 // Route Handler 工厂函数
 // ============================================
@@ -307,9 +317,11 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
         const discovery = config.serverBaseUrl
           ? null
           : await fetchDiscoveryCached(normalizedServerBase);
-        const revokeUrl = config.serverBaseUrl
-          ? `${normalizedServerBase}/api/oauth/revoke`
-          : discovery?.revocation_endpoint || `${normalizedBase}/api/oauth/revoke`;
+        const revokeUrl =
+          (config.serverBaseUrl
+            ? `${normalizedServerBase}/api/oauth/revoke`
+            : trustedSameOriginEndpoint(discovery?.revocation_endpoint, normalizedBase)) ||
+          `${normalizedBase}/api/oauth/revoke`;
         const body = new URLSearchParams({
           token: refreshToken,
           token_type_hint: "refresh_token",
@@ -377,7 +389,8 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       // 生成的，可直接用于浏览器跳转；兜底也用公网 base，不得使用内网地址
       const discovery = await fetchDiscoveryCached(normalizedServerBase);
       const endSessionEndpoint =
-        discovery?.end_session_endpoint || `${normalizedBase}/api/oauth/end-session`;
+        trustedSameOriginEndpoint(discovery?.end_session_endpoint, normalizedBase) ||
+        `${normalizedBase}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", clientId);
       logoutUrl.searchParams.set(

@@ -187,7 +187,7 @@ export async function sendBackchannelLogout(
             data: {
               userId,
               clientId,
-              payload: { sid: sid ?? null },
+              payload: { sid: sid ?? null, logoutUri, lastError: failureReason },
               nextRetryAt: new Date(Date.now() + REDELIVERY_BASE_DELAY_MS),
             },
           })
@@ -502,7 +502,14 @@ export async function retryFailedBackchannelLogouts(
         const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
         await prisma.backchannelLogoutFailure.update({
           where: { id: failure.id },
-          data: { attempts, nextRetryAt: new Date(Date.now() + backoff) },
+          data: {
+            attempts,
+            nextRetryAt: new Date(Date.now() + backoff),
+            payload: {
+              ...((failure.payload ?? {}) as Record<string, unknown>),
+              lastError: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+            },
+          },
         });
         failed++;
         apiConsole.warn(
@@ -544,8 +551,12 @@ export async function retryBackchannelFailureById(id: string): Promise<{
   const failure = await prisma.backchannelLogoutFailure.findUnique({ where: { id } });
   if (!failure) return { ok: false, status: "not_found" };
 
-  // 原子认领：删除成功（count=1）才继续，防止手动重投与 cron 重投并发导致重复投递
-  const claimed = await prisma.backchannelLogoutFailure.deleteMany({ where: { id } });
+  // 原子认领：把 nextRetryAt 后移作为租约，防止手动重投与 cron 重投并发导致重复投递。
+  const claimUntil = new Date(Date.now() + 5 * 60_000);
+  const claimed = await prisma.backchannelLogoutFailure.updateMany({
+    where: { id, nextRetryAt: failure.nextRetryAt },
+    data: { nextRetryAt: claimUntil },
+  });
   if (claimed.count === 0) return { ok: false, status: "not_found" };
 
   const payload = (failure.payload ?? {}) as { sid?: string | null; logoutUri?: string | null };
@@ -558,6 +569,7 @@ export async function retryBackchannelFailureById(id: string): Promise<{
   // （client 已被删除时，用创建时的 URI 兜底）
   const uri = client ? client.backchannelLogoutUri : (payload.logoutUri ?? null);
   if (!uri || !isSafeBackchannelUrl(uri)) {
+    await prisma.backchannelLogoutFailure.deleteMany({ where: { id } });
     recordSsoEvent({
       event: "backchannel_logout",
       userId: failure.userId,
@@ -585,6 +597,7 @@ export async function retryBackchannelFailureById(id: string): Promise<{
     });
     if (!res.ok) throw new Error(`http_${res.status}`);
 
+    await prisma.backchannelLogoutFailure.deleteMany({ where: { id } });
     recordSsoEvent({
       event: "backchannel_logout",
       userId: failure.userId,
@@ -596,6 +609,7 @@ export async function retryBackchannelFailureById(id: string): Promise<{
   } catch (err) {
     const attempts = failure.attempts + 1;
     if (attempts >= REDELIVERY_MAX_ATTEMPTS) {
+      await prisma.backchannelLogoutFailure.deleteMany({ where: { id } });
       recordSsoEvent({
         event: "backchannel_logout",
         userId: failure.userId,
@@ -606,18 +620,21 @@ export async function retryBackchannelFailureById(id: string): Promise<{
       return { ok: false, status: "dropped", error: "已达到最大重试次数，记录已丢弃" };
     }
     const backoff = Math.min(REDELIVERY_BASE_DELAY_MS * 2 ** attempts, REDELIVERY_MAX_DELAY_MS);
-    // 已认领（记录已删除）：失败时重建记录并递增 attempts / 退避
+    // 认领后失败：直接更新原记录（不再删除重建），保留原 id 和并发认领语义。
     await prisma.backchannelLogoutFailure
-      .create({
+      .update({
+        where: { id },
         data: {
-          userId: failure.userId,
-          clientId: failure.clientId,
-          payload: failure.payload ?? {},
           attempts,
           nextRetryAt: new Date(Date.now() + backoff),
+          payload: {
+            ...((failure.payload ?? {}) as Record<string, unknown>),
+            lastError:
+              err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+          },
         },
       })
-      .catch((e) => apiConsole.warn("[SLO] 重建失败记录出错:", e));
+      .catch((e) => apiConsole.warn("[SLO] 更新失败记录出错:", e));
     return {
       ok: false,
       status: "failed",

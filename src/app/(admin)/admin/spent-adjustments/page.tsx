@@ -73,7 +73,7 @@ interface ApplicationItem {
   reviewNote: string | null;
   reviewedAt: string | null;
   reviewedBy: { name: string; email: string } | null;
-  createdByAdmin: { name: string; email: string } | null;
+  createdByAdmin: { id: string; name: string; email: string } | null;
   createdAt: string;
   user: {
     id: string;
@@ -126,6 +126,7 @@ function AdminSpentAdjustmentsContent() {
   const [saving, setSaving] = useState(false);
   const [undoTarget, setUndoTarget] = useState<ApplicationItem | null>(null);
   const [undoing, setUndoing] = useState(false);
+  const [undoReason, setUndoReason] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [onBehalfOpen, setOnBehalfOpen] = useState(false);
@@ -134,8 +135,10 @@ function AdminSpentAdjustmentsContent() {
   const { success, error: showError } = useToast();
 
   // 权限：Excel 导入/撤销导入需要 spent:import（与 API 层一致）
-  const { can: canAdmin, role } = useAdminPermissions();
+  const { can: canAdmin, role, id: currentAdminId } = useAdminPermissions();
   const isOwnerActor = role === "owner";
+  const isSelfSubmitted =
+    !!detail && !isOwnerActor && detail.createdByAdmin?.id === currentAdminId;
   const canImport = canAdmin("spent:import");
   const canReadSpent = canAdmin("spent:read");
   const canCreate = canAdmin("spent:create");
@@ -290,7 +293,10 @@ function AdminSpentAdjustmentsContent() {
     setUndoing(true);
     try {
       const submit = (totpCode?: string) =>
-        apiPost(`/api/admin/spent-adjustments/${undoTarget.id}/undo`, { totpCode });
+        apiPost(`/api/admin/spent-adjustments/${undoTarget.id}/undo`, {
+          totpCode,
+          reason: undoReason.trim() || undefined,
+        });
 
       try {
         await submit();
@@ -303,6 +309,7 @@ function AdminSpentAdjustmentsContent() {
 
       success("已撤销审核，申请回到待审核队列");
       setUndoTarget(null);
+      setUndoReason("");
       setDetail(null);
       window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       if (tab !== "ALL" && data?.applications.length === 1 && page > 1) {
@@ -718,7 +725,7 @@ function AdminSpentAdjustmentsContent() {
         closeOnBackdrop={false}
         closeGuard={() => !saving && confirmCloseReview()}
         footer={
-          detail?.status === "PENDING" && canReview ? (
+          detail?.status === "PENDING" && canReview && !isSelfSubmitted ? (
             <div className="flex flex-wrap justify-end gap-3">
               <Button
                 variant="outline"
@@ -753,6 +760,10 @@ function AdminSpentAdjustmentsContent() {
                   />
                 )}
             </div>
+          ) : detail?.status === "PENDING" && canReview && isSelfSubmitted ? (
+            <p className="text-xs text-brand-charcoal/65">
+              该申请由你代客提交，按四眼原则需由其他管理员审核。
+            </p>
           ) : detail?.status === "APPROVED" && !isOwnerActor && canRequestApproval ? (
             <div className="flex justify-end">
               <ApprovalRequestAction
@@ -761,7 +772,7 @@ function AdminSpentAdjustmentsContent() {
                 label="申请撤销审核"
               />
             </div>
-          ) : detail?.status === "APPROVED" && canReview ? (
+          ) : detail?.status === "APPROVED" && canReview && isOwnerActor ? (
             <div className="flex justify-end">
               <Button variant="outline" onClick={() => setUndoTarget(detail)} disabled={undoing}>
                 <Undo2 className="mr-1.5 h-4 w-4" />
@@ -1019,7 +1030,15 @@ function AdminSpentAdjustmentsContent() {
         confirmText="确认撤销"
         title="撤销审核"
         description="撤销后将按原核实金额扣减该用户的历史消费（会员等级同步重算），申请回到待审核队列，可重新审核。确认撤销？"
-      />
+        confirmDisabled={undoReason.trim().length < 2}
+      >
+        <Input
+          label="撤销原因（至少 2 字）"
+          value={undoReason}
+          onChange={(e) => setUndoReason(e.target.value)}
+          placeholder="如：商家后台查询不到该订单"
+        />
+      </ConfirmDialog>
 
       {/* Excel 批量导入（需要 spent:import 权限） */}
       {canImport && (

@@ -77,6 +77,7 @@ interface Application {
   folderId: string | null;
   createdAt: string;
   updatedAt: string;
+  canViewSensitive?: boolean;
   job: Job;
   folder?: { id: string; name: string } | null;
 }
@@ -152,6 +153,7 @@ function AdminApplicationsContent() {
   // 详情弹窗
   const [detailApplication, setDetailApplication] = useState<Application | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [revealingPhone, setRevealingPhone] = useState(false);
   const [editingNotes, setEditingNotes] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const detailIdRef = useRef<string | null>(null);
@@ -308,6 +310,29 @@ function AdminApplicationsContent() {
   const isNotesDirty = !!detailApplication && editingNotes !== (detailApplication.notes ?? "");
   const { confirmClose: confirmCloseFolder } = useUnsavedChanges(isFolderDirty);
   const { confirmClose: confirmCloseNotes } = useUnsavedChanges(isNotesDirty);
+  const revealPhone = async () => {
+    if (!detailApplication || revealingPhone) return;
+    setRevealingPhone(true);
+    try {
+      const request = () =>
+        apiPost<{ phone: string }>(`/api/admin/applications/${detailApplication.id}/phone`, {});
+      let data: { phone: string };
+      try {
+        data = await request();
+      } catch (err) {
+        if (!isTotpRequired(err)) throw err;
+        const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
+        if (!verified) return;
+        data = await request();
+      }
+      setDetailApplication((prev) => (prev ? { ...prev, phone: data.phone } : prev));
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "查看完整手机号失败");
+    } finally {
+      setRevealingPhone(false);
+    }
+  };
+
   const saveNotes = async () => {
     if (!detailApplication) return;
     if (editingNotes.length > 5000) {
@@ -1006,6 +1031,17 @@ function AdminApplicationsContent() {
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
                     {detailApplication.phone}
+                    {detailApplication.canViewSensitive &&
+                      detailApplication.phone.includes("*") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          loading={revealingPhone}
+                          onClick={() => void revealPhone()}
+                        >
+                          查看完整
+                        </Button>
+                      )}
                   </span>
                 </div>
               </div>
@@ -1056,6 +1092,21 @@ function AdminApplicationsContent() {
                 >
                   下载简历
                 </Button>
+                {detailApplication.hasResume &&
+                  detailApplication.resumeFileName?.toLowerCase().endsWith(".pdf") && (
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        window.open(
+                          `/api/admin/applications/${detailApplication.id}/resume?inline=1`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        )
+                      }
+                    >
+                      预览简历
+                    </Button>
+                  )}
                 {detailApplication.resumeFileName && (
                   <span
                     className="max-w-full truncate text-sm text-brand-charcoal/65"

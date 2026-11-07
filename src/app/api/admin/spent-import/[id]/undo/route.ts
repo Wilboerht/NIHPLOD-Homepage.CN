@@ -120,6 +120,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         NOTHING_TO_UNDO: 400,
         NOT_COMPLETED: 409,
         REVERSAL_EXCEEDS_BALANCE: 409,
+        USER_DELETED: 409,
       };
       return NextResponse.json(
         { success: false, error: { code: result.code, message: result.message } },

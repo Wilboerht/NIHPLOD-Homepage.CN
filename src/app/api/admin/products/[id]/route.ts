@@ -387,9 +387,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         });
       }
 
-      // 下架产品不再保留旧 slug 重定向，避免重定向到 404
-      if (!validated.published) {
-        await tx.productSlugRedirect.deleteMany({ where: { productId: id } });
+      // 下架/草稿期间保留旧 slug 重定向：前台解析时已要求目标产品 published，
+      // 不会重定向到有效页面；提前删除会导致草稿期改名后重新发布永久丢失旧 URL。
+
+      // 保存后仍在使用的图片：取消可能存在的待删除任务，避免异步任务误删
+      // 仍被当前产品引用的对象（陈旧表单/并发删除后重新保存的场景）。
+      if (requestedImageUrls.length > 0) {
+        await tx.mediaDeletionTask?.deleteMany({
+          where: { objectKey: { in: requestedImageUrls } },
+        });
       }
 
       // 处理图片：更新已有 + 创建新的

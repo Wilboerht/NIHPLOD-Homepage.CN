@@ -8,6 +8,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     oAuthSession: { findMany: vi.fn(), updateMany: vi.fn() },
+    refreshToken: { updateMany: vi.fn() },
+    oAuthClient: { findUnique: vi.fn() },
   },
 }));
 
@@ -16,24 +18,34 @@ vi.mock("@/lib/auth-security", () => ({
 }));
 
 vi.mock("@/lib/backchannel-logout", () => ({
-  sendBackchannelLogout: vi.fn().mockResolvedValue(undefined),
+  enqueueBackchannelLogoutNotifications: vi.fn().mockResolvedValue(1),
+  scheduleBackchannelRedelivery: vi.fn(),
 }));
 
 import { revokeOAuthClientSessions } from "../oauth-session-revoke";
 import { prisma } from "@/lib/prisma";
 import { revokeRefreshToken } from "@/lib/auth-security";
-import { sendBackchannelLogout } from "@/lib/backchannel-logout";
+import {
+  enqueueBackchannelLogoutNotifications,
+  scheduleBackchannelRedelivery,
+} from "@/lib/backchannel-logout";
 
 const mockFindMany = prisma.oAuthSession.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateMany = prisma.oAuthSession.updateMany as ReturnType<typeof vi.fn>;
+const mockRefreshTokenUpdateMany = prisma.refreshToken.updateMany as ReturnType<typeof vi.fn>;
+const mockClientFindUnique = prisma.oAuthClient.findUnique as ReturnType<typeof vi.fn>;
 const mockRevokeRefreshToken = revokeRefreshToken as ReturnType<typeof vi.fn>;
-const mockSendBackchannel = sendBackchannelLogout as ReturnType<typeof vi.fn>;
+const mockEnqueueBackchannel = enqueueBackchannelLogoutNotifications as ReturnType<typeof vi.fn>;
+const mockScheduleRedelivery = scheduleBackchannelRedelivery as ReturnType<typeof vi.fn>;
 
 describe("revokeOAuthClientSessions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFindMany.mockResolvedValue([{ sessionId: "sid-1" }]);
     mockUpdateMany.mockResolvedValue({ count: 1 });
+    mockClientFindUnique.mockResolvedValue({
+      backchannelLogoutUri: "https://rp.example.com/slo",
+    });
   });
 
   it("撤销该 client 的 OAuthSession 与 refresh token，并携带最新 sid 广播 backchannel logout", async () => {
@@ -55,7 +67,17 @@ describe("revokeOAuthClientSessions", () => {
       data: { revokedAt: expect.any(Date) },
     });
     expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-1", "logout");
-    expect(mockSendBackchannel).toHaveBeenCalledWith("user-1", ["client-1"]);
+    expect(mockEnqueueBackchannel).toHaveBeenCalledWith(
+      [
+        {
+          userId: "user-1",
+          clientId: "client-1",
+          sid: null,
+          logoutUri: "https://rp.example.com/slo",
+        },
+      ]
+    );
+    expect(mockScheduleRedelivery).toHaveBeenCalled();
   });
 
   it("无活跃会话时幂等：不广播，仍撤销该 client 的 refresh token（可能残留有效 token）", async () => {
@@ -64,9 +86,51 @@ describe("revokeOAuthClientSessions", () => {
     const result = await revokeOAuthClientSessions("user-1", "client-1", { reason: "logout" });
 
     expect(result).toEqual({ sessionCount: 0, latestSid: null });
-    expect(mockSendBackchannel).not.toHaveBeenCalled();
+    expect(mockEnqueueBackchannel).not.toHaveBeenCalled();
     expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-1", "logout");
     expect(mockUpdateMany).toHaveBeenCalled();
+  });
+
+  it("指定 sid 时只撤销该会话与该会话的 refresh token，并按 sid 通知 RP", async () => {
+    mockRefreshTokenUpdateMany.mockResolvedValue({ count: 1 });
+
+    const result = await revokeOAuthClientSessions("user-1", "client-1", {
+      reason: "logout",
+      sid: "sid-1",
+    });
+
+    expect(result).toEqual({ sessionCount: 1, latestSid: "sid-1" });
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        clientId: "client-1",
+        sessionId: "sid-1",
+        revokedAt: null,
+      },
+      data: { revokedAt: expect.any(Date) },
+    });
+    expect(mockRefreshTokenUpdateMany).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        clientId: "client-1",
+        oauthSessionId: "sid-1",
+        revokedAt: null,
+      },
+      data: { revokedAt: expect.any(Date), revokedReason: "logout" },
+    });
+    expect(mockRevokeRefreshToken).not.toHaveBeenCalled();
+    expect(mockEnqueueBackchannel).toHaveBeenCalledWith(
+      [
+        {
+          userId: "user-1",
+          clientId: "client-1",
+          sid: "sid-1",
+          logoutUri: "https://rp.example.com/slo",
+        },
+      ],
+      { perSession: true }
+    );
+    expect(mockScheduleRedelivery).toHaveBeenCalled();
   });
 
   it("省略 reason 时按默认口径撤销 refresh token", async () => {

@@ -51,7 +51,9 @@ interface RedemptionItem {
   waybillNo: string | null;
   createdAt: string;
   fulfilledAt: string | null;
-  user: { id: string; phone: string; nickname: string | null };
+  cancelledAt: string | null;
+  cancelNote: string | null;
+  user: { id: string; phone: string; nickname: string | null; status: string };
 }
 
 type StatusTab = "PENDING" | "FULFILLED" | "CANCELLED" | "ALL";
@@ -1001,7 +1003,14 @@ function AdminPointGiftsContent() {
                       <span className="text-xs text-brand-charcoal/65">
                         {r.status === "FULFILLED" && r.fulfilledAt
                           ? `履约：${formatDateTime(r.fulfilledAt)}`
-                          : formatDateTime(r.createdAt)}
+                          : r.status === "CANCELLED" && r.cancelledAt
+                            ? `取消：${formatDateTime(r.cancelledAt)}`
+                            : formatDateTime(r.createdAt)}
+                        {r.status === "CANCELLED" && r.cancelNote && (
+                          <span className="mt-0.5 block text-brand-charcoal/50">
+                            原因：{r.cancelNote}
+                          </span>
+                        )}
                       </span>
                       <div className="flex flex-wrap justify-end gap-2">
                         {r.status === "PENDING" ? (
@@ -1148,6 +1157,16 @@ function AdminPointGiftsContent() {
                             履约：{formatDateTime(r.fulfilledAt)}
                           </p>
                         )}
+                        {r.status === "CANCELLED" && r.cancelledAt && (
+                          <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                            取消：{formatDateTime(r.cancelledAt)}
+                          </p>
+                        )}
+                        {r.status === "CANCELLED" && r.cancelNote && (
+                          <p className="mt-0.5 max-w-[14rem] truncate text-xs text-brand-charcoal/50" title={r.cancelNote}>
+                            原因：{r.cancelNote}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
@@ -1279,7 +1298,9 @@ function AdminPointGiftsContent() {
         title="取消兑换并退还积分"
         description={
           cancelTarget
-            ? `确定取消「${cancelTarget.productName}」的兑换吗？将向用户退还 ${cancelTarget.points.toLocaleString()} 积分（6 个月有效期），此操作不可撤销。`
+            ? cancelTarget.user.status === "DELETED"
+              ? `确认取消「${cancelTarget.productName}」的兑换吗？该用户已注销，取消后不会退还积分，仅归还库存。`
+              : `确认取消「${cancelTarget.productName}」的兑换吗？将退还用户 ${cancelTarget.points.toLocaleString()} 积分（6 个月有效期），该操作不可撤销。`
             : ""
         }
         confirmText="确认取消并退分"

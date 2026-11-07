@@ -192,29 +192,38 @@ export async function buildRetentionPreview(options?: {
     for (const item of days) {
       const status = await getArchiveStatus(entry.stream, item.day);
       const dayHeld = Math.min(item.count, heldByDay.get(item.day) ?? 0);
+      // 未通过归档/备份校验的日期不参与删除，但不再阻断其他已验证日期。
+      // eligible=0 的桶会在 worker 中被跳过，warnings 仅作为提示展示。
+      const deletable = status.verified && status.backupVerified;
+      const eligible = deletable ? item.count - dayHeld : 0;
       buckets.push({
         stream: entry.stream,
         day: item.day,
         count: item.count,
         bytes: item.bytes,
         holdsExcluded: dayHeld,
-        eligible: item.count - dayHeld,
+        eligible,
         archiveVerified: status.verified,
         backupVerified: status.backupVerified,
       });
-      if (!status.archived) warnings.push(`${entry.stream}/${item.day} 尚未归档`);
-      else if (!status.verified) warnings.push(`${entry.stream}/${item.day} 归档校验失败`);
+      if (!status.archived) warnings.push(`${entry.stream}/${item.day} 尚未归档（本次跳过）`);
+      else if (!status.verified) warnings.push(`${entry.stream}/${item.day} 归档校验失败（本次跳过）`);
       else if (!status.backupVerified)
-        warnings.push(`${entry.stream}/${item.day} 备份副本校验失败`);
+        warnings.push(`${entry.stream}/${item.day} 备份副本校验失败（本次跳过）`);
     }
   }
 
-  if (process.env.AUDIT_RETENTION_ALLOW_LOCAL_ONLY !== "true") {
+  const localOnlyReady = process.env.AUDIT_RETENTION_ALLOW_LOCAL_ONLY === "true";
+  if (!localOnlyReady) {
     warnings.push("未设置 AUDIT_RETENTION_ALLOW_LOCAL_ONLY=true；worker 将拒绝执行");
   }
 
   const expectedCount = buckets.reduce((sum, item) => sum + item.eligible, 0);
-  const expectedBytes = buckets.reduce((sum, item) => sum + item.bytes, 0);
+  const expectedBytes = buckets.reduce(
+    (sum, item) =>
+      sum + Math.round(item.bytes * (item.eligible / Math.max(1, item.count))),
+    0
+  );
   const holdsExcluded = buckets.reduce((sum, item) => sum + item.holdsExcluded, 0);
   const previewHash = createHash("sha256")
     .update(
@@ -237,10 +246,9 @@ export async function buildRetentionPreview(options?: {
     expectedBytes,
     holdsExcluded,
     previewHash,
-    ready:
-      expectedCount > 0 &&
-      warnings.length === 0 &&
-      buckets.every((b) => b.archiveVerified && b.backupVerified),
+    // 只要存在可删除的已验证日期且本地唯一副本已确认即可执行；
+    // 未归档/校验失败的日期会被跳过并记录在 warnings 中。
+    ready: expectedCount > 0 && localOnlyReady,
     warnings,
   };
 }

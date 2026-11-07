@@ -157,22 +157,23 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
       return;
     }
 
-    /** 编辑分类：服务端要求 step-up，首次调用失败时拉起二次验证并重试 */
+    /** 新增/编辑分类：服务端均要求 step-up，首次调用失败时拉起二次验证并重试 */
     const submit = async () => {
       const payload = {
         ...formData,
         order: formData.order === "" ? undefined : Number(formData.order),
       };
-      if (!isEdit) {
-        return apiPost("/api/admin/categories", payload);
-      }
+      const request = () =>
+        isEdit
+          ? apiPut(`/api/admin/categories/${category.id}`, payload)
+          : apiPost("/api/admin/categories", payload);
       try {
-        return await apiPut(`/api/admin/categories/${category.id}`, payload);
+        return await request();
       } catch (err) {
         if (!isTotpRequired(err)) throw err;
         const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
         if (!verified) return null;
-        return apiPut(`/api/admin/categories/${category.id}`, payload);
+        return request();
       }
     };
 

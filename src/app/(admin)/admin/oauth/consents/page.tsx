@@ -255,7 +255,9 @@ function OAuthConsentsPage() {
         revokedCount += res.revokedClients ?? 0;
       }
 
-      toast.success(`已撤销 ${byUser.size} 位用户的 ${revokedCount} 条授权`);
+      toast.success(
+        `已撤销 ${byUser.size} 位用户在 ${revokedCount} 个客户端的授权`
+      );
       selection.clear();
       setShowBatchRevoke(false);
       fetchConsents();
