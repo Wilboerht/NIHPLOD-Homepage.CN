@@ -47,13 +47,13 @@ describe("KineticBackground 便当盒", () => {
     expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
   });
 
-  it("文字卡内容为 LESS / BUT / BETTER（衬线类）", () => {
+  it("文字卡内容为 LESS / BUT / BETTER（无衬线展示类）", () => {
     const { container } = render(<KineticBackground />);
-    const serif = container.querySelector(".kinetic-serif");
-    expect(serif).not.toBeNull();
-    expect(serif!.textContent).toContain("LESS");
-    expect(serif!.textContent).toContain("BUT");
-    expect(serif!.textContent).toContain("BETTER");
+    const display = container.querySelector(".kinetic-display");
+    expect(display).not.toBeNull();
+    expect(display!.textContent).toContain("LESS");
+    expect(display!.textContent).toContain("BUT");
+    expect(display!.textContent).toContain("BETTER");
   });
 
   it("DOM 顺序满足 PC 自动落位：品牌故事卡与肌智派卡先于通栏文字卡", () => {

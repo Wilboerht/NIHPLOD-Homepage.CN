@@ -1613,9 +1613,10 @@
   color: #00263e;
 }
 
-/* 系统衬线栈：文字卡标题专用 */
-.kinetic-serif {
-  font-family: Georgia, "Times New Roman", "Songti SC", "SimSun", serif;
+/* 无衬线展示栈：文字卡标题专用 */
+.kinetic-display {
+  font-family:
+    "Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", sans-serif;
   letter-spacing: 0.2em;
   line-height: 1.4;
 }

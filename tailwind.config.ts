@@ -43,14 +43,6 @@ const config: Config = {
           "sans-serif",
         ],
         sans: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
-        songti: [
-          "SimSun",
-          "宋体",
-          "Songti SC",
-          "Noto Serif CJK SC",
-          "Source Han Serif SC",
-          "serif",
-        ],
       },
       spacing: {
         xs: "8px",

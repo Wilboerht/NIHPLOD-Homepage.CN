@@ -235,7 +235,7 @@ export function ProductCard({ product, onClick, priority = false, className }: P
       {/* 产品信息 */}
       <div className="space-y-1 p-3 md:p-4">
         {/* 中文名 */}
-        <h3 className="line-clamp-2 font-serif text-base leading-tight text-brand-charcoal md:text-lg">
+        <h3 className="line-clamp-2 font-sans text-base leading-tight text-brand-charcoal md:text-lg">
           {name}
         </h3>
 

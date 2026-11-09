@@ -21,7 +21,7 @@ export function AdvisorCTA({ variant = "discover", className }: AdvisorCTAProps)
   return (
     <div
       className={cn(
-        "max-lg:rounded-lg max-lg:border max-lg:border-brand-charcoal/10 max-lg:px-4 max-lg:py-3",
+        "max-lg:rounded-2xl max-lg:border max-lg:border-brand-charcoal/[0.06] max-lg:px-4 max-lg:py-3",
         className
       )}
     >
@@ -29,7 +29,7 @@ export function AdvisorCTA({ variant = "discover", className }: AdvisorCTAProps)
         href="https://smart.nihplod.cn"
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex items-center gap-1 text-[12px] font-normal leading-[1.8] tracking-[0.04em] text-brand-primary transition-opacity hover:opacity-70 lg:inline-flex lg:text-[13px]"
+        className="group flex items-center gap-1 text-[12px] font-normal leading-[1.8] tracking-[0.04em] text-brand-primary underline decoration-brand-primary/20 underline-offset-4 transition-opacity hover:opacity-70 lg:inline-flex lg:text-[13px]"
       >
         <span>{COPY[variant]}</span>
         <svg

@@ -31,7 +31,7 @@ interface TermsArticleProps {
 
 export function TermsArticle({ sections }: TermsArticleProps) {
   return (
-    <main className="max-w-4xl flex-1 space-y-10 font-songti text-brand-charcoal/80 md:space-y-16 md:leading-relaxed">
+    <main className="max-w-4xl flex-1 space-y-10 font-sans text-brand-charcoal/80 md:space-y-16 md:leading-relaxed">
       {sections.map((section, sIdx) => (
         <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
           <h2 className="mb-4 font-sans text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-8 md:text-2xl md:font-light md:tracking-[0.12em]">

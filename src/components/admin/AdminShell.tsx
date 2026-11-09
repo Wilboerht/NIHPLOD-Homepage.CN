@@ -379,7 +379,7 @@ function SidebarContent({
           className="flex items-center gap-2 text-base tracking-tight text-brand-charcoal"
         >
           {collapsed ? (
-            <span className="font-serif text-xl font-bold text-brand-primary">N</span>
+            <span className="font-sans text-xl font-bold text-brand-primary">N</span>
           ) : (
             <>
               <Image

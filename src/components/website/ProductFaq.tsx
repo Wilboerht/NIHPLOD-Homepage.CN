@@ -45,7 +45,7 @@ export function ProductFaq({ faqs, title = "常见问题", className }: ProductF
               key={`${index}-${faq.question}`}
               className={cn(
                 "group border-b border-l-[1.5px] border-r-0 border-t-0 border-brand-charcoal/10 border-l-transparent transition-colors duration-500 ease-out",
-                isOpen ? "border-l-[#B5AC88] bg-[#FFFFFF]/40" : "hover:bg-white/20"
+                isOpen ? "border-l-brand-buff bg-white/40" : "hover:bg-white/20"
               )}
             >
               <button

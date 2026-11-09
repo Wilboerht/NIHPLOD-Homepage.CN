@@ -35,16 +35,16 @@ export default function NotFound() {
 
         {/* 404 数字 */}
         <div className="relative">
-          <h1 className="font-serif text-[150px] font-light leading-none text-brand-primary/20 md:text-[200px]">
+          <h1 className="font-sans text-[150px] font-light leading-none text-brand-primary/20 md:text-[200px]">
             404
           </h1>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="font-serif text-5xl text-brand-primary md:text-6xl">404</span>
+            <span className="font-sans text-5xl text-brand-primary md:text-6xl">404</span>
           </div>
         </div>
 
         {/* 文字说明 */}
-        <h2 className="mt-6 font-serif text-2xl text-brand-charcoal md:text-3xl">页面未找到</h2>
+        <h2 className="mt-6 font-sans text-2xl text-brand-charcoal md:text-3xl">页面未找到</h2>
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-brand-charcoal/60">
           抱歉，您访问的页面不存在或已被移除。
           <br />

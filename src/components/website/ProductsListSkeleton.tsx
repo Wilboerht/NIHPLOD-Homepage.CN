@@ -1,7 +1,6 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/Skeleton";
-import { cn } from "@/lib/utils";
 
 interface ProductsListSkeletonProps {
   mobileView: "products" | "categories";
@@ -35,27 +34,23 @@ export function ProductsListSkeleton({ mobileView }: ProductsListSkeletonProps) 
           {mobileView === "products" ? (
             <div className="flex flex-col gap-5">
               {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="border border-brand-charcoal/[0.06] bg-[#FFFDF9]">
+                <div key={index} className="border border-brand-charcoal/[0.06] bg-brand-warm-white">
                   <Skeleton
                     animation="wave"
                     className="aspect-[4/5] w-full rounded-none bg-brand-beige/50"
                   />
-                  <div className="flex flex-col gap-2 px-5 pb-5 pt-4">
+                  <div className="px-5 pb-5 pt-4">
                     <Skeleton animation="wave" className="h-4 w-3/4 bg-brand-beige/50" />
-                    <Skeleton animation="wave" className="h-3 w-20 bg-brand-beige/50" />
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {Array.from({ length: 6 }).map((_, index) => (
+              {Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="flex items-center gap-3 px-3 py-4">
                   <Skeleton animation="wave" className="h-8 w-8 rounded-lg bg-brand-beige/50" />
-                  <Skeleton
-                    animation="wave"
-                    className={cn("h-4 bg-brand-beige/50", index % 2 === 0 ? "w-2/3" : "w-1/2")}
-                  />
+                  <Skeleton animation="wave" className="h-4 w-2/3 bg-brand-beige/50" />
                 </div>
               ))}
             </div>
@@ -76,15 +71,13 @@ export function ProductsListSkeleton({ mobileView }: ProductsListSkeletonProps) 
                   <div key={index} className={index === 1 ? "mt-12" : undefined}>
                     <Skeleton
                       animation="wave"
-                      className={cn(
-                        "w-full bg-brand-beige/50",
-                        index === 1 ? "aspect-[4/5.2]" : "aspect-[4/4.5]"
-                      )}
+                      className={
+                        index === 1
+                          ? "aspect-[4/5.2] w-full bg-brand-beige/50"
+                          : "aspect-[4/4.5] w-full bg-brand-beige/50"
+                      }
                     />
-                    <div className="mt-3 space-y-1.5">
-                      <Skeleton animation="wave" className="h-4 w-2/3 bg-brand-beige/50" />
-                      <Skeleton animation="wave" className="h-3 w-16 bg-brand-beige/50" />
-                    </div>
+                    <Skeleton animation="wave" className="mt-3 h-4 w-2/3 bg-brand-beige/50" />
                   </div>
                 ))}
               </div>

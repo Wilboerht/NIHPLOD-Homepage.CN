@@ -8,8 +8,8 @@ import Link from "next/link";
 export default function ProductNotFound() {
   return (
     <div className="flex h-full min-h-[60vh] flex-col items-center justify-center px-6 py-16 text-center">
-      <p className="font-serif text-[64px] font-light leading-none text-brand-primary/20">404</p>
-      <h1 className="mt-4 font-serif text-2xl text-brand-charcoal md:text-3xl">产品未找到</h1>
+      <p className="font-sans text-[64px] font-light leading-none text-brand-primary/20">404</p>
+      <h1 className="mt-4 font-sans text-2xl text-brand-charcoal md:text-3xl">产品未找到</h1>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-brand-charcoal/60">
         该产品可能已下架、链接已失效，或地址输入有误。
         <br />

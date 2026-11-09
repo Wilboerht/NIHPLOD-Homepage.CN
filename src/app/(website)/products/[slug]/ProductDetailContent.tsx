@@ -359,8 +359,8 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
             "relative flex-shrink-0 overflow-hidden rounded-lg transition-all",
             orientation === "vertical" ? "h-20 w-16" : "h-16 w-12",
             currentImageIndex === index
-              ? "ring-1 ring-brand-charcoal"
-              : "ring-1 ring-brand-beige hover:ring-brand-charcoal/30"
+              ? "ring-[1.5px] ring-brand-charcoal"
+              : "ring-1 ring-brand-charcoal/10 hover:ring-brand-charcoal/25"
           )}
           aria-label={`切换到第 ${index + 1} 张图片`}
           aria-current={currentImageIndex === index ? "true" : undefined}
@@ -383,22 +383,18 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
   );
 
   const renderExternalPurchaseLinks = () =>
-    product.purchaseLinks && product.purchaseLinks.length > 0 ? (
-      product.purchaseLinks.map((link) => (
-        <a
-          key={link.id}
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`在${link.platform}购买`}
-          className="-m-2 inline-flex min-h-[44px] items-center justify-center gap-2 p-2 text-sm text-brand-charcoal transition-opacity hover:opacity-60"
-        >
-          <PlatformIcon platform={link.platform} platformKey={link.platformKey} />
-        </a>
-      ))
-    ) : (
-      <span className="text-sm font-light text-brand-charcoal/50">暂无购买链接</span>
-    );
+    product.purchaseLinks.map((link) => (
+      <a
+        key={link.id}
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`在${link.platform}购买`}
+        className="-m-2 inline-flex min-h-[44px] items-center justify-center gap-2 p-2 text-sm text-brand-charcoal transition-opacity hover:opacity-60"
+      >
+        <PlatformIcon platform={link.platform} platformKey={link.platformKey} />
+      </a>
+    ));
 
   return (
     <div data-product-detail className="relative h-full min-h-0">
@@ -413,7 +409,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
         <div className="mx-auto w-full max-w-[1920px] px-6 pb-6 pt-6 lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]">
           <nav
             aria-label="面包屑"
-            className="mb-5 flex flex-wrap items-center gap-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50"
+            className="mb-4 hidden flex-wrap items-center gap-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50 lg:flex lg:mb-5"
           >
             <NextLink href="/" className="transition-colors hover:text-brand-charcoal">
               首页
@@ -433,8 +429,8 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
           </nav>
 
           <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12 xl:gap-16">
-            <div className="lg:sticky lg:top-2 lg:self-start">
-              <div className="w-full lg:max-w-lg lg:pt-[3px]">
+            <div className="lg:sticky lg:top-6 lg:self-start">
+              <div className="w-full lg:max-w-lg lg:pt-[3px] xl:max-w-xl">
                 <div className="flex flex-col gap-4 lg:flex-row lg:gap-4">
                   {product.images.length > 1 && (
                     <div className="order-2 hidden lg:order-1 lg:block">
@@ -498,7 +494,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                                 setCurrentImageIndex(index);
                               }}
                               className={cn(
-                                "h-[2px] rounded-full border-none p-0 transition-all duration-300",
+                                "relative h-[2px] rounded-full border-none p-0 transition-all duration-300 after:absolute after:left-1/2 after:top-1/2 after:h-11 after:w-6 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']",
                                 currentImageIndex === index ? "w-5 bg-white" : "w-3 bg-white/40"
                               )}
                               aria-label={`查看第 ${index + 1} 张图片`}
@@ -517,7 +513,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                             type="button"
                             onClick={() => setCurrentImageIndex(index)}
                             className={cn(
-                              "h-2 w-6 rounded-full border-none p-0 transition-all duration-300",
+                              "relative h-2 w-6 rounded-full border-none p-0 transition-all duration-300 after:absolute after:left-1/2 after:top-1/2 after:h-6 after:w-8 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']",
                               currentImageIndex === index
                                 ? "scale-110 bg-brand-charcoal"
                                 : "bg-brand-charcoal/20"
@@ -544,20 +540,27 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <h1
-                      className="font-serif text-[20px] font-normal tracking-[0.05em] text-brand-charcoal focus:outline-none sm:text-[22px] lg:text-[28px]"
-                      tabIndex={-1}
-                    >
-                      {product.name}
-                    </h1>
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h1
+                        className="font-sans text-[20px] font-normal tracking-[0.05em] text-brand-charcoal focus:outline-none sm:text-[22px] lg:text-[28px]"
+                        tabIndex={-1}
+                      >
+                        {product.name}
+                      </h1>
+                      {product.nameEn && (
+                        <p className="mt-1.5 text-[11px] font-light uppercase tracking-[0.18em] text-brand-charcoal/50">
+                          {product.nameEn}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
                       {faqs.length > 0 && (
                         <button
                           ref={faqButtonRef}
                           type="button"
                           onClick={openFaq}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal md:h-11 md:w-11"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal"
                           aria-label="常见问题"
                           title="常见问题"
                         >
@@ -567,7 +570,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                       <button
                         type="button"
                         onClick={handleShare}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal md:h-11 md:w-11"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full text-brand-charcoal/60 transition-colors hover:bg-brand-beige hover:text-brand-charcoal"
                         aria-label="分享"
                       >
                         <Share2 className="h-5 w-5" />
@@ -575,9 +578,9 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                     </div>
                   </div>
 
-                  <p className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-normal leading-relaxed tracking-[0.02em] text-brand-charcoal/[0.85]">
+                  <p className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-light leading-relaxed tracking-[0.02em] text-brand-charcoal/70">
                     <span>
-                      <span className="tracking-[0.06em] text-brand-charcoal/60">产地</span>{" "}
+                      <span className="tracking-[0.06em] text-brand-charcoal/50">产地</span>{" "}
                       {product.origin || "法国"}
                     </span>
                     {product.capacity && (
@@ -586,20 +589,22 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                           ·
                         </span>
                         <span>
-                          <span className="tracking-[0.06em] text-brand-charcoal/60">规格</span>{" "}
+                          <span className="tracking-[0.06em] text-brand-charcoal/50">规格</span>{" "}
                           {product.capacity}
                         </span>
                       </>
                     )}
                   </p>
 
-                  <div className="mt-4">
+                  <div className="mt-5">
                     <data
                       value={product.price}
-                      className="inline-flex items-baseline gap-1 text-brand-charcoal"
+                      className="inline-flex items-baseline gap-1 font-num text-brand-charcoal"
                     >
-                      <span className="text-[15px] font-normal text-brand-charcoal/60">¥</span>
-                      <span className="font-num text-[22px] font-medium tabular-nums tracking-[0.01em]">
+                      <span className="text-[13px] font-light text-brand-charcoal/60 lg:text-[14px]">
+                        ¥
+                      </span>
+                      <span className="text-[22px] font-medium tabular-nums tracking-[0.01em] lg:text-[24px]">
                         {formattedPrice}
                       </span>
                     </data>
@@ -610,7 +615,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                       {product.benefits.map((benefit, index) => (
                         <li
                           key={index}
-                          className="inline-flex items-center rounded-full border border-brand-charcoal/[0.08] bg-white/50 px-3 py-1.5 text-[12px] font-normal tracking-[0.04em] text-brand-charcoal/80 md:text-[13px]"
+                          className="inline-flex items-center rounded-full border border-brand-charcoal/[0.08] bg-white/50 px-3 py-1.5 text-[12px] font-normal tracking-[0.04em] text-brand-charcoal/70 md:text-[13px]"
                         >
                           {benefit}
                         </li>
@@ -620,11 +625,11 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
 
                   <XiaohongshuLink
                     categoryName={product.category.name}
-                    className="mt-4 flex flex-col gap-1"
+                    className="mt-3 flex flex-col gap-1"
                   />
                 </m.div>
 
-                <div className="mt-6 rounded-2xl border border-brand-charcoal/[0.06] bg-[#FFFDF9] p-4 md:p-5 lg:p-6">
+                <div className="mt-7 rounded-2xl border border-brand-charcoal/[0.06] bg-brand-warm-white p-4 md:p-5 lg:p-6">
                   <div className="border-b border-brand-beige">
                     <div className="flex justify-start gap-6" role="tablist" aria-label="产品信息">
                       {tabs.map((tab) => (
@@ -639,10 +644,10 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                           onClick={() => handleTabChange(tab.key)}
                           onKeyDown={handleTabKeyDown}
                           className={cn(
-                            "relative cursor-pointer pb-3 text-[13px] font-medium tracking-[0.04em] transition-colors md:text-[14px]",
+                            "relative cursor-pointer pb-3 text-[13px] font-medium tracking-[0.04em] transition-colors before:absolute before:-inset-x-1 before:-inset-y-2 before:content-[''] md:text-[14px]",
                             activeTabKey === tab.key
                               ? "text-brand-charcoal"
-                              : "text-brand-charcoal/65 hover:text-brand-charcoal/85"
+                              : "text-brand-charcoal/70 hover:text-brand-charcoal/90"
                           )}
                         >
                           {tab.label}
@@ -676,13 +681,13 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                           <h2 className="sr-only">{tab.label}</h2>
                           {tabContent[tab.key] ? (
                             <div
-                              className="text-left text-[14px] font-normal leading-[1.85] tracking-[0.02em] text-brand-charcoal/90 [&_a]:text-brand-primary [&_a]:underline [&_a]:underline-offset-2 [&_li+_li]:mt-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-4 [&_strong]:font-medium [&_strong]:text-brand-charcoal [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5"
+                              className="text-left text-[14px] font-light leading-[1.9] tracking-[0.04em] text-brand-charcoal/[0.85] [&_a]:text-brand-primary [&_a]:underline [&_a]:underline-offset-2 [&_li+_li]:mt-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-[1.2em] [&_p+p]:mt-[1.15em] [&_strong]:font-medium [&_strong]:text-brand-charcoal [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-[1.2em] md:text-[15px]"
                               dangerouslySetInnerHTML={{
                                 __html: sanitizeHtml(tabContent[tab.key]!),
                               }}
                             />
                           ) : (
-                            <p className="text-base font-light text-brand-charcoal/40">暂无内容</p>
+                            <p className="text-[14px] font-light leading-[1.9] text-brand-charcoal/50">暂无内容</p>
                           )}
                         </div>
                       );
@@ -690,21 +695,26 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                   </div>
                 </div>
 
-                <div className="mt-6">
-                  <div className="flex flex-wrap items-center justify-start gap-4">
-                    {renderExternalPurchaseLinks()}
-                  </div>
+                <div className="mt-8 space-y-5 pb-6 lg:pb-7">
+                  {product.purchaseLinks.length > 0 && (
+                    <div>
+                      <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/50">
+                        购买渠道
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center justify-start gap-4">
+                        {renderExternalPurchaseLinks()}
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="mt-4 pb-6 lg:pb-7">
-                    <AdvisorCTA variant="guide" />
-                  </div>
+                  <AdvisorCTA variant="guide" />
                 </div>
               </div>
             </div>
           </div>
 
           <footer className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige/70 pt-6 text-center">
-            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
+            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.55] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </span>
           </footer>
@@ -856,7 +866,7 @@ function ImageLightbox({
         </button>
       )}
 
-      <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-white backdrop-blur-md">
+      <div className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 z-10 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-white backdrop-blur-md">
         {currentIndex + 1} / {images.length}
       </div>
     </m.div>

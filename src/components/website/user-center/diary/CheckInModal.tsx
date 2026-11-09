@@ -189,7 +189,7 @@ export function CheckInModal({ isOpen, onClose, existing, dateStr, onSaved }: Ch
               <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] pt-[calc(3rem+env(safe-area-inset-top,0px))] sm:pb-8 sm:pt-10 md:px-8">
                 <h2
                   id="checkin-modal-title"
-                  className="mb-6 text-center font-serif text-xl font-light tracking-[0.08em] text-brand-charcoal"
+                  className="mb-6 text-center font-sans text-xl font-light tracking-[0.08em] text-brand-charcoal"
                 >
                   {existing
                     ? isToday

@@ -62,7 +62,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             </div>
 
             {/* 文字说明 */}
-            <h1 className="font-serif text-3xl font-medium md:text-4xl">系统遇到一点问题</h1>
+            <h1 className="font-sans text-3xl font-medium md:text-4xl">系统遇到一点问题</h1>
             <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-brand-charcoal/60">
               我们正在经历一次严重的系统故障。
               <br />

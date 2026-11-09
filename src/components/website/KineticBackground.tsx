@@ -320,7 +320,7 @@ export function KineticBackground() {
 
           {/* 文字卡（PC 端隐藏；平板端显示，手机端隐藏，类名勿删） */}
           <div className="kinetic-cell kinetic-text-cell kinetic-cell-cream kinetic-cell-steps text-center">
-            <div className="kinetic-title-sm kinetic-serif">
+            <div className="kinetic-title-sm kinetic-display">
               LESS
               <br />
               BUT
