@@ -394,19 +394,19 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
     ));
 
   return (
-    <div data-product-detail className="relative h-full min-h-0">
+    <div data-product-detail className="relative flex h-full min-h-0 flex-col">
       <div
         aria-hidden={faqOpen}
         inert={faqOpen}
         className={cn(
-          "scrollbar-hide h-full overflow-y-auto overscroll-contain transition-opacity duration-300",
+          "scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain transition-opacity duration-300",
           faqOpen ? "pointer-events-none opacity-0" : "opacity-100"
         )}
       >
-        <div className="mx-auto w-full max-w-[1920px] px-6 pb-6 pt-6 lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]">
+        <div className="mx-auto flex min-h-full w-full max-w-[1920px] flex-col px-6 pb-6 pt-6 lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]">
           <nav
             aria-label="面包屑"
-            className="mb-4 hidden flex-wrap items-center gap-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50 lg:flex lg:mb-5"
+            className="mb-4 hidden flex-wrap items-center gap-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50 lg:mb-5 lg:flex"
           >
             <NextLink href="/" className="transition-colors hover:text-brand-charcoal">
               首页
@@ -675,7 +675,9 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                               }}
                             />
                           ) : (
-                            <p className="text-[14px] font-light leading-[1.8] text-brand-charcoal/50">暂无内容</p>
+                            <p className="text-[14px] font-light leading-[1.8] text-brand-charcoal/50">
+                              暂无内容
+                            </p>
                           )}
                         </div>
                       );
@@ -701,12 +703,27 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
             </div>
           </div>
 
-          <footer className="mx-auto w-full max-w-4xl border-t border-brand-beige/70 pt-5 text-center">
+          <footer className="mx-auto mt-auto w-full max-w-4xl border-t border-brand-beige/70 pt-5 text-center lg:hidden">
             <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.55] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </span>
           </footer>
         </div>
+      </div>
+
+      <div
+        aria-hidden={faqOpen}
+        inert={faqOpen}
+        className={cn(
+          "hidden shrink-0 px-6 transition-opacity duration-300 lg:block lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]",
+          faqOpen ? "pointer-events-none opacity-0" : "opacity-100"
+        )}
+      >
+        <footer className="mx-auto w-full max-w-4xl border-t border-brand-beige/70 py-4 text-center">
+          <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.55]">
+            &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+          </span>
+        </footer>
       </div>
 
       {faqs.length > 0 && (
