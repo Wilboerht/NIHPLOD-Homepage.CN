@@ -143,6 +143,7 @@ export async function GET(request: NextRequest) {
       return {
         ...rest,
         targetLabel: rest.targetLabel ? maskAuditText(rest.targetLabel) : null,
+        actorName: rest.actorName ? maskAuditText(rest.actorName) : null,
         actorEmail: rest.actorEmail ? maskIdentifier(rest.actorEmail) : null,
         ipAddress: rest.ipAddress ? maskIp(rest.ipAddress) : null,
         userAgent: null,

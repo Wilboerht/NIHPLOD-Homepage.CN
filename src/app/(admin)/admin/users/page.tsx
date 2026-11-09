@@ -312,7 +312,17 @@ interface RedemptionDetailItem {
   productName: string;
   priceYuan: number;
   points: number;
-  status: "PENDING" | "FULFILLED" | "CANCELLED";
+  status:
+    | "PENDING"
+    | "FULFILLED"
+    | "CANCELLED"
+    | "AFTER_SALES_REQUESTED"
+    | "AFTER_SALES_APPROVED"
+    | "AFTER_SALES_REJECTED"
+    | "RETURNING"
+    | "RETURNED"
+    | "REFUNDED"
+    | "AFTER_SALES_CLOSED";
   carrier: string | null;
   waybillNo: string | null;
   recipient: string | null;
@@ -384,12 +394,26 @@ const REDEMPTION_STATUS_LABELS: Record<string, string> = {
   PENDING: "待履约",
   FULFILLED: "已履约",
   CANCELLED: "已取消",
+  AFTER_SALES_REQUESTED: "售后待审核",
+  AFTER_SALES_APPROVED: "售后待寄回",
+  AFTER_SALES_REJECTED: "售后已驳回",
+  RETURNING: "退货中",
+  RETURNED: "待退款",
+  REFUNDED: "已退款",
+  AFTER_SALES_CLOSED: "售后已关闭",
 };
 
 const REDEMPTION_STATUS_BADGES: Record<string, string> = {
   PENDING: "bg-amber-100 text-amber-700",
   FULFILLED: "bg-emerald-100 text-emerald-700",
   CANCELLED: "bg-gray-100 text-gray-500",
+  AFTER_SALES_REQUESTED: "bg-amber-100 text-amber-700",
+  AFTER_SALES_APPROVED: "bg-blue-100 text-blue-700",
+  AFTER_SALES_REJECTED: "bg-red-100 text-red-600",
+  RETURNING: "bg-blue-100 text-blue-700",
+  RETURNED: "bg-indigo-100 text-indigo-700",
+  REFUNDED: "bg-emerald-100 text-emerald-700",
+  AFTER_SALES_CLOSED: "bg-gray-100 text-gray-500",
 };
 
 const ADJUSTMENT_STATUS_BADGES: Record<string, string> = {

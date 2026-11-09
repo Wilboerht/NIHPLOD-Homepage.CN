@@ -244,6 +244,12 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "POINT_USER_DELETED") {
+      return NextResponse.json(
+        { success: false, error: { code: "ACCOUNT_DELETED", message: "账户已注销" } },
+        { status: 403 }
+      );
+    }
     apiConsole.error("[InternalApiV1] points/refund 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器内部错误" } },

@@ -250,6 +250,83 @@ function AfterSalesContent() {
     if (ok) setAction(null);
   };
 
+  const renderActions = (item: Item) => (
+    <div className="flex flex-wrap justify-end gap-1">
+      {canReview && item.status === "AFTER_SALES_REQUESTED" && (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={actingId === item.id}
+            onClick={() => openAction("approve", item)}
+          >
+            通过
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={actingId === item.id}
+            onClick={() => openAction("reject", item)}
+          >
+            驳回
+          </Button>
+        </>
+      )}
+      {canReview && item.status === "AFTER_SALES_APPROVED" && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={actingId === item.id}
+          onClick={() => openAction("receive", item)}
+        >
+          确认收货
+        </Button>
+      )}
+      {canReview && item.status === "RETURNING" && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={actingId === item.id}
+          onClick={() => openAction("receive", item)}
+        >
+          确认收货
+        </Button>
+      )}
+      {canReview && item.status === "RETURNED" && (
+        <>
+          {canRefund && (isOwner || item.points < APPROVAL_THRESHOLDS.redemptionRefund) ? (
+            <Button
+              size="sm"
+              disabled={actingId === item.id}
+              onClick={() => openAction("refund", item)}
+            >
+              退款
+            </Button>
+          ) : item.points >= APPROVAL_THRESHOLDS.redemptionRefund && canRequestApproval ? (
+            <ApprovalRequestAction
+              policyKey="redemption.refund"
+              initialValues={{ redemptionId: item.id }}
+              label="申请退分审批"
+            />
+          ) : null}
+        </>
+      )}
+      {canReview &&
+        ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING", "RETURNED"].includes(
+          item.status
+        ) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={actingId === item.id}
+            onClick={() => openAction("close", item)}
+          >
+            关闭
+          </Button>
+        )}
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -293,87 +370,7 @@ function AfterSalesContent() {
             title: "操作",
             width: "260px",
             align: "right",
-            render: (_, item) => (
-              <div className="flex flex-wrap justify-end gap-1">
-                {canReview && item.status === "AFTER_SALES_REQUESTED" && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={actingId === item.id}
-                      onClick={() => openAction("approve", item)}
-                    >
-                      通过
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={actingId === item.id}
-                      onClick={() => openAction("reject", item)}
-                    >
-                      驳回
-                    </Button>
-                  </>
-                )}
-                {canReview && item.status === "AFTER_SALES_APPROVED" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={actingId === item.id}
-                    onClick={() => openAction("receive", item)}
-                  >
-                    确认收货
-                  </Button>
-                )}
-                {canReview && item.status === "RETURNING" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={actingId === item.id}
-                    onClick={() => openAction("receive", item)}
-                  >
-                    确认收货
-                  </Button>
-                )}
-                {canReview && item.status === "RETURNED" && (
-                  <>
-                    {canRefund &&
-                    (isOwner || item.points < APPROVAL_THRESHOLDS.redemptionRefund) ? (
-                      <Button
-                        size="sm"
-                        disabled={actingId === item.id}
-                        onClick={() => openAction("refund", item)}
-                      >
-                        退款
-                      </Button>
-                    ) : item.points >= APPROVAL_THRESHOLDS.redemptionRefund &&
-                      canRequestApproval ? (
-                      <ApprovalRequestAction
-                        policyKey="redemption.refund"
-                        initialValues={{ redemptionId: item.id }}
-                        label="申请退分审批"
-                      />
-                    ) : null}
-                  </>
-                )}
-                {canReview &&
-                  [
-                    "AFTER_SALES_REQUESTED",
-                    "AFTER_SALES_APPROVED",
-                    "RETURNING",
-                    "RETURNED",
-                  ].includes(item.status) && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={actingId === item.id}
-                      onClick={() => openAction("close", item)}
-                    >
-                      关闭
-                    </Button>
-                  )}
-              </div>
-            ),
+            render: (_, item) => renderActions(item),
           },
         ]}
         data={data?.redemptions ?? []}
@@ -390,6 +387,7 @@ function AfterSalesContent() {
             </div>
             <p className="text-xs text-brand-charcoal/65">{item.afterSalesReason ?? "-"}</p>
             <p className="text-xs text-brand-charcoal/65">积分：{item.points}</p>
+            {renderActions(item)}
           </div>
         )}
       />
@@ -446,7 +444,7 @@ function AfterSalesContent() {
                 )
               }
               required={action.kind === "close"}
-              maxLength={action.kind === "close" ? 200 : 500}
+              maxLength={200}
               placeholder={action.kind === "close" ? "至少 2 个字" : "选填"}
             />
             <div className="flex justify-end gap-2">

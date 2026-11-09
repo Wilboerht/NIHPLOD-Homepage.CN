@@ -31,8 +31,17 @@ import {
   checkAndRecordNonce,
   hashRequestBody,
 } from "@/lib/internal-api";
-import { applyExternalSpentSync, SpentDailyLimitError } from "@/lib/points";
-import { SpentOrderConflictError } from "@/lib/spent-order";
+import {
+  applyExternalSpentSync,
+  SpentDailyLimitError,
+  SpentUserNotActiveError,
+} from "@/lib/points";
+import {
+  SpentOrderConflictError,
+  SpentRefundExceedsOriginalError,
+  SpentRefundNotLinkedError,
+  SpentRefundReservationConflictError,
+} from "@/lib/spent-order";
 import { auditInternalPoints, auditInternalPointsFailure } from "@/lib/internal-points-audit";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -62,6 +71,9 @@ const syncSchema = z
   })
   .refine((data) => (data.userId ? !data.phone : !!data.phone), {
     message: "userId 与 phone 必须且只能提供一个",
+  })
+  .refine((data) => !(data.spentDelta < 0 && !data.orderNo), {
+    message: "退款同步必须提供原订单号 orderNo",
   });
 
 export const dynamic = "force-dynamic";
@@ -205,11 +217,21 @@ export async function POST(request: NextRequest) {
           note,
           orderNo,
           source: "MALL_SYNC",
+          requireActiveUser: true,
         },
         undefined,
         Number.isFinite(dailyLimit) ? dailyLimit : undefined
       );
     } catch (error) {
+      if (error instanceof SpentUserNotActiveError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "ACCOUNT_DISABLED", message: "账户不可用，拒绝消费同步" },
+          },
+          { status: 403 }
+        );
+      }
       if (error instanceof SpentDailyLimitError) {
         return NextResponse.json(
           {
@@ -279,6 +301,24 @@ export async function POST(request: NextRequest) {
             data: { source: error.source },
           },
         },
+        { status: 409 }
+      );
+    }
+    if (error instanceof SpentRefundNotLinkedError) {
+      return NextResponse.json(
+        { success: false, error: { code: "REFUND_NOT_LINKED", message: "退款订单未绑定原始消费" } },
+        { status: 409 }
+      );
+    }
+    if (error instanceof SpentRefundExceedsOriginalError) {
+      return NextResponse.json(
+        { success: false, error: { code: "REFUND_EXCEEDS_ORIGINAL", message: "累计退款超过原订单金额" } },
+        { status: 409 }
+      );
+    }
+    if (error instanceof SpentRefundReservationConflictError) {
+      return NextResponse.json(
+        { success: false, error: { code: "REFUND_CONFLICT", message: "退款占用冲突，请重试" } },
         { status: 409 }
       );
     }

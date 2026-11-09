@@ -5,7 +5,7 @@
  * - 可兑换产品：产品库中的产品标记"积分可兑"后出现在用户面板兑换板块（仅超级管理员可设置）
  * - 兑换记录：查看与履约标记
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -159,6 +159,11 @@ function AdminPointGiftsContent() {
   const [redemptionLoading, setRedemptionLoading] = useState(false);
   const [redemptionsError, setRedemptionsError] = useState(false);
   const [piiRevealed, setPiiRevealed] = useState(false);
+  const piiRevealedRef = useRef(false);
+  const updatePiiRevealed = useCallback((value: boolean) => {
+    piiRevealedRef.current = value;
+    setPiiRevealed(value);
+  }, []);
   const [revealingPii, setRevealingPii] = useState(false);
   const [redemptionsTotal, setRedemptionsTotal] = useState(0);
   const [redemptionSearch, setRedemptionSearch] = useState(redemptionSearchParam);
@@ -242,7 +247,7 @@ function AdminPointGiftsContent() {
           pageSize: 10,
           status: tab === "ALL" ? undefined : tab,
           search: redemptionSearchParam || undefined,
-          reveal: piiRevealed ? "1" : undefined,
+          reveal: piiRevealedRef.current ? "1" : undefined,
         });
 
       let data: Awaited<ReturnType<typeof query>>;
@@ -250,8 +255,8 @@ function AdminPointGiftsContent() {
         data = await query();
       } catch (error) {
         // step-up 过期时自动回退到脱敏列表，避免整页报错
-        if (!(piiRevealed && isTotpRequired(error))) throw error;
-        setPiiRevealed(false);
+        if (!(piiRevealedRef.current && isTotpRequired(error))) throw error;
+        updatePiiRevealed(false);
         data = await apiGet<{
           piiRevealed?: boolean;
           redemptions: RedemptionItem[];
@@ -270,7 +275,7 @@ function AdminPointGiftsContent() {
       setCounts(data.counts);
       setPointsTotal(data.pointsTotal);
       setRedemptionsTotal(data.pagination.total);
-      setPiiRevealed(Boolean(data.piiRevealed));
+      updatePiiRevealed(Boolean(data.piiRevealed));
       setRedemptionsError(false);
     } catch {
       if (!isLatest()) return;
@@ -287,7 +292,6 @@ function AdminPointGiftsContent() {
     canRedeemRead,
     view,
     takeLatestRedemptions,
-    piiRevealed,
   ]);
 
   const handleRevealPii = async () => {
@@ -322,7 +326,7 @@ function AdminPointGiftsContent() {
       setCounts(data.counts);
       setPointsTotal(data.pointsTotal);
       setRedemptionsTotal(data.pagination.total);
-      setPiiRevealed(Boolean(data.piiRevealed));
+      updatePiiRevealed(Boolean(data.piiRevealed));
       setRedemptionsError(false);
     } catch (error) {
       showError(error instanceof ApiError ? error.message : "查看完整收件信息失败");

@@ -231,7 +231,7 @@ function AdminCronTasksContent() {
       />
 
       {/* 未启用提示 */}
-      {cronMode === "disabled" && (
+      {!loading && !loadError && cronMode === "disabled" && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
           <p>

@@ -250,6 +250,7 @@ export function PointsMallPanel() {
   const [afterSalesBusy, setAfterSalesBusy] = useState(false);
   // 兑换幂等键：在确认兑换视图时生成，网络超时/重试复用，避免重复扣分
   const [redeemRequestId, setRedeemRequestId] = useState<string | null>(null);
+  const redeemRequestRef = useRef<{ productId: string; requestId: string } | null>(null);
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -487,7 +488,13 @@ export function PointsMallPanel() {
   /** 打开兑换确认视图：加载地址并预选默认地址 */
   const openRedeem = (g: GiftItem) => {
     setConfirmGift(g);
-    setRedeemRequestId(createClientRequestId());
+    // 离开确认页不丢幂等键：同商品再次进入沿用原 requestId，
+    // 避免上次请求超时但服务端已成功时重复扣分
+    const existing = redeemRequestRef.current;
+    const requestId =
+      existing?.productId === g.id ? existing.requestId : createClientRequestId();
+    redeemRequestRef.current = { productId: g.id, requestId };
+    setRedeemRequestId(requestId);
     setShowNewAddress(false);
     setNewRecipient("");
     setNewPhone("");
@@ -500,8 +507,9 @@ export function PointsMallPanel() {
   const handleRedeem = async () => {
     if (!confirmGift) return;
     // 同一确认视图内复用幂等键：首次请求超时但实际成功时，重试不会重复扣分
-    const requestId = redeemRequestId ?? createClientRequestId();
+    const requestId = redeemRequestId ?? redeemRequestRef.current?.requestId ?? createClientRequestId();
     if (!redeemRequestId) setRedeemRequestId(requestId);
+    redeemRequestRef.current = { productId: confirmGift.id, requestId };
 
     setRedeeming(true);
     try {
@@ -560,6 +568,7 @@ export function PointsMallPanel() {
         requestId,
         expectedPoints: confirmGift.cost ?? undefined,
       });
+      redeemRequestRef.current = null;
       setRedeemRequestId(null);
       setConfirmGift(null);
       setShowNewAddress(false);
@@ -1259,7 +1268,6 @@ export function PointsMallPanel() {
                   <button
                     type="button"
                     onClick={() => {
-                      setRedeemRequestId(null);
                       setConfirmGift(null);
                       setShowNewAddress(false);
                       setView("main");

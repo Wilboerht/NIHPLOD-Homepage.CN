@@ -340,6 +340,26 @@ function NotificationOutboxContent() {
                 {row.idempotencyKey}
               </p>
               {row.lastError && <p className="text-xs text-red-500">{row.lastError}</p>}
+              <div className="flex justify-end gap-1 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                  disabled={row.status !== "DEAD" && row.status !== "SKIPPED"}
+                  onClick={() => setActionTarget({ id: row.id, action: "retry" })}
+                >
+                  重试
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                  disabled={row.status === "SENT" || row.status === "SENDING"}
+                  onClick={() => setActionTarget({ id: row.id, action: "discard" })}
+                >
+                  丢弃
+                </Button>
+              </div>
             </div>
           )}
         />

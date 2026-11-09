@@ -804,6 +804,7 @@ export async function getRedemptionTimeline(redemptionId: string, userId?: strin
           actorType: true,
           reasonCode: true,
           reasonText: true,
+          metadata: true,
           createdAt: true,
         },
       },

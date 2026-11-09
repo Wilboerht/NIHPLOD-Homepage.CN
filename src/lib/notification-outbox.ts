@@ -120,6 +120,11 @@ async function claimBatch(limit: number): Promise<{ rows: ClaimedRow[]; leaseTok
   return { rows, leaseToken };
 }
 
+function terminalPiiScrub(row: ClaimedRow): Record<string, unknown> {
+  // 注销回执只需要手机号完成一次发送；终态立即脱敏，避免明文手机号保留 180 天
+  return row.eventType === "account_deleted" ? { recipient: Prisma.JsonNull, payload: {} } : {};
+}
+
 async function finishSuccess(row: ClaimedRow, leaseToken: string, result: NotificationSendResult) {
   await prisma.notificationOutbox.updateMany({
     where: { id: row.id, status: "SENDING", leaseToken },
@@ -130,6 +135,7 @@ async function finishSuccess(row: ClaimedRow, leaseToken: string, result: Notifi
       providerMessageId: result.providerMessageId ?? null,
       leaseToken: null,
       lockedUntil: null,
+      ...terminalPiiScrub(row),
     },
   });
 }
@@ -154,7 +160,7 @@ async function finishFailure(
       lastError: error,
       leaseToken: null,
       lockedUntil: null,
-      ...(status === "PENDING" ? { nextAttemptAt: backoffFor(row.attempts) } : {}),
+      ...(status === "PENDING" ? { nextAttemptAt: backoffFor(row.attempts) } : terminalPiiScrub(row)),
     },
   });
   return status;
@@ -287,6 +293,7 @@ export async function purgeNotificationOutboxForUser(tx: Tx, userId: string): Pr
     data: {
       recipient: Prisma.JsonNull,
       payload: {},
+      aggregateId: null,
       lastError: null,
     },
   });

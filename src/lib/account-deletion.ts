@@ -21,6 +21,7 @@
  * 达到 MAX_DELETION_ATTEMPTS 仍失败则 error 级告警转人工，不再自动重试。
  */
 import { randomUUID } from "crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { purgeUserFromSubsites } from "@/lib/advisor-internal";
 import { quiesceUserSessions } from "@/lib/user-status";
@@ -353,14 +354,30 @@ export async function executeAccountDeletion(
           recipient: null,
           phone: null,
           address: null,
+          carrier: null,
+          waybillNo: null,
+          cancelNote: null,
           afterSalesReason: null,
           afterSalesImages: [],
+          afterSalesReviewedById: null,
           afterSalesReviewNote: null,
           inspectionNote: null,
           returnWaybillNo: null,
           returnCarrier: null,
         },
       });
+
+      // 售后时间线同样可能包含原因、备注、图片 URL 和退回运单
+      const redemptionIds = await tx.pointRedemption.findMany({
+        where: { userId },
+        select: { id: true },
+      });
+      if (redemptionIds.length > 0) {
+        await tx.pointRedemptionEvent.updateMany({
+          where: { redemptionId: { in: redemptionIds.map((item) => item.id) } },
+          data: { reasonText: null, metadata: Prisma.DbNull },
+        });
+      }
 
       await voidPointsForDeletedUser(tx, userId, `account-deletion:${requestId}`);
       await purgeNotificationOutboxForUser(tx, userId);
@@ -371,6 +388,15 @@ export async function executeAccountDeletion(
       await tx.spentImportRow.updateMany({
         where: { userId },
         data: { phone: placeholderPhone, note: null },
+      });
+      await tx.spentImportRow.updateMany({
+        where: { userId: null, phone: originalPhone },
+        data: { phone: placeholderPhone, note: null },
+      });
+      await tx.backchannelLogoutFailure.deleteMany({ where: { userId } });
+      await tx.membershipLevelChange.updateMany({
+        where: { userId },
+        data: { note: null },
       });
       await tx.spentSyncRecord.updateMany({
         where: { userId },

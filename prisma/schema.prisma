@@ -1112,6 +1112,9 @@ model SpentImportBatch {
 }
 
 // 导入批次内的逐行明细（保存 reference 与金额，支撑整批撤销）
+// 注意：部分唯一索引由 raw SQL migration 维护（Prisma schema 不支持 WHERE）：
+// - SpentImportRow_userId_orderNoKey_success_key（仅 amount > 0）
+// - SpentImportRow_userId_syncReference_active_key
 model SpentImportRow {
   id            String                  @id @default(cuid())
   batchId       String

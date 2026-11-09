@@ -136,12 +136,18 @@ export async function GET(request: NextRequest) {
     // 4. 定位用户：userId 优先（稳定，支持微信占位号/换绑后账号），phone 兼容回退
     const user = await prisma.user.findUnique({
       where: parsed.data.userId ? { id: parsed.data.userId } : { phone: parsed.data.phone ?? "" },
-      select: { id: true, membershipLevel: true },
+      select: { id: true, membershipLevel: true, status: true },
     });
     if (!user) {
       return NextResponse.json(
         { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
         { status: 404 }
+      );
+    }
+    if (user.status === "DELETED") {
+      return NextResponse.json(
+        { success: false, error: { code: "ACCOUNT_DELETED", message: "账户已注销" } },
+        { status: 403 }
       );
     }
 

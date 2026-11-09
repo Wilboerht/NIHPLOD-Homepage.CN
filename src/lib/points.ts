@@ -107,7 +107,9 @@ export async function applyExternalSpentSync(
   const source = params.source ?? "MALL_SYNC";
   const allowNegativeClamp = params.allowNegativeClamp ?? true;
   const requireActiveUser = params.requireActiveUser ?? false;
-  const enforceRefundClaim = params.enforceRefundClaim ?? false;
+  // 商城退款也必须绑定原消费订单并受原单可退额度约束，避免负向同步任意冲减消费额
+  const enforceRefundClaim =
+    params.enforceRefundClaim ?? (source === "MALL_SYNC" && spentDelta < 0);
   // 兼容未升级的商城客户端：正向消费以 reference 作为订单号兜底；显式 orderNo 优先。
   const normalizedOrder = normalizeOptionalOrderNo(orderNo ?? (spentDelta > 0 ? reference : null));
 

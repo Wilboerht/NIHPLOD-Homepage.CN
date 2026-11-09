@@ -299,8 +299,16 @@ function buildSsoWhere(filters: SsoExportFilters): Record<string, unknown> {
   if (filters.requestId) where.requestId = filters.requestId;
   if (filters.startDate || filters.endDate) {
     const createdAt: Record<string, Date> = {};
-    if (filters.startDate) createdAt.gte = new Date(filters.startDate);
-    if (filters.endDate) createdAt.lte = new Date(filters.endDate);
+    if (filters.startDate) {
+      const start = parseUtc8DateBoundary(filters.startDate, false);
+      if (!start) throw new Error("INVALID_EXPORT_DATE");
+      createdAt.gte = start;
+    }
+    if (filters.endDate) {
+      const end = parseUtc8DateBoundary(filters.endDate, true);
+      if (!end) throw new Error("INVALID_EXPORT_DATE");
+      createdAt.lte = end;
+    }
     where.createdAt = createdAt;
   }
   return where;
@@ -465,6 +473,8 @@ async function processOneJob(jobId: string): Promise<void> {
       },
     });
     await unlink(temporaryPath).catch(() => {});
+    // rename 已完成后若审计记录/任务状态写入失败，删除孤儿成品文件
+    await unlink(filePath).catch(() => {});
     notifyAuditExportFailure({
       jobId: job.id,
       stream: job.stream,

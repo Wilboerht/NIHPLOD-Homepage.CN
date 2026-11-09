@@ -41,12 +41,6 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
 
-  // 赶构建时间：跳过 next build 的 TypeScript 类型检查。
-  // 本地/CI 请继续单独执行 `npm run typecheck` 保证类型正确。
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-
   ...(process.env.REDIS_URL
     ? {
         cacheHandler: require.resolve("./src/lib/next-cache-handler.ts"),

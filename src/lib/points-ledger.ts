@@ -563,6 +563,10 @@ export async function refundRedeemPoints(
 
   const reference = `redeem-refund:${redemptionReference}`;
   await lockPointBalance(tx, userId);
+  if (typeof tx.user?.findUnique === "function") {
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } });
+    if (!user || user.status === "DELETED") throw new Error("POINT_USER_DELETED");
+  }
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });
@@ -601,6 +605,10 @@ export async function grantCheckinPoints(
 ): Promise<{ duplicated: boolean; amount: number }> {
   const { userId, amount, reference, note } = params;
   await lockPointBalance(tx, userId);
+  if (typeof tx.user?.findUnique === "function") {
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } });
+    if (!user || user.status === "DELETED") throw new Error("POINT_USER_DELETED");
+  }
   const existing = await tx.pointLedger.findUnique({
     where: { userId_reference: { userId, reference } },
   });

@@ -33,6 +33,7 @@ interface ProductsContentProps {
 export function ProductsContent({ categories, products }: ProductsContentProps) {
   const {
     activeTab,
+    setActiveTab,
     mobileView,
     switchMobileView,
     navigateToProduct,
@@ -157,6 +158,13 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     }
     e.preventDefault();
     navigateToProduct(productSlug);
+  };
+
+  const toggleShowAll = () => {
+    setActiveTab(activeTab === "featured" ? "all" : "featured");
+    mobileScrollRef.current?.scrollTo({ top: 0 });
+    if (desktopScrollRef.current) desktopScrollRef.current.scrollTop = 0;
+    listScrollTopRef.current = 0;
   };
 
   const renderCategoryContent = (cat: ProductsCategory) => (
@@ -367,6 +375,18 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   ))}
                 </div>
 
+                {products.length > 3 && (
+                  <div className="flex justify-center pt-6">
+                    <button
+                      type="button"
+                      onClick={toggleShowAll}
+                      className="border-b border-brand-primary/30 pb-0.5 text-[12px] font-light tracking-[0.08em] text-brand-primary"
+                    >
+                      {activeTab === "featured" ? `查看全部 ${products.length} 款` : "收起"}
+                    </button>
+                  </div>
+                )}
+
                 {/* Copyright */}
                 <div className="mt-auto flex flex-col items-center justify-center pb-4 pt-10">
                   <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
@@ -521,6 +541,18 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                   </NextLink>
                 ))}
               </section>
+
+              {products.length > 3 && (
+                <div className="flex shrink-0 justify-center pt-3">
+                  <button
+                    type="button"
+                    onClick={toggleShowAll}
+                    className="border-b border-brand-primary/30 pb-0.5 text-[12px] font-light tracking-[0.12em] text-brand-primary"
+                  >
+                    {activeTab === "featured" ? `查看全部 ${products.length} 款` : "收起"}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Footer Info */}

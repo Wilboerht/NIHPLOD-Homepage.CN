@@ -58,6 +58,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         inspectionNote: canReadAfterSales ? detail.inspectionNote : null,
         events: detail.events.map((event) => ({
           ...event,
+          reasonText: canReadAfterSales ? event.reasonText : null,
+          metadata: canReadAfterSales ? event.metadata : null,
           createdAt: event.createdAt.toISOString(),
         })),
       },

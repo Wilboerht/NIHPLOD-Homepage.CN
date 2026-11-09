@@ -184,7 +184,8 @@ export async function createSpentApplication(params: {
         }),
       ]);
       if (importedRow) return { kind: "order_imported" };
-      if (orderClaim) return { kind: "order_claimed" };
+      // 不区分订单归属，避免用户通过错误码探测他人订单号是否存在
+      if (orderClaim) return { kind: "duplicate" };
 
       const pendingCount = await tx.spentAdjustmentApplication.count({
         where: { userId, status: "PENDING" },
