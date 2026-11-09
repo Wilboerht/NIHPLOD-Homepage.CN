@@ -701,7 +701,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
             </div>
           </div>
 
-          <footer className="mx-auto mt-6 w-full max-w-4xl border-t border-brand-beige/70 pt-5 text-center">
+          <footer className="mx-auto w-full max-w-4xl border-t border-brand-beige/70 pt-5 text-center">
             <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.55] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </span>
