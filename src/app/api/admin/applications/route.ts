@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
-        { phone: { contains: search } },
+        { phone: { equals: search } },
       ];
     }
 
@@ -149,6 +149,7 @@ export async function GET(request: NextRequest) {
           jobId: jobId ?? null,
           folderId: folderId ?? null,
           hasSearch: Boolean(search),
+          hasPhoneSearch: Boolean(search && /^\d{6,}$/.test(search)),
         },
         page,
         pageSize,
@@ -169,7 +170,7 @@ export async function GET(request: NextRequest) {
         data: {
           items: applications.map(({ resumePath, ...application }) => ({
             ...application,
-            phone: canViewSensitive ? application.phone : maskPhone(application.phone),
+            phone: maskPhone(application.phone),
             hasResume: Boolean(resumePath),
           })),
           canViewSensitive,

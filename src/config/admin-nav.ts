@@ -5,6 +5,7 @@ import {
   Activity,
   Archive,
   BadgeCheck,
+  Bell,
   Briefcase,
   FileCheck,
   FileSearch,
@@ -15,7 +16,9 @@ import {
   MessageSquare,
   MonitorStop,
   Package,
+  PackageCheck,
   ReceiptText,
+  Scale,
   ScanFace,
   ScrollText,
   Shield,
@@ -35,6 +38,7 @@ export type AdminNavCountKey =
   | "accountDeletions"
   | "spentAdjustments"
   | "pointRedemptions"
+  | "redemptionAfterSales"
   | "applications"
   | "approvals";
 
@@ -86,6 +90,12 @@ export const adminNavGroups: NavGroup[] = [
         countKey: "spentAdjustments",
       },
       {
+        title: "对账中心",
+        href: "/admin/reconciliation",
+        icon: Scale,
+        permission: "reconciliation:read",
+      },
+      {
         title: "积分礼品",
         href: "/admin/point-gifts",
         icon: Gift,
@@ -97,6 +107,13 @@ export const adminNavGroups: NavGroup[] = [
           "gifts:write",
         ],
         countKey: "pointRedemptions",
+      },
+      {
+        title: "兑换售后",
+        href: "/admin/redemption-after-sales",
+        icon: PackageCheck,
+        permission: "redemptions:after-sales",
+        countKey: "redemptionAfterSales",
       },
       {
         title: "留言管理",
@@ -172,6 +189,12 @@ export const adminNavGroups: NavGroup[] = [
         href: "/admin/webhook-failures",
         icon: Webhook,
         permission: "webhooks:read",
+      },
+      {
+        title: "事务通知队列",
+        href: "/admin/notification-outbox",
+        icon: Bell,
+        permission: "notifications:read",
       },
     ],
   },

@@ -16,6 +16,7 @@ import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { verifyUserAuth } from "@/lib/auth";
 import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 import { logAuthEvent } from "@/lib/auth-logger";
+import { recordSsoEvent } from "@/lib/sso-audit";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
@@ -124,6 +125,18 @@ export async function GET(request: NextRequest) {
             allDevices: false,
             ip,
             channel: "end_session_rp_scoped",
+          });
+          await recordSsoEvent({
+            event: "logout",
+            userId: user.id,
+            clientId: effectiveClientId,
+            ip,
+            success: true,
+            detail: {
+              channel: "end_session_fast_path",
+              sid: sessionSid ?? null,
+              allSessionsForClient: !sessionSid,
+            },
           });
 
           // 相对路径回跳地址按本站 origin 解析（同源安全）；已注册的绝对地址不受影响

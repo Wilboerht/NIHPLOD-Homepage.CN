@@ -24,14 +24,14 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { purgeUserFromSubsites } from "@/lib/advisor-internal";
 import { quiesceUserSessions } from "@/lib/user-status";
-import { createAuditLog } from "@/lib/audit";
-import { sendAccountDeletedNotification, sendAccountDeletionReminder } from "@/lib/sms";
+import { beginAuditLog, finishAuditLog } from "@/lib/audit";
+import { enqueueNotification, purgeNotificationOutboxForUser } from "@/lib/notification-outbox";
 import { hashIdentifier } from "@/lib/auth-security";
 import { purgeAvatarAssets } from "@/lib/avatar-assets";
 import { deleteSpentProofFile } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 import { DELETION_STATUS } from "@/lib/account-deletion-requests";
-import { lockPointBalance } from "@/lib/points-ledger";
+import { voidPointsForDeletedUser } from "@/lib/points-ledger";
 import { notifyAccountDeletionFailure } from "@/lib/admin-alert";
 import { runAfterResponse } from "@/lib/alert-notify";
 import {
@@ -71,6 +71,15 @@ export interface ExecuteAccountDeletionOptions {
    * 管理端删除路径传 false：由管理员在场/另行告知，不再触达原号码。
    */
   notifyUser?: boolean;
+  /** 注销来源；用于子站状态 webhook，默认 self_service。 */
+  source?: "self_service" | "admin" | "approval";
+  /** 管理端/审批执行时传入当前管理员，cron 不传则记为 SYSTEM。 */
+  auditActor?: {
+    id: string;
+    email?: string | null;
+    name?: string | null;
+    role: string;
+  };
 }
 
 /**
@@ -112,6 +121,8 @@ export async function executeAccountDeletion(
     return "skipped";
   }
 
+  let auditId: string | null = null;
+
   try {
     const request = await prisma.accountDeletionRequest.findUnique({
       where: { id: requestId },
@@ -149,6 +160,24 @@ export async function executeAccountDeletion(
     const originalPhone = user.phone;
     const originalStatus = user.status;
     const placeholderPhone = anonymizedPhone(originalPhone, userId);
+
+    const actor = options.auditActor;
+    auditId = await beginAuditLog({
+      action: "account_deletion_execute",
+      targetType: "user",
+      targetId: userId,
+      userId,
+      detail: { requestId, status: "RUNNING" },
+      actorType: actor ? "ADMIN" : "SYSTEM",
+      actorEmail: actor?.email ?? undefined,
+      actorName: actor?.name ?? undefined,
+      actorRole: actor?.role,
+      authMethod: actor ? "session" : "system",
+      adminId: actor?.id,
+    });
+    if (!auditId) {
+      throw new Error("account_deletion_audit_unavailable");
+    }
 
     // 2. 静默撤销全部会话（不改变 User.status、不发送 deleted webhook）：
     //    若后续子站 purge/匿名化失败，用户保持 ACTIVE，可重新登录；不会向子站误报“已删除”。
@@ -266,38 +295,75 @@ export async function executeAccountDeletion(
           data: { redeemStock: { increment: 1 } },
         });
       }
-      // 全部兑换单清空收货人/手机号/地址快照 PII（履约完成后快照已无留存必要）
-      await tx.pointRedemption.updateMany({
-        where: { userId },
-        data: { recipient: null, phone: null, address: null },
+      // 已注销用户不再继续售后流程；保留状态供审计对账
+      const openAfterSales = await tx.pointRedemption.findMany({
+        where: {
+          userId,
+          status: {
+            in: ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING", "RETURNED"],
+          },
+        },
+        select: {
+          id: true,
+          productId: true,
+          stockDeducted: true,
+          restockApproved: true,
+          stockRestored: true,
+        },
       });
-
-      // 账号注销积分作废：写一条 ADJUST 流水后清零余额。
-      // 保留流水便于财务审计；正余额记为负向作废，负余额（超兑债务）记为正向豁免，
-      // 避免余额长期留在全站积分总额里虚高。账户已 DELETED，后续不可登录使用。
-      // 先锁余额行，与 adjustPoints/退款等积分写入串行化，避免读到旧余额后无条件清零。
-      await lockPointBalance(tx, userId);
-      const pointBalance = await tx.pointBalance.findUnique({
-        where: { userId },
-        select: { available: true, frozen: true },
-      });
-      const available = pointBalance?.available ?? 0;
-      const frozen = pointBalance?.frozen ?? 0;
-      if (available !== 0 || frozen !== 0) {
-        await tx.pointLedger.create({
-          data: {
+      for (const afterSale of openAfterSales) {
+        const claimed = await tx.pointRedemption.updateMany({
+          where: {
+            id: afterSale.id,
             userId,
-            type: "ADJUST",
-            amount: -(available + frozen),
-            reference: `account-deletion:${requestId}`,
-            note: "账号注销，积分余额作废",
+            status: {
+              in: ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING", "RETURNED"],
+            },
+          },
+          data: {
+            status: "AFTER_SALES_CLOSED",
+            afterSalesClosedAt: new Date(),
+            afterSalesReviewNote: "账号注销，售后流程关闭",
           },
         });
-        await tx.pointBalance.updateMany({
-          where: { userId },
-          data: { available: 0, frozen: 0 },
-        });
+        if (claimed.count === 0) continue;
+        // 退货已签收且管理员确认可二次销售时，注销也不能漏回补库存
+        if (
+          afterSale.restockApproved &&
+          afterSale.stockDeducted &&
+          !afterSale.stockRestored &&
+          afterSale.productId
+        ) {
+          const marked = await tx.pointRedemption.updateMany({
+            where: { id: afterSale.id, stockRestored: false },
+            data: { stockRestored: true, stockRestoredAt: new Date() },
+          });
+          if (marked.count > 0) {
+            await tx.product.updateMany({
+              where: { id: afterSale.productId, redeemStock: { not: null } },
+              data: { redeemStock: { increment: 1 } },
+            });
+          }
+        }
       }
+      // 全部兑换单清空收货人/手机号/地址/售后原因与退货信息 PII
+      await tx.pointRedemption.updateMany({
+        where: { userId },
+        data: {
+          recipient: null,
+          phone: null,
+          address: null,
+          afterSalesReason: null,
+          afterSalesImages: [],
+          afterSalesReviewNote: null,
+          inspectionNote: null,
+          returnWaybillNo: null,
+          returnCarrier: null,
+        },
+      });
+
+      await voidPointsForDeletedUser(tx, userId, `account-deletion:${requestId}`);
+      await purgeNotificationOutboxForUser(tx, userId);
 
       // 消费导入行内手机号匿名化：替换为与 User.phone 相同的占位值——
       // 该列语义是"行内手机号回溯"，占位值保持同用户可关联、对他人不可逆，
@@ -352,6 +418,10 @@ export async function executeAccountDeletion(
     });
     if (finalized.count === 0) {
       apiConsole.warn("[AccountDeletion] 完成状态写入失败：租约已丢失", { requestId, userId });
+      await finishAuditLog(auditId, "PARTIAL", {
+        requestId,
+        result: "lease_lost_after_commit",
+      });
       return "skipped";
     }
 
@@ -362,7 +432,7 @@ export async function executeAccountDeletion(
             userId,
             oldStatus: toWebhookStatus(originalStatus),
             newStatus: "deleted",
-            source: "self_service",
+            source: options.source ?? "self_service",
           },
           getStatusChangeWebhookTargets()
         ),
@@ -371,33 +441,41 @@ export async function executeAccountDeletion(
 
     if (options.notifyUser !== false) {
       try {
-        await sendAccountDeletedNotification(originalPhone);
-      } catch (smsError) {
-        // 回执短信失败不阻断（注销已完成）
-        apiConsole.warn("[AccountDeletion] 回执短信发送失败:", smsError);
+        await enqueueNotification({
+          idempotencyKey: `account-deleted:${requestId}:sms`,
+          channel: "SMS",
+          eventType: "account_deleted",
+          templateKey: "account_deleted",
+          userId,
+          recipient: { phone: originalPhone },
+          payload: { deletedAt: new Date().toISOString() },
+          aggregateType: "account_deletion",
+          aggregateId: requestId,
+        });
+      } catch (queueError) {
+        // 入队失败不阻断（注销已完成），由日志/监控兜底
+        apiConsole.warn("[AccountDeletion] 回执短信入队失败:", queueError);
       }
     }
 
-    await createAuditLog({
-      action: "account_deletion_execute",
-      targetType: "user",
-      targetId: userId,
-      userId,
-      detail: {
-        requestId,
-        result: "completed",
-        // OSS 清理失败需人工补删，纳入审计留痕（不含明文手机号/URL 之外的 PII）
-        ...(avatarPurgeFailed ? { avatarPurgeFailed: true } : {}),
-        ...(proofPurgeFailed ? { proofPurgeFailed: true } : {}),
-        // 注销时自动关闭的待审核补录申请数（逐条 reviewNote 保留在申请记录中）
-        pendingSpentAdjustmentsClosed: closedPendingSpentAdjustments,
-      },
+    await finishAuditLog(auditId, "SUCCESS", {
+      requestId,
+      result: "completed",
+      // OSS 清理失败需人工补删，纳入审计留痕（不含明文手机号/URL 之外的 PII）
+      ...(avatarPurgeFailed ? { avatarPurgeFailed: true } : {}),
+      ...(proofPurgeFailed ? { proofPurgeFailed: true } : {}),
+      // 注销时自动关闭的待审核补录申请数（逐条 reviewNote 保留在申请记录中）
+      pendingSpentAdjustmentsClosed: closedPendingSpentAdjustments,
     });
 
     apiConsole.info("[AccountDeletion] 注销执行完成", { requestId, userId });
     return "completed";
   } catch (error) {
     const message = (error instanceof Error ? error.message : String(error)).slice(0, 500);
+
+    if (auditId) {
+      await finishAuditLog(auditId, "FAILURE", { requestId, error: message });
+    }
 
     // 只允许持有当前 lease 的 worker 标记失败：
     // 若另一个 worker 已成功完成（lease 已清空），慢失败不得覆盖 COMPLETED。
@@ -501,7 +579,7 @@ export async function executeDueAccountDeletions(): Promise<{
         lt: new Date(now.getTime() + REMINDER_WINDOW_END_MS),
       },
     },
-    select: { userId: true, scheduledAt: true },
+    select: { id: true, userId: true, scheduledAt: true },
   });
   for (const r of upcoming) {
     try {
@@ -511,10 +589,20 @@ export async function executeDueAccountDeletions(): Promise<{
       });
       // 跳过占位手机号（wx_）与已匿名（deleted_）账号
       if (!owner?.phone || !/^1[3-9]\d{9}$/.test(owner.phone)) continue;
-      await sendAccountDeletionReminder(owner.phone, r.scheduledAt);
+      await enqueueNotification({
+        idempotencyKey: `account-deletion-reminder:${r.id}:${r.scheduledAt.getTime()}:sms`,
+        channel: "SMS",
+        eventType: "account_deletion_reminder",
+        templateKey: "account_deletion_reminder",
+        userId: r.userId,
+        recipient: { phone: owner.phone },
+        payload: { scheduledAt: r.scheduledAt.toISOString() },
+        aggregateType: "account_deletion",
+        aggregateId: r.id,
+      });
       reminded += 1;
     } catch (error) {
-      apiConsole.warn("[AccountDeletion] 到期提醒短信发送失败:", error);
+      apiConsole.warn("[AccountDeletion] 到期提醒短信入队失败:", error);
     }
   }
 

@@ -40,6 +40,14 @@ async function withFileDeleteRetry<T>(
 
 const statusSchema = z.enum(["pending", "reviewed", "interviewed", "rejected", "hired"]);
 
+const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
+  pending: ["reviewed", "interviewed", "rejected", "hired"],
+  reviewed: ["pending", "interviewed", "rejected", "hired"],
+  interviewed: ["reviewed", "rejected", "hired"],
+  rejected: ["pending", "reviewed"],
+  hired: [],
+};
+
 const patchSchema = z
   .object({
     status: statusSchema.optional(),
@@ -151,7 +159,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         success: true,
         data: {
           ...safeApplication,
-          phone: canViewSensitive ? safeApplication.phone : maskPhone(safeApplication.phone),
+          phone: maskPhone(safeApplication.phone),
           hasResume,
           canViewSensitive,
         },
@@ -207,6 +215,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
     const { status, notes, folderId, expectedStatus, expectedUpdatedAt } = parsed.data;
+
+    if (
+      status &&
+      expectedStatus &&
+      !ALLOWED_TRANSITIONS[expectedStatus]?.includes(status)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_TRANSITION",
+            message: `不允许从「${expectedStatus}」变更为「${status}」`,
+          },
+        },
+        { status: 409 }
+      );
+    }
 
     // 验证分类夹是否存在
     if (folderId && folderId !== null) {
@@ -268,7 +293,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const result = await prisma.jobApplication.updateMany({
         where: {
           id,
-          ...(expectedStatus ? { status: expectedStatus } : {}),
+          ...(expectedStatus
+            ? { status: expectedStatus }
+            : status
+              ? { status: { in: [...(ALLOWED_TRANSITIONS[status] ?? [])] } }
+              : {}),
           updatedAt: new Date(expectedUpdatedAt),
         },
         data: updateData,
@@ -291,15 +320,25 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           { status: 404 }
         );
       }
+      const invalidTransition =
+        status &&
+        !expectedStatus &&
+        !(ALLOWED_TRANSITIONS[status] ?? []).includes(current.status);
       const statusConflict = expectedStatus && current.status !== expectedStatus;
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: statusConflict ? "STATUS_CONFLICT" : "STALE_APPLICATION",
-            message: statusConflict
-              ? "该申请状态已被其他管理员更新，请刷新后重试"
-              : "该申请已被其他管理员修改，请刷新后重试",
+            code: invalidTransition
+              ? "INVALID_TRANSITION"
+              : statusConflict
+                ? "STATUS_CONFLICT"
+                : "STALE_APPLICATION",
+            message: invalidTransition
+              ? `不允许从「${current.status}」变更为「${status}」`
+              : statusConflict
+                ? "该申请状态已被其他管理员更新，请刷新后重试"
+                : "该申请已被其他管理员修改，请刷新后重试",
             details: {
               currentStatus: current.status,
               currentUpdatedAt: current.updatedAt.toISOString(),

@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { createAuditLog, createAuditLogTx, type AuditAction, type AuditTargetType } from "./audit";
 import { adjustPoints } from "./points-ledger";
 import { cancelRedemption } from "./point-gifts";
+import { refundAfterSales } from "./redemption-state-machine";
 import { reviewApplication, undoApplication } from "./spent-adjustments";
 import {
   executeImportBatch,
@@ -21,6 +22,7 @@ import {
   adminDeletePayloadSchema,
   pointsAdjustPayloadSchema,
   redemptionCancelPayloadSchema,
+  redemptionRefundPayloadSchema,
   spentImportExecutePayloadSchema,
   spentImportUndoPayloadSchema,
   spentReviewApprovePayloadSchema,
@@ -191,6 +193,50 @@ async function executeRedemptionCancel(
   return { resultMeta: { refundedPoints: result.points ?? 0 } };
 }
 
+async function executeRedemptionRefund(
+  ctx: ApprovalExecutorContext
+): Promise<ApprovalExecutorResult> {
+  const payload = redemptionRefundPayloadSchema.parse(ctx.payload);
+  const redemption = await prisma.pointRedemption.findUnique({
+    where: { id: payload.redemptionId },
+    select: { id: true, userId: true, points: true, status: true, productName: true },
+  });
+  if (!redemption) throw new AdminApprovalError("TARGET_NOT_FOUND", "兑换记录不存在", 404);
+  if (redemption.status !== "RETURNED") {
+    throw new AdminApprovalError("STALE", "兑换记录不在待退款状态，申请已过期", 409);
+  }
+  assertSnapshot(ctx, { status: redemption.status, points: redemption.points });
+
+  const result = await refundAfterSales({
+    redemptionId: payload.redemptionId,
+    adminId: ctx.approver.id,
+    note: payload.note,
+  });
+  if (!result.ok) {
+    const stale = result.code === "ALREADY_PROCESSED" || result.code === "USER_DELETED";
+    throw new AdminApprovalError(
+      stale ? "STALE" : "EXECUTION_FAILED",
+      stale ? "兑换记录已处理或用户已注销" : "售后退款失败",
+      stale ? 409 : 500
+    );
+  }
+
+  await writeExecutorAudit({
+    ctx,
+    action: "point_redemption_refund",
+    targetType: "point_redemption",
+    targetId: redemption.id,
+    targetLabel: redemption.productName,
+    detail: {
+      refundedPoints: result.points,
+      note: payload.note ?? null,
+      userId: redemption.userId,
+    },
+  });
+
+  return { resultMeta: { refundedPoints: result.points } };
+}
+
 async function executeSpentReviewApprove(
   ctx: ApprovalExecutorContext
 ): Promise<ApprovalExecutorResult> {
@@ -217,6 +263,8 @@ async function executeSpentReviewApprove(
     reviewNote: payload.reviewNote,
     // 审批执行人只能是 owner（审批流程已校验），owner 允许自建自审。
     allowSelfReview: true,
+    // owner 审批通过即视为已满足累计额度审批，不再重复触发累计校验。
+    allowCumulativeOverride: true,
   });
   if (!result.ok) {
     throw new AdminApprovalError(
@@ -432,15 +480,15 @@ async function executeSpentImportUndo(
   }
   assertSnapshot(ctx, { status: batch.status });
 
-    const result = await undoImportBatch(payload.batchId);
-    if (!result.ok) {
-      // 余额不足属于可修复的业务状态（补足后可重试），不能映射为不可重试的 STALE。
-      throw new AdminApprovalError(
-        result.code === "ALREADY_UNDONE" ? "STALE" : "EXECUTION_FAILED",
-        result.message,
-        409
-      );
-    }
+  const result = await undoImportBatch(payload.batchId);
+  if (!result.ok) {
+    // 余额不足属于可修复的业务状态（补足后可重试），不能映射为不可重试的 STALE。
+    throw new AdminApprovalError(
+      result.code === "ALREADY_UNDONE" ? "STALE" : "EXECUTION_FAILED",
+      result.message,
+      409
+    );
+  }
 
   await writeExecutorAudit({
     ctx,
@@ -624,7 +672,16 @@ async function executeUserDelete(ctx: ApprovalExecutorContext): Promise<Approval
     },
   });
 
-  const result = await executeAccountDeletion(deletionRequest.id, { notifyUser: false });
+  const result = await executeAccountDeletion(deletionRequest.id, {
+    notifyUser: false,
+    source: "approval",
+    auditActor: {
+      id: ctx.approver.id,
+      email: ctx.approver.email,
+      name: ctx.approver.name,
+      role: ctx.approver.role,
+    },
+  });
   if (result === "skipped") {
     // skipped 可能表示另一 worker 已完成注销，也可能表示申请被撤回。
     // 只有确认用户已 DELETED 才视为幂等成功，否则按失败处理。
@@ -734,6 +791,8 @@ export async function executeApprovalPolicy(
       return executePointsAdjust(ctx);
     case "redemption.cancel":
       return executeRedemptionCancel(ctx);
+    case "redemption.refund":
+      return executeRedemptionRefund(ctx);
     case "spent.review.approve":
       return executeSpentReviewApprove(ctx);
     case "spent.review.undo":

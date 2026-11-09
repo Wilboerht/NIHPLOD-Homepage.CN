@@ -141,6 +141,20 @@ describe("管理端简历列表/详情/更新", () => {
     expect(body.data.items[0].hasResume).toBe(true);
     expect(body.data.items[0].resumePath).toBeUndefined();
     expect(body.data.items[0].notes).toBeUndefined();
+    expect(body.data.items[0].phone).toBe("138****8000");
+  });
+
+  it("手机号搜索使用精确匹配，避免逐位枚举", async () => {
+    const response = await listGET(
+      new NextRequest("http://localhost/api/admin/applications?search=13800138000")
+    );
+
+    expect(response.status).toBe(200);
+    const where = mocks.findMany.mock.calls[0][0].where as {
+      OR: Array<Record<string, unknown>>;
+    };
+    expect(where.OR).toContainEqual({ phone: { equals: "13800138000" } });
+    expect(where.OR).not.toContainEqual({ phone: { contains: "13800138000" } });
   });
 
   it("详情返回 notes 但不返回 resumePath，并写 application_detail_view 审计", async () => {
@@ -153,6 +167,8 @@ describe("管理端简历列表/详情/更新", () => {
     expect(body.data.notes).toBe("内部备注");
     expect(body.data.hasResume).toBe(true);
     expect(body.data.resumePath).toBeUndefined();
+    expect(body.data.phone).toBe("138****8000");
+    expect(body.data.canViewSensitive).toBe(true);
     expect(mocks.createAuditLogStrict).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "application_detail_view",

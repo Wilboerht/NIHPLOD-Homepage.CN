@@ -16,6 +16,7 @@ import {
   getApprovalPolicy,
   isPointsAdjustApprovalRequired,
   isRedemptionCancelApprovalRequired,
+  isRedemptionRefundApprovalRequired,
   isSpentReviewApprovalRequired,
   type ApprovalPolicy,
   type ApprovalPolicyKey,
@@ -132,6 +133,33 @@ async function resolveApprovalTarget(
         targetLabel: `${redemption.productName} · ${userLabel(redemption.user)}`,
         targetSnapshot: { status: redemption.status, points: redemption.points },
         approvalRequired: isRedemptionCancelApprovalRequired(redemption.points),
+      };
+    }
+    case "redemption.refund": {
+      const redemptionId = String(payload.redemptionId);
+      const redemption = await prisma.pointRedemption.findUnique({
+        where: { id: redemptionId },
+        select: {
+          id: true,
+          userId: true,
+          points: true,
+          status: true,
+          productName: true,
+          user: { select: { nickname: true, phone: true } },
+        },
+      });
+      if (!redemption) {
+        throw new AdminApprovalError("TARGET_NOT_FOUND", "兑换记录不存在", 404);
+      }
+      if (redemption.status !== "RETURNED") {
+        throw new AdminApprovalError("TARGET_NOT_REFUNDABLE", "兑换记录不在待退款状态", 409);
+      }
+      return {
+        targetType: "point_redemption",
+        targetId: redemption.id,
+        targetLabel: `${redemption.productName} · ${userLabel(redemption.user)}`,
+        targetSnapshot: { status: redemption.status, points: redemption.points },
+        approvalRequired: isRedemptionRefundApprovalRequired(redemption.points),
       };
     }
     case "spent.review.approve":
@@ -391,7 +419,8 @@ export async function createApprovalRequest(input: CreateApprovalRequestInput) {
   if (!hasAdminPermission(input.admin, "approvals:request")) {
     throw new AdminApprovalError("FORBIDDEN", "无权发起审批申请", 403);
   }
-  if (input.admin.role === "owner") {
+  const ownerRequestablePolicies = new Set(["totp.recovery.issue", "admin.delete"]);
+  if (input.admin.role === "owner" && !ownerRequestablePolicies.has(policy.key)) {
     throw new AdminApprovalError("OWNER_DIRECT_EXECUTION", "owner 可直接执行该操作", 400);
   }
   if (!hasAdminPermission(input.admin, policy.requestPermission)) {

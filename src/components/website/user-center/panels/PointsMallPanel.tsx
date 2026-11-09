@@ -55,18 +55,45 @@ interface GiftItem {
   detail: ProductData; // 详情抽屉数据
 }
 
+type RedemptionStatus =
+  | "PENDING"
+  | "FULFILLED"
+  | "COMPLETED"
+  | "AFTER_SALES_REQUESTED"
+  | "AFTER_SALES_APPROVED"
+  | "AFTER_SALES_REJECTED"
+  | "RETURNING"
+  | "RETURNED"
+  | "REFUNDED"
+  | "AFTER_SALES_CLOSED"
+  | "CANCELLED";
+
 interface RedemptionRecord {
   id: string;
   productName: string;
   priceYuan: number;
   points: number;
-  status: "PENDING" | "FULFILLED" | "CANCELLED";
+  status: RedemptionStatus;
   recipient: string | null;
   phone: string | null;
   address: string | null;
   carrier: string | null;
   waybillNo: string | null;
   fulfilledAt: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  cancelNote?: string | null;
+  afterSalesRequestedAt?: string | null;
+  afterSalesReason?: string | null;
+  afterSalesReviewNote?: string | null;
+  afterSalesApprovedAt?: string | null;
+  afterSalesClosedAt?: string | null;
+  returnWaybillNo?: string | null;
+  returnCarrier?: string | null;
+  returnShippedAt?: string | null;
+  returnReceivedAt?: string | null;
+  refundedPoints?: number;
+  refundedAt?: string | null;
   createdAt: string;
 }
 
@@ -121,21 +148,45 @@ interface AddressItem {
   isDefault: boolean;
 }
 
-const REDEMPTION_STATUS_LABELS: Record<RedemptionRecord["status"], string> = {
-  PENDING: "待履约",
-  FULFILLED: "已履约",
+const REDEMPTION_STATUS_LABELS: Record<RedemptionStatus, string> = {
+  PENDING: "待发货",
+  FULFILLED: "已发货",
+  COMPLETED: "已完成",
+  AFTER_SALES_REQUESTED: "售后待审核",
+  AFTER_SALES_APPROVED: "售后待寄回",
+  AFTER_SALES_REJECTED: "售后已驳回",
+  RETURNING: "退货中",
+  RETURNED: "退货已签收",
+  REFUNDED: "已退款",
+  AFTER_SALES_CLOSED: "售后已关闭",
   CANCELLED: "已取消",
 };
 
-const REDEMPTION_STATUS_ICONS: Record<RedemptionRecord["status"], typeof Clock> = {
+const REDEMPTION_STATUS_ICONS: Record<RedemptionStatus, typeof Clock> = {
   PENDING: Clock,
   FULFILLED: CheckCircle2,
+  COMPLETED: CheckCircle2,
+  AFTER_SALES_REQUESTED: Clock,
+  AFTER_SALES_APPROVED: Clock,
+  AFTER_SALES_REJECTED: XCircle,
+  RETURNING: Clock,
+  RETURNED: CheckCircle2,
+  REFUNDED: CheckCircle2,
+  AFTER_SALES_CLOSED: XCircle,
   CANCELLED: XCircle,
 };
 
-const REDEMPTION_STATUS_STYLES: Record<RedemptionRecord["status"], string> = {
+const REDEMPTION_STATUS_STYLES: Record<RedemptionStatus, string> = {
   PENDING: "bg-amber-50 text-amber-600",
   FULFILLED: "bg-brand-primary/10 text-brand-primary",
+  COMPLETED: "bg-emerald-50 text-emerald-700",
+  AFTER_SALES_REQUESTED: "bg-amber-50 text-amber-600",
+  AFTER_SALES_APPROVED: "bg-amber-50 text-amber-600",
+  AFTER_SALES_REJECTED: "bg-red-50 text-red-600",
+  RETURNING: "bg-brand-primary/10 text-brand-primary",
+  RETURNED: "bg-emerald-50 text-emerald-700",
+  REFUNDED: "bg-emerald-50 text-emerald-700",
+  AFTER_SALES_CLOSED: "bg-stone-100 text-stone-500",
   CANCELLED: "bg-stone-100 text-stone-400",
 };
 
@@ -196,7 +247,8 @@ export function PointsMallPanel() {
   /** 当前打开详情抽屉的礼品（null 表示关闭） */
   const [detailGift, setDetailGift] = useState<GiftItem | null>(null);
   const [redeeming, setRedeeming] = useState(false);
-  // 兑换幂等键：进入确认兑换视图时生成，网络超时/重试复用，避免重复扣分
+  const [afterSalesBusy, setAfterSalesBusy] = useState(false);
+  // 兑换幂等键：在确认兑换视图时生成，网络超时/重试复用，避免重复扣分
   const [redeemRequestId, setRedeemRequestId] = useState<string | null>(null);
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
@@ -218,7 +270,7 @@ export function PointsMallPanel() {
   // 兑换成功面板内提示（自动消失）
   const [redeemSuccess, setRedeemSuccess] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { error: showError } = useToast();
+  const { success, error: showError } = useToast();
 
   const loadGiftsData = useCallback(async () => {
     try {
@@ -370,6 +422,67 @@ export function PointsMallPanel() {
       setTrackingLoading(false);
     }
   }, []);
+
+  const refreshAfterSales = useCallback(
+    async (redemptionId: string) => {
+      await Promise.all([loadRedemptions(), loadPointsData()]);
+      const detail = await apiGet<RedemptionRecord>(
+        `/api/user/points/redemptions/${redemptionId}`
+      ).catch(() => null);
+      if (detail) setSelectedRedemption(detail);
+    },
+    [loadRedemptions, loadPointsData]
+  );
+
+  const confirmReceipt = async (redemption: RedemptionRecord) => {
+    if (!window.confirm("确认已收到商品？确认后订单将完成。")) return;
+    setAfterSalesBusy(true);
+    try {
+      await apiPost(`/api/user/points/redemptions/${redemption.id}/confirm`);
+      success("已确认收货");
+      await refreshAfterSales(redemption.id);
+    } catch (error) {
+      showError(error instanceof ApiError ? error.message : "确认收货失败");
+    } finally {
+      setAfterSalesBusy(false);
+    }
+  };
+
+  const applyAfterSales = async (redemption: RedemptionRecord) => {
+    const reason = window.prompt("请填写售后原因（例如：商品破损、发错货）");
+    if (!reason?.trim()) return;
+    setAfterSalesBusy(true);
+    try {
+      await apiPost(`/api/user/points/redemptions/${redemption.id}/after-sales`, {
+        requestId: createClientRequestId(),
+        reason: reason.trim(),
+      });
+      success("售后申请已提交");
+      await refreshAfterSales(redemption.id);
+    } catch (error) {
+      showError(error instanceof ApiError ? error.message : "售后申请失败");
+    } finally {
+      setAfterSalesBusy(false);
+    }
+  };
+
+  const submitReturnWaybill = async (redemption: RedemptionRecord) => {
+    const waybillNo = window.prompt("请填写退回商品的运单号（顺丰）");
+    if (!waybillNo?.trim()) return;
+    setAfterSalesBusy(true);
+    try {
+      await apiPost(`/api/user/points/redemptions/${redemption.id}/after-sales/return`, {
+        waybillNo: waybillNo.trim(),
+        carrier: "SF",
+      });
+      success("退回运单已提交");
+      await refreshAfterSales(redemption.id);
+    } catch (error) {
+      showError(error instanceof ApiError ? error.message : "提交退回运单失败");
+    } finally {
+      setAfterSalesBusy(false);
+    }
+  };
 
   /** 打开兑换确认视图：加载地址并预选默认地址 */
   const openRedeem = (g: GiftItem) => {
@@ -901,20 +1014,40 @@ export function PointsMallPanel() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-stone-400">发货状态</span>
-                      {selectedRedemption.status === "FULFILLED" ? (
-                        <span className="text-brand-primary">
-                          已发货
-                          {selectedRedemption.fulfilledAt
-                            ? ` · ${formatDateTime(selectedRedemption.fulfilledAt)}`
-                            : ""}
-                        </span>
-                      ) : selectedRedemption.status === "PENDING" ? (
-                        <span className="text-amber-600">待发货</span>
-                      ) : (
-                        <span className="text-stone-400">已取消</span>
-                      )}
+                      <span className="text-stone-400">订单状态</span>
+                      <span className="text-stone-700">
+                        {REDEMPTION_STATUS_LABELS[selectedRedemption.status]}
+                        {selectedRedemption.fulfilledAt &&
+                        selectedRedemption.status !== "PENDING" &&
+                        selectedRedemption.status !== "CANCELLED"
+                          ? ` · ${formatDateTime(selectedRedemption.fulfilledAt)}`
+                          : ""}
+                      </span>
                     </div>
+                    {selectedRedemption.afterSalesReason && (
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="shrink-0 text-stone-400">售后原因</span>
+                        <span className="text-right text-stone-700">
+                          {selectedRedemption.afterSalesReason}
+                        </span>
+                      </div>
+                    )}
+                    {selectedRedemption.afterSalesReviewNote && (
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="shrink-0 text-stone-400">售后进度</span>
+                        <span className="text-right text-stone-700">
+                          {selectedRedemption.afterSalesReviewNote}
+                        </span>
+                      </div>
+                    )}
+                    {selectedRedemption.refundedPoints ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-stone-400">已退积分</span>
+                        <span className="text-emerald-700">
+                          +{selectedRedemption.refundedPoints.toLocaleString()}
+                        </span>
+                      </div>
+                    ) : null}
                     {selectedRedemption.address && (
                       <div className="flex items-start justify-between gap-4">
                         <span className="shrink-0 text-stone-400">收货信息</span>
@@ -927,6 +1060,46 @@ export function PointsMallPanel() {
                             {selectedRedemption.address}
                           </span>
                         </span>
+                      </div>
+                    )}
+
+                    {(selectedRedemption.status === "FULFILLED" ||
+                      selectedRedemption.status === "COMPLETED" ||
+                      selectedRedemption.status === "AFTER_SALES_REJECTED" ||
+                      selectedRedemption.status === "AFTER_SALES_APPROVED") && (
+                      <div className="flex flex-wrap gap-2 border-t border-stone-200/60 pt-4">
+                        {selectedRedemption.status === "FULFILLED" && (
+                          <button
+                            type="button"
+                            disabled={afterSalesBusy}
+                            onClick={() => void confirmReceipt(selectedRedemption)}
+                            className="rounded-full bg-brand-primary px-3 py-1.5 text-xs text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                          >
+                            确认收货
+                          </button>
+                        )}
+                        {(selectedRedemption.status === "FULFILLED" ||
+                          selectedRedemption.status === "COMPLETED" ||
+                          selectedRedemption.status === "AFTER_SALES_REJECTED") && (
+                          <button
+                            type="button"
+                            disabled={afterSalesBusy}
+                            onClick={() => void applyAfterSales(selectedRedemption)}
+                            className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:bg-stone-50 disabled:opacity-50"
+                          >
+                            申请售后
+                          </button>
+                        )}
+                        {selectedRedemption.status === "AFTER_SALES_APPROVED" && (
+                          <button
+                            type="button"
+                            disabled={afterSalesBusy}
+                            onClick={() => void submitReturnWaybill(selectedRedemption)}
+                            className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:bg-stone-50 disabled:opacity-50"
+                          >
+                            填写退回运单
+                          </button>
+                        )}
                       </div>
                     )}
 

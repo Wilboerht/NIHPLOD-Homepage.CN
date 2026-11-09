@@ -6,7 +6,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
-import { createAuditLog } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 
 // 批量操作 Schema
@@ -58,6 +58,27 @@ export async function POST(request: NextRequest) {
     }
 
     let count = 0;
+    let deleteAuditId: string | null = null;
+
+    if (action === "delete") {
+      deleteAuditId = await beginAuditLog({
+        action: "batch_message",
+        targetType: "message",
+        targetId: ids[0],
+        detail: { ids, action, status: "PENDING" },
+        adminId: admin.id,
+        request,
+      });
+      if (!deleteAuditId) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+          },
+          { status: 503 }
+        );
+      }
+    }
 
     if (action === "read") {
       const result = await prisma.contactMessage.updateMany({
@@ -72,10 +93,22 @@ export async function POST(request: NextRequest) {
       });
       count = result.count;
     } else if (action === "delete") {
-      const result = await prisma.contactMessage.deleteMany({
-        where: { id: { in: ids } },
-      });
-      count = result.count;
+      const auditId = deleteAuditId;
+      if (!auditId) throw new Error("AUDIT_UNAVAILABLE");
+      try {
+        const result = await prisma.contactMessage.deleteMany({
+          where: { id: { in: ids } },
+        });
+        count = result.count;
+        await finishAuditLog(auditId, "SUCCESS", { ids, action, count });
+      } catch (error) {
+        await finishAuditLog(auditId, "FAILURE", {
+          ids,
+          action,
+          error: error instanceof Error ? error.message.slice(0, 500) : "UNKNOWN",
+        });
+        throw error;
+      }
     }
 
     const actionText = {
@@ -84,14 +117,16 @@ export async function POST(request: NextRequest) {
       delete: "删除",
     }[action];
 
-    createAuditLog({
-      action: "batch_message",
-      targetType: "message",
-      targetId: ids[0],
-      detail: { ids, action, count },
-      adminId: admin.id,
-      request,
-    }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
+    if (action !== "delete") {
+      createAuditLog({
+        action: "batch_message",
+        targetType: "message",
+        targetId: ids[0],
+        detail: { ids, action, count },
+        adminId: admin.id,
+        request,
+      }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
+    }
 
     revalidateTag("admin-stats", "max");
 

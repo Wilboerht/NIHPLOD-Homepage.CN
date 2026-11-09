@@ -21,6 +21,7 @@ import { processMediaDeletionTasks } from "./media-deletion";
 import { cleanupRateLimitRecords } from "./ratelimit";
 import { grantBirthdayRewards } from "./points-ledger";
 import { expirePendingRedemptions } from "./point-gifts";
+import { autoCompleteRedemptions, closeStaleAfterSales } from "./redemption-state-machine";
 import { checkPointInvariants } from "./points-invariants";
 import { expirePointsCron } from "./points-ledger";
 import { failStaleImportBatches } from "./spent-import";
@@ -36,6 +37,7 @@ import { anchorMissingAuditDays, verifyRecentAuditDays } from "./audit-integrity
 import { archiveAuditDay } from "./audit-archive";
 import { expireAuditExportJobs, processAuditExportJobs } from "./audit-export";
 import { expirePendingApprovals, reconcileStaleApprovedApprovals } from "./admin-approval";
+import { cleanupNotificationOutbox, processNotificationOutbox } from "./notification-outbox";
 import { reapStalePendingAuditLogs } from "./audit";
 import {
   scanAuditAlerts,
@@ -48,6 +50,7 @@ import { acquireCronLock, releaseCronLock, startCronLockHeartbeat } from "./cron
 import {
   notifyAuditIntegrityFailure,
   notifyCronFailure,
+  notifyNotificationOutboxDead,
   notifyPointInvariantIssues,
   scanWebhookFailureQueues,
 } from "./admin-alert";
@@ -55,10 +58,14 @@ import {
   notifyRedemptionAutoCancelled,
   notifySpentOrderConflicts,
   notifyStaleSpentImportBatches,
+  sendAfterSalesAgingAlert,
   sendGiftLowStockAlert,
   sendOpsDailyDigest,
   sendRedemptionExpiryReminders,
 } from "./ops-alert";
+
+export type CronTaskTrigger = "cron" | "manual" | "external";
+export type CronTaskRunStatus = "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "SKIPPED";
 
 interface ScheduledTask {
   name: string;
@@ -68,10 +75,82 @@ interface ScheduledTask {
   isCleanup?: boolean;
   /** 任务内部已发送专用告警，跳过通用「定时任务失败」通知 */
   suppressFailureAlert?: boolean;
+  /** 软超时（毫秒）：用于展示与 stale reaper 判定，不强制 kill handler */
+  timeoutMs?: number;
+}
+
+/**
+ * 稳定 taskKey：展示名可改，历史与外部调度仍按 key 关联。
+ * 新增任务时必须同步补充。
+ */
+const TASK_KEYS: Record<string, string> = {
+  "Cleanup Expired Refresh Tokens": "cleanup-expired-refresh-tokens",
+  "Cleanup Expired Rate Limit Records": "cleanup-expired-rate-limit-records",
+  "Cleanup Old Login Attempts": "cleanup-old-login-attempts",
+  "Cleanup Expired Sms Codes": "cleanup-expired-sms-codes",
+  "Purge Orphan Spent Proofs": "purge-orphan-spent-proofs",
+  "Purge Orphan Avatar Uploads": "purge-orphan-avatar-uploads",
+  "Cleanup Expired OAuth Authorization Codes": "cleanup-expired-oauth-authorization-codes",
+  "Cleanup Expired Admin Step-Up Grants": "cleanup-expired-admin-step-up-grants",
+  "Cleanup Internal API Nonces": "cleanup-internal-api-nonces",
+  "Cleanup Expired Token Blacklist Records": "cleanup-expired-token-blacklist-records",
+  "Cleanup Revoked Sessions and Tokens": "cleanup-revoked-sessions-and-tokens",
+  "Cleanup Revoked User Consents": "cleanup-revoked-user-consents",
+  "Anchor Missing Audit Days": "anchor-missing-audit-days",
+  "Archive Audit Logs": "archive-audit-logs",
+  "Verify Audit Integrity": "verify-audit-integrity",
+  "Reap Stale Pending Audit Logs": "reap-stale-pending-audit-logs",
+  "Process Audit Export Jobs": "process-audit-export-jobs",
+  "Process Audit Retention Jobs": "process-audit-retention-jobs",
+  "Audit Anomaly Scan": "audit-anomaly-scan",
+  "Audit Daily Digest": "audit-daily-digest",
+  "Audit Retention Eligibility Alert": "audit-retention-eligibility-alert",
+  "Retry Failed Backchannel Logout Notifications": "retry-failed-backchannel-logout-notifications",
+  "Retry Failed Webhook Deliveries": "retry-failed-webhook-deliveries",
+  "Grant Birthday Points": "grant-birthday-points",
+  "Cancel Stale Point Redemptions": "cancel-stale-point-redemptions",
+  "Expire Points": "expire-points",
+  "Check Point Invariants": "check-point-invariants",
+  "Fail Stale Spent Import Batches": "fail-stale-spent-import-batches",
+  "Detect Spent Order Conflicts": "detect-spent-order-conflicts",
+  "Execute Account Deletions": "execute-account-deletions",
+  "Anonymize Deleted Admins": "anonymize-deleted-admins",
+  "Ops Daily Digest": "ops-daily-digest",
+  "Gift Low Stock Alert": "gift-low-stock-alert",
+  "Send Redemption Expiry Reminders": "send-redemption-expiry-reminders",
+  "Send Retest Reminders": "send-retest-reminders",
+  "Process Media Deletion Tasks": "process-media-deletion-tasks",
+  "Reconcile Stale Approved Admin Approvals": "reconcile-stale-approved-admin-approvals",
+  "Expire Pending Admin Approvals": "expire-pending-admin-approvals",
+  "Process Notification Outbox": "process-notification-outbox",
+  "Cleanup Notification Outbox": "cleanup-notification-outbox",
+  "Auto Complete Redemptions": "auto-complete-redemptions",
+  "Close Stale After-Sales": "close-stale-after-sales",
+  "After-Sales Aging Alert": "after-sales-aging-alert",
+  "Reap Stale Cron Runs": "reap-stale-cron-runs",
+};
+
+function envPositiveNumber(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+const DEFAULT_TASK_TIMEOUT_MS = envPositiveNumber("CRON_TASK_DEFAULT_TIMEOUT_MS", 10 * 60 * 1000);
+const CRON_RUN_STALE_MS = envPositiveNumber("CRON_RUN_STALE_MS", 15 * 60 * 1000);
+
+function slugifyTaskName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function getCronTaskKey(name: string): string {
+  return TASK_KEYS[name] ?? slugifyTaskName(name);
 }
 
 /** 定时任务运行记录的保留上限（超出后由 runTask 顺带清理） */
-const CRON_RUN_RETENTION = 500;
+const CRON_RUN_RETENTION = 5000;
 
 // 清理类任务连续失败计数：单次失败已在 catch 中 console.error（下周期自愈），
 // 连续失败 >=2 次再打 warn，便于日志监控区分偶发抖动与持续性故障
@@ -593,12 +672,12 @@ const tasks: ScheduledTask[] = [
         if (result.negativeBalances > 0) {
           apiConsole.warn(`[Cron] 存在 ${result.negativeBalances} 个负积分余额账户`);
         }
-        if (result.issues.length > 0 || result.negativeBalances > 0) {
+        if (result.issues.length > 0 || result.deletedUsersWithRemaining > 0) {
           notifyPointInvariantIssues(result);
         }
-        if (result.issues.length > 0 || result.negativeBalances > 0) {
+        if (result.issues.length > 0 || result.deletedUsersWithRemaining > 0) {
           throw new Error(
-            `积分账本对账发现 ${result.issues.length} 个异常、${result.negativeBalances} 个负余额账户`
+            `积分账本对账发现 ${result.issues.length} 个异常、${result.deletedUsersWithRemaining} 个注销后仍有积分的账户`
           );
         }
       } catch (error) {
@@ -791,11 +870,107 @@ const tasks: ScheduledTask[] = [
       }
     },
   },
+  {
+    name: "Process Notification Outbox",
+    cronExpression: "* * * * *",
+    isCleanup: true,
+    handler: async () => {
+      const stats = await processNotificationOutbox({ limit: 10 });
+      if (stats.claimed > 0) {
+        apiConsole.info(
+          `[Cron] 通知 Outbox：claimed=${stats.claimed} sent=${stats.sent} retried=${stats.retried} dead=${stats.dead} skipped=${stats.skipped} failed=${stats.failed}`
+        );
+      }
+      if (stats.dead > 0) {
+        apiConsole.error(`[Cron] 通知 Outbox 新增死信 ${stats.dead} 条，请到管理端处理`);
+        notifyNotificationOutboxDead(stats.dead);
+      }
+    },
+  },
+  {
+    name: "Cleanup Notification Outbox",
+    cronExpression: "20 4 * * *",
+    isCleanup: true,
+    handler: async () => {
+      const count = await cleanupNotificationOutbox();
+      if (count > 0) {
+        apiConsole.info(`[Cron] 清理历史通知 Outbox: ${count} 条`);
+      }
+    },
+  },
+  {
+    name: "Auto Complete Redemptions",
+    cronExpression: "20 3 * * *",
+    isCleanup: true,
+    handler: async () => {
+      const count = await autoCompleteRedemptions();
+      if (count > 0) {
+        apiConsole.info(`[Cron] 自动完成兑换收货: ${count} 条`);
+      }
+    },
+  },
+  {
+    name: "Close Stale After-Sales",
+    cronExpression: "40 3 * * *",
+    isCleanup: true,
+    handler: async () => {
+      const count = await closeStaleAfterSales();
+      if (count > 0) {
+        apiConsole.info(`[Cron] 关闭超时未寄回售后: ${count} 条`);
+      }
+    },
+  },
+  {
+    name: "After-Sales Aging Alert",
+    cronExpression: "30 9 * * *",
+    isCleanup: true,
+    handler: async () => {
+      await sendAfterSalesAgingAlert();
+    },
+  },
+  {
+    name: "Reap Stale Cron Runs",
+    cronExpression: "*/5 * * * *",
+    isCleanup: true,
+    suppressFailureAlert: true,
+    handler: async () => {
+      const count = await reapStaleCronRuns();
+      if (count > 0) {
+        apiConsole.warn(`[Cron] 回收超时/崩溃残留运行记录: ${count} 条`);
+      }
+    },
+  },
 ];
 
+export interface CronTaskInfo {
+  key: string;
+  name: string;
+  cronExpression: string;
+  isCleanup: boolean;
+  timeoutMs: number;
+}
+
+export interface CronRunResult {
+  ok: boolean;
+  status: CronTaskRunStatus;
+  runId?: string;
+  error?: string;
+  durationMs?: number;
+}
+
 /** 任务元信息（供管理端展示，不暴露 handler） */
-export function listCronTasks(): { name: string; cronExpression: string }[] {
-  return tasks.map((t) => ({ name: t.name, cronExpression: t.cronExpression }));
+export function listCronTasks(): CronTaskInfo[] {
+  return tasks.map((t) => ({
+    key: getCronTaskKey(t.name),
+    name: t.name,
+    cronExpression: t.cronExpression,
+    isCleanup: Boolean(t.isCleanup),
+    timeoutMs: t.timeoutMs ?? DEFAULT_TASK_TIMEOUT_MS,
+  }));
+}
+
+function findTask(identifier: string): ScheduledTask | undefined {
+  return tasks.find((t) => t.name === identifier || getCronTaskKey(t.name) === identifier);
 }
 
 let pruneCounter = 0;
@@ -812,84 +987,274 @@ async function pruneCronRuns(): Promise<void> {
       select: { startedAt: true },
     });
     if (cutoff[0]) {
-      await prisma.cronTaskRun.deleteMany({ where: { startedAt: { lt: cutoff[0].startedAt } } });
+      await prisma.cronTaskRun.deleteMany({
+        where: {
+          startedAt: { lt: cutoff[0].startedAt },
+          // 不删除仍在运行的记录，避免 reaper 丢失活动线索
+          OR: [{ status: null }, { status: { not: "RUNNING" } }],
+        },
+      });
     }
   } catch (err) {
     apiConsole.warn("[Cron] 运行记录清理失败:", err);
   }
 }
 
+async function createSkippedRun(
+  task: ScheduledTask,
+  trigger: CronTaskTrigger,
+  adminId: string | undefined,
+  error: string,
+  options?: RunCronTaskOptions
+): Promise<string | undefined> {
+  try {
+    const run = await prisma.cronTaskRun.create({
+      data: {
+        taskKey: getCronTaskKey(task.name),
+        taskName: task.name,
+        trigger,
+        status: "SKIPPED",
+        success: false,
+        error,
+        adminId: adminId ?? null,
+        adminEmail: options?.adminEmail ?? null,
+        adminName: options?.adminName ?? null,
+        startedAt: new Date(),
+        finishedAt: new Date(),
+        timeoutMs: task.timeoutMs ?? DEFAULT_TASK_TIMEOUT_MS,
+        sourceRunId: options?.sourceRunId ?? null,
+        batchId: options?.batchId ?? null,
+      },
+      select: { id: true },
+    });
+    return run.id;
+  } catch (recordError) {
+    apiConsole.warn("[Cron] 跳过记录写入失败:", recordError);
+    return undefined;
+  }
+}
+
+export interface RunCronTaskOptions {
+  sourceRunId?: string;
+  batchId?: string;
+  adminEmail?: string;
+  adminName?: string;
+}
+
 /**
- * 执行指定任务并落运行记录（cron 调度与人工触发共用）
- * handler 内部错误会 rethrow，由此统一记录失败原因。
+ * 执行指定任务并落运行记录（cron 调度、管理端与外部调度器共用）。
+ *
+ * RUNNING 记录在 handler 执行前创建，心跳同时续租 CronTaskLock 与 CronTaskRun；
+ * 进程崩溃后由 reapStaleCronRuns 依据心跳与锁状态回收为 TIMEOUT。
  */
 export async function runCronTask(
-  taskName: string,
-  trigger: "cron" | "manual" | "external",
-  adminId?: string
-): Promise<{ ok: boolean; error?: string }> {
-  const task = tasks.find((t) => t.name === taskName);
-  if (!task) return { ok: false, error: "任务不存在" };
+  taskNameOrKey: string,
+  trigger: CronTaskTrigger,
+  adminId?: string,
+  options?: RunCronTaskOptions
+): Promise<CronRunResult> {
+  const task = findTask(taskNameOrKey);
+  if (!task) return { ok: false, status: "FAILED", error: "任务不存在" };
 
-  const lockOwner = await acquireCronLock(taskName);
-  if (!lockOwner) return { ok: false, error: "任务正在执行中，请稍后重试" };
+  const lockOwner = await acquireCronLock(task.name);
+  if (!lockOwner) {
+    const runId = await createSkippedRun(task, trigger, adminId, "任务正在执行中，已跳过", options);
+    return {
+      ok: false,
+      status: "SKIPPED",
+      runId,
+      error: "任务正在执行中，请稍后重试",
+    };
+  }
 
   const startedAt = new Date();
-  const heartbeat = startCronLockHeartbeat(taskName, lockOwner);
+  const timeoutMs = task.timeoutMs ?? DEFAULT_TASK_TIMEOUT_MS;
+  let runId: string;
+  try {
+    const run = await prisma.cronTaskRun.create({
+      data: {
+        taskKey: getCronTaskKey(task.name),
+        taskName: task.name,
+        trigger,
+        status: "RUNNING",
+        success: null,
+        adminId: adminId ?? null,
+        adminEmail: options?.adminEmail ?? null,
+        adminName: options?.adminName ?? null,
+        startedAt,
+        heartbeatAt: startedAt,
+        lockOwner,
+        timeoutMs,
+        sourceRunId: options?.sourceRunId ?? null,
+        batchId: options?.batchId ?? null,
+      },
+      select: { id: true },
+    });
+    runId = run.id;
+  } catch (error) {
+    await releaseCronLock(task.name, lockOwner);
+    const message = error instanceof Error ? error.message : String(error);
+    apiConsole.error("[Cron] RUNNING 记录写入失败，拒绝无记录执行:", error);
+    return { ok: false, status: "FAILED", error: `运行记录写入失败：${message}` };
+  }
+
+  const lockHeartbeat = startCronLockHeartbeat(task.name, lockOwner);
+  const runHeartbeat = setInterval(() => {
+    void prisma.cronTaskRun
+      .updateMany({
+        where: { id: runId, status: "RUNNING", lockOwner },
+        data: { heartbeatAt: new Date() },
+      })
+      .catch((error) => apiConsole.warn("[Cron] 运行心跳更新失败:", error));
+  }, 60 * 1000);
+  runHeartbeat.unref();
+
+  const finish = async (status: "SUCCESS" | "FAILED", error?: string): Promise<boolean> => {
+    const finishedAt = new Date();
+    const updated = await prisma.cronTaskRun
+      .updateMany({
+        where: { id: runId, status: "RUNNING", lockOwner },
+        data: {
+          status,
+          success: status === "SUCCESS",
+          error: error ? error.slice(0, 2000) : null,
+          finishedAt,
+          heartbeatAt: finishedAt,
+        },
+      })
+      .catch((recordError) => {
+        apiConsole.warn("[Cron] 终态记录更新失败:", recordError);
+        return { count: 0 } as { count: number };
+      });
+    return updated.count > 0;
+  };
+
   try {
     await task.handler();
-    if (heartbeat.hasLostLock()) throw new Error("任务执行期间锁已丢失，请核查执行结果");
-    await prisma.cronTaskRun
-      .create({
-        data: {
-          taskName,
-          trigger,
-          success: true,
-          adminId: adminId ?? null,
-          startedAt,
-          finishedAt: new Date(),
-        },
-      })
-      .catch((err) => apiConsole.warn("[Cron] 运行记录写入失败:", err));
-    await pruneCronRuns();
-    return { ok: true };
+    if (lockHeartbeat.hasLostLock()) throw new Error("任务执行期间锁已丢失，请核查执行结果");
+    const finalized = await finish("SUCCESS");
+    if (!finalized) {
+      return {
+        ok: false,
+        status: "TIMEOUT",
+        runId,
+        error: "运行已被回收，结果未覆盖",
+        durationMs: Date.now() - startedAt.getTime(),
+      };
+    }
+    return {
+      ok: true,
+      status: "SUCCESS",
+      runId,
+      durationMs: Date.now() - startedAt.getTime(),
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await prisma.cronTaskRun
-      .create({
-        data: {
-          taskName,
-          trigger,
-          success: false,
-          error: message.slice(0, 2000),
-          adminId: adminId ?? null,
-          startedAt,
-          finishedAt: new Date(),
-        },
-      })
-      .catch((err) => apiConsole.warn("[Cron] 运行记录写入失败:", err));
-    if (!task.suppressFailureAlert) {
-      notifyCronFailure(taskName, trigger, message);
+    const finalized = await finish("FAILED", message);
+    if (finalized && !task.suppressFailureAlert) {
+      notifyCronFailure(task.name, trigger, message, "FAILED");
     }
-    return { ok: false, error: message };
+    return {
+      ok: false,
+      status: finalized ? "FAILED" : "TIMEOUT",
+      runId,
+      error: message,
+      durationMs: Date.now() - startedAt.getTime(),
+    };
   } finally {
-    await heartbeat.stop();
-    await releaseCronLock(taskName, lockOwner);
+    clearInterval(runHeartbeat);
+    await lockHeartbeat.stop();
+    await releaseCronLock(task.name, lockOwner);
+    await pruneCronRuns();
   }
+}
+
+/**
+ * 回收心跳超时且锁已失效的 RUNNING 记录。
+ * 不强制 kill 仍在执行的 handler；仅处理崩溃/卡死后的残留状态。
+ */
+export async function reapStaleCronRuns(now = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - CRON_RUN_STALE_MS);
+  const stale = await prisma.cronTaskRun.findMany({
+    where: {
+      status: "RUNNING",
+      OR: [{ heartbeatAt: { lt: cutoff } }, { heartbeatAt: null, startedAt: { lt: cutoff } }],
+    },
+    orderBy: { startedAt: "asc" },
+    take: 200,
+    select: {
+      id: true,
+      taskKey: true,
+      taskName: true,
+      trigger: true,
+      lockOwner: true,
+    },
+  });
+
+  let reaped = 0;
+  for (const run of stale) {
+    const lock = await prisma.cronTaskLock.findUnique({
+      where: { taskName: run.taskName },
+      select: { lockedUntil: true, lockedBy: true },
+    });
+    // 锁仍有效且属于同一次运行：说明 handler 可能仍在工作，不回收
+    if (lock && lock.lockedUntil > now && (!run.lockOwner || lock.lockedBy === run.lockOwner)) {
+      continue;
+    }
+
+    const message = "执行超时或进程中断，任务已回收";
+    const updated = await prisma.cronTaskRun.updateMany({
+      where: { id: run.id, status: "RUNNING" },
+      data: {
+        status: "TIMEOUT",
+        success: false,
+        error: message,
+        finishedAt: now,
+        heartbeatAt: now,
+      },
+    });
+    if (updated.count > 0) {
+      reaped += 1;
+      const task = findTask(run.taskKey ?? run.taskName);
+      if (!task?.suppressFailureAlert) {
+        notifyCronFailure(
+          run.taskName,
+          (run.trigger as CronTaskTrigger) || "cron",
+          message,
+          "TIMEOUT"
+        );
+      }
+    }
+  }
+  return reaped;
 }
 
 /**
  * 依次执行全部清理类任务（供外部调度器端点 /api/cron/run 调用）
  * 与进程内 cron / 管理端手动触发共用 runCronTask，运行记录同样落库 CronTaskRun
  */
-export async function runCleanupCronTasks(
-  trigger: "cron" | "manual" | "external" = "external"
-): Promise<{ name: string; ok: boolean; error?: string }[]> {
-  const results: { name: string; ok: boolean; error?: string }[] = [];
+export async function runCleanupCronTasks(trigger: CronTaskTrigger = "external"): Promise<
+  {
+    name: string;
+    key: string;
+    ok: boolean;
+    status: CronTaskRunStatus;
+    runId?: string;
+    error?: string;
+  }[]
+> {
+  const results: {
+    name: string;
+    key: string;
+    ok: boolean;
+    status: CronTaskRunStatus;
+    runId?: string;
+    error?: string;
+  }[] = [];
   for (const task of tasks) {
     if (!task.isCleanup) continue;
     const result = await runCronTask(task.name, trigger);
-    results.push({ name: task.name, ...result });
+    results.push({ name: task.name, key: getCronTaskKey(task.name), ...result });
   }
   return results;
 }

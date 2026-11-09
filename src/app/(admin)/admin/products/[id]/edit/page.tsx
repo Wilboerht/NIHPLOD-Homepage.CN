@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -54,7 +54,12 @@ interface ProductData {
 function EditProductContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+  const returnToParam = searchParams.get("returnTo") ?? "";
+  const backHref = returnToParam.startsWith("/admin/products")
+    ? returnToParam
+    : "/admin/products";
   const [product, setProduct] = useState<ProductData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,7 +145,7 @@ function EditProductContent() {
     <div className="flex flex-col gap-5">
       <div className="flex items-start gap-1 sm:gap-2">
         <IconButton
-          href="/admin/products"
+          href={backHref}
           label="返回产品列表"
           className="-ml-2 -mt-2 shrink-0 sm:-mt-1"
         >

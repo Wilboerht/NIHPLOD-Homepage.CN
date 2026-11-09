@@ -32,6 +32,22 @@ const updateSchema = z.object({
     .max(999999)
     .nullable()
     .optional(),
+  // null = 不限购；不传则保持不变
+  redeemLimitPerUser: z
+    .number()
+    .int("限购数量必须为整数")
+    .min(1, "限购数量至少为 1")
+    .max(9999)
+    .nullable()
+    .optional(),
+  // null + 限购数量 = 终身限购；不传则保持不变
+  redeemLimitWindowDays: z
+    .number()
+    .int("限购周期必须为整数")
+    .min(1, "限购周期至少为 1 天")
+    .max(3650)
+    .nullable()
+    .optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -90,6 +106,8 @@ export async function GET(request: NextRequest) {
           published: true,
           pointRedeemable: true,
           redeemStock: true,
+          redeemLimitPerUser: true,
+          redeemLimitWindowDays: true,
           category: { select: { name: true } },
         },
       }),
@@ -106,6 +124,8 @@ export async function GET(request: NextRequest) {
           published: p.published,
           pointRedeemable: p.pointRedeemable,
           redeemStock: p.redeemStock,
+          redeemLimitPerUser: p.redeemLimitPerUser,
+          redeemLimitWindowDays: p.redeemLimitWindowDays,
           categoryName: p.category.name,
         })),
         pagination: {
@@ -163,11 +183,35 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const { productId, pointRedeemable, redeemStock } = parsed.data;
+    const {
+      productId,
+      pointRedeemable,
+      redeemStock,
+      redeemLimitPerUser,
+      redeemLimitWindowDays,
+    } = parsed.data;
+
+    if (redeemLimitPerUser === null && redeemLimitWindowDays !== undefined && redeemLimitWindowDays !== null) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "INVALID_PARAMS", message: "不限购时不能设置统计周期" },
+        },
+        { status: 400 }
+      );
+    }
 
     const existing = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true, name: true, published: true, pointRedeemable: true },
+      select: {
+        id: true,
+        name: true,
+        published: true,
+        pointRedeemable: true,
+        redeemStock: true,
+        redeemLimitPerUser: true,
+        redeemLimitWindowDays: true,
+      },
     });
     if (!existing) {
       return NextResponse.json(
@@ -187,8 +231,16 @@ export async function PATCH(request: NextRequest) {
 
     const auditDetail = {
       productName: existing.name,
+      before: {
+        pointRedeemable: existing.pointRedeemable,
+        redeemStock: existing.redeemStock,
+        redeemLimitPerUser: existing.redeemLimitPerUser,
+        redeemLimitWindowDays: existing.redeemLimitWindowDays,
+      },
       ...(pointRedeemable !== undefined ? { pointRedeemable } : {}),
       ...(redeemStock !== undefined ? { redeemStock } : {}),
+      ...(redeemLimitPerUser !== undefined ? { redeemLimitPerUser } : {}),
+      ...(redeemLimitWindowDays !== undefined ? { redeemLimitWindowDays } : {}),
     };
     const auditId = await beginAuditLog({
       action: "point_gift_update",
@@ -214,8 +266,17 @@ export async function PATCH(request: NextRequest) {
         data: {
           ...(pointRedeemable !== undefined ? { pointRedeemable } : {}),
           ...(redeemStock !== undefined ? { redeemStock } : {}),
+          ...(redeemLimitPerUser !== undefined ? { redeemLimitPerUser } : {}),
+          ...(redeemLimitWindowDays !== undefined ? { redeemLimitWindowDays } : {}),
         },
-        select: { id: true, name: true, pointRedeemable: true, redeemStock: true },
+        select: {
+          id: true,
+          name: true,
+          pointRedeemable: true,
+          redeemStock: true,
+          redeemLimitPerUser: true,
+          redeemLimitWindowDays: true,
+        },
       })
       .catch(async (error) => {
         await finishAuditLog(auditId, "FAILURE", auditDetail);

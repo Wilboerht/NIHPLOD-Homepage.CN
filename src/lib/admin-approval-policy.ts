@@ -4,6 +4,7 @@ import type { AdminPermission } from "./admin-permissions";
 export const APPROVAL_POLICY_KEYS = [
   "points.adjust",
   "redemption.cancel",
+  "redemption.refund",
   "spent.review.approve",
   "spent.review.undo",
   "spent.import.execute",
@@ -36,7 +37,14 @@ export interface ApprovalPolicy {
 export const APPROVAL_THRESHOLDS = {
   pointsAdjust: 1000,
   redemptionCancel: 1000,
+  redemptionRefund: 10_000,
   spentReviewApprove: 5000,
+} as const;
+
+export const SPENT_REVIEW_CUMULATIVE_LIMITS = {
+  userDaily: 10_000,
+  userWeekly: 30_000,
+  reviewerDaily: 20_000,
 } as const;
 
 export const pointsAdjustPayloadSchema = z.object({
@@ -52,6 +60,11 @@ export const pointsAdjustPayloadSchema = z.object({
 export const redemptionCancelPayloadSchema = z.object({
   redemptionId: z.string().cuid(),
   note: z.string().trim().max(200, "取消原因过长").optional(),
+});
+
+export const redemptionRefundPayloadSchema = z.object({
+  redemptionId: z.string().cuid(),
+  note: z.string().trim().max(200, "退款备注过长").optional(),
 });
 
 export const spentReviewApprovePayloadSchema = z.object({
@@ -116,6 +129,18 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     actionPermission: "redemptions:cancel",
     payloadSchema: redemptionCancelPayloadSchema,
     summary: "非 owner 取消兑换且退分达到 1000 分时需要 owner 审批",
+  },
+  "redemption.refund": {
+    key: "redemption.refund",
+    label: "兑换售后退分",
+    action: "refund_point_redemption",
+    targetType: "point_redemption",
+    executionMode: "AUTO",
+    requestPermission: "redemptions:after-sales",
+    actionPermission: "redemptions:cancel",
+    payloadSchema: redemptionRefundPayloadSchema,
+    summary: "非 owner 售后退分达到 10,000 分时需 owner 审批",
+    hidden: true,
   },
   "spent.review.approve": {
     key: "spent.review.approve",
@@ -229,6 +254,10 @@ export function isPointsAdjustApprovalRequired(amount: number): boolean {
 
 export function isRedemptionCancelApprovalRequired(points: number): boolean {
   return points >= APPROVAL_THRESHOLDS.redemptionCancel;
+}
+
+export function isRedemptionRefundApprovalRequired(points: number): boolean {
+  return points >= APPROVAL_THRESHOLDS.redemptionRefund;
 }
 
 export function isSpentReviewApprovalRequired(

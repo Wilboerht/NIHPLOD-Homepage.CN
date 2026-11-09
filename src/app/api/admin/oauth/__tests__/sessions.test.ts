@@ -22,6 +22,7 @@ const {
   mockCheckAdminRateLimit,
   mockValidateCSRFToken,
   mockRevokeRefreshToken,
+  mockRevokeOAuthRefreshTokensForUser,
   mockBlacklistUserTokens,
   mockSendBackchannelLogout,
   mockEnqueueBackchannelLogoutForActiveSessions,
@@ -41,6 +42,7 @@ const {
     mockCheckAdminRateLimit: vi.fn(),
     mockValidateCSRFToken: vi.fn(),
     mockRevokeRefreshToken: vi.fn(),
+    mockRevokeOAuthRefreshTokensForUser: vi.fn(),
     mockBlacklistUserTokens: vi.fn(),
     mockSendBackchannelLogout: vi.fn(),
     mockEnqueueBackchannelLogoutForActiveSessions: vi.fn(),
@@ -102,6 +104,8 @@ vi.mock("@/lib/logger", () => ({
 
 vi.mock("@/lib/auth-security", () => ({
   revokeRefreshToken: (...args: unknown[]) => mockRevokeRefreshToken(...args),
+  revokeOAuthRefreshTokensForUser: (...args: unknown[]) =>
+    mockRevokeOAuthRefreshTokensForUser(...args),
 }));
 
 vi.mock("@/lib/token-blacklist", () => ({
@@ -160,6 +164,7 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
     mockCheckAdminRateLimit.mockResolvedValue(null);
     mockValidateCSRFToken.mockReturnValue(true);
     mockRevokeRefreshToken.mockResolvedValue(undefined);
+    mockRevokeOAuthRefreshTokensForUser.mockResolvedValue(undefined);
     mockBlacklistUserTokens.mockResolvedValue(undefined);
     mockSendBackchannelLogout.mockResolvedValue(undefined);
     mockRecordSsoEvent.mockResolvedValue(undefined);
@@ -417,18 +422,17 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
         data: { revokedAt: expect.any(Date) },
       });
       // 同步撤销该 user+client 的 refresh token
-      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      expect(mockRevokeOAuthRefreshTokensForUser).toHaveBeenCalledWith(
         "user-1",
-        undefined,
         "client-abc",
         "admin_revoke"
       );
       // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
       // access token 即时失效由 sid 会话校验承担
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      // Backchannel Logout 通知，sid 取撤销前查出的最新活跃会话
+      // 该 client 下全部会话已撤销，使用 sub-only 通知
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
-        sids: { "client-abc": "sid-1" },
+        omitSid: true,
       });
     });
 
@@ -468,16 +472,14 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
         },
         data: { revokedAt: expect.any(Date) },
       });
-      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      expect(mockRevokeOAuthRefreshTokensForUser).toHaveBeenCalledWith(
         "user-1",
-        undefined,
         "client-abc",
         "admin_revoke"
       );
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      // sid 取撤销前查出的最新活跃会话
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
-        sids: { "client-abc": "sid-1" },
+        omitSid: true,
       });
     });
   });

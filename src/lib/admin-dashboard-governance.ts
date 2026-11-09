@@ -57,6 +57,7 @@ const MANUAL_FUND_ACTIONS = [
   "import_spent_records",
   "undo_spent_import",
   "point_redemption_cancel",
+  "point_redemption_refund",
   "point_gift_create",
   "point_gift_update",
   "update_vip_benefit",
@@ -179,6 +180,7 @@ function actionLabel(row: AuditRow): string {
   if (row.action === "oauth_session_terminate") return "终止 SSO 会话";
   if (row.action === "user_points_adjust") return "人工调整积分";
   if (row.action === "point_redemption_cancel") return "取消兑换并退分";
+  if (row.action === "point_redemption_refund") return "兑换售后退分";
   if (row.action === "approve_spent_adjustment") return "通过消费补录";
   if (row.action === "reject_spent_adjustment") return "驳回消费补录";
   if (row.action === "undo_spent_adjustment") return "撤销消费补录";
@@ -229,6 +231,7 @@ function amountText(row: AuditRow): string | null {
     case "points_internal_sync":
       return yuan(detail.spentDelta ?? detail.appliedDelta);
     case "point_redemption_cancel":
+    case "point_redemption_refund":
     case "point_redemption_auto_cancel":
       return signedPoints(detail.refundedPoints);
     case "approve_spent_adjustment":
@@ -245,7 +248,13 @@ function amountText(row: AuditRow): string | null {
 function eventKind(action: string): MonitorEventView["kind"] {
   if (AUTH_FAILURE_ACTIONS.includes(action)) return "auth";
   if (action.startsWith("user_")) return "user";
-  if (action.startsWith("points_") || action === "point_redemption_cancel") return "funds";
+  if (
+    action.startsWith("points_") ||
+    action === "point_redemption_cancel" ||
+    action === "point_redemption_refund"
+  ) {
+    return "funds";
+  }
   if (action.includes("spent")) return "spent";
   if (action.includes("gift") || action.includes("vip")) return "config";
   return "admin";

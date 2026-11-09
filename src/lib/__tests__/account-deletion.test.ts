@@ -51,8 +51,11 @@ const mockRunAfterResponse = vi.fn((task: () => Promise<void>) => {
   void task();
 });
 const mockCreateAuditLog = vi.fn();
+const mockBeginAuditLog = vi.fn();
+const mockFinishAuditLog = vi.fn();
 const mockSendReceipt = vi.fn();
 const mockSendReminder = vi.fn();
+const mockEnqueueNotification = vi.fn();
 const mockError = vi.fn();
 const mockWarn = vi.fn();
 const mockInfo = vi.fn();
@@ -113,11 +116,18 @@ vi.mock("@/lib/alert-notify", () => ({
 
 vi.mock("@/lib/audit", () => ({
   createAuditLog: (...args: unknown[]) => mockCreateAuditLog(...args),
+  beginAuditLog: (...args: unknown[]) => mockBeginAuditLog(...args),
+  finishAuditLog: (...args: unknown[]) => mockFinishAuditLog(...args),
 }));
 
 vi.mock("@/lib/sms", () => ({
   sendAccountDeletedNotification: (...args: unknown[]) => mockSendReceipt(...args),
   sendAccountDeletionReminder: (...args: unknown[]) => mockSendReminder(...args),
+}));
+
+vi.mock("@/lib/notification-outbox", () => ({
+  enqueueNotification: (...args: unknown[]) => mockEnqueueNotification(...args),
+  purgeNotificationOutboxForUser: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/auth-security", () => ({
@@ -219,6 +229,9 @@ describe("executeAccountDeletion", () => {
     mockTxSuccess();
     mockRequestUpdate.mockResolvedValue({ attempts: 1 });
     mockCreateAuditLog.mockResolvedValue(true);
+    mockBeginAuditLog.mockResolvedValue("audit-1");
+    mockFinishAuditLog.mockResolvedValue(true);
+    mockEnqueueNotification.mockResolvedValue("outbox-1");
     mockDispatchStatusWebhook.mockResolvedValue(undefined);
   });
 
@@ -246,6 +259,24 @@ describe("executeAccountDeletion", () => {
         leaseToken: expect.any(String),
       })
     );
+  });
+
+  it("审计不可用时拒绝执行注销", async () => {
+    mockBeginAuditLog.mockResolvedValueOnce(null);
+
+    const result = await executeAccountDeletion("req-1");
+
+    expect(result).toBe("failed");
+    expect(mockQuiesce).not.toHaveBeenCalled();
+    expect(mockPurgeUserFromSubsites).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "req-1", status: "RUNNING" }),
+      data: expect.objectContaining({
+        status: "FAILED",
+        lastError: "account_deletion_audit_unavailable",
+      }),
+    });
   });
 
   it("成功路径：会话撤销 → 子站 purge → 事务匿名化 → COMPLETED + 回执短信 + 审计", async () => {
@@ -298,7 +329,17 @@ describe("executeAccountDeletion", () => {
     // 本用例无待履约兑换：仅执行全量 PII 脱敏，不写作废流水
     expect(mockTxPointRedemptionUpdateMany).toHaveBeenCalledWith({
       where: { userId: "user-1" },
-      data: { recipient: null, phone: null, address: null },
+      data: {
+        recipient: null,
+        phone: null,
+        address: null,
+        afterSalesReason: null,
+        afterSalesImages: [],
+        afterSalesReviewNote: null,
+        inspectionNote: null,
+        returnWaybillNo: null,
+        returnCarrier: null,
+      },
     });
     expect(mockTxPointLedgerCreate).not.toHaveBeenCalled();
 
@@ -327,16 +368,24 @@ describe("executeAccountDeletion", () => {
       where: expect.objectContaining({ id: "req-1", status: "RUNNING" }),
       data: expect.objectContaining({ status: "COMPLETED" }),
     });
-    expect(mockSendReceipt).toHaveBeenCalledWith("13800138000");
-    expect(mockCreateAuditLog).toHaveBeenCalledWith(
+    expect(mockEnqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "account_deleted",
+        recipient: { phone: "13800138000" },
+      })
+    );
+    expect(mockBeginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "account_deletion_execute",
         targetType: "user",
         targetId: "user-1",
       })
     );
-    const auditDetail = mockCreateAuditLog.mock.calls[0][0].detail;
-    expect(auditDetail.pendingSpentAdjustmentsClosed).toBe(2);
+    const auditCall = mockFinishAuditLog.mock.calls.find(
+      (call) => call[1] === "SUCCESS" && call[2]?.pendingSpentAdjustmentsClosed === 2
+    );
+    expect(auditCall).toBeDefined();
+    const auditDetail = auditCall?.[2];
     expect(JSON.stringify(auditDetail)).not.toContain("13800138000");
 
     expect(mockDispatchStatusWebhook).toHaveBeenCalledWith(
@@ -438,10 +487,10 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    const auditCall = mockCreateAuditLog.mock.calls.find(
-      (call) => call[0]?.action === "account_deletion_execute"
+    const auditCall = mockFinishAuditLog.mock.calls.find(
+      (call) => call[1] === "SUCCESS" && call[2]?.proofPurgeFailed === true
     );
-    expect(auditCall?.[0]?.detail?.proofPurgeFailed).toBe(true);
+    expect(auditCall).toBeDefined();
   });
 
   it("M4：头像为完整 URL 时原样交给头像生命周期清理", async () => {
@@ -462,8 +511,10 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1");
 
     expect(result).toBe("completed");
-    const auditDetail = mockCreateAuditLog.mock.calls[0][0].detail;
-    expect(auditDetail.avatarPurgeFailed).toBe(true);
+    const auditCall = mockFinishAuditLog.mock.calls.find(
+      (call) => call[1] === "SUCCESS" && call[2]?.avatarPurgeFailed === true
+    );
+    expect(auditCall).toBeDefined();
   });
 
   it("无头像时跳过 OSS 清理", async () => {
@@ -475,7 +526,7 @@ describe("executeAccountDeletion", () => {
     const result = await executeAccountDeletion("req-1", { notifyUser: false });
 
     expect(result).toBe("completed");
-    expect(mockSendReceipt).not.toHaveBeenCalled();
+    expect(mockEnqueueNotification).not.toHaveBeenCalled();
   });
 
   it("子站 purge 失败：置 FAILED + lastError（含目标名），匿名化事务未执行，待下次重试", async () => {
@@ -498,7 +549,14 @@ describe("executeAccountDeletion", () => {
         lastError: expect.stringContaining("subsite_purge_failed:advisor"),
       }),
     });
-    expect(mockSendReceipt).not.toHaveBeenCalled();
+    expect(mockEnqueueNotification).not.toHaveBeenCalled();
+    expect(mockFinishAuditLog).toHaveBeenCalledWith(
+      "audit-1",
+      "FAILURE",
+      expect.objectContaining({
+        error: expect.stringContaining("subsite_purge_failed:advisor"),
+      })
+    );
   });
 
   it("子站 purge 全部成功（含未配置目标被跳过后返回 ok）：注销继续执行", async () => {
@@ -513,7 +571,7 @@ describe("executeAccountDeletion", () => {
   });
 
   it("回执短信异常不阻断：申请仍置 COMPLETED（fail-soft）", async () => {
-    mockSendReceipt.mockRejectedValue(new Error("sms gateway down"));
+    mockEnqueueNotification.mockRejectedValue(new Error("sms gateway down"));
 
     const result = await executeAccountDeletion("req-1");
 
@@ -584,7 +642,13 @@ describe("executeDueAccountDeletions", () => {
     const result = await executeDueAccountDeletions();
 
     expect(result.reminded).toBe(1);
-    expect(mockSendReminder).toHaveBeenCalledWith("13800138000", scheduledAt);
+    expect(mockEnqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "account_deletion_reminder",
+        recipient: { phone: "13800138000" },
+        payload: { scheduledAt: scheduledAt.toISOString() },
+      })
+    );
   });
 
   it("提醒短信对占位手机号（wx_）跳过", async () => {
@@ -596,7 +660,7 @@ describe("executeDueAccountDeletions", () => {
     const result = await executeDueAccountDeletions();
 
     expect(result.reminded).toBe(0);
-    expect(mockSendReminder).not.toHaveBeenCalled();
+    expect(mockEnqueueNotification).not.toHaveBeenCalled();
   });
 
   it("提醒短信发送失败不影响整体结果（fail-soft）", async () => {
@@ -604,7 +668,7 @@ describe("executeDueAccountDeletions", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ userId: "user-1", scheduledAt: new Date() }]);
     mockUserFindUnique.mockResolvedValue({ phone: "13800138000" });
-    mockSendReminder.mockRejectedValue(new Error("sms down"));
+    mockEnqueueNotification.mockRejectedValue(new Error("sms down"));
 
     const result = await executeDueAccountDeletions();
 

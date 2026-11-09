@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const categories = await prisma.category.findMany({
-      orderBy: { order: "asc" },
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }],
       include: {
         _count: {
           select: { products: true },

@@ -12,11 +12,10 @@ import {
   releaseSpentOrderClaim,
   SpentOrderConflictError,
 } from "@/lib/spent-order";
-import { sendSpentReviewNotification } from "@/lib/sms";
-import { sendSpentAdjustmentReviewMessage } from "@/lib/wechat-template";
-import { notifyPointsSpentReview } from "@/lib/miniprogram-notify";
-import { after } from "next/server";
+import { enqueueNotification } from "@/lib/notification-outbox";
 import { SPENT_CHANNEL_LABELS, SPENT_STATUS_LABELS } from "@/lib/spent-adjustment-meta";
+import { SPENT_REVIEW_CUMULATIVE_LIMITS } from "@/lib/admin-approval-policy";
+import { getUtc8DayStart, getUtc8WeekStartMonday } from "@/lib/timezone";
 import type { SpentAdjustmentStatus } from "@/generated/prisma/client";
 
 // 供服务端路由引用的业务常量（定义见 spent-adjustment-meta，客户端安全）
@@ -49,6 +48,15 @@ function reviewReference(applicationId: string): string {
   return `manual:${applicationId}:${Date.now()}`;
 }
 
+class CumulativeApprovalRequiredError extends Error {
+  readonly code = "CUMULATIVE_APPROVAL_REQUIRED";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "CumulativeApprovalRequiredError";
+  }
+}
+
 /**
  * 审核消费补录申请（管理员）
  *
@@ -63,8 +71,18 @@ export async function reviewApplication(params: {
   reviewNote?: string;
   /** 仅 owner 可对自己代客提交的申请直接审核（四眼原则豁免） */
   allowSelfReview?: boolean;
+  /** owner 审批执行器已通过审批，不再重复累计校验 */
+  allowCumulativeOverride?: boolean;
 }): Promise<ReviewResult> {
-  const { applicationId, decision, adminId, reviewAmount, reviewNote, allowSelfReview } = params;
+  const {
+    applicationId,
+    decision,
+    adminId,
+    reviewAmount,
+    reviewNote,
+    allowSelfReview,
+    allowCumulativeOverride,
+  } = params;
   const approved = decision === "approve";
   const now = new Date();
 
@@ -137,6 +155,51 @@ export async function reviewApplication(params: {
 
   try {
     const claimed = await prisma.$transaction(async (tx) => {
+      if (
+        approved &&
+        !allowCumulativeOverride &&
+        typeof tx.$executeRaw === "function" &&
+        typeof tx.spentAdjustmentApplication.aggregate === "function"
+      ) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`spent-review-user:${application.userId}`}))`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`spent-review-reviewer:${adminId}`}))`;
+
+        const dayStart = getUtc8DayStart(now);
+        const weekStart = getUtc8WeekStartMonday(now);
+        const amount = reviewAmount ?? 0;
+        const [userDay, userWeek, reviewerDay] = await Promise.all([
+          tx.spentAdjustmentApplication.aggregate({
+            where: { userId: application.userId, status: "APPROVED", reviewedAt: { gte: dayStart } },
+            _sum: { reviewAmount: true },
+          }),
+          tx.spentAdjustmentApplication.aggregate({
+            where: {
+              userId: application.userId,
+              status: "APPROVED",
+              reviewedAt: { gte: weekStart },
+            },
+            _sum: { reviewAmount: true },
+          }),
+          tx.spentAdjustmentApplication.aggregate({
+            where: { reviewedById: adminId, status: "APPROVED", reviewedAt: { gte: dayStart } },
+            _sum: { reviewAmount: true },
+          }),
+        ]);
+
+        if (
+          (userDay._sum.reviewAmount ?? 0) + amount >
+            SPENT_REVIEW_CUMULATIVE_LIMITS.userDaily ||
+          (userWeek._sum.reviewAmount ?? 0) + amount >
+            SPENT_REVIEW_CUMULATIVE_LIMITS.userWeekly ||
+          (reviewerDay._sum.reviewAmount ?? 0) + amount >
+            SPENT_REVIEW_CUMULATIVE_LIMITS.reviewerDaily
+        ) {
+          throw new CumulativeApprovalRequiredError(
+            "本次审核将超过累计审批上限，请提交 owner 审批"
+          );
+        }
+      }
+
       const claim = await tx.spentAdjustmentApplication.updateMany({
         where: { id: applicationId, status: "PENDING" },
         data: {
@@ -180,7 +243,9 @@ export async function reviewApplication(params: {
       };
     }
 
-    notifyReviewResult({
+    await notifyReviewResult({
+      applicationId,
+      cycle: now.getTime(),
       userId: application.userId,
       phone: application.user.phone,
       orderNo: application.orderNo,
@@ -191,6 +256,9 @@ export async function reviewApplication(params: {
 
     return { ok: true, status: approved ? "APPROVED" : "REJECTED" };
   } catch (error) {
+    if (error instanceof CumulativeApprovalRequiredError) {
+      return { ok: false, code: error.code, message: error.message };
+    }
     if (error instanceof SpentOrderConflictError) {
       return {
         ok: false,
@@ -312,33 +380,58 @@ export async function undoApplication(params: {
  * 审核结果通知：短信 + 微信模板消息（均已绑定微信的用户生效）
  * 尽力而为：任一渠道失败不影响其它渠道与审核主流程。
  */
-function notifyReviewResult(params: {
+async function notifyReviewResult(params: {
+  applicationId: string;
+  cycle: number;
   userId: string;
   phone: string;
   orderNo: string;
   status: "APPROVED" | "REJECTED";
   reviewAmount?: number;
   reviewNote?: string;
-}): void {
-  const { userId, phone, orderNo, status, reviewAmount, reviewNote } = params;
-  const fire = () => {
-    void sendSpentReviewNotification(phone, status === "APPROVED" ? "已通过" : "未通过").catch(
-      (e) => apiConsole.error("[SpentAdjustment] 短信通知异常:", e)
-    );
-    void sendSpentAdjustmentReviewMessage({
-      userId,
-      status,
-      orderNo,
-      reviewAmount,
-      reviewNote,
-    }).catch((e) => apiConsole.error("[SpentAdjustment] 微信通知异常:", e));
-    // 积分小程序订阅消息（用户已订阅模板时送达；未订阅/未配置时在内部静默跳过）
-    void notifyPointsSpentReview({ userId, status });
+}): Promise<void> {
+  const { applicationId, cycle, userId, phone, orderNo, status, reviewAmount, reviewNote } = params;
+  const payload = {
+    status,
+    orderNo,
+    ...(reviewAmount !== undefined ? { reviewAmount } : {}),
+    ...(reviewNote ? { reviewNote } : {}),
+    statusLabel: status === "APPROVED" ? "审核通过" : "审核未通过",
   };
-  try {
-    after(fire);
-  } catch {
-    // 非请求上下文（测试等）：直接 fire-and-forget
-    fire();
-  }
+  const baseKey = `spent-review:${applicationId}:${cycle}:${status}`;
+  await Promise.all([
+    enqueueNotification({
+      idempotencyKey: `${baseKey}:sms`,
+      channel: "SMS",
+      eventType: "spent_review_result",
+      templateKey: "spent_review_result",
+      userId,
+      recipient: { phone },
+      payload,
+      aggregateType: "spent_adjustment",
+      aggregateId: orderNo,
+    }),
+    enqueueNotification({
+      idempotencyKey: `${baseKey}:wechat`,
+      channel: "WECHAT_TEMPLATE",
+      eventType: "spent_review_result",
+      templateKey: "spent_review_result",
+      userId,
+      recipient: { userId },
+      payload,
+      aggregateType: "spent_adjustment",
+      aggregateId: orderNo,
+    }),
+    enqueueNotification({
+      idempotencyKey: `${baseKey}:mp`,
+      channel: "MINIPROGRAM",
+      eventType: "spent_review_result",
+      templateKey: "spent_review_result",
+      userId,
+      recipient: { userId },
+      payload,
+      aggregateType: "spent_adjustment",
+      aggregateId: orderNo,
+    }),
+  ]).catch((error) => apiConsole.error("[SpentAdjustment] 通知入队失败:", error));
 }

@@ -12,7 +12,7 @@ const QuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   status: z.enum(["all", "unread", "read"]).default("all"),
-  replied: z.enum(["all", "unreplied", "replied"]).default("all"),
+  noted: z.enum(["all", "unnoted", "noted"]).default("all"),
   type: z.string().max(50).optional(),
   search: z.string().max(100).optional(),
 });
@@ -46,7 +46,13 @@ export async function GET(request: NextRequest) {
       page: searchParams.get("page") || "1",
       pageSize: searchParams.get("pageSize") || "10",
       status: searchParams.get("status") || "all",
-      replied: searchParams.get("replied") || "all",
+      noted:
+        searchParams.get("noted") ||
+        (searchParams.get("replied") === "unreplied"
+          ? "unnoted"
+          : searchParams.get("replied") === "replied"
+            ? "noted"
+            : "all"),
       type: searchParams.get("type") || undefined,
       search: searchParams.get("search") || undefined,
     });
@@ -54,10 +60,10 @@ export async function GET(request: NextRequest) {
     // 构建基础筛选（不含阅读状态），用于状态页签计数
     const baseWhere: Prisma.ContactMessageWhereInput = {};
 
-    if (params.replied === "unreplied") {
-      baseWhere.reply = null;
-    } else if (params.replied === "replied") {
-      baseWhere.reply = { not: null };
+    if (params.noted === "unnoted") {
+      baseWhere.internalNote = null;
+    } else if (params.noted === "noted") {
+      baseWhere.internalNote = { not: null };
     }
 
     if (params.type) {
@@ -109,7 +115,7 @@ export async function GET(request: NextRequest) {
         items: items.map((item) => ({
           ...item,
           phone: maskPhone(item.phone),
-          repliedAt: item.repliedAt?.toISOString() ?? null,
+          notedAt: item.notedAt?.toISOString() ?? null,
           createdAt: item.createdAt.toISOString(),
         })),
         pagination: {

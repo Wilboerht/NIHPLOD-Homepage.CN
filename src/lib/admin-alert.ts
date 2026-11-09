@@ -23,19 +23,42 @@ function truncate(value: string | null | undefined, max = 500): string {
 }
 
 /** 定时任务失败（cron/external 触发；manual 由操作人自行处理） */
-export function notifyCronFailure(taskName: string, trigger: string, error: string): void {
+export function notifyCronFailure(
+  taskName: string,
+  trigger: string,
+  error: string,
+  status: "FAILED" | "TIMEOUT" = "FAILED"
+): void {
   if (trigger === "manual") return;
   notifyWithCooldown({
     ruleKey: `cron-failure:${taskName}`,
     count: 1,
     cooldownMs: 30 * MINUTE,
     type: "admin",
-    title: "定时任务失败",
+    title: status === "TIMEOUT" ? "定时任务超时" : "定时任务失败",
     lines: [
-      `- 任务：${taskName}`,
-      `- 触发：${trigger}`,
+      `- 任务名：${taskName}`,
+      `- 状态：${status}`,
+      `- 触发方式：${trigger}`,
       `- 时间：${nowText()}`,
       `- 错误：${truncate(error)}`,
+    ],
+  });
+}
+
+/** 事务通知进入死信队列（按 30 分钟冷却聚合） */
+export function notifyNotificationOutboxDead(count: number): void {
+  if (count <= 0) return;
+  notifyWithCooldown({
+    ruleKey: "notification-outbox-dead",
+    count,
+    cooldownMs: 30 * MINUTE,
+    type: "admin",
+    title: "事务通知出现死信",
+    lines: [
+      `- 新增死信：${count} 条`,
+      `- 时间：${nowText()}`,
+      "- 请到后台「事务通知队列」查看并重试",
     ],
   });
 }
@@ -133,13 +156,14 @@ export function notifyPointInvariantIssues(result: PointInvariantResult): void {
   const samples = result.issues.slice(0, 5).map((issue) => `- ${issue.kind} · ${issue.userId}`);
   notifyWithCooldown({
     ruleKey: "point-invariants",
-    count: result.issues.length + result.negativeBalances,
+    count: result.issues.length + result.negativeBalances + result.deletedUsersWithRemaining,
     cooldownMs: 6 * HOUR,
     type: "admin",
     title: "积分账本对账异常",
     lines: [
       `- 已检查账户：${result.checked}`,
       `- 负余额账户：${result.negativeBalances}`,
+      `- 已注销但仍有积分：${result.deletedUsersWithRemaining}`,
       `- 对账异常：${result.issues.length}${result.truncated ? "（已截断）" : ""}`,
       ...(samples.length > 0 ? ["", "异常样例：", ...samples] : []),
       "- 请运行 `npm run points:check-invariants` 查看并人工处理",

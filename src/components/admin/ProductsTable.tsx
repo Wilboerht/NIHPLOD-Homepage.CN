@@ -28,6 +28,7 @@ interface ProductItem {
     id: string;
     name: string;
     slug: string;
+    visible?: boolean;
   };
   image: {
     id: string;
@@ -35,6 +36,7 @@ interface ProductItem {
     alt: string | null;
   } | null;
   published: boolean;
+  effectivePublished?: boolean;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -59,8 +61,10 @@ interface ProductsTableProps {
   canDelete?: boolean;
   /** 是否可批量删除（需 products:batch-delete） */
   canBatchDelete?: boolean;
-  /** 是否可发布/编辑（需 products:write） */
+  /** 是否可发布/上架（需 products:write） */
   canWrite?: boolean;
+  /** 是否可进入编辑页（需 products:write + categories:read） */
+  canEdit?: boolean;
 }
 
 export function ProductsTable({
@@ -76,6 +80,7 @@ export function ProductsTable({
   canDelete = false,
   canBatchDelete = false,
   canWrite = false,
+  canEdit = canWrite,
 }: ProductsTableProps) {
   const searchParams = useSearchParams();
   const listQuery = searchParams.toString();
@@ -153,8 +158,8 @@ export function ProductsTable({
         onRefresh();
       }
       setDeleteConfirm({ open: false });
-    } catch {
-      showError("删除失败，请重试");
+    } catch (error) {
+      showError(error instanceof ApiError ? error.message : "删除失败，请重试");
     } finally {
       setActionLoading(null);
     }
@@ -280,9 +285,21 @@ export function ProductsTable({
         width: "80px",
         align: "center",
         render: (_, record) => (
-          <DotBadge color={record.published ? "green" : "gray"}>
-            {record.published ? "已发布" : "草稿"}
-          </DotBadge>
+                      <DotBadge
+                        color={
+                          record.effectivePublished === false
+                            ? "yellow"
+                            : record.published
+                              ? "green"
+                              : "gray"
+                        }
+                      >
+                        {record.effectivePublished === false
+                          ? "分类隐藏"
+                          : record.published
+                            ? "已发布"
+                            : "草稿"}
+                      </DotBadge>
         ),
       },
       {
@@ -312,7 +329,7 @@ export function ProductsTable({
                 </IconButton>
               </Tooltip>
             )}
-            {canWrite && (
+            {canEdit && (
               <Tooltip content="编辑" side="top">
                 <IconButton label={`编辑 ${record.name}`} href={editHref(record.id)}>
                   <Pencil className="h-4 w-4" />
@@ -343,6 +360,7 @@ export function ProductsTable({
     canSelect,
     canDelete,
     canWrite,
+    canEdit,
     handleTogglePublish,
     editHref,
   ]);
@@ -443,8 +461,20 @@ export function ProductsTable({
                   <Badge variant="secondary" className="max-w-full">
                     <span className="min-w-0 truncate">{record.category.name}</span>
                   </Badge>
-                  <DotBadge color={record.published ? "green" : "gray"}>
-                    {record.published ? "已发布" : "草稿"}
+                  <DotBadge
+                    color={
+                      record.effectivePublished === false
+                        ? "yellow"
+                        : record.published
+                          ? "green"
+                          : "gray"
+                    }
+                  >
+                    {record.effectivePublished === false
+                      ? "分类隐藏"
+                      : record.published
+                        ? "已发布"
+                        : "草稿"}
                   </DotBadge>
                 </div>
               </div>
@@ -471,7 +501,7 @@ export function ProductsTable({
                     </IconButton>
                   </Tooltip>
                 )}
-                {canWrite && (
+                {canEdit && (
                   <Tooltip content="编辑" side="top">
                     <IconButton label={`编辑 ${record.name}`} href={editHref(record.id)}>
                       <Pencil className="h-4 w-4" />

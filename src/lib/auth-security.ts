@@ -864,6 +864,30 @@ export async function atomicallyRotateRefreshToken(
  * @param reason - 撤销原因；传入非泄漏类原因后，该 token 被重放时不会按泄漏吊销家族。
  *   省略时保持 null（= 轮换旧 token，重放按泄漏处理）。
  */
+export async function revokeOAuthRefreshTokensForUser(
+  userId: string,
+  clientId?: string | null,
+  reason: RefreshTokenRevokedReason = "admin_revoke"
+): Promise<number> {
+  try {
+    const result = await prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+        clientId: typeof clientId === "string" ? clientId : { not: null },
+      },
+      data: {
+        revokedAt: new Date(),
+        revokedReason: reason,
+      },
+    });
+    return result.count;
+  } catch (error) {
+    apiConsole.error("[RevokeOAuthRefreshTokens] 撤销失败:", error);
+    return 0;
+  }
+}
+
 export async function revokeRefreshToken(
   userId: string,
   token?: string,

@@ -36,6 +36,7 @@ const SENSITIVE_TEXT_KEYS = new Set([
   "notes",
   "content",
   "reply",
+  "internalNote",
   "messageContent",
   "coverLetter",
   "selfIntroduction",

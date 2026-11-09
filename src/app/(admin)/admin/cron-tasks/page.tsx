@@ -20,28 +20,65 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 
+type CronRunStatus = "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT" | "SKIPPED";
+
 interface TaskLastRun {
+  id: string;
+  status: CronRunStatus | null;
   startedAt: string;
-  finishedAt: string;
-  success: boolean;
+  finishedAt: string | null;
+  success: boolean | null;
   trigger: string;
   error: string | null;
+  durationMs: number | null;
+  heartbeatAt: string | null;
 }
 
 interface CronTask {
+  key: string;
   name: string;
   cronExpression: string;
+  isCleanup: boolean;
+  timeoutMs: number;
   lastRun: TaskLastRun | null;
 }
 
 interface CronRun {
   id: string;
+  taskKey: string | null;
   taskName: string;
   trigger: string;
-  success: boolean;
+  status: CronRunStatus | null;
+  success: boolean | null;
   error: string | null;
   startedAt: string;
-  finishedAt: string;
+  finishedAt: string | null;
+  durationMs: number | null;
+  heartbeatAt: string | null;
+}
+
+interface RunTarget {
+  name: string;
+  key: string;
+  sourceRunId?: string;
+}
+
+const STATUS_META: Record<
+  CronRunStatus,
+  { label: string; variant: "success" | "danger" | "warning" | "secondary" | "primary" }
+> = {
+  RUNNING: { label: "运行中", variant: "primary" },
+  SUCCESS: { label: "成功", variant: "success" },
+  FAILED: { label: "失败", variant: "danger" },
+  TIMEOUT: { label: "超时", variant: "danger" },
+  SKIPPED: { label: "已跳过", variant: "secondary" },
+};
+
+function runStatus(
+  run: Pick<TaskLastRun, "status" | "success"> | Pick<CronRun, "status" | "success">
+): CronRunStatus {
+  if (run.status) return run.status;
+  return run.success ? "SUCCESS" : "FAILED";
 }
 
 function formatDateTime(iso: string): string {
@@ -50,11 +87,18 @@ function formatDateTime(iso: string): string {
   return d.toLocaleString("zh-CN");
 }
 
-function formatDuration(startedAt: string, finishedAt: string): string {
+function formatDuration(startedAt: string, finishedAt: string | null): string {
+  if (!finishedAt) return "进行中";
   const ms = new Date(finishedAt).getTime() - new Date(startedAt).getTime();
   if (!Number.isFinite(ms) || ms < 0) return "-";
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function triggerLabel(trigger: string): string {
+  if (trigger === "manual") return "手动触发";
+  if (trigger === "external") return "外部调度";
+  return "自动调度";
 }
 
 export default function AdminCronTasksPage() {
@@ -72,31 +116,51 @@ function AdminCronTasksContent() {
   const canRun = canAdmin("cron:run");
   const [tasks, setTasks] = useState<CronTask[]>([]);
   const [recentRuns, setRecentRuns] = useState<CronRun[]>([]);
-  const [cronEnabled, setCronEnabled] = useState(true);
+  const [cronMode, setCronMode] = useState<"local" | "external" | "disabled">("disabled");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [triggerTarget, setTriggerTarget] = useState<CronTask | null>(null);
+  const [triggerTarget, setTriggerTarget] = useState<RunTarget | null>(null);
   const [triggering, setTriggering] = useState(false);
+  const [runFilter, setRunFilter] = useState<"" | CronRunStatus>("");
 
-  const fetchTasks = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await apiGet<{
-        cronEnabled: boolean;
-        tasks: CronTask[];
-        recentRuns: CronRun[];
-      }>("/api/admin/cron-tasks");
-      setTasks(data.tasks);
-      setRecentRuns(data.recentRuns);
-      setCronEnabled(data.cronEnabled);
-      setLoadError(false);
-    } catch (err) {
-      setLoadError(true);
-      showError(err instanceof Error ? err.message : "加载定时任务失败");
-    } finally {
-      setLoading(false);
-    }
-  }, [showError]);
+  const fetchTasks = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const data = await apiGet<{
+          cronEnabled: boolean;
+          cronMode: "local" | "external" | "disabled";
+          tasks: CronTask[];
+          recentRuns: CronRun[];
+        }>("/api/admin/cron-tasks", {
+          runStatus: runFilter || undefined,
+          runLimit: 50,
+        });
+        setTasks(data.tasks);
+        setRecentRuns(data.recentRuns);
+        setCronMode(data.cronMode);
+        setLoadError(false);
+      } catch (err) {
+        if (!silent) {
+          setLoadError(true);
+          showError(err instanceof Error ? err.message : "加载定时任务失败");
+        }
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [showError, runFilter]
+  );
+
+  const hasRunning = recentRuns.some((run) => runStatus(run) === "RUNNING");
+
+  useEffect(() => {
+    if (!hasRunning) return;
+    const timer = window.setInterval(() => {
+      void fetchTasks(true);
+    }, 8000);
+    return () => window.clearInterval(timer);
+  }, [hasRunning, fetchTasks]);
 
   useEffect(() => {
     deferInEffect(fetchTasks);
@@ -107,9 +171,16 @@ function AdminCronTasksContent() {
     setTriggering(true);
     try {
       const submit = () =>
-        apiPost<{ message: string }>("/api/admin/cron-tasks", {
-          taskName: triggerTarget.name,
-        });
+        apiPost<{ message: string }>(
+          "/api/admin/cron-tasks",
+          {
+            ...(triggerTarget.key
+              ? { taskKey: triggerTarget.key }
+              : { taskName: triggerTarget.name }),
+            sourceRunId: triggerTarget.sourceRunId,
+          },
+          { timeoutMs: 10 * 60 * 1000 }
+        );
 
       let data: { message: string };
       try {
@@ -138,8 +209,12 @@ function AdminCronTasksContent() {
         description="查看任务运行状态，支持手动触发；失败原因会保留在最近运行记录中。"
         accessory={
           !loading && !loadError ? (
-            <Badge variant={cronEnabled ? "success" : "warning"}>
-              {cronEnabled ? "自动调度已启用" : "自动调度未启用"}
+            <Badge variant={cronMode === "disabled" ? "warning" : "success"}>
+              {cronMode === "local"
+                ? "本机调度已启用"
+                : cronMode === "external"
+                  ? "外部调度模式"
+                  : "自动调度未启用"}
             </Badge>
           ) : undefined
         }
@@ -148,7 +223,7 @@ function AdminCronTasksContent() {
             variant="outline"
             size="sm"
             leftIcon={<RefreshCw className="h-4 w-4" />}
-            onClick={fetchTasks}
+            onClick={() => void fetchTasks()}
           >
             刷新
           </Button>
@@ -156,12 +231,12 @@ function AdminCronTasksContent() {
       />
 
       {/* 未启用提示 */}
-      {!cronEnabled && (
+      {cronMode === "disabled" && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
           <p>
-            当前进程内定时任务未启用（ENABLE_LOCAL_CRON 未设为 true），任务不会自动运行，
-            但仍可手动触发；生产环境请确认由外部调度或本地 cron 承担。
+            当前未启用本机定时任务，也未配置 CRON_SECRET，任务不会自动运行；仍可手动触发。
+            生产环境请启用 ENABLE_LOCAL_CRON 或配置外部调度。
           </p>
         </div>
       )}
@@ -186,7 +261,7 @@ function AdminCronTasksContent() {
           </div>
           <div className="flex h-48 flex-col items-center justify-center gap-3">
             <p className="text-sm text-red-500">加载定时任务失败</p>
-            <Button variant="outline" size="sm" onClick={fetchTasks}>
+            <Button variant="outline" size="sm" onClick={() => void fetchTasks()}>
               重试
             </Button>
           </div>
@@ -238,27 +313,31 @@ function AdminCronTasksContent() {
                       <p>{task.lastRun ? formatDateTime(task.lastRun.startedAt) : "从未运行"}</p>
                       {task.lastRun && (
                         <p className="mt-0.5 text-xs text-brand-charcoal/65">
-                          {task.lastRun.trigger === "manual" ? "手动触发" : "自动调度"}
+                          {triggerLabel(task.lastRun.trigger)}
                         </p>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       {!task.lastRun ? (
                         <Badge variant="secondary">未运行</Badge>
-                      ) : task.lastRun.success ? (
-                        <Badge variant="success">成功</Badge>
                       ) : (
-                        <div>
-                          <Badge variant="danger">失败</Badge>
-                          {task.lastRun.error && (
-                            <p
-                              className="mt-1 max-w-[18rem] truncate text-xs text-red-500"
-                              title={task.lastRun.error}
-                            >
-                              {task.lastRun.error}
-                            </p>
-                          )}
-                        </div>
+                        (() => {
+                          const status = runStatus(task.lastRun);
+                          const meta = STATUS_META[status];
+                          return (
+                            <div>
+                              <Badge variant={meta.variant}>{meta.label}</Badge>
+                              {task.lastRun.error && (
+                                <p
+                                  className="mt-1 max-w-[18rem] truncate text-xs text-red-500"
+                                  title={task.lastRun.error}
+                                >
+                                  {task.lastRun.error}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-brand-charcoal/70">
@@ -272,9 +351,12 @@ function AdminCronTasksContent() {
                           variant="outline"
                           size="sm"
                           leftIcon={<Play className="h-3.5 w-3.5" />}
-                          onClick={() => setTriggerTarget(task)}
+                          disabled={task.lastRun ? runStatus(task.lastRun) === "RUNNING" : false}
+                          onClick={() => setTriggerTarget({ name: task.name, key: task.key })}
                         >
-                          手动执行
+                          {task.lastRun && runStatus(task.lastRun) === "RUNNING"
+                            ? "运行中"
+                            : "手动执行"}
                         </Button>
                       ) : (
                         <span className="text-xs text-brand-charcoal/65">只读</span>
@@ -308,13 +390,12 @@ function AdminCronTasksContent() {
                     <Badge variant="secondary" className="shrink-0">
                       未运行
                     </Badge>
-                  ) : task.lastRun.success ? (
-                    <Badge variant="success" className="shrink-0">
-                      成功
-                    </Badge>
                   ) : (
-                    <Badge variant="danger" className="shrink-0">
-                      失败
+                    <Badge
+                      variant={STATUS_META[runStatus(task.lastRun)].variant}
+                      className="shrink-0"
+                    >
+                      {STATUS_META[runStatus(task.lastRun)].label}
                     </Badge>
                   )}
                 </div>
@@ -328,11 +409,11 @@ function AdminCronTasksContent() {
                   </span>
                   {task.lastRun && (
                     <span className="col-span-2 text-brand-charcoal/65">
-                      {task.lastRun.trigger === "manual" ? "手动触发" : "自动调度"}
+                      {triggerLabel(task.lastRun.trigger)}
                     </span>
                   )}
                 </div>
-                {task.lastRun && !task.lastRun.success && task.lastRun.error && (
+                {task.lastRun && task.lastRun.error && (
                   <p className="mt-1 line-clamp-2 text-xs text-red-500" title={task.lastRun.error}>
                     {task.lastRun.error}
                   </p>
@@ -343,9 +424,12 @@ function AdminCronTasksContent() {
                       variant="outline"
                       size="sm"
                       leftIcon={<Play className="h-3.5 w-3.5" />}
-                      onClick={() => setTriggerTarget(task)}
+                      disabled={task.lastRun ? runStatus(task.lastRun) === "RUNNING" : false}
+                      onClick={() => setTriggerTarget({ name: task.name, key: task.key })}
                     >
-                      手动执行
+                      {task.lastRun && runStatus(task.lastRun) === "RUNNING"
+                        ? "运行中"
+                        : "手动执行"}
                     </Button>
                   ) : (
                     <span className="text-xs text-brand-charcoal/65">只读</span>
@@ -359,40 +443,74 @@ function AdminCronTasksContent() {
 
       {/* 最近运行记录 */}
       <div className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
-        <div className="flex items-center justify-between border-b border-brand-charcoal/10 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-charcoal/10 px-4 py-3">
           <h2 className="text-sm font-medium text-brand-charcoal">最近运行记录</h2>
-          <span className="text-xs text-brand-charcoal/65">最近 {recentRuns.length} 条</span>
+          <div className="flex items-center gap-2">
+            <select
+              aria-label="按运行状态筛选"
+              className="rounded-lg border border-brand-charcoal/20 bg-white px-2 py-1 text-xs text-brand-charcoal"
+              value={runFilter}
+              onChange={(event) => setRunFilter(event.target.value as "" | CronRunStatus)}
+            >
+              <option value="">全部状态</option>
+              <option value="RUNNING">运行中</option>
+              <option value="SUCCESS">成功</option>
+              <option value="FAILED">失败</option>
+              <option value="TIMEOUT">超时</option>
+              <option value="SKIPPED">已跳过</option>
+            </select>
+            <span className="text-xs text-brand-charcoal/65">最近 {recentRuns.length} 条</span>
+          </div>
         </div>
         {recentRuns.length === 0 ? (
           <p className="py-10 text-center text-sm text-brand-charcoal/65">暂无运行记录</p>
         ) : (
           <div className="divide-brand-charcoal/8 divide-y">
-            {recentRuns.map((run) => (
-              <div key={run.id} className="px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Badge variant={run.success ? "success" : "danger"}>
-                      {run.success ? "成功" : "失败"}
-                    </Badge>
-                    <span className="truncate text-sm font-medium text-brand-charcoal/80">
-                      {run.taskName}
-                    </span>
-                    <span className="text-xs text-brand-charcoal/65">
-                      {run.trigger === "manual" ? "手动触发" : "自动调度"}
-                    </span>
+            {recentRuns.map((run) => {
+              const status = runStatus(run);
+              const meta = STATUS_META[status];
+              return (
+                <div key={run.id} className="px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Badge variant={meta.variant}>{meta.label}</Badge>
+                      <span className="truncate text-sm font-medium text-brand-charcoal/80">
+                        {run.taskName}
+                      </span>
+                      <span className="text-xs text-brand-charcoal/65">
+                        {triggerLabel(run.trigger)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="whitespace-nowrap text-xs text-brand-charcoal/65">
+                        {formatDateTime(run.startedAt)} ·{" "}
+                        {formatDuration(run.startedAt, run.finishedAt)}
+                      </span>
+                      {canRun && status !== "RUNNING" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setTriggerTarget({
+                              name: run.taskName,
+                              key: run.taskKey ?? "",
+                              sourceRunId: run.id,
+                            })
+                          }
+                        >
+                          重跑
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <span className="whitespace-nowrap text-xs text-brand-charcoal/65">
-                    {formatDateTime(run.startedAt)} ·{" "}
-                    {formatDuration(run.startedAt, run.finishedAt)}
-                  </span>
+                  {run.error && (
+                    <p className="mt-1 line-clamp-2 text-xs text-red-500" title={run.error}>
+                      {run.error}
+                    </p>
+                  )}
                 </div>
-                {!run.success && run.error && (
-                  <p className="mt-1 line-clamp-2 text-xs text-red-500" title={run.error}>
-                    {run.error}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

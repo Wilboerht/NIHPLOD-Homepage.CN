@@ -54,6 +54,7 @@ describe("GET /api/admin/nav-counts", () => {
       accountDeletions: 2,
       spentAdjustments: 5,
       pointRedemptions: 4,
+      redemptionAfterSales: 4,
       applications: 6,
       approvals: 1,
     });
@@ -87,6 +88,7 @@ describe("GET /api/admin/nav-counts", () => {
       accountDeletions: 0,
       spentAdjustments: 0,
       pointRedemptions: 0,
+      redemptionAfterSales: 0,
       applications: 0,
       approvals: 0,
     });

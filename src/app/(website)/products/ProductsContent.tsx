@@ -329,6 +329,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       >
                         <div className="texture-overlay pointer-events-none absolute inset-0 opacity-[0.03]" />
                         <div className="relative z-10 aspect-[4/5] w-full overflow-hidden bg-brand-cream">
+                          <div
+                            className="shimmer-skeleton pointer-events-none absolute inset-0 animate-shimmer bg-brand-beige/40 motion-reduce:animate-none"
+                            aria-hidden="true"
+                          />
                           {product.capacity && (
                             <div className="absolute right-3 top-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-light text-brand-primary shadow-sm">
                               {product.capacity}
@@ -431,7 +435,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   return (
     <>
       {/* 页面主标题：移动端/桌面端各自有视觉标题，这里提供唯一的 H1 */}
-      <h1 className="sr-only">NIHPLOD 旎柏产品系列</h1>
+      <h1 className="sr-only" tabIndex={-1}>
+        NIHPLOD 旎柏产品系列
+      </h1>
 
       {/* 移动端展示层 */}
       {renderMobileShowcase()}
@@ -485,6 +491,10 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             : "aspect-[4/4.5] max-h-[42vh] [@media(max-height:700px)]:max-h-[32vh]"
                         )}
                       >
+                        <div
+                          className="shimmer-skeleton pointer-events-none absolute inset-0 animate-shimmer bg-brand-beige/40 motion-reduce:animate-none"
+                          aria-hidden="true"
+                        />
                         <div className="pointer-events-none absolute inset-3 z-10 border border-brand-charcoal/[0.08]" />
                         {product.images[0] && (
                           <Image

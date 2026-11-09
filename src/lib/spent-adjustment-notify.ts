@@ -1,30 +1,13 @@
 /**
- * 客服代客提交消费补录后的申请人通知。
- *
- * 用户此前不会收到“已代提交”提醒，只会收到审核结果。这里在创建成功后
- * 异步发送短信 / 微信模板 / 小程序订阅消息；任一通道未配置或失败均不影响提交。
+ * 客服代客提交消费补录后的申请人通知：
+ * 写入通知 Outbox，由后台 worker 统一发送短信/微信模板/小程序订阅消息。
  */
-import { after } from "next/server";
 import { prisma } from "./prisma";
 import { apiConsole } from "./logger";
-import { sendSpentSubmittedNotification } from "./sms";
-import { sendSpentAdjustmentSubmittedMessage } from "./wechat-template";
-import { notifyPointsSpentSubmitted } from "./miniprogram-notify";
-
-function notifyAfterResponse(task: () => Promise<void>): void {
-  const run = () => {
-    void task().catch((error) => apiConsole.warn("[SpentSubmittedNotify] 通知异常:", error));
-  };
-  try {
-    after(run);
-  } catch {
-    // 非请求上下文（测试 / 脚本）：直接 fire-and-forget
-    run();
-  }
-}
+import { enqueueNotification } from "./notification-outbox";
 
 export function notifySpentApplicationSubmittedByAdmin(applicationId: string): void {
-  notifyAfterResponse(async () => {
+  void (async () => {
     const application = await prisma.spentAdjustmentApplication.findUnique({
       where: { id: applicationId },
       select: {
@@ -35,13 +18,42 @@ export function notifySpentApplicationSubmittedByAdmin(applicationId: string): v
     });
     if (!application) return;
 
-    await Promise.allSettled([
-      sendSpentSubmittedNotification(application.user.phone, application.orderNo),
-      sendSpentAdjustmentSubmittedMessage({
+    const payload = { orderNo: application.orderNo };
+    const baseKey = `spent-submitted:${applicationId}`;
+    await Promise.all([
+      enqueueNotification({
+        idempotencyKey: `${baseKey}:sms`,
+        channel: "SMS",
+        eventType: "spent_submitted",
+        templateKey: "spent_submitted",
         userId: application.userId,
-        orderNo: application.orderNo,
+        recipient: { phone: application.user.phone },
+        payload,
+        aggregateType: "spent_adjustment",
+        aggregateId: applicationId,
       }),
-      notifyPointsSpentSubmitted({ userId: application.userId }),
+      enqueueNotification({
+        idempotencyKey: `${baseKey}:wechat`,
+        channel: "WECHAT_TEMPLATE",
+        eventType: "spent_submitted",
+        templateKey: "spent_submitted",
+        userId: application.userId,
+        recipient: { userId: application.userId },
+        payload,
+        aggregateType: "spent_adjustment",
+        aggregateId: applicationId,
+      }),
+      enqueueNotification({
+        idempotencyKey: `${baseKey}:mp`,
+        channel: "MINIPROGRAM",
+        eventType: "spent_submitted",
+        templateKey: "spent_submitted",
+        userId: application.userId,
+        recipient: { userId: application.userId },
+        payload,
+        aggregateType: "spent_adjustment",
+        aggregateId: applicationId,
+      }),
     ]);
-  });
+  })().catch((error) => apiConsole.warn("[SpentSubmittedNotify] 通知入队异常:", error));
 }

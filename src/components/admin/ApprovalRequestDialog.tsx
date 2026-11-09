@@ -102,6 +102,7 @@ export function ApprovalRequestDialog({
         return { userId: userId.trim(), amount: Math.trunc(parsed), note: note.trim() };
       }
       case "redemption.cancel":
+      case "redemption.refund":
         if (!redemptionId.trim()) return null;
         return { redemptionId: redemptionId.trim(), note: note.trim() || undefined };
       case "spent.review.approve": {
@@ -226,7 +227,7 @@ export function ApprovalRequestDialog({
           </>
         )}
 
-        {policyKey === "redemption.cancel" && (
+        {(policyKey === "redemption.cancel" || policyKey === "redemption.refund") && (
           <>
             <Input
               label="兑换记录 ID"

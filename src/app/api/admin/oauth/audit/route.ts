@@ -202,6 +202,8 @@ export async function GET(request: NextRequest) {
           "Cache-Control": "no-store, no-cache, must-revalidate",
           Pragma: "no-cache",
           "X-Content-Type-Options": "nosniff",
+          "X-Export-Truncated": String(items.length >= 5000),
+          "X-Export-Limit": "5000",
         },
       });
     }

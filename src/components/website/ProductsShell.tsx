@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
+import { ProductDetailSkeleton } from "@/components/website/ProductDetailSkeleton";
+import { ProductsListSkeleton } from "@/components/website/ProductsListSkeleton";
 
 export interface ProductsCategory {
   id: string;
@@ -29,6 +31,8 @@ export interface ProductsCategory {
 
 type ProductsTab = "featured" | "all";
 type MobileView = "products" | "categories";
+type PendingTarget = { href: string; kind: "detail" | "list" };
+type NavigateEventLike = Event & { navigationType?: string };
 
 interface ProductsShellContextValue {
   activeTab: ProductsTab;
@@ -69,69 +73,120 @@ export function ProductsShell({
   const isDetail = pathname.startsWith("/products/");
   const [activeTab] = useState<ProductsTab>("featured");
   const [mobileView, setMobileView] = useState<MobileView>("products");
-  const [navigationState, setNavigationState] = useState<{
-    pathname: string;
-    pendingPath: string | null;
-  }>({ pathname, pendingPath: null });
+  const [pending, setPending] = useState<PendingTarget | null>(null);
+  const [lastPathname, setLastPathname] = useState(pathname);
+  const [slowPending, setSlowPending] = useState(false);
+  const [hasNavigated, setHasNavigated] = useState(false);
+  const listScrollTopRef = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const shouldRestoreFocusRef = useRef(false);
 
-  if (navigationState.pathname !== pathname) {
-    setNavigationState({ pathname, pendingPath: null });
+  if (lastPathname !== pathname) {
+    setLastPathname(pathname);
+    setPending(null);
+    setSlowPending(false);
   }
 
-  const isNavigating =
-    navigationState.pendingPath !== null && navigationState.pendingPath !== pathname;
-
-  const navigateTimerRef = useRef<number | null>(null);
-  const navigateResetTimerRef = useRef<number | null>(null);
-  const listScrollTopRef = useRef(0);
-
-  const clearNavigateTimers = useCallback(() => {
-    if (navigateTimerRef.current) {
-      window.clearTimeout(navigateTimerRef.current);
-      navigateTimerRef.current = null;
-    }
-    if (navigateResetTimerRef.current) {
-      window.clearTimeout(navigateResetTimerRef.current);
-      navigateResetTimerRef.current = null;
-    }
-  }, []);
+  const isNavigating = pending !== null && lastPathname === pathname;
+  const showDetailChrome = isDetail || (isNavigating && pending?.kind === "detail");
 
   const navigate = useCallback(
-    (href: string) => {
-      if (pathname === href || isNavigating) return;
-
-      if (prefersReducedMotion) {
+    (href: string, kind: PendingTarget["kind"]) => {
+      if (pending?.href === href) {
         router.push(href);
         return;
       }
 
-      clearNavigateTimers();
-      setNavigationState((prev) => ({ ...prev, pendingPath: href }));
+      if (pathname === href) {
+        if (!pending) return;
 
-      navigateTimerRef.current = window.setTimeout(() => {
-        navigateTimerRef.current = null;
+        setPending(null);
+        setSlowPending(false);
         router.push(href);
-      }, 180);
+        return;
+      }
 
-      // router.push 异常时兜底恢复，避免内容一直停留在透明状态
-      navigateResetTimerRef.current = window.setTimeout(() => {
-        navigateResetTimerRef.current = null;
-        setNavigationState((prev) => ({ ...prev, pendingPath: null }));
-      }, 1500);
+      setHasNavigated(true);
+      setPending({ href, kind });
+      setSlowPending(false);
+      router.push(href);
     },
-    [pathname, isNavigating, prefersReducedMotion, router, clearNavigateTimers]
+    [pathname, pending, router]
   );
 
   const navigateToProduct = useCallback(
     (slug: string) => {
-      navigate(`/products/${slug}`);
+      navigate(`/products/${slug}`, "detail");
     },
     [navigate]
   );
 
   const navigateToList = useCallback(() => {
-    navigate("/products");
+    navigate("/products", "list");
   }, [navigate]);
+
+  useEffect(() => {
+    if (!pending) return;
+
+    const timer = window.setTimeout(() => setSlowPending(true), 8000);
+    return () => window.clearTimeout(timer);
+  }, [pending]);
+
+  useEffect(() => {
+    if (isNavigating) {
+      shouldRestoreFocusRef.current = true;
+      return;
+    }
+    if (!shouldRestoreFocusRef.current) return;
+
+    shouldRestoreFocusRef.current = false;
+    contentRef.current?.querySelector<HTMLElement>("h1")?.focus({ preventScroll: true });
+  }, [isNavigating, pathname]);
+
+  useEffect(() => {
+    if (!pending) return;
+
+    const navigation = (
+      window as typeof window & {
+        navigation?: {
+          addEventListener: (
+            type: "navigate",
+            listener: (event: NavigateEventLike) => void
+          ) => void;
+          removeEventListener: (
+            type: "navigate",
+            listener: (event: NavigateEventLike) => void
+          ) => void;
+        };
+      }
+    ).navigation;
+    if (!navigation) return;
+
+    const handleNavigate = (event: NavigateEventLike) => {
+      if (event.navigationType !== "traverse") return;
+
+      event.preventDefault();
+      setPending(null);
+      setSlowPending(false);
+      router.push(pathname);
+    };
+
+    navigation.addEventListener("navigate", handleNavigate);
+    return () => navigation.removeEventListener("navigate", handleNavigate);
+  }, [pending, pathname, router]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isDetail && window.location.pathname === "/products") {
+        setHasNavigated(true);
+        setPending({ href: "/products", kind: "list" });
+        setSlowPending(false);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isDetail]);
 
   const handleListNavClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -149,13 +204,6 @@ export function ProductsShell({
     setMobileView(view);
     listScrollTopRef.current = 0;
   }, []);
-
-  // 路由变化后清理过渡定时器
-  useEffect(() => {
-    clearNavigateTimers();
-  }, [pathname, clearNavigateTimers]);
-
-  useEffect(() => clearNavigateTimers, [clearNavigateTimers]);
 
   const contextValue = useMemo<ProductsShellContextValue>(
     () => ({
@@ -216,7 +264,7 @@ export function ProductsShell({
           {/* 移动端 Header - 列表页与详情页共用 */}
           <div className="relative flex h-[88px] w-full shrink-0 items-center justify-center bg-brand-cream/95 px-6 lg:hidden">
             <div className="texture-overlay absolute inset-0 z-[-1]" />
-            {isDetail && (
+            {showDetailChrome && (
               <Link
                 href="/products"
                 onClick={handleListNavClick}
@@ -279,7 +327,7 @@ export function ProductsShell({
             </div>
 
             <div className="flex justify-end">
-              {isDetail && (
+              {showDetailChrome && (
                 <Link
                   href="/products"
                   onClick={handleListNavClick}
@@ -293,19 +341,43 @@ export function ProductsShell({
           </nav>
 
           {/* 列表页 / 详情页内容 */}
-          <div className="relative min-h-0 flex-1 overflow-hidden">
-            <m.div
-              key={pathname}
-              initial={false}
-              animate={{ opacity: isNavigating ? 0 : 1 }}
-              transition={{
-                duration: prefersReducedMotion ? 0 : isNavigating ? 0.18 : 0.28,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className={cn("flex h-full min-h-0 flex-col", isNavigating && "pointer-events-none")}
-            >
-              {children}
-            </m.div>
+          <div className="relative min-h-0 flex-1 overflow-hidden" aria-busy={isNavigating}>
+            {isNavigating && pending ? (
+              pending.kind === "detail" ? (
+                <ProductDetailSkeleton />
+              ) : (
+                <ProductsListSkeleton mobileView={mobileView} />
+              )
+            ) : (
+              <m.div
+                ref={contentRef}
+                key={pathname}
+                initial={hasNavigated && !prefersReducedMotion ? { opacity: 0.85 } : false}
+                animate={{ opacity: 1 }}
+                transition={{
+                  duration: prefersReducedMotion ? 0 : 0.2,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="flex h-full min-h-0 flex-col"
+              >
+                {children}
+              </m.div>
+            )}
+
+            {isNavigating && pending && slowPending && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
+                <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-brand-charcoal/10 bg-white/95 px-4 py-2 text-[12px] font-light tracking-[0.04em] text-brand-charcoal/70 shadow-sm backdrop-blur">
+                  <span role="status">加载时间较长，请稍候…</span>
+                  <button
+                    type="button"
+                    onClick={() => router.push(pending.href)}
+                    className="font-normal text-brand-primary underline-offset-2 hover:underline"
+                  >
+                    重试
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

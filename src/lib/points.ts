@@ -21,6 +21,7 @@ import { LEVEL_THRESHOLDS, MEMBERSHIP_LEVELS } from "@/lib/membership";
 import {
   claimSpentOrder,
   normalizeOptionalOrderNo,
+  reserveSpentOrderRefund,
   SpentOrderConflictError,
 } from "@/lib/spent-order";
 import type { SpentOrderSource } from "@/generated/prisma/client";
@@ -91,6 +92,8 @@ export async function applyExternalSpentSync(
     requireActiveUser?: boolean;
     /** 外层事务内调用时抑制提交前 webhook，由调用方在事务提交后补发。 */
     suppressWebhook?: boolean;
+    /** Excel 导入退款行：要求绑定原始订单并受累计退款上限约束。 */
+    enforceRefundClaim?: boolean;
   },
   txClient?: Prisma.TransactionClient,
   dailyLimitYuan?: number
@@ -104,6 +107,7 @@ export async function applyExternalSpentSync(
   const source = params.source ?? "MALL_SYNC";
   const allowNegativeClamp = params.allowNegativeClamp ?? true;
   const requireActiveUser = params.requireActiveUser ?? false;
+  const enforceRefundClaim = params.enforceRefundClaim ?? false;
   // 兼容未升级的商城客户端：正向消费以 reference 作为订单号兜底；显式 orderNo 优先。
   const normalizedOrder = normalizeOptionalOrderNo(orderNo ?? (spentDelta > 0 ? reference : null));
 
@@ -151,6 +155,7 @@ export async function applyExternalSpentSync(
           orderNoKey: normalizedOrder.orderNoKey,
           source,
           reference,
+          originalAmount: spentDelta,
         });
       }
 
@@ -198,6 +203,14 @@ export async function applyExternalSpentSync(
           },
         });
         if (cas.count === 0) continue; // 快照过期（并发修改），重读重试
+
+        if (enforceRefundClaim && appliedDelta < 0 && normalizedOrder.orderNoKey) {
+          await reserveSpentOrderRefund(tx, {
+            userId,
+            orderNoKey: normalizedOrder.orderNoKey,
+            amount: Math.abs(appliedDelta),
+          });
+        }
 
         await tx.spentSyncRecord.create({
           data: {

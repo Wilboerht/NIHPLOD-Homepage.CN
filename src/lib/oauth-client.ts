@@ -103,6 +103,7 @@ export function toSafeClientResponse(
     scopes: client.scopes,
     isActive: client.isActive,
     isPublic: client.isPublic,
+    isSystem: client.isSystem ?? false,
     backchannelLogoutUri: client.backchannelLogoutUri,
     webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
@@ -123,6 +124,7 @@ export interface OAuthClientData {
   scopes: string[];
   isActive: boolean;
   isPublic: boolean;
+  isSystem?: boolean;
   /** scope 缩权/停用导致会话失效的水位（仅验证路径返回） */
   sessionsInvalidatedAt?: Date | null;
   /** M2M token 的 scope 版本（仅验证路径返回） */
@@ -245,20 +247,40 @@ function clientSecretCacheKey(clientId: string, secret: string, currentHash: str
  * DB 持久化为 fire-and-forget：rotate-secret 路由随后会更新 clientSecret，
  * 两个 update 写不同列，无冲突；持久化失败仅降级为单实例内存行为并记录日志。
  */
-export function cacheOldSecret(clientId: string, oldHash: string): void {
+export async function cacheOldSecret(
+  clientId: string,
+  oldHash: string,
+  newSecretHash?: string
+): Promise<void> {
   oldSecretCache.set(clientId, {
     oldHash,
     expiresAt: Date.now() + SECRET_ROTATION_GRACE_MS,
   });
-  // 持久化到 DB，多实例共享过渡期状态
-  void prisma.oAuthClient
-    .update({
+
+  try {
+    if (newSecretHash) {
+      // CAS：只有当前 secret 仍是本次轮换写入的 hash 时才记录 previousSecretHash，
+      // 防止连续并发轮换时后一次被前一次覆盖。
+      const updated = await prisma.oAuthClient.updateMany({
+        where: { clientId, clientSecret: newSecretHash },
+        data: { previousSecretHash: oldHash, secretRotatedAt: new Date() },
+      });
+      if (updated.count === 0) {
+        apiConsole.warn("[OAuthClient] 旧 secret hash 未持久化：secret 已被其他轮换更新");
+      }
+      return;
+    }
+
+    await prisma.oAuthClient.update({
       where: { clientId },
       data: { previousSecretHash: oldHash, secretRotatedAt: new Date() },
-    })
-    .catch((err) =>
-      apiConsole.error("[OAuthClient] 旧 secret hash 持久化失败，过渡期降级为单实例内存缓存:", err)
+    });
+  } catch (err) {
+    apiConsole.error(
+      "[OAuthClient] 旧 secret hash 持久化失败，过渡期降级为单实例内存缓存:",
+      err
     );
+  }
 }
 
 // ============================================
@@ -461,6 +483,7 @@ export async function getOAuthClientById(id: string): Promise<OAuthClientData | 
     scopes: client.scopes,
     isActive: client.isActive,
     isPublic: client.isPublic,
+    isSystem: client.isSystem ?? false,
     backchannelLogoutUri: client.backchannelLogoutUri,
     webhookUri: client.webhookUri,
     codeTtlSeconds: client.codeTtlSeconds,
@@ -672,6 +695,7 @@ export async function listOAuthClients(params?: {
       scopes: c.scopes,
       isActive: c.isActive,
       isPublic: c.isPublic,
+      isSystem: c.isSystem ?? false,
       backchannelLogoutUri: c.backchannelLogoutUri,
       webhookUri: c.webhookUri,
       codeTtlSeconds: c.codeTtlSeconds,

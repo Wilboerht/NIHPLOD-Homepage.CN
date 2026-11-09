@@ -488,6 +488,7 @@ async function ensureAgentAuthClient() {
         scopes: [...DEFAULT_AGENT_SCOPES],
         isActive: true,
         isPublic: true,
+        isSystem: true,
         accessTokenTtlSeconds: getAgentAuthAccessTokenTtlSeconds(),
       },
     });

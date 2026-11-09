@@ -648,7 +648,16 @@ function AdminAdminsContent() {
                       )}
                       {isOwnerActor &&
                         admin.id !== currentAdminId &&
-                        (admin.totpEnabled || admin.totpResetRequired) && (
+                        (admin.totpEnabled || admin.totpResetRequired) &&
+                        (admin.role === "owner" ? (
+                          <ApprovalRequestAction
+                            policyKey="totp.recovery.issue"
+                            initialValues={{ adminId: admin.id }}
+                            label="申请恢复码"
+                            variant="ghost"
+                            size="sm"
+                          />
+                        ) : (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -657,7 +666,7 @@ function AdminAdminsContent() {
                           >
                             <KeyRound className="h-4 w-4" />
                           </Button>
-                        )}
+                        ))}
                       {!isOwnerActor &&
                         admin.id !== currentAdminId &&
                         (admin.totpEnabled || admin.totpResetRequired) &&
@@ -836,7 +845,16 @@ function AdminAdminsContent() {
                           )}
                           {isOwnerActor &&
                             admin.id !== currentAdminId &&
-                            (admin.totpEnabled || admin.totpResetRequired) && (
+                            (admin.totpEnabled || admin.totpResetRequired) &&
+                            (admin.role === "owner" ? (
+                              <ApprovalRequestAction
+                                policyKey="totp.recovery.issue"
+                                initialValues={{ adminId: admin.id }}
+                                label="申请恢复码"
+                                variant="ghost"
+                                size="sm"
+                              />
+                            ) : (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -845,7 +863,7 @@ function AdminAdminsContent() {
                               >
                                 <KeyRound className="h-4 w-4" />
                               </Button>
-                            )}
+                            ))}
                           {/* 不能删除自己（服务端禁止，前端不展示避免必然失败） */}
                           {admin.id !== currentAdminId && isOwnerActor && (
                             <Button

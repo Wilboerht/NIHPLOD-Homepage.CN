@@ -21,6 +21,7 @@ const {
   mockCheckAdminRateLimit,
   mockValidateCSRFToken,
   mockRevokeRefreshToken,
+  mockRevokeOAuthRefreshTokensForUser,
   mockBlacklistUserTokens,
   mockSendBackchannelLogout,
   mockRecordSsoEvent,
@@ -41,6 +42,7 @@ const {
     mockCheckAdminRateLimit: vi.fn(),
     mockValidateCSRFToken: vi.fn(),
     mockRevokeRefreshToken: vi.fn(),
+    mockRevokeOAuthRefreshTokensForUser: vi.fn(),
     mockBlacklistUserTokens: vi.fn(),
     mockSendBackchannelLogout: vi.fn(),
     mockRecordSsoEvent: vi.fn(),
@@ -101,6 +103,8 @@ vi.mock("@/lib/logger", () => ({
 
 vi.mock("@/lib/auth-security", () => ({
   revokeRefreshToken: (...args: unknown[]) => mockRevokeRefreshToken(...args),
+  revokeOAuthRefreshTokensForUser: (...args: unknown[]) =>
+    mockRevokeOAuthRefreshTokensForUser(...args),
 }));
 
 vi.mock("@/lib/token-blacklist", () => ({
@@ -142,6 +146,7 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
     mockCheckAdminRateLimit.mockResolvedValue(null);
     mockValidateCSRFToken.mockReturnValue(true);
     mockRevokeRefreshToken.mockResolvedValue(undefined);
+    mockRevokeOAuthRefreshTokensForUser.mockResolvedValue(undefined);
     mockBlacklistUserTokens.mockResolvedValue(undefined);
     mockSendBackchannelLogout.mockResolvedValue(undefined);
     mockRecordSsoEvent.mockResolvedValue(undefined);
@@ -336,7 +341,7 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
         data: { revokedAt: expect.any(Date), scopes: [] },
       });
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
-        sids: {},
+        omitSid: true,
       });
     });
 
@@ -375,16 +380,14 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       // 同步撤销 refresh token + backchannel 通知；
       // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
       // access token 即时失效由 sid 会话校验承担
-      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      expect(mockRevokeOAuthRefreshTokensForUser).toHaveBeenCalledWith(
         "user-1",
-        undefined,
         "client-abc",
         "admin_revoke"
       );
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      // sid 取撤销前查出的最新活跃会话
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
-        sids: { "client-abc": "sid-latest" },
+        omitSid: true,
       });
 
       // SSO 审计事件
@@ -420,10 +423,9 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
       // client-a：session 1 + consent 1；client-b 无活跃授权被跳过
       expect(data.data.revokedCount).toBe(2);
       expect(data.data.revokedClients).toBe(1);
-      expect(mockRevokeRefreshToken).toHaveBeenCalledTimes(1);
-      expect(mockRevokeRefreshToken).toHaveBeenCalledWith(
+      expect(mockRevokeOAuthRefreshTokensForUser).toHaveBeenCalledTimes(1);
+      expect(mockRevokeOAuthRefreshTokensForUser).toHaveBeenCalledWith(
         "user-1",
-        undefined,
         "client-a",
         "admin_revoke"
       );

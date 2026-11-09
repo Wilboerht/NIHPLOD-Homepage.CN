@@ -35,6 +35,8 @@ interface RedeemableProductItem {
   published: boolean;
   pointRedeemable: boolean;
   redeemStock: number | null;
+  redeemLimitPerUser: number | null;
+  redeemLimitWindowDays: number | null;
   categoryName: string;
 }
 
@@ -61,14 +63,38 @@ type StatusTab = "PENDING" | "FULFILLED" | "CANCELLED" | "ALL";
 const STATUS_BADGE: Record<string, string> = {
   PENDING: "bg-amber-100 text-amber-700",
   FULFILLED: "bg-emerald-100 text-emerald-700",
+  COMPLETED: "bg-emerald-100 text-emerald-700",
+  AFTER_SALES_REQUESTED: "bg-amber-100 text-amber-700",
+  AFTER_SALES_APPROVED: "bg-amber-100 text-amber-700",
+  AFTER_SALES_REJECTED: "bg-red-100 text-red-700",
+  RETURNING: "bg-sky-100 text-sky-700",
+  RETURNED: "bg-sky-100 text-sky-700",
+  REFUNDED: "bg-emerald-100 text-emerald-700",
+  AFTER_SALES_CLOSED: "bg-brand-charcoal/[0.06] text-brand-charcoal/65",
   CANCELLED: "bg-brand-charcoal/[0.06] text-brand-charcoal/65",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "待履约",
-  FULFILLED: "已履约",
+  FULFILLED: "已发货",
+  COMPLETED: "已完成",
+  AFTER_SALES_REQUESTED: "售后待审核",
+  AFTER_SALES_APPROVED: "售后待寄回",
+  AFTER_SALES_REJECTED: "售后已驳回",
+  RETURNING: "退货中",
+  RETURNED: "待退款",
+  REFUNDED: "已退款",
+  AFTER_SALES_CLOSED: "售后已关闭",
   CANCELLED: "已取消",
 };
+
+function redeemLimitLabel(
+  item: Pick<RedeemableProductItem, "redeemLimitPerUser" | "redeemLimitWindowDays">
+): string {
+  if (item.redeemLimitPerUser === null) return "不限购";
+  if (item.redeemLimitWindowDays === null) return `终身 ${item.redeemLimitPerUser} 件`;
+  return `${item.redeemLimitWindowDays} 天 ${item.redeemLimitPerUser} 件`;
+}
 
 function AdminPointGiftsContent() {
   const { get, getNumber, update } = useListQuery();
@@ -120,6 +146,12 @@ function AdminPointGiftsContent() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [stockEdit, setStockEdit] = useState<{ id: string; value: string } | null>(null);
   const [savingStock, setSavingStock] = useState(false);
+  const [limitTarget, setLimitTarget] = useState<RedeemableProductItem | null>(null);
+  const [limitUnlimited, setLimitUnlimited] = useState(true);
+  const [limitCount, setLimitCount] = useState("");
+  const [limitWindowMode, setLimitWindowMode] = useState<"lifetime" | "rolling">("rolling");
+  const [limitWindowDays, setLimitWindowDays] = useState("30");
+  const [savingLimit, setSavingLimit] = useState(false);
 
   const [redemptions, setRedemptions] = useState<RedemptionItem[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -178,7 +210,15 @@ function AdminPointGiftsContent() {
     } finally {
       if (isLatest()) setProductsLoading(false);
     }
-  }, [productPage, searchParam, redeemableFilter, showError, canGiftRead, view, takeLatestProducts]);
+  }, [
+    productPage,
+    searchParam,
+    redeemableFilter,
+    showError,
+    canGiftRead,
+    view,
+    takeLatestProducts,
+  ]);
 
   const takeLatestRedemptions = useLatestRequest();
   const fetchRedemptions = useCallback(async () => {
@@ -382,6 +422,62 @@ function AdminPointGiftsContent() {
       showError(e instanceof ApiError ? e.message : "保存失败");
     } finally {
       setSavingStock(false);
+    }
+  };
+
+  const openLimitEdit = (p: RedeemableProductItem) => {
+    const unlimited = p.redeemLimitPerUser === null;
+    setLimitTarget(p);
+    setLimitUnlimited(unlimited);
+    setLimitCount(unlimited ? "" : String(p.redeemLimitPerUser));
+    setLimitWindowMode(p.redeemLimitWindowDays === null ? "lifetime" : "rolling");
+    setLimitWindowDays(p.redeemLimitWindowDays === null ? "30" : String(p.redeemLimitWindowDays));
+  };
+
+  const handleLimitSave = async () => {
+    if (!limitTarget) return;
+    let limit: number | null = null;
+    let windowDays: number | null = null;
+    if (!limitUnlimited) {
+      const parsedCount = Number(limitCount);
+      if (!Number.isInteger(parsedCount) || parsedCount < 1 || parsedCount > 9999) {
+        showError("限购数量须为 1-9999 的整数");
+        return;
+      }
+      limit = parsedCount;
+      if (limitWindowMode === "rolling") {
+        const parsedDays = Number(limitWindowDays);
+        if (!Number.isInteger(parsedDays) || parsedDays < 1 || parsedDays > 3650) {
+          showError("统计周期须为 1-3650 天");
+          return;
+        }
+        windowDays = parsedDays;
+      }
+    }
+
+    setSavingLimit(true);
+    try {
+      const submit = () =>
+        apiPatch("/api/admin/point-gifts", {
+          productId: limitTarget.id,
+          redeemLimitPerUser: limit,
+          redeemLimitWindowDays: windowDays,
+        });
+      try {
+        await submit();
+      } catch (e) {
+        if (!isTotpRequired(e)) throw e;
+        const verified = await requireTotp(e instanceof ApiError ? e.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
+      success("限购设置已更新");
+      setLimitTarget(null);
+      fetchProducts();
+    } catch (e) {
+      showError(e instanceof ApiError ? e.message : "保存失败");
+    } finally {
+      setSavingLimit(false);
     }
   };
 
@@ -752,6 +848,14 @@ function AdminPointGiftsContent() {
                         </>
                       )}
                     </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-brand-charcoal/70">限购：{redeemLimitLabel(p)}</span>
+                      {canGiftWrite && (
+                        <Button variant="outline" size="sm" onClick={() => openLimitEdit(p)}>
+                          编辑限购
+                        </Button>
+                      )}
+                    </div>
                     <div className="flex justify-end border-t border-brand-charcoal/10 pt-2">
                       {canGiftWrite ? (
                         <Button
@@ -786,19 +890,20 @@ function AdminPointGiftsContent() {
                   <th className="px-4 py-3 font-medium">发布状态</th>
                   <th className="px-4 py-3 font-medium">积分可兑</th>
                   <th className="px-4 py-3 font-medium">兑换库存</th>
+                  <th className="px-4 py-3 font-medium">每用户限购</th>
                   <th className="px-4 py-3 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {productsLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center">
+                    <td colSpan={8} className="px-4 py-10 text-center">
                       <RefreshCw className="mx-auto h-6 w-6 animate-spin text-brand-charcoal/65" />
                     </td>
                   </tr>
                 ) : productsError ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center">
+                    <td colSpan={8} className="px-4 py-10 text-center">
                       <p className="text-sm text-red-500">加载产品失败</p>
                       <Button variant="outline" size="sm" className="mt-3" onClick={fetchProducts}>
                         重试
@@ -808,7 +913,7 @@ function AdminPointGiftsContent() {
                 ) : products.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-4 py-10 text-center text-sm text-brand-charcoal/65"
                     >
                       暂无匹配产品
@@ -891,6 +996,16 @@ function AdminPointGiftsContent() {
                             )}
                           </div>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">
+                        <div className="flex items-center gap-2">
+                          <span>{redeemLimitLabel(p)}</span>
+                          {canGiftWrite && (
+                            <Button variant="outline" size="sm" onClick={() => openLimitEdit(p)}>
+                              编辑
+                            </Button>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         {canGiftWrite ? (
@@ -1163,7 +1278,10 @@ function AdminPointGiftsContent() {
                           </p>
                         )}
                         {r.status === "CANCELLED" && r.cancelNote && (
-                          <p className="mt-0.5 max-w-[14rem] truncate text-xs text-brand-charcoal/50" title={r.cancelNote}>
+                          <p
+                            className="mt-0.5 max-w-[14rem] truncate text-xs text-brand-charcoal/50"
+                            title={r.cancelNote}
+                          >
                             原因：{r.cancelNote}
                           </p>
                         )}
@@ -1236,6 +1354,82 @@ function AdminPointGiftsContent() {
           </div>
         </div>
       )}
+
+      <Modal
+        open={!!limitTarget}
+        onClose={() => setLimitTarget(null)}
+        size="sm"
+        title="设置每用户限购"
+        description="按商品配置；滚动周期按兑换创建时间统计，已取消的兑换不计入。"
+        closeOnBackdrop={false}
+        closeGuard={() => !savingLimit}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setLimitTarget(null)} disabled={savingLimit}>
+              取消
+            </Button>
+            <Button onClick={handleLimitSave} loading={savingLimit}>
+              保存
+            </Button>
+          </div>
+        }
+      >
+        {limitTarget && (
+          <div className="space-y-4">
+            {limitTarget.priceYuan === 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                该商品价格为 0 元。若同时不限库存、不限购，用户可用最低 1 积分无限兑换，请确认配置。
+              </div>
+            )}
+            <div className="rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-sm text-brand-charcoal/70">
+              {limitTarget.name}
+            </div>
+            <Select
+              label="限购模式"
+              value={limitUnlimited ? "unlimited" : limitWindowMode}
+              onChange={(e) => {
+                const value = e.target.value as "unlimited" | "lifetime" | "rolling";
+                if (value === "unlimited") {
+                  setLimitUnlimited(true);
+                } else {
+                  setLimitUnlimited(false);
+                  setLimitWindowMode(value);
+                }
+              }}
+              options={[
+                { value: "unlimited", label: "不限购" },
+                { value: "lifetime", label: "终身限购" },
+                { value: "rolling", label: "滚动周期限购" },
+              ]}
+            />
+            {!limitUnlimited && (
+              <>
+                <Input
+                  label="每用户限购数量"
+                  type="number"
+                  min={1}
+                  max={9999}
+                  value={limitCount}
+                  onChange={(e) => setLimitCount(e.target.value)}
+                  placeholder="如 1"
+                />
+                {limitWindowMode === "rolling" && (
+                  <Input
+                    label="统计周期（天）"
+                    type="number"
+                    min={1}
+                    max={3650}
+                    value={limitWindowDays}
+                    onChange={(e) => setLimitWindowDays(e.target.value)}
+                    placeholder="如 30"
+                    hint="从当前时间向前滚动统计"
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* 履约 / 运单号维护弹窗 */}
       <Modal
@@ -1325,7 +1519,15 @@ function AdminPointGiftsContent() {
 
 export default function AdminPointGiftsPage() {
   return (
-    <RequirePermission permissions={["redemptions:read", "gifts:read"]}>
+    <RequirePermission
+      permissions={[
+        "redemptions:read",
+        "redemptions:fulfill",
+        "redemptions:cancel",
+        "gifts:read",
+        "gifts:write",
+      ]}
+    >
       <AdminPointGiftsContent />
     </RequirePermission>
   );

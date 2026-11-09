@@ -153,7 +153,10 @@ describe("DELETE /api/admin/users/:id", () => {
     expect(upsertArgs.update.attempts).toBe(0);
 
     // 同步调用同一执行器，不发回执短信（管理端路径）
-    expect(mockExecute).toHaveBeenCalledWith("req-1", { notifyUser: false });
+    expect(mockExecute).toHaveBeenCalledWith(
+      "req-1",
+      expect.objectContaining({ notifyUser: false })
+    );
 
     // 管理端审计 + SSO 事件（newStatus 与执行器匿名化口径一致为 DELETED）
     expect(beginAuditLog).toHaveBeenCalledWith(
@@ -184,7 +187,10 @@ describe("DELETE /api/admin/users/:id", () => {
     const res = await DELETE(deleteRequest(), context);
     expect(res.status).toBe(200);
     expect(mockUpsert).toHaveBeenCalled();
-    expect(mockExecute).toHaveBeenCalledWith("req-1", { notifyUser: false });
+    expect(mockExecute).toHaveBeenCalledWith(
+      "req-1",
+      expect.objectContaining({ notifyUser: false })
+    );
   });
 
   it("执行器返回 failed：502 + 引导人工队列，不写成功审计", async () => {

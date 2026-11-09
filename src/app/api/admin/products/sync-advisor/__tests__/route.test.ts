@@ -23,6 +23,9 @@ vi.mock("@/lib/csrf", () => ({
 vi.mock("@/lib/admin-permissions", () => ({
   hasAdminPermission: mocks.hasAdminPermission,
 }));
+vi.mock("@/lib/admin-totp", () => ({
+  requireAdminStepUp: vi.fn().mockResolvedValue(null),
+}));
 vi.mock("@/lib/audit", () => ({
   createAuditLog: mocks.createAuditLog,
 }));

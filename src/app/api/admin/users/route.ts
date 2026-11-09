@@ -220,11 +220,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const failed: { id: string; message: string }[] = [];
+
     if (toChange.length > 0) {
-      try {
-        const { changeUserStatus } = await import("@/lib/user-status");
-        const { recordSsoEvent } = await import("@/lib/sso-audit");
-        for (const u of toChange) {
+      const { changeUserStatus } = await import("@/lib/user-status");
+      const { recordSsoEvent } = await import("@/lib/sso-audit");
+      for (const u of toChange) {
+        try {
           // 每用户独立事务：状态 + token 撤销原子；单个失败不会留下半改状态
           const result = await changeUserStatus({
             userId: u.id,
@@ -252,23 +254,33 @@ export async function POST(request: NextRequest) {
               batch: true,
             },
           });
+        } catch (error) {
+          failed.push({
+            id: u.id,
+            message: error instanceof Error ? error.message.slice(0, 200) : "更新失败",
+          });
         }
-      } catch (error) {
-        await finishAuditLog(auditId, "FAILURE", { ids, status });
-        throw error;
       }
     }
 
-    await finishAuditLog(auditId, "SUCCESS", {
+    const outcome =
+      failed.length > 0 && changedIds.length > 0
+        ? "PARTIAL"
+        : failed.length > 0
+          ? "FAILURE"
+          : "SUCCESS";
+
+    await finishAuditLog(auditId, outcome, {
       ids,
       status,
       count: changedIds.length,
       skippedDeleted,
+      failed,
     });
 
     return NextResponse.json({
       success: true,
-      data: { updated: changedIds.length, skippedDeleted },
+      data: { updated: changedIds.length, skippedDeleted, failed },
     });
   } catch (error) {
     apiConsole.error("[AdminUsersBatch] 异常:", error);

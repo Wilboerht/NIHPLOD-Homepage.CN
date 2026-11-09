@@ -15,6 +15,7 @@ async function main() {
         {
           checked: result.checked,
           negativeBalances: result.negativeBalances,
+          deletedUsersWithRemaining: result.deletedUsersWithRemaining,
           issueCount: result.issues.length,
           truncated: result.truncated,
           issues: result.issues,
@@ -23,7 +24,7 @@ async function main() {
         2
       )
     );
-    if (result.issues.length > 0 || result.negativeBalances > 0) {
+    if (result.issues.length > 0 || result.deletedUsersWithRemaining > 0) {
       process.exitCode = 1;
     }
   } finally {

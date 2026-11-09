@@ -16,7 +16,7 @@ import { sendBackchannelLogout } from "@/lib/backchannel-logout";
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
-import { revokeRefreshToken } from "@/lib/auth-security";
+import { revokeOAuthRefreshTokensForUser } from "@/lib/auth-security";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -207,13 +207,6 @@ export async function POST(request: NextRequest) {
     let revokedClients = 0;
 
     for (const clientId of clientIds) {
-      // 撤销前先查出最新活跃会话的 sid，供 backchannel logout_token 携带
-      const activeSessions = await prisma.oAuthSession.findMany({
-        where: { userId, clientId, revokedAt: null, expiresAt: { gt: new Date() } },
-        select: { sessionId: true },
-        orderBy: { createdAt: "desc" },
-      });
-
       const auditId = await beginAuditLog({
         action: "oauth_consent_revoke",
         targetType: "oauth_consent",
@@ -256,7 +249,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 同步撤销该用户在该 client 下的所有 Refresh Token
-      await revokeRefreshToken(userId, undefined, clientId, "admin_revoke");
+      await revokeOAuthRefreshTokensForUser(userId, clientId, "admin_revoke");
 
       // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
       // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，避免误登出主站会话。
@@ -275,10 +268,8 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 触发 Backchannel Logout（sid 取撤销前查出的最新活跃会话）
-      await sendBackchannelLogout(userId, [clientId], {
-        sids: activeSessions.length > 0 ? { [clientId]: activeSessions[0].sessionId } : {},
-      });
+      // 触发 Backchannel Logout：该 client 下全部会话已撤销，使用 sub-only
+      await sendBackchannelLogout(userId, [clientId], { omitSid: true });
 
       await finishAuditLog(auditId, "SUCCESS", {
         userId,

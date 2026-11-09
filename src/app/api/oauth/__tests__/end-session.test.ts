@@ -39,6 +39,10 @@ const mockRevokeOAuthClientSessions = vi.fn();
 vi.mock("@/lib/oauth-session-revoke", () => ({
   revokeOAuthClientSessions: (...args: unknown[]) => mockRevokeOAuthClientSessions(...args),
 }));
+vi.mock("@/lib/sso-audit", () => ({
+  recordSsoEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/auth-logger", () => ({
   logAuthEvent: vi.fn(),
 }));

@@ -65,17 +65,26 @@ export async function DELETE(
 
     // 与用户侧 unbindSecurityIdentity 保持同一安全边界：
     // 占位手机号账号没有真实手机号，解绑第三方身份后可能永久无法登录。
-    let account: { phone: string | null } | null = null;
-    try {
-      account =
-        (await prisma.user?.findUnique({
-          where: { id },
-          select: { phone: true },
-        })) ?? null;
-    } catch {
-      account = null;
+    const account = await prisma.user?.findUnique({
+      where: { id },
+      select: { phone: true, status: true },
+    });
+    if (!account) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "用户不存在" } },
+        { status: 404 }
+      );
     }
-    if (account && (!account.phone || account.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX))) {
+    if (account.status === "DELETED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "USER_DELETED", message: "该用户已注销，不能解绑外部身份" },
+        },
+        { status: 409 }
+      );
+    }
+    if (!account.phone || account.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
       return NextResponse.json(
         {
           success: false,

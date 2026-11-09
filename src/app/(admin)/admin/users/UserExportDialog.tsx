@@ -119,13 +119,14 @@ export function UserExportDialog({
   };
 
   const selectAll = () => {
-    setSelected(
-      new Set(
-        [...BUSINESS_GROUPS, ...(canReadAdvisor ? ADVISOR_GROUPS : [])].filter(
-          (group) => group !== "advisorFullAnalysis"
+    const advisorGroups = canReadAdvisor
+      ? ADVISOR_GROUPS.filter(
+          (group) =>
+            group !== "advisorFullAnalysis" &&
+            (canReadAdvisorReport || group !== "advisorDiary")
         )
-      )
-    );
+      : [];
+    setSelected(new Set([...BUSINESS_GROUPS, ...advisorGroups]));
   };
 
   return (

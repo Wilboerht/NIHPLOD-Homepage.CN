@@ -158,8 +158,8 @@ function usersEntry(options: DatabaseExportOptions): ExportCsvEntry {
             row.id,
             options.canReadSensitive ? row.phone : maskPhone(row.phone),
             yesNo(row.phoneVerified),
-            row.nickname ?? "",
-            row.avatar ?? "",
+            options.canReadSensitive ? (row.nickname ?? "") : (maskIdentifier(row.nickname) ?? ""),
+            options.canReadSensitive ? (row.avatar ?? "") : (maskIdentifier(row.avatar) ?? ""),
             genderLabel(row.gender),
             USER_STATUS_LABELS[row.status] ?? row.status,
             row.status,
@@ -173,7 +173,7 @@ function usersEntry(options: DatabaseExportOptions): ExportCsvEntry {
             options.canReadSensitive
               ? (row.wechatUnionId ?? "")
               : maskIdentifier(row.wechatUnionId),
-            toDateOnly(row.birthday),
+            options.canReadSensitive ? toDateOnly(row.birthday) : "",
             yesNo(row.birthdayLocked),
             selected.has("points") ? (row.pointBalance?.available ?? 0) : "",
             selected.has("points") ? toIso(row.pointBalance?.updatedAt) : "",
@@ -421,7 +421,9 @@ function redemptionsEntry(options: DatabaseExportOptions): ExportCsvEntry {
                   : "",
               options.canReadSensitive ? (item.address ?? "") : maskAddress(item.address),
               item.carrier ?? "",
-              item.waybillNo ?? "",
+              options.canReadSensitive
+                ? (item.waybillNo ?? "")
+                : (maskIdentifier(item.waybillNo) ?? ""),
               toIso(item.fulfilledAt),
               toIso(item.cancelledAt),
               sensitiveText(item.cancelNote, options.canReadSensitive),
@@ -562,7 +564,13 @@ function spentEntry(options: DatabaseExportOptions): ExportCsvEntry {
               item.source,
               item.reviewAmount ?? "",
               sensitiveText(item.reviewNote, options.canReadSensitive),
-              item.reviewedBy ? `${item.reviewedBy.name} (${item.reviewedBy.email})` : "",
+              item.reviewedBy
+                ? options.canReadSensitive
+                  ? `${item.reviewedBy.name} (${item.reviewedBy.email})`
+                  : `${maskIdentifier(item.reviewedBy.name) ?? "-"} (${
+                      maskIdentifier(item.reviewedBy.email) ?? "-"
+                    })`
+                : "",
               toIso(item.reviewedAt),
               toIso(item.createdAt),
               toIso(item.updatedAt),

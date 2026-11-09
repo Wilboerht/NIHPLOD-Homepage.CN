@@ -234,6 +234,52 @@ async function consumeGrantsFifo(
 }
 
 /**
+ * 注销用户积分作废：清零余额并同步清零所有未消耗发放流水的 remaining。
+ */
+export async function voidPointsForDeletedUser(
+  tx: PointTx,
+  userId: string,
+  reference: string,
+  note = "账号注销，积分余额作废"
+): Promise<{ available: number; frozen: number; clearedGrants: number }> {
+  await lockPointBalance(tx, userId);
+  const balance = await tx.pointBalance.findUnique({
+    where: { userId },
+    select: { available: true, frozen: true },
+  });
+  const available = balance?.available ?? 0;
+  const frozen = balance?.frozen ?? 0;
+
+  const cleared = await tx.pointLedger.updateMany({
+    where: {
+      userId,
+      type: { in: [...POINT_GRANT_LEDGER_TYPES] },
+      remaining: { gt: 0 },
+    },
+    data: { remaining: 0 },
+  });
+
+  if (available !== 0 || frozen !== 0) {
+    await tx.pointLedger.create({
+      data: {
+        userId,
+        type: "ADJUST",
+        amount: -(available + frozen),
+        reference,
+        note,
+        remaining: 0,
+      },
+    });
+    await tx.pointBalance.updateMany({
+      where: { userId },
+      data: { available: 0, frozen: 0 },
+    });
+  }
+
+  return { available, frozen, clearedGrants: cleared.count };
+}
+
+/**
  * 过期扣减：剩余 >0 且已过期的发放流水清零，余额同步扣减。
  * - 已释放部分从可用余额扣（仅扣正数：负余额是超兑债务，不因过期减免）
  * - 未释放部分从冻结余额扣（无冻结期后为 0，仅保留防御分支）
@@ -245,6 +291,15 @@ export async function expirePoints(
   userId: string,
   now: Date = new Date()
 ): Promise<number> {
+  const user =
+    typeof tx.user?.findUnique === "function"
+      ? await tx.user.findUnique({
+          where: { id: userId },
+          select: { status: true },
+        })
+      : null;
+  if (user?.status === "DELETED") return 0;
+
   // 先锁余额行，与兑礼/退款统一锁顺序，避免过期任务与用户兑礼互相死锁
   await lockPointBalance(tx, userId);
   const expired = await tx.pointLedger.findMany({
@@ -624,6 +679,7 @@ export async function expirePointsCron(): Promise<number> {
       type: { in: [...POINT_GRANT_LEDGER_TYPES] },
       remaining: { gt: 0 },
       expiresAt: { lte: now },
+      user: { status: { not: "DELETED" } },
     },
     select: { userId: true },
     distinct: ["userId"],

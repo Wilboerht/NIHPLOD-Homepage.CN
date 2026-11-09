@@ -75,6 +75,7 @@ export const POST = withAuth<NextRequest, { params: Promise<{ id: string }> }, N
         select: {
           id: true,
           email: true,
+          role: true,
           status: true,
           totpEnabled: true,
           totpResetRequired: true,
@@ -99,6 +100,20 @@ export const POST = withAuth<NextRequest, { params: Promise<{ id: string }> }, N
             error: { code: "TOTP_NOT_ENABLED", message: "目标管理员尚未启用 TOTP，无需签发恢复码" },
           },
           { status: 400 }
+        );
+      }
+
+      if (target.role === "owner") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "APPROVAL_REQUIRED",
+              message: "为其他 owner 签发恢复码需要另一名 owner 审批",
+              details: { policyKey: "totp.recovery.issue", adminId: target.id },
+            },
+          },
+          { status: 403 }
         );
       }
 

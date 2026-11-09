@@ -10,9 +10,11 @@ vi.mock("@/lib/prisma", () => ({
     spentAdjustmentApplication: {
       updateMany: vi.fn(),
       findUnique: vi.fn(),
+      aggregate: vi.fn().mockResolvedValue({ _sum: { reviewAmount: 0 } }),
     },
     spentImportRow: { findFirst: vi.fn() },
     user: { findUnique: vi.fn().mockResolvedValue({ status: "ACTIVE" }) },
+    $executeRaw: vi.fn(),
     $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
   },
 }));
@@ -36,6 +38,11 @@ vi.mock("@/lib/wechat-template", () => ({
   sendSpentAdjustmentReviewMessage: vi.fn().mockResolvedValue({ success: true, sent: false }),
 }));
 
+const mockEnqueueNotification = vi.fn().mockResolvedValue("outbox-1");
+vi.mock("@/lib/notification-outbox", () => ({
+  enqueueNotification: (...args: unknown[]) => mockEnqueueNotification(...args),
+}));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
@@ -46,8 +53,6 @@ vi.mock("next/server", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { applyExternalSpentSync } from "@/lib/points";
-import { sendSpentReviewNotification } from "@/lib/sms";
-import { sendSpentAdjustmentReviewMessage } from "@/lib/wechat-template";
 import { reviewApplication, undoApplication } from "@/lib/spent-adjustments";
 
 const mockUpdateMany = prisma.spentAdjustmentApplication.updateMany as ReturnType<typeof vi.fn>;
@@ -97,8 +102,17 @@ describe("reviewApplication", () => {
       },
       expect.anything()
     );
-    expect(sendSpentReviewNotification).toHaveBeenCalledWith("13800138000", "已通过");
-    expect(sendSpentAdjustmentReviewMessage).toHaveBeenCalled();
+    expect(mockEnqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: "SMS",
+        eventType: "spent_review_result",
+        recipient: { phone: "13800138000" },
+        payload: expect.objectContaining({ status: "APPROVED" }),
+      })
+    );
+    expect(mockEnqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "WECHAT_TEMPLATE" })
+    );
   });
 
   it("非 owner 自建自审被拒绝，不执行 CAS 与入账", async () => {
@@ -111,8 +125,26 @@ describe("reviewApplication", () => {
       reviewAmount: 1280,
     });
 
+    expect(result).toEqual(expect.objectContaining({ ok: false, code: "SELF_REVIEW_FORBIDDEN" }));
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+    expect(mockApplySync).not.toHaveBeenCalled();
+  });
+
+  it("累计审批额度超限时拒绝直接审核并返回 APPROVAL_REQUIRED 语义", async () => {
+    mockFindUnique.mockResolvedValue(pendingApp);
+    (prisma.spentAdjustmentApplication.aggregate as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      { _sum: { reviewAmount: 9_000 } }
+    );
+
+    const result = await reviewApplication({
+      applicationId: "app-1",
+      decision: "approve",
+      adminId: "admin-1",
+      reviewAmount: 1_280,
+    });
+
     expect(result).toEqual(
-      expect.objectContaining({ ok: false, code: "SELF_REVIEW_FORBIDDEN" })
+      expect.objectContaining({ ok: false, code: "CUMULATIVE_APPROVAL_REQUIRED" })
     );
     expect(mockUpdateMany).not.toHaveBeenCalled();
     expect(mockApplySync).not.toHaveBeenCalled();
@@ -151,7 +183,12 @@ describe("reviewApplication", () => {
 
     expect(result).toEqual({ ok: true, status: "REJECTED" });
     expect(mockApplySync).not.toHaveBeenCalled();
-    expect(sendSpentReviewNotification).toHaveBeenCalledWith("13800138000", "未通过");
+    expect(mockEnqueueNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: "SMS",
+        payload: expect.objectContaining({ status: "REJECTED" }),
+      })
+    );
   });
 
   it("用户非 ACTIVE：通过审核返回 USER_INACTIVE，不发起 CAS 与入账", async () => {

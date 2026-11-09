@@ -197,9 +197,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         ORDER_ALREADY_IMPORTED: 409,
         ORDER_CONFLICT: 409,
         INVALID_PARAMS: 400,
+        CUMULATIVE_APPROVAL_REQUIRED: 403,
       };
+      const cumulative = result.code === "CUMULATIVE_APPROVAL_REQUIRED";
       return NextResponse.json(
-        { success: false, error: { code: result.code, message: result.message } },
+        {
+          success: false,
+          error: {
+            code: cumulative ? "APPROVAL_REQUIRED" : result.code,
+            message: result.message,
+            ...(cumulative
+              ? {
+                  details: {
+                    policyKey: "spent.review.approve",
+                    reason: "cumulative",
+                  },
+                }
+              : {}),
+          },
+        },
         { status: statusMap[result.code] ?? 500 }
       );
     }

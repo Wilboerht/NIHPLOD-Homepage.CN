@@ -31,6 +31,7 @@ const EMPTY_NAV_COUNTS: NavCounts = {
   accountDeletions: 0,
   spentAdjustments: 0,
   pointRedemptions: 0,
+  redemptionAfterSales: 0,
   applications: 0,
   approvals: 0,
 };
@@ -141,6 +142,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       permissionList.includes("users:read") ||
       permissionList.includes("spent:read") ||
       permissionList.includes("redemptions:read") ||
+      permissionList.includes("redemptions:after-sales") ||
       permissionList.includes("applications:read") ||
       permissionList.includes("approvals:request") ||
       permissionList.includes("approvals:review");

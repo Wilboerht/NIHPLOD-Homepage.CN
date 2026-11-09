@@ -237,6 +237,7 @@ describe("applyExternalSpentSync 跨来源订单占用", () => {
         orderNoKey: "ORDER-A",
         source: "MALL_SYNC",
         reference: "ORDER-A",
+        originalAmount: 100,
       },
     });
     expect(mockTxSpentSyncCreate).toHaveBeenCalledWith({

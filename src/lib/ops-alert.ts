@@ -159,6 +159,119 @@ export function notifySpentOrderConflicts(result: SpentOrderConflictResult): voi
   });
 }
 
+/**
+ * 兑换售后待办老化告警：待审核 >3 天、待寄回 >3 天、退货在途 >7 天、待退款 >2 天。
+ * 同一告警 12 小时内只发一次。
+ */
+export async function sendAfterSalesAgingAlert(now = new Date()): Promise<void> {
+  const threeDaysAgo = new Date(now.getTime() - 3 * DAY);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * DAY);
+  const twoDaysAgo = new Date(now.getTime() - 2 * DAY);
+
+  const [requested, approved, returning, returned] = await Promise.all([
+    prisma.pointRedemption.findMany({
+      where: { status: "AFTER_SALES_REQUESTED", afterSalesRequestedAt: { lt: threeDaysAgo } },
+      orderBy: { afterSalesRequestedAt: "asc" },
+      take: 5,
+      select: {
+        id: true,
+        productName: true,
+        points: true,
+        afterSalesRequestedAt: true,
+        user: { select: { nickname: true, phone: true } },
+      },
+    }),
+    prisma.pointRedemption.findMany({
+      where: { status: "AFTER_SALES_APPROVED", afterSalesApprovedAt: { lt: threeDaysAgo } },
+      orderBy: { afterSalesApprovedAt: "asc" },
+      take: 5,
+      select: {
+        id: true,
+        productName: true,
+        points: true,
+        afterSalesApprovedAt: true,
+        user: { select: { nickname: true, phone: true } },
+      },
+    }),
+    prisma.pointRedemption.findMany({
+      where: { status: "RETURNING", returnShippedAt: { lt: sevenDaysAgo } },
+      orderBy: { returnShippedAt: "asc" },
+      take: 5,
+      select: {
+        id: true,
+        productName: true,
+        points: true,
+        returnShippedAt: true,
+        returnWaybillNo: true,
+        user: { select: { nickname: true, phone: true } },
+      },
+    }),
+    prisma.pointRedemption.findMany({
+      where: { status: "RETURNED", returnReceivedAt: { lt: twoDaysAgo } },
+      orderBy: { returnReceivedAt: "asc" },
+      take: 5,
+      select: {
+        id: true,
+        productName: true,
+        points: true,
+        returnReceivedAt: true,
+        user: { select: { nickname: true, phone: true } },
+      },
+    }),
+  ]);
+
+  const [requestedCount, approvedCount, returningCount, returnedCount] = await Promise.all([
+    prisma.pointRedemption.count({
+      where: { status: "AFTER_SALES_REQUESTED", afterSalesRequestedAt: { lt: threeDaysAgo } },
+    }),
+    prisma.pointRedemption.count({
+      where: { status: "AFTER_SALES_APPROVED", afterSalesApprovedAt: { lt: threeDaysAgo } },
+    }),
+    prisma.pointRedemption.count({
+      where: { status: "RETURNING", returnShippedAt: { lt: sevenDaysAgo } },
+    }),
+    prisma.pointRedemption.count({
+      where: { status: "RETURNED", returnReceivedAt: { lt: twoDaysAgo } },
+    }),
+  ]);
+
+  const total = requestedCount + approvedCount + returningCount + returnedCount;
+  if (total === 0) return;
+
+  const sampleLine = (
+    item: {
+      productName: string;
+      points: number;
+      user: { nickname: string | null; phone: string };
+    },
+    at: Date | null
+  ): string => {
+    const user = item.user.nickname || maskPhone(item.user.phone);
+    return `- ${user} · ${item.productName} · ${item.points} 积分 · 已等待 ${formatAge(at, now)}`;
+  };
+
+  notifyWithCooldown({
+    ruleKey: "redemption-after-sales-aging",
+    count: total,
+    cooldownMs: 12 * HOUR,
+    type: "ops",
+    title: "兑换售后待办超时",
+    lines: [
+      `- 待审核 >3 天：${requestedCount} 笔`,
+      `- 待寄回 >3 天：${approvedCount} 笔`,
+      `- 退货在途 >7 天：${returningCount} 笔`,
+      `- 待退款 >2 天：${returnedCount} 笔`,
+      `- 时间：${nowText(now)}`,
+      "",
+      ...requested.slice(0, 2).map((item) => sampleLine(item, item.afterSalesRequestedAt)),
+      ...approved.slice(0, 2).map((item) => sampleLine(item, item.afterSalesApprovedAt)),
+      ...returning.slice(0, 2).map((item) => sampleLine(item, item.returnShippedAt)),
+      ...returned.slice(0, 2).map((item) => sampleLine(item, item.returnReceivedAt)),
+      "- 请前往「兑换售后」处理",
+    ],
+  });
+}
+
 /** 礼品库存预警：单独告警，不混入运营日报；同一状态 12 小时内只提醒一次 */
 export async function sendGiftLowStockAlert(now = new Date()): Promise<void> {
   const threshold = lowStockThreshold();

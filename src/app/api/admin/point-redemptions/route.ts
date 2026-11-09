@@ -16,7 +16,21 @@ import { requireAdminStepUp } from "@/lib/admin-totp";
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
-  status: z.enum(["PENDING", "FULFILLED", "CANCELLED"]).optional(),
+  status: z
+    .enum([
+      "PENDING",
+      "FULFILLED",
+      "COMPLETED",
+      "AFTER_SALES_REQUESTED",
+      "AFTER_SALES_APPROVED",
+      "AFTER_SALES_REJECTED",
+      "RETURNING",
+      "RETURNED",
+      "REFUNDED",
+      "AFTER_SALES_CLOSED",
+      "CANCELLED",
+    ])
+    .optional(),
   search: z.string().max(100).optional(),
 });
 
@@ -69,6 +83,7 @@ export async function GET(request: NextRequest) {
     // PII 最小化：列表默认脱敏；履约管理员需显式 reveal=1 并完成 step-up，
     // 才返回完整收件人手机号/地址，且严格审计失败时拒绝返回明文。
     const canFulfill = hasAdminPermission(admin, "redemptions:fulfill");
+    const canReadAfterSales = hasAdminPermission(admin, "redemptions:after-sales");
     const wantsReveal = searchParams.get("reveal") === "1";
     const canViewPii = canFulfill && wantsReveal;
     if (canViewPii) {
@@ -95,8 +110,19 @@ export async function GET(request: NextRequest) {
           waybillNo: true,
           createdAt: true,
           fulfilledAt: true,
+          completedAt: true,
           cancelledAt: true,
           cancelNote: true,
+          afterSalesRequestedAt: true,
+          afterSalesReason: true,
+          afterSalesReviewNote: true,
+          afterSalesApprovedAt: true,
+          afterSalesClosedAt: true,
+          returnWaybillNo: true,
+          returnCarrier: true,
+          returnReceivedAt: true,
+          refundedPoints: true,
+          refundedAt: true,
           user: { select: { id: true, phone: true, nickname: true, status: true } },
         },
       }),
@@ -106,7 +132,19 @@ export async function GET(request: NextRequest) {
       prisma.pointBalance.aggregate({ _sum: { available: true } }),
     ]);
 
-    const counts: Record<string, number> = { PENDING: 0, FULFILLED: 0, CANCELLED: 0 };
+    const counts: Record<string, number> = {
+      PENDING: 0,
+      FULFILLED: 0,
+      COMPLETED: 0,
+      AFTER_SALES_REQUESTED: 0,
+      AFTER_SALES_APPROVED: 0,
+      AFTER_SALES_REJECTED: 0,
+      RETURNING: 0,
+      RETURNED: 0,
+      REFUNDED: 0,
+      AFTER_SALES_CLOSED: 0,
+      CANCELLED: 0,
+    };
     for (const row of statusCounts) {
       counts[row.status] = row._count;
     }
@@ -167,8 +205,19 @@ export async function GET(request: NextRequest) {
             waybillNo: r.waybillNo,
             createdAt: r.createdAt.toISOString(),
             fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
+            completedAt: r.completedAt?.toISOString() ?? null,
             cancelledAt: r.cancelledAt?.toISOString() ?? null,
             cancelNote: r.cancelNote,
+            afterSalesRequestedAt: r.afterSalesRequestedAt?.toISOString() ?? null,
+            afterSalesReason: canReadAfterSales ? r.afterSalesReason : null,
+            afterSalesReviewNote: canReadAfterSales ? r.afterSalesReviewNote : null,
+            afterSalesApprovedAt: r.afterSalesApprovedAt?.toISOString() ?? null,
+            afterSalesClosedAt: r.afterSalesClosedAt?.toISOString() ?? null,
+            returnWaybillNo: canReadAfterSales ? r.returnWaybillNo : null,
+            returnCarrier: canReadAfterSales ? r.returnCarrier : null,
+            returnReceivedAt: r.returnReceivedAt?.toISOString() ?? null,
+            refundedPoints: r.refundedPoints,
+            refundedAt: r.refundedAt?.toISOString() ?? null,
             user: {
               id: r.user.id,
               phone: maskPhone(r.user.phone),

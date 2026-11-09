@@ -14,6 +14,8 @@ import { requireAdminStepUp } from "@/lib/admin-totp";
 // 更新留言 Schema
 const UpdateSchema = z.object({
   read: z.boolean().optional(),
+  internalNote: z.string().max(5000).optional(),
+  /** 兼容旧客户端字段，仅用于内部备注 */
   reply: z.string().max(5000).optional(),
   /** 乐观锁：客户端读取到的 updatedAt；不匹配时返回 409，避免多人覆盖备注 */
   expectedUpdatedAt: z.string().datetime().optional(),
@@ -66,7 +68,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       data: {
         ...message,
         phone: maskPhone(message.phone),
-        repliedAt: message.repliedAt?.toISOString() ?? null,
+        notedAt: message.notedAt?.toISOString() ?? null,
         createdAt: message.createdAt.toISOString(),
       },
     });
@@ -121,13 +123,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
 
-    // 更新留言：空字符串视为清空回复（同步清空 repliedAt），避免出现「空回复但已回复」的矛盾状态
+    // 更新留言：空字符串视为清空内部备注（同步清空 notedAt）
     const updateData: Record<string, unknown> = {};
     if (validated.read !== undefined) updateData.read = validated.read;
-    if (validated.reply !== undefined) {
-      const reply = validated.reply.trim();
-      updateData.reply = reply || null;
-      updateData.repliedAt = reply ? new Date() : null;
+    const internalNoteInput = validated.internalNote ?? validated.reply;
+    if (internalNoteInput !== undefined) {
+      const note = internalNoteInput.trim();
+      updateData.internalNote = note || null;
+      updateData.notedAt = note ? new Date() : null;
     }
 
     const updated = await prisma.contactMessage.updateMany({
@@ -165,7 +168,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       action: "update_message",
       targetType: "message",
       targetId: id,
-      detail: { read: validated.read, replied: !!validated.reply?.trim() },
+      detail: {
+        read: validated.read,
+        noted: !!internalNoteInput?.trim(),
+      },
       adminId: admin.id,
       request,
     }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
@@ -176,7 +182,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         ...message,
         // 与列表/详情一致：PATCH 响应也不返回明文手机号
         phone: maskPhone(message.phone),
-        repliedAt: message.repliedAt?.toISOString() ?? null,
+        notedAt: message.notedAt?.toISOString() ?? null,
         createdAt: message.createdAt.toISOString(),
         updatedAt: message.updatedAt.toISOString(),
       },

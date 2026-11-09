@@ -14,6 +14,8 @@ vi.mock("@/lib/prisma", () => {
   const prisma = {
     cronTaskRun: {
       findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn().mockResolvedValue(null),
     },
   };
   return { prisma, default: prisma };
@@ -46,8 +48,20 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/cron-tasks", () => ({
   isLocalCronEnabled: vi.fn().mockReturnValue(true),
   listCronTasks: vi.fn().mockReturnValue([
-    { name: "Expire Points", cronExpression: "30 4 * * *" },
-    { name: "Grant Birthday Points", cronExpression: "0 8 * * *" },
+    {
+      key: "expire-points",
+      name: "Expire Points",
+      cronExpression: "30 4 * * *",
+      isCleanup: false,
+      timeoutMs: 600000,
+    },
+    {
+      key: "grant-birthday-points",
+      name: "Grant Birthday Points",
+      cronExpression: "0 8 * * *",
+      isCleanup: false,
+      timeoutMs: 600000,
+    },
   ]),
   runCronTask: vi.fn(),
 }));
@@ -83,17 +97,29 @@ describe("GET /api/admin/cron-tasks", () => {
   });
 
   it("返回任务清单与最近一次运行状态", async () => {
-    (prisma.cronTaskRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        id: "run-1",
-        taskName: "Expire Points",
-        trigger: "cron",
-        success: false,
-        error: "db down",
-        startedAt: new Date("2026-09-17T04:30:00Z"),
-        finishedAt: new Date("2026-09-17T04:30:01Z"),
-      },
-    ]);
+    const run = {
+      id: "run-1",
+      taskKey: "expire-points",
+      taskName: "Expire Points",
+      trigger: "cron",
+      status: "FAILED",
+      success: false,
+      error: "db down",
+      adminId: null,
+      adminEmail: null,
+      adminName: null,
+      startedAt: new Date("2026-09-17T04:30:00Z"),
+      heartbeatAt: null,
+      finishedAt: new Date("2026-09-17T04:30:01Z"),
+      timeoutMs: 600000,
+      sourceRunId: null,
+      batchId: null,
+    };
+    (prisma.cronTaskRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([run]);
+    (prisma.cronTaskRun.findFirst as ReturnType<typeof vi.fn>).mockImplementation(
+      async ({ where }: { where: { taskName: string } }) =>
+        where.taskName === "Expire Points" ? run : null
+    );
 
     const res = await GET(createRequest("GET"));
     const data = await res.json();
@@ -126,28 +152,42 @@ describe("POST /api/admin/cron-tasks（手动触发）", () => {
   });
 
   it("触发成功：以 manual 模式执行并写审计", async () => {
-    vi.mocked(runCronTask).mockResolvedValue({ ok: true });
+    vi.mocked(runCronTask).mockResolvedValue({
+      ok: true,
+      status: "SUCCESS",
+      runId: "run-1",
+      durationMs: 10,
+    });
 
     const res = await POST(createRequest("POST", { taskName: "Expire Points" }));
 
     expect(res.status).toBe(200);
-    expect(runCronTask).toHaveBeenCalledWith("Expire Points", "manual", "admin-1");
+    expect(runCronTask).toHaveBeenCalledWith(
+      "expire-points",
+      "manual",
+      "admin-1",
+      expect.objectContaining({ adminEmail: "owner@test.com", adminName: "Owner" })
+    );
     expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "run_cron_task",
         targetType: "system",
-        targetId: "Expire Points",
+        targetId: "expire-points",
       })
     );
     expect(finishAuditLog).toHaveBeenCalledWith(
       "audit-1",
       "SUCCESS",
-      expect.objectContaining({ success: true })
+      expect.objectContaining({ success: true, runId: "run-1", status: "SUCCESS" })
     );
   });
 
   it("任务失败返回 500 并留痕失败原因", async () => {
-    vi.mocked(runCronTask).mockResolvedValue({ ok: false, error: "boom" });
+    vi.mocked(runCronTask).mockResolvedValue({
+      ok: false,
+      status: "FAILED",
+      error: "boom",
+    });
 
     const res = await POST(createRequest("POST", { taskName: "Expire Points" }));
 
@@ -155,7 +195,7 @@ describe("POST /api/admin/cron-tasks（手动触发）", () => {
     expect(finishAuditLog).toHaveBeenCalledWith(
       "audit-1",
       "FAILURE",
-      expect.objectContaining({ success: false, error: "boom" })
+      expect.objectContaining({ success: false, error: "boom", status: "FAILED" })
     );
   });
 });

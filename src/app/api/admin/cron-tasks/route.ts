@@ -1,5 +1,5 @@
 /**
- * 定时任务监控 API（管理端，仅超级管理员）
+ * 定时任务监控 API（管理端）
  * GET  /api/admin/cron-tasks - 任务清单 + 最近运行状态
  * POST /api/admin/cron-tasks - 手动触发指定任务（审计 run_cron_task）
  */
@@ -16,9 +16,76 @@ import { isLocalCronEnabled, listCronTasks, runCronTask } from "@/lib/cron-tasks
 
 export const dynamic = "force-dynamic";
 
-const triggerSchema = z.object({
-  taskName: z.string().min(1).max(120),
+const runStatusSchema = z.enum(["RUNNING", "SUCCESS", "FAILED", "TIMEOUT", "SKIPPED"]);
+
+const querySchema = z.object({
+  runStatus: runStatusSchema.optional(),
+  runLimit: z.coerce.number().int().min(1).max(100).default(30),
 });
+
+const triggerSchema = z
+  .object({
+    taskName: z.string().min(1).max(120).optional(),
+    taskKey: z.string().min(1).max(120).optional(),
+    sourceRunId: z.string().min(1).max(100).optional(),
+  })
+  .refine((data) => Boolean(data.taskName || data.taskKey), {
+    message: "taskName 或 taskKey 必填",
+  });
+
+type CronRunRow = {
+  id: string;
+  taskKey: string | null;
+  taskName: string;
+  trigger: string;
+  status: string | null;
+  success: boolean | null;
+  error: string | null;
+  adminId: string | null;
+  adminEmail: string | null;
+  adminName: string | null;
+  startedAt: Date;
+  heartbeatAt: Date | null;
+  finishedAt: Date | null;
+  timeoutMs: number | null;
+  sourceRunId: string | null;
+  batchId: string | null;
+};
+
+function effectiveStatus(run: Pick<CronRunRow, "status" | "success">): string {
+  if (run.status) return run.status;
+  return run.success ? "SUCCESS" : "FAILED";
+}
+
+function serializeRun(run: CronRunRow) {
+  const status = effectiveStatus(run);
+  const finishedAt = run.finishedAt;
+  return {
+    id: run.id,
+    taskKey: run.taskKey,
+    taskName: run.taskName,
+    trigger: run.trigger,
+    status,
+    success: run.success,
+    error: run.error,
+    adminId: run.adminId,
+    adminEmail: run.adminEmail,
+    adminName: run.adminName,
+    startedAt: run.startedAt.toISOString(),
+    heartbeatAt: run.heartbeatAt?.toISOString() ?? null,
+    finishedAt: finishedAt?.toISOString() ?? null,
+    durationMs: finishedAt ? finishedAt.getTime() - run.startedAt.getTime() : null,
+    timeoutMs: run.timeoutMs,
+    sourceRunId: run.sourceRunId,
+    batchId: run.batchId,
+  };
+}
+
+function cronMode(): "local" | "external" | "disabled" {
+  if (isLocalCronEnabled()) return "local";
+  if (process.env.CRON_SECRET) return "external";
+  return "disabled";
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,52 +103,65 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request, "cron-tasks:read");
+    const rateLimitResponse = await checkAdminRateLimit(request, "cron-tasks:read", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const tasks = listCronTasks();
-    const recentRuns = await prisma.cronTaskRun.findMany({
-      orderBy: { startedAt: "desc" },
-      take: 300,
+    const { searchParams } = new URL(request.url);
+    const parsed = querySchema.safeParse({
+      runStatus: searchParams.get("runStatus") || undefined,
+      runLimit: searchParams.get("runLimit") || undefined,
     });
-
-    // 每个任务取最近一次运行
-    const lastRunMap = new Map<string, (typeof recentRuns)[number]>();
-    for (const run of recentRuns) {
-      if (!lastRunMap.has(run.taskName)) lastRunMap.set(run.taskName, run);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        cronEnabled: isLocalCronEnabled(),
-        tasks: tasks.map((t) => {
-          const last = lastRunMap.get(t.name);
-          return {
-            name: t.name,
-            cronExpression: t.cronExpression,
-            lastRun: last
-              ? {
-                  startedAt: last.startedAt.toISOString(),
-                  finishedAt: last.finishedAt.toISOString(),
-                  success: last.success,
-                  trigger: last.trigger,
-                  error: last.error,
-                }
-              : null,
-          };
-        }),
-        recentRuns: recentRuns.slice(0, 30).map((r) => ({
-          id: r.id,
-          taskName: r.taskName,
-          trigger: r.trigger,
-          success: r.success,
-          error: r.error,
-          startedAt: r.startedAt.toISOString(),
-          finishedAt: r.finishedAt.toISOString(),
-        })),
+    const tasks = listCronTasks();
+    const recentRuns = (await prisma.cronTaskRun.findMany({
+      where: parsed.data.runStatus ? { status: parsed.data.runStatus } : undefined,
+      orderBy: { startedAt: "desc" },
+      take: 300,
+    })) as CronRunRow[];
+
+    const lastRuns = await Promise.all(
+      tasks.map((task) =>
+        prisma.cronTaskRun.findFirst({
+          where: { taskName: task.name },
+          orderBy: { startedAt: "desc" },
+        })
+      )
+    );
+    const lastRunMap = new Map(
+      lastRuns
+        .filter((run): run is NonNullable<typeof run> => run !== null)
+        .map((run) => [run.taskName, run as CronRunRow])
+    );
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          cronEnabled: isLocalCronEnabled(),
+          cronMode: cronMode(),
+          cronSecretConfigured: Boolean(process.env.CRON_SECRET),
+          tasks: tasks.map((task) => {
+            const last = lastRunMap.get(task.name);
+            return {
+              key: task.key,
+              name: task.name,
+              cronExpression: task.cronExpression,
+              isCleanup: task.isCleanup,
+              timeoutMs: task.timeoutMs,
+              lastRun: last ? serializeRun(last) : null,
+            };
+          }),
+          recentRuns: recentRuns.slice(0, parsed.data.runLimit).map(serializeRun),
+        },
       },
-    });
+      { headers: { "Cache-Control": "no-store, private" } }
+    );
   } catch (error) {
     apiConsole.error("[AdminCronTasks] 查询失败:", error);
     return NextResponse.json(
@@ -111,7 +191,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rateLimitResponse = await checkAdminRateLimit(request, "cron-tasks:trigger");
+    const rateLimitResponse = await checkAdminRateLimit(request, "cron-tasks:trigger", admin.id);
     if (rateLimitResponse) return rateLimitResponse;
 
     const stepUpResponse = await requireAdminStepUp(request, admin);
@@ -126,19 +206,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { taskName } = parsed.data;
-    if (!listCronTasks().some((t) => t.name === taskName)) {
+    const tasks = listCronTasks();
+    const task = parsed.data.taskKey
+      ? tasks.find((item) => item.key === parsed.data.taskKey)
+      : tasks.find((item) => item.name === parsed.data.taskName);
+    if (!task) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "任务不存在" } },
         { status: 404 }
       );
     }
 
+    if (parsed.data.sourceRunId) {
+      const sourceRun = await prisma.cronTaskRun.findUnique({
+        where: { id: parsed.data.sourceRunId },
+        select: { taskName: true, status: true },
+      });
+      if (!sourceRun || sourceRun.taskName !== task.name) {
+        return NextResponse.json(
+          { success: false, error: { code: "INVALID_PARAMS", message: "来源运行记录不匹配" } },
+          { status: 400 }
+        );
+      }
+      if (sourceRun.status === "RUNNING") {
+        return NextResponse.json(
+          { success: false, error: { code: "ALREADY_RUNNING", message: "来源任务仍在运行" } },
+          { status: 409 }
+        );
+      }
+    }
+
     const auditId = await beginAuditLog({
       action: "run_cron_task",
       targetType: "system",
-      targetId: taskName,
-      detail: { taskName, success: null, error: null },
+      targetId: task.key,
+      detail: {
+        taskName: task.name,
+        taskKey: task.key,
+        sourceRunId: parsed.data.sourceRunId ?? null,
+        status: null,
+        runId: null,
+        error: null,
+      },
       adminId: admin.id,
       request,
     });
@@ -152,32 +261,66 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await runCronTask(taskName, "manual", admin.id).catch(async (error) => {
+    const result = await runCronTask(task.key, "manual", admin.id, {
+      sourceRunId: parsed.data.sourceRunId,
+      adminEmail: admin.email,
+      adminName: admin.name,
+    }).catch(async (error) => {
+      const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
       await finishAuditLog(auditId, "FAILURE", {
-        taskName,
-        success: false,
-        error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
+        taskName: task.name,
+        taskKey: task.key,
+        status: "FAILED",
+        error: message,
       });
       throw error;
     });
 
     await finishAuditLog(auditId, result.ok ? "SUCCESS" : "FAILURE", {
-      taskName,
+      taskName: task.name,
+      taskKey: task.key,
+      runId: result.runId ?? null,
+      sourceRunId: parsed.data.sourceRunId ?? null,
+      status: result.status,
       success: result.ok,
+      durationMs: result.durationMs ?? null,
       error: result.error ?? null,
     });
+
+    if (result.status === "SKIPPED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "ALREADY_RUNNING", message: result.error ?? "任务正在执行中" },
+          data: { runId: result.runId ?? null, status: result.status },
+        },
+        { status: 409 }
+      );
+    }
 
     if (!result.ok) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "TASK_FAILED", message: `任务执行失败：${result.error ?? "未知错误"}` },
+          error: {
+            code: result.status === "TIMEOUT" ? "TASK_TIMEOUT" : "TASK_FAILED",
+            message: `任务执行失败：${result.error ?? "未知错误"}`,
+          },
+          data: { runId: result.runId ?? null, status: result.status },
         },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, data: { message: "任务执行完成" } });
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: "任务执行完成",
+        runId: result.runId ?? null,
+        status: result.status,
+        durationMs: result.durationMs ?? null,
+      },
+    });
   } catch (error) {
     apiConsole.error("[AdminCronTasks] 触发失败:", error);
     return NextResponse.json(

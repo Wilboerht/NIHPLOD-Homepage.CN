@@ -55,6 +55,7 @@ interface OAuthClient {
   scopes: string[];
   isActive: boolean;
   isPublic: boolean;
+  isSystem?: boolean;
   backchannelLogoutUri: string | null;
   webhookUri: string | null;
   codeTtlSeconds: number;
@@ -318,7 +319,12 @@ function ClientActions({
           <Code className="h-4 w-4" />
         </IconButton>
       </Tooltip>
-      {canWrite && (
+      {client.isSystem && (
+        <Badge variant="outline" className="whitespace-nowrap text-xs">
+          系统内置
+        </Badge>
+      )}
+      {canWrite && !client.isSystem && (
         <>
           {!client.isPublic && (
             <Tooltip content="在线测试" side="top">

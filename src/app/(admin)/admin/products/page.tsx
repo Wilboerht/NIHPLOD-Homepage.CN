@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { isTotpRequired, useTotpConfirm } from "@/hooks/useTotpConfirm";
 
 // 产品类型
 interface ProductItem {
@@ -49,6 +50,7 @@ function AdminProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { error: showError, success: showSuccess } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
 
   // 状态
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -69,7 +71,9 @@ function AdminProductsContent() {
   const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
   const pageSizeParam = Number(searchParams.get("pageSize"));
   const pageSize =
-    Number.isFinite(pageSizeParam) && pageSizeParam >= 1 ? Math.floor(pageSizeParam) : 10;
+    Number.isFinite(pageSizeParam) && pageSizeParam >= 1
+      ? Math.min(100, Math.floor(pageSizeParam))
+      : 10;
   const categoryId = searchParams.get("categoryId") || "";
   const status = searchParams.get("status") || "all";
   const search = searchParams.get("search") || "";
@@ -94,13 +98,16 @@ function AdminProductsContent() {
   const canBatchDelete = canAdmin("products:batch-delete");
   const canDelete = canAdmin("products:delete");
   const canWriteProducts = canAdmin("products:write");
+  const canReadCategories = canAdmin("categories:read");
+  const canEditProducts = canWriteProducts && canReadCategories;
 
   // 获取分类列表（管理端接口：包含隐藏分类，公开接口仅返回 visible 分类）
   useEffect(() => {
+    if (!canReadCategories) return;
     apiGet<Category[]>("/api/admin/categories")
       .then((data) => setCategories(data))
       .catch(() => showError("加载分类列表失败"));
-  }, [showError]);
+  }, [canReadCategories, showError]);
 
   // 获取产品列表
   const takeLatestProducts = useLatestRequest();
@@ -206,17 +213,28 @@ function AdminProductsContent() {
   const handleSyncAdvisor = useCallback(async () => {
     setSyncing(true);
     try {
-      const data = await apiPost<{
-        skipped?: boolean;
-        reason?: string;
-        created?: number;
-        updated?: number;
-        bound?: number;
-        deactivated?: number;
-        missing?: number;
-        skippedProducts?: number;
-        warnings?: unknown[];
-      }>("/api/admin/products/sync-advisor", {}, { timeoutMs: 60_000 });
+      const submit = () =>
+        apiPost<{
+          skipped?: boolean;
+          reason?: string;
+          created?: number;
+          updated?: number;
+          bound?: number;
+          deactivated?: number;
+          missing?: number;
+          skippedProducts?: number;
+          warnings?: unknown[];
+        }>("/api/admin/products/sync-advisor", {}, { timeoutMs: 60_000 });
+
+      let data: Awaited<ReturnType<typeof submit>>;
+      try {
+        data = await submit();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        data = await submit();
+      }
       if (data?.skipped) {
         showSuccess(data.reason === "disabled" ? "产品同步已停用" : "同步已跳过");
       } else {
@@ -234,7 +252,7 @@ function AdminProductsContent() {
     } finally {
       setSyncing(false);
     }
-  }, [showError, showSuccess]);
+  }, [requireTotp, showError, showSuccess]);
 
   return (
     <RequirePermission permission="products:read">
@@ -244,7 +262,7 @@ function AdminProductsContent() {
           title="产品管理"
           description={`管理所有产品，共 ${pagination.total} 个`}
           actions={
-            canWriteProducts ? (
+            canEditProducts ? (
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -290,14 +308,16 @@ function AdminProductsContent() {
           </form>
 
           {/* 分类筛选 */}
-          <div className="w-40">
-            <Select
-              aria-label="按分类筛选"
-              options={categoryOptions}
-              value={categoryId}
-              onChange={(e) => updateParams({ categoryId: e.target.value })}
-            />
-          </div>
+          {canReadCategories && (
+            <div className="w-40">
+              <Select
+                aria-label="按分类筛选"
+                options={categoryOptions}
+                value={categoryId}
+                onChange={(e) => updateParams({ categoryId: e.target.value })}
+              />
+            </div>
+          )}
 
           {/* 状态筛选 */}
           <div className="w-32">
@@ -332,6 +352,7 @@ function AdminProductsContent() {
             canDelete={canDelete}
             canBatchDelete={canBatchDelete}
             canWrite={canWriteProducts}
+            canEdit={canEditProducts}
           />
         )}
 
@@ -347,6 +368,7 @@ function AdminProductsContent() {
           type="info"
           loading={syncing}
         />
+        {totpModal}
       </div>
     </RequirePermission>
   );

@@ -97,6 +97,11 @@ export type AuditAction =
   | "point_redemption_fulfill"
   | "point_redemption_waybill_update"
   | "point_redemption_cancel"
+  | "point_redemption_refund"
+  | "point_redemption_confirm"
+  | "point_redemption_after_sales_review"
+  | "point_redemption_return_receive"
+  | "point_redemption_after_sales_close"
   | "create_point_campaign"
   | "update_point_campaign"
   | "delete_point_campaign"
@@ -109,6 +114,8 @@ export type AuditAction =
   | "oauth_session_terminate"
   | "webhook_failure_retry"
   | "webhook_failure_delete"
+  | "notification_outbox_retry"
+  | "notification_outbox_drop"
   | "user_set_password"
   | "admin_login"
   | "admin_logout"
@@ -123,6 +130,7 @@ export type AuditAction =
   | "account_deletion_cancel"
   | "account_deletion_execute"
   | "account_deletion_retry"
+  | "account_deletion_points_repair"
   | "admin_sso_authorize"
   | "admin_sso_token"
   | "admin_sso_status_sync"
@@ -182,7 +190,8 @@ export type AuditTargetType =
   | "oauth_session"
   | "point_campaign"
   | "audit_hold"
-  | "audit_retention";
+  | "audit_retention"
+  | "notification";
 
 export const AUDIT_ACTIONS = [
   "login",
@@ -263,6 +272,11 @@ export const AUDIT_ACTIONS = [
   "point_redemption_fulfill",
   "point_redemption_waybill_update",
   "point_redemption_cancel",
+  "point_redemption_refund",
+  "point_redemption_confirm",
+  "point_redemption_after_sales_review",
+  "point_redemption_return_receive",
+  "point_redemption_after_sales_close",
   "create_point_campaign",
   "update_point_campaign",
   "delete_point_campaign",
@@ -275,6 +289,8 @@ export const AUDIT_ACTIONS = [
   "oauth_session_terminate",
   "webhook_failure_retry",
   "webhook_failure_delete",
+  "notification_outbox_retry",
+  "notification_outbox_drop",
   "user_set_password",
   "user_phone_changed",
   "admin_login",
@@ -290,6 +306,7 @@ export const AUDIT_ACTIONS = [
   "account_deletion_cancel",
   "account_deletion_execute",
   "account_deletion_retry",
+  "account_deletion_points_repair",
   "admin_sso_authorize",
   "admin_sso_token",
   "admin_sso_status_sync",

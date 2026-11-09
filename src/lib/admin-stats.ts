@@ -67,8 +67,10 @@ const getCachedCounts = unstable_cache(
       prisma.category.count(),
       prisma.product.count({ where: { published: false } }),
       prisma.job.count({ where: { published: true } }),
-      prisma.user.count(),
-      prisma.user.count({ where: { createdAt: { gte: dayStart } } }),
+      prisma.user.count({ where: { status: { not: "DELETED" } } }),
+      prisma.user.count({
+        where: { createdAt: { gte: dayStart }, status: { not: "DELETED" } },
+      }),
       prisma.contactMessage.count(),
       prisma.contactMessage.count({ where: { createdAt: { gte: dayStart } } }),
       prisma.contactMessage.aggregate({
@@ -98,7 +100,15 @@ const getCachedCounts = unstable_cache(
         prisma.webhookDeliveryFailure.count(),
         prisma.backchannelLogoutFailure.count(),
       ]).then(([webhook, backchannel]) => webhook + backchannel),
-      prisma.cronTaskRun.count({ where: { success: false, startedAt: { gte: last24h } } }),
+      prisma.cronTaskRun.count({
+        where: {
+          startedAt: { gte: last24h },
+          OR: [
+            { status: { in: ["FAILED", "TIMEOUT"] } },
+            { status: null, success: false },
+          ],
+        },
+      }),
     ]);
 
     return {
@@ -125,7 +135,7 @@ const getCachedCounts = unstable_cache(
       cronFailures24hCount,
     };
   },
-  ["admin-stats-counts-v4"],
+  ["admin-stats-counts-v6"],
   { revalidate: STATS_REVALIDATE, tags: [...STATS_CACHE_TAGS] }
 );
 

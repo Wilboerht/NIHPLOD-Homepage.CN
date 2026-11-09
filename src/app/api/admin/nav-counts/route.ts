@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const canReadUsers = hasAdminPermission(admin, "users:read");
     const canReadSpent = hasAdminPermission(admin, "spent:read");
     const canReadRedemptions = hasAdminPermission(admin, "redemptions:read");
+    const canReadAfterSales = hasAdminPermission(admin, "redemptions:after-sales");
     const canReadApplications = hasAdminPermission(admin, "applications:read");
     const canReviewApprovals = hasAdminPermission(admin, "approvals:review");
     const canRequestApprovals = hasAdminPermission(admin, "approvals:request");
@@ -36,6 +37,7 @@ export async function GET(request: NextRequest) {
       accountDeletions,
       spentAdjustments,
       pointRedemptions,
+      redemptionAfterSales,
       applications,
       approvals,
     ] = await Promise.all([
@@ -43,6 +45,11 @@ export async function GET(request: NextRequest) {
       canReadUsers ? prisma.accountDeletionRequest.count({ where: { status: "FAILED" } }) : 0,
       canReadSpent ? prisma.spentAdjustmentApplication.count({ where: { status: "PENDING" } }) : 0,
       canReadRedemptions ? prisma.pointRedemption.count({ where: { status: "PENDING" } }) : 0,
+      canReadAfterSales
+        ? prisma.pointRedemption.count({
+            where: { status: { in: ["AFTER_SALES_REQUESTED", "RETURNING", "RETURNED"] } },
+          })
+        : 0,
       canReadApplications ? prisma.jobApplication.count({ where: { status: "pending" } }) : 0,
       canReviewApprovals || canRequestApprovals
         ? prisma.adminApprovalRequest.count({
@@ -64,6 +71,7 @@ export async function GET(request: NextRequest) {
         accountDeletions,
         spentAdjustments,
         pointRedemptions,
+        redemptionAfterSales,
         applications,
         approvals,
       },

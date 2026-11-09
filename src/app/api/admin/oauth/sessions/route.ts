@@ -21,7 +21,7 @@ import {
 import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
-import { revokeRefreshToken } from "@/lib/auth-security";
+import { revokeOAuthRefreshTokensForUser } from "@/lib/auth-security";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -324,15 +324,15 @@ export async function POST(request: NextRequest) {
       });
 
       // 同步撤销该用户+client 下的活跃 RefreshToken
-      await revokeRefreshToken(session.userId, undefined, session.clientId, "admin_revoke");
+      await revokeOAuthRefreshTokensForUser(session.userId, session.clientId, "admin_revoke");
 
       // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
       // sid 查到本 session 的 revokedAt 即拒绝），不再拉黑用户全部 token，
       // 避免误登出主站会话。
 
-      // Backchannel Logout 通知（sid 取撤销前查出的最新活跃会话）
+      // Backchannel Logout 通知：该用户在该 client 下的全部会话均已撤销，使用 sub-only
       await sendBackchannelLogout(session.userId, [session.clientId], {
-        sids: activeSessions.length > 0 ? { [session.clientId]: activeSessions[0].sessionId } : {},
+        omitSid: true,
       });
 
       await recordSsoEvent({
@@ -412,18 +412,14 @@ export async function POST(request: NextRequest) {
       where: { userId, ...(clientId ? { clientId } : {}), used: false },
     });
 
-    await revokeRefreshToken(userId, undefined, clientId, "admin_revoke");
+    await revokeOAuthRefreshTokensForUser(userId, clientId, "admin_revoke");
 
     // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
     // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，避免误登出主站会话。
 
     const uniqueClientIds = [...new Set(sessions.map((s) => s.clientId))];
-    // 撤销前已查出各 client 的最新活跃会话 sid，供 logout_token 携带
-    const sids: Record<string, string> = {};
-    for (const s of sessions) {
-      if (!sids[s.clientId]) sids[s.clientId] = s.sessionId;
-    }
-    await sendBackchannelLogout(userId, uniqueClientIds, { sids });
+    // 该用户在这些 client 下的全部会话均已撤销，使用 sub-only logout_token
+    await sendBackchannelLogout(userId, uniqueClientIds, { omitSid: true });
 
     await recordSsoEvent({
       event: "status_change",

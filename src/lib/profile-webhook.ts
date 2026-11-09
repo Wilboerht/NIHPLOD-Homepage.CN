@@ -476,6 +476,7 @@ export async function retryWebhookFailureById(id: string): Promise<ManualRetryRe
       : null;
     const includeMembership = payload.membership !== undefined && effectiveScopes.has("membership");
     if (!trimmedProfile && !includeMembership) {
+      await prisma.webhookDeliveryFailure.deleteMany({ where: { id } });
       recordSsoEvent({
         event: "profile_webhook",
         userId: failure.userId,

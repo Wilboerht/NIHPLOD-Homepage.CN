@@ -34,6 +34,8 @@ model Product {
   published       Boolean        @default(false) // 是否发布
   pointRedeemable Boolean        @default(false) // 是否可在用户面板积分兑换（兑换扣分 = ⌊价格 ÷ 当前兑礼率⌋）
   redeemStock     Int? // 积分兑换库存（null = 不限量；兑换时条件扣减，0 即拒绝）
+  redeemLimitPerUser    Int? // 每用户限购数量（null = 不限购）
+  redeemLimitWindowDays Int? // 限购统计周期天数（null + limit = 终身限购）
   geoFaqs         Json? // 人工维护的 GEO FAQ 数据（为空时使用规则兜底）
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @default(now()) @updatedAt
@@ -213,8 +215,8 @@ model ContactMessage {
   phone     String // 联系电话
   type      String? // 留言类型 (咨询、合作等)
   content   String    @db.Text // 留言内容
-  reply     String?   @db.Text // 管理员回复
-  repliedAt DateTime? // 回复时间
+  internalNote String?   @db.Text // 管理员内部备注（不发送给用户）
+  notedAt      DateTime? // 内部备注时间
   read      Boolean   @default(false) // 是否已读
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now()) @updatedAt
@@ -470,6 +472,7 @@ model OAuthClient {
   scopes                 String[] // 允许的权限范围
   isActive               Boolean   @default(true)
   isPublic               Boolean   @default(false) // Public Client (SPA/移动端/桌面端不传 client_secret)
+  isSystem               Boolean   @default(false) // 系统内置客户端：禁止停用/删除
   backchannelLogoutUri   String? // Backchannel Logout URI
   webhookUri             String? // 用户资料变更 Webhook 推送地址（可空，未配置则不推送）
   codeTtlSeconds         Int       @default(300) // 授权码有效期（秒），默认 5 分钟
@@ -487,6 +490,7 @@ model OAuthClient {
   consents           UserConsent[]            @relation("UserConsentClient")
 
   @@index([isActive])
+  @@index([isSystem])
   @@index([tenantId])
   @@index([name])
 }
@@ -611,6 +615,58 @@ model WebhookDeliveryFailure {
   updatedAt   DateTime @default(now()) @updatedAt
 
   @@index([nextRetryAt])
+}
+
+// ============================================
+// 事务性通知 Outbox（短信/微信模板/小程序/WeCom）
+// ============================================
+
+enum NotificationChannel {
+  SMS
+  WECHAT_TEMPLATE
+  MINIPROGRAM
+  WECOM
+}
+
+enum NotificationStatus {
+  PENDING
+  SENDING
+  SENT
+  DEAD
+  SKIPPED
+}
+
+/**
+ * 通知发件箱：业务事务内入队，后台 worker 发送。
+ * idempotencyKey 唯一，保证重试/并发不会重复发送同一业务事件。
+ */
+model NotificationOutbox {
+  id                String             @id @default(cuid())
+  idempotencyKey    String             @unique
+  channel           NotificationChannel
+  eventType         String
+  aggregateType     String?
+  aggregateId       String?
+  userId            String?
+  recipient         Json?
+  templateKey       String?
+  payload           Json
+  status            NotificationStatus @default(PENDING)
+  attempts          Int                @default(0)
+  maxAttempts       Int                @default(6)
+  nextAttemptAt     DateTime           @default(now())
+  leaseToken        String?
+  lockedUntil       DateTime?
+  lastError         String?            @db.Text
+  providerMessageId String?
+  sentAt            DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([aggregateType, aggregateId])
+  @@index([channel, status])
 }
 
 model SmsCode {
@@ -843,17 +899,30 @@ model AuditAlertState {
 // ============================================
 
 model CronTaskRun {
-  id         String   @id @default(cuid())
-  taskName   String // 任务名（lib/cron-tasks.ts 中定义的唯一名称）
-  trigger    String   @default("cron") // cron | manual | external（外部调度器经 /api/cron/run 触发）
-  success    Boolean
-  error      String?  @db.Text // 失败原因（成功为 null）
-  adminId    String? // 手动触发的管理员（无 FK：管理员删除后保留历史记录）
-  startedAt  DateTime @default(now())
-  finishedAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  taskKey     String? // 稳定任务标识（重命名展示名不破坏历史）
+  taskName    String // 任务名（lib/cron-tasks.ts 中定义的唯一名称）
+  trigger     String    @default("cron") // cron | manual | external（外部调度器经 /api/cron/run 触发）
+  status      String? // RUNNING | SUCCESS | FAILED | TIMEOUT | SKIPPED（历史数据为空，按 success 兜底）
+  success     Boolean? // RUNNING 时为 null
+  error       String?   @db.Text // 失败原因（成功为 null）
+  adminId     String? // 手动触发的管理员（无 FK：管理员删除后保留历史记录）
+  adminEmail  String?
+  adminName   String?
+  startedAt   DateTime  @default(now())
+  heartbeatAt DateTime?
+  finishedAt  DateTime?
+  lockOwner   String?
+  timeoutMs   Int?
+  sourceRunId String? // 手动重跑来源
+  batchId     String? // 外部批量调度分组
 
+  @@index([taskKey, startedAt(sort: Desc)])
   @@index([taskName, startedAt(sort: Desc)])
+  @@index([status, heartbeatAt])
+  @@index([status, startedAt(sort: Desc)])
   @@index([startedAt])
+  @@index([batchId])
 }
 
 // 定时任务互斥锁：多实例部署时避免同一任务并发执行
@@ -977,13 +1046,15 @@ model SpentSyncRecord {
 // 统一消费订单占用：商城同步、Excel 导入、用户补录审批共用。
 // 用户撤销导入/补录时删除占用，允许修正后重新入账。
 model SpentOrderClaim {
-  id         String           @id @default(cuid())
-  userId     String
-  orderNo    String
-  orderNoKey String
-  source     SpentOrderSource
-  reference  String
-  createdAt  DateTime         @default(now())
+  id             String           @id @default(cuid())
+  userId         String
+  orderNo        String
+  orderNoKey     String
+  source         SpentOrderSource
+  reference      String
+  originalAmount Int?
+  refundedAmount Int              @default(0)
+  createdAt      DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1172,24 +1243,76 @@ model PointRedemption {
   carrier       String? // 承运商（如 SF=顺丰），履约时写入
   waybillNo     String? // 运单号（履约时录入，用户端据此查询物流轨迹）
   fulfilledAt   DateTime?
+  completedAt   DateTime? // 用户确认收货/自动完成
   cancelledAt   DateTime? // 取消时间
   cancelNote    String?               @db.Text // 取消原因（管理端填写）
+
+  // 售后 / 退货 / 退款
+  afterSalesRequestedAt DateTime?
+  afterSalesReason      String?   @db.Text
+  afterSalesImages      String[]  @default([])
+  afterSalesReviewedAt  DateTime?
+  afterSalesReviewedById String?
+  afterSalesReviewNote  String?   @db.Text
+  afterSalesApprovedAt  DateTime?
+  afterSalesClosedAt    DateTime?
+  returnWaybillNo       String?
+  returnCarrier         String?
+  returnShippedAt       DateTime?
+  returnReceivedAt      DateTime?
+  inspectionNote        String?   @db.Text
+  restockApproved       Boolean   @default(false)
+  stockRestored         Boolean   @default(false)
+  stockRestoredAt       DateTime?
+  refundedPoints        Int       @default(0)
+  refundedAt            DateTime?
+
   createdAt     DateTime              @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  events  PointRedemptionEvent[]
 
   @@unique([userId, reference]) // 幂等防重：同一请求单只产生一条兑换记录
   @@index([status, createdAt(sort: Desc)])
   @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, productId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
 }
 
-// 兑换履约状态
+// 兑换履约/售后状态
 enum PointRedemptionStatus {
   PENDING
   FULFILLED
+  COMPLETED
+  AFTER_SALES_REQUESTED
+  AFTER_SALES_APPROVED
+  AFTER_SALES_REJECTED
+  RETURNING
+  RETURNED
+  REFUNDED
+  AFTER_SALES_CLOSED
   CANCELLED
+}
+
+model PointRedemptionEvent {
+  id             String   @id @default(cuid())
+  redemptionId   String
+  fromStatus     String?
+  toStatus       String
+  actorType      String // USER | ADMIN | SYSTEM
+  actorId        String?
+  reasonCode     String?
+  reasonText     String?  @db.Text
+  metadata       Json?
+  idempotencyKey String
+  createdAt      DateTime @default(now())
+
+  redemption PointRedemption @relation(fields: [redemptionId], references: [id], onDelete: Cascade)
+
+  @@unique([redemptionId, idempotencyKey])
+  @@index([redemptionId, createdAt])
+  @@index([toStatus, createdAt])
 }
 
 // ============================================

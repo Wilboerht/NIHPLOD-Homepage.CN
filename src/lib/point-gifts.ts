@@ -13,6 +13,7 @@ import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { adjustPoints, redeemPoints, withPointTxRetry } from "@/lib/points-ledger";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { enqueueNotification } from "@/lib/notification-outbox";
 
 /** 可兑换产品（产品库标记 + 已发布），按产品排序；字段供列表卡片与产品详情抽屉共用 */
 export async function listRedeemableProducts() {
@@ -28,6 +29,8 @@ export async function listRedeemableProducts() {
       price: true,
       capacity: true,
       redeemStock: true,
+      redeemLimitPerUser: true,
+      redeemLimitWindowDays: true,
       origin: true,
       ingredients: true,
       usage: true,
@@ -72,10 +75,15 @@ export type RedeemGiftResult =
         | "OUT_OF_STOCK"
         | "INSUFFICIENT"
         | "INVALID_REQUEST"
-        | "PRICE_CHANGED";
+        | "PRICE_CHANGED"
+        | "REDEMPTION_LIMIT_REACHED";
       message: string;
       /** PRICE_CHANGED 时返回服务端当前折算分，供调用方刷新后再确认 */
       currentPoints?: number;
+      limit?: number;
+      windowDays?: number | null;
+      used?: number;
+      remaining?: number;
     };
 
 type RedeemErrorCode = Extract<RedeemGiftResult, { ok: false }>["code"];
@@ -149,6 +157,8 @@ export async function redeemGiftForUser(params: {
             pointRedeemable: true,
             published: true,
             redeemStock: true,
+            redeemLimitPerUser: true,
+            redeemLimitWindowDays: true,
             category: { select: { visible: true } },
           },
         });
@@ -183,6 +193,35 @@ export async function redeemGiftForUser(params: {
             message: `礼品所需积分已变化（当前 ${points} 积分），请刷新后重新确认`,
             currentPoints: points,
           };
+        }
+
+        if (product.redeemLimitPerUser !== null) {
+          const windowStart =
+            product.redeemLimitWindowDays !== null
+              ? new Date(Date.now() - product.redeemLimitWindowDays * 24 * 60 * 60 * 1000)
+              : undefined;
+          const used = await tx.pointRedemption.count({
+            where: {
+              userId,
+              productId,
+              status: { notIn: ["CANCELLED", "REFUNDED"] },
+              ...(windowStart ? { createdAt: { gte: windowStart } } : {}),
+            },
+          });
+          if (used >= product.redeemLimitPerUser) {
+            return {
+              ok: false,
+              code: "REDEMPTION_LIMIT_REACHED",
+              message:
+                product.redeemLimitWindowDays !== null
+                  ? `该礼品每 ${product.redeemLimitWindowDays} 天最多兑换 ${product.redeemLimitPerUser} 件`
+                  : `该礼品终身最多兑换 ${product.redeemLimitPerUser} 件`,
+              limit: product.redeemLimitPerUser,
+              windowDays: product.redeemLimitWindowDays,
+              used,
+              remaining: 0,
+            };
+          }
         }
 
         // 收货地址校验（扣分前拦截，地址必须属于当前用户）
@@ -298,7 +337,13 @@ export async function fulfillRedemption(params: {
     prisma.$transaction(async (tx) => {
       const redemption = await tx.pointRedemption.findUnique({
         where: { id: redemptionId },
-        select: { id: true, status: true, userId: true, user: { select: { status: true } } },
+        select: {
+          id: true,
+          status: true,
+          userId: true,
+          productName: true,
+          user: { select: { status: true, phone: true } },
+        },
       });
       if (!redemption) return { ok: false, code: "NOT_FOUND" as const };
       if (redemption.status !== "PENDING") {
@@ -324,17 +369,54 @@ export async function fulfillRedemption(params: {
         return { ok: false, code: "NEGATIVE_BALANCE" as const, available };
       }
 
+      const fulfilledAt = new Date();
       const claimed = await tx.pointRedemption.updateMany({
         where: { id: redemptionId, status: "PENDING" },
         data: {
           status: "FULFILLED",
-          fulfilledAt: new Date(),
+          fulfilledAt,
           ...(waybillNo ? { waybillNo, carrier: "SF" } : {}),
         },
       });
-      return claimed.count > 0
-        ? { ok: true as const }
-        : { ok: false, code: "ALREADY_PROCESSED" as const };
+      if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" as const };
+
+      const payload = {
+        productName: redemption.productName,
+        waybillNo: waybillNo ?? "",
+        statusLabel: "已发货",
+        fulfilledAt: fulfilledAt.toISOString(),
+      };
+      await Promise.all([
+        enqueueNotification(
+          {
+            idempotencyKey: `redemption-shipped:${redemptionId}:mp`,
+            channel: "MINIPROGRAM",
+            eventType: "redemption_shipped",
+            templateKey: "redemption_shipped",
+            userId: redemption.userId,
+            recipient: { userId: redemption.userId },
+            payload,
+            aggregateType: "point_redemption",
+            aggregateId: redemptionId,
+          },
+          tx
+        ),
+        enqueueNotification(
+          {
+            idempotencyKey: `redemption-shipped:${redemptionId}:sms`,
+            channel: "SMS",
+            eventType: "redemption_status",
+            templateKey: "redemption_status",
+            userId: redemption.userId,
+            recipient: { phone: redemption.user.phone },
+            payload,
+            aggregateType: "point_redemption",
+            aggregateId: redemptionId,
+          },
+          tx
+        ),
+      ]);
+      return { ok: true as const };
     })
   );
 }
@@ -378,7 +460,7 @@ export async function cancelRedemption(params: {
           productName: true,
           productId: true,
           stockDeducted: true,
-          user: { select: { status: true } },
+          user: { select: { status: true, phone: true } },
         },
       });
       if (!redemption) return { ok: false, code: "NOT_FOUND" };
@@ -401,6 +483,42 @@ export async function cancelRedemption(params: {
           reference: `cancel:${redemptionId}`,
           note: cancelNote || `兑换取消退还：${redemption.productName}`,
         });
+        const payload = {
+          productName: redemption.productName,
+          statusLabel: "已取消",
+          points: redemption.points,
+          note: cancelNote,
+        };
+        await Promise.all([
+          enqueueNotification(
+            {
+              idempotencyKey: `redemption-canceled:${redemptionId}:sms`,
+              channel: "SMS",
+              eventType: "redemption_status",
+              templateKey: "redemption_status",
+              userId: redemption.userId,
+              recipient: { phone: redemption.user.phone },
+              payload,
+              aggregateType: "point_redemption",
+              aggregateId: redemptionId,
+            },
+            tx
+          ),
+          enqueueNotification(
+            {
+              idempotencyKey: `redemption-canceled:${redemptionId}:mp`,
+              channel: "MINIPROGRAM",
+              eventType: "redemption_status",
+              templateKey: "redemption_status",
+              userId: redemption.userId,
+              recipient: { userId: redemption.userId },
+              payload,
+              aggregateType: "point_redemption",
+              aggregateId: redemptionId,
+            },
+            tx
+          ),
+        ]);
         return { ok: true, points: redemption.points };
       }
       return { ok: true, points: 0 };

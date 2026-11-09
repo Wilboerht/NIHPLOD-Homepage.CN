@@ -116,6 +116,7 @@ function AdminApplicationsContent() {
   const { requireTotp, totpModal } = useTotpConfirm();
   const canWrite = canAdmin("applications:write");
   const canDelete = canAdmin("applications:delete");
+  const canReadJobs = canAdmin("jobs:read");
   const takeLatest = useLatestRequest();
   const takeLatestDetail = useLatestRequest();
 
@@ -174,6 +175,7 @@ function AdminApplicationsContent() {
 
   // 获取职位列表（用于筛选；超过 100 个时继续翻页）
   const fetchJobs = useCallback(async () => {
+    if (!canReadJobs) return;
     try {
       const firstPage = await apiGet<{
         items: Job[];
@@ -197,7 +199,7 @@ function AdminApplicationsContent() {
       apiConsole.error("获取职位列表失败:", error);
       showError("职位筛选加载失败，请刷新页面重试");
     }
-  }, [showError]);
+  }, [canReadJobs, showError]);
 
   useEffect(() => {
     deferInEffect(() => {
@@ -544,7 +546,16 @@ function AdminApplicationsContent() {
 
     setDeletingFolder(true);
     try {
-      await apiDelete(`/api/admin/application-folders/${deleteFolderTarget.id}`);
+      const submit = () =>
+        apiDelete(`/api/admin/application-folders/${deleteFolderTarget.id}`);
+      try {
+        await submit();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
       success("分类已删除");
       setDeleteFolderTarget(null);
       fetchFolders();
@@ -554,8 +565,8 @@ function AdminApplicationsContent() {
         // 该分类下的申请已变为未分类，刷新当前列表避免展示旧分类
         fetchApplications();
       }
-    } catch {
-      showError("删除失败");
+    } catch (error) {
+      showError(error instanceof ApiError ? error.message : "删除失败");
     } finally {
       setDeletingFolder(false);
     }
@@ -835,8 +846,8 @@ function AdminApplicationsContent() {
             <div className="relative w-full md:max-w-sm md:flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
               <Input
-                aria-label="搜索姓名、手机号"
-                placeholder="搜索姓名、手机号..."
+                aria-label="搜索姓名、完整手机号"
+                placeholder="搜索姓名、完整手机号..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className={search ? "pl-10 pr-10" : "pl-10"}
@@ -869,17 +880,19 @@ function AdminApplicationsContent() {
                   onChange={(e) => update({ status: e.target.value })}
                 />
               </div>
-              <div className="w-full sm:w-44">
-                <Select
-                  aria-label="按职位筛选"
-                  options={[
-                    { value: "all", label: "全部职位" },
-                    ...jobs.map((job) => ({ value: job.id, label: job.title })),
-                  ]}
-                  value={jobFilter}
-                  onChange={(e) => update({ jobId: e.target.value })}
-                />
-              </div>
+              {canReadJobs && (
+                <div className="w-full sm:w-44">
+                  <Select
+                    aria-label="按职位筛选"
+                    options={[
+                      { value: "all", label: "全部职位" },
+                      ...jobs.map((job) => ({ value: job.id, label: job.title })),
+                    ]}
+                    value={jobFilter}
+                    onChange={(e) => update({ jobId: e.target.value })}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

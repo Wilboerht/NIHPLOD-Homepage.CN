@@ -141,7 +141,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
 
       // 缓存旧 hash（5 分钟过渡期），只在写库成功后生效
-      cacheOldSecret(client.clientId, client.clientSecret);
+      await cacheOldSecret(client.clientId, client.clientSecret, newHash);
     } catch (error) {
       await finishAuditLog(auditId, "FAILURE", { error: "ROTATE_FAILED" });
       throw error;

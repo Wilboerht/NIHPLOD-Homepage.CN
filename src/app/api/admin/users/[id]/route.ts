@@ -100,6 +100,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
             createdAt: true,
           },
         },
+        accountDeletionRequest: {
+          select: {
+            id: true,
+            status: true,
+            requestedAt: true,
+            scheduledAt: true,
+            completedAt: true,
+            cancelledAt: true,
+            attempts: true,
+            lastError: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -305,6 +317,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
               createdAt: i.createdAt.toISOString(),
             };
           }),
+          accountDeletion: user.accountDeletionRequest
+            ? {
+                id: user.accountDeletionRequest.id,
+                status: user.accountDeletionRequest.status,
+                requestedAt: user.accountDeletionRequest.requestedAt.toISOString(),
+                scheduledAt: user.accountDeletionRequest.scheduledAt.toISOString(),
+                completedAt:
+                  user.accountDeletionRequest.completedAt?.toISOString() ?? null,
+                cancelledAt:
+                  user.accountDeletionRequest.cancelledAt?.toISOString() ?? null,
+                attempts: user.accountDeletionRequest.attempts,
+                lastError: user.accountDeletionRequest.lastError,
+              }
+            : null,
           createdAt: user.createdAt.toISOString(),
           updatedAt: user.updatedAt.toISOString(),
         },
@@ -928,7 +954,11 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     let result: Awaited<ReturnType<typeof executeAccountDeletion>>;
     try {
-      result = await executeAccountDeletion(deletionRequest.id, { notifyUser: false });
+      result = await executeAccountDeletion(deletionRequest.id, {
+        notifyUser: false,
+        auditActor: admin,
+        source: "admin",
+      });
     } catch (error) {
       await finishAuditLog(auditId, "FAILURE", {
         requestId: deletionRequest.id,

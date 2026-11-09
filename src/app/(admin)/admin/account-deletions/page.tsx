@@ -101,6 +101,7 @@ function AdminAccountDeletionsContent() {
   const { requireTotp, totpModal } = useTotpConfirm();
   const canRetry =
     canAdmin("users:delete") && (isOwnerActor || canAdmin("approvals:request"));
+  const canCancel = canAdmin("users:delete");
   const statusParam = get("status", "FAILED");
   const status: DeletionStatus = STATUS_TABS.some((tab) => tab.key === statusParam)
     ? (statusParam as DeletionStatus)
@@ -212,7 +213,15 @@ function AdminAccountDeletionsContent() {
   const handleCancel = async (item: DeletionItem) => {
     setActioningId(item.id);
     try {
-      await apiPost(`/api/admin/account-deletions/${item.id}/cancel`, {});
+      const submit = () => apiPost(`/api/admin/account-deletions/${item.id}/cancel`, {});
+      try {
+        await submit();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        await submit();
+      }
       success("注销申请已撤回");
       setCancelTarget(null);
       window.dispatchEvent(new Event("admin:nav-counts-refresh"));
@@ -337,7 +346,7 @@ function AdminAccountDeletionsContent() {
                 ) : (
                   <span className="text-xs text-brand-charcoal/65">只读</span>
                 )
-              ) : item.status === "PENDING" && isOwnerActor ? (
+              ) : item.status === "PENDING" && canCancel ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -466,7 +475,7 @@ function AdminAccountDeletionsContent() {
                       ) : (
                         <span className="text-xs text-brand-charcoal/65">只读</span>
                       )
-                    ) : item.status === "PENDING" && isOwnerActor ? (
+              ) : item.status === "PENDING" && canCancel ? (
                       <Button
                         variant="outline"
                         size="sm"
@@ -530,23 +539,25 @@ function AdminAccountDeletionsContent() {
         type="danger"
         loading={actioningId === retryTarget?.id}
       >
-        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <input
-            type="checkbox"
-            checked={forceRetry}
-            onChange={(e) => setForceRetry(e.target.checked)}
-            className="mt-0.5"
-          />
-          <span>
-            <span className="block text-sm font-medium text-amber-800">
-              强制重试（忽略重试次数上限）
+        {isOwnerActor && (
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <input
+              type="checkbox"
+              checked={forceRetry}
+              onChange={(e) => setForceRetry(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="block text-sm font-medium text-amber-800">
+                强制重试（忽略重试次数上限）
+              </span>
+              <span className="mt-0.5 block text-xs text-amber-600">
+                该申请已自动重试 {retryTarget?.attempts ?? 0}{" "}
+                次。勾选后将重置重试计数并立即执行，请先排查失败原因。
+              </span>
             </span>
-            <span className="mt-0.5 block text-xs text-amber-600">
-              该申请已自动重试 {retryTarget?.attempts ?? 0}{" "}
-              次。勾选后将重置重试计数并立即执行，请先排查失败原因。
-            </span>
-          </span>
-        </label>
+          </label>
+        )}
       </ConfirmDialog>
 
       <ConfirmDialog

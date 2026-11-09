@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           category: {
-            select: { id: true, name: true, slug: true },
+            select: { id: true, name: true, slug: true, visible: true },
           },
           images: {
             take: 1,
@@ -122,6 +122,7 @@ export async function GET(request: NextRequest) {
       category: product.category,
       image: product.images[0] || null,
       published: product.published,
+      effectivePublished: product.published && product.category.visible,
       order: product.order,
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString(),

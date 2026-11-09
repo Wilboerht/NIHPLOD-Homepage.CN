@@ -17,7 +17,7 @@ import { ProductFormSection } from "@/components/admin/ProductFormSection";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { apiPost, apiPut } from "@/lib/api-client";
+import { apiPost, apiPut, ApiError } from "@/lib/api-client";
 import { ProductSchema, type GeoFaq } from "@/schemas/product";
 import { generateSlug } from "@/lib/utils";
 import { focusFirstInvalid } from "@/lib/form";
@@ -34,6 +34,7 @@ import {
 } from "@/lib/purchase-platforms";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { isTotpRequired, useTotpConfirm } from "@/hooks/useTotpConfirm";
 
 // 懒加载 tiptap 富文本编辑器，避免编辑器重依赖直接进入表单页首屏 chunk
 const RichTextEditor = dynamic(
@@ -197,14 +198,25 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
     setNewCategorySaving(true);
     setNewCategoryError("");
     try {
-      const data = await apiPost<{ id: string; name: string; nameEn: string; slug: string }>(
-        "/api/admin/categories",
-        {
-          name: newCategoryName.trim(),
-          nameEn: newCategoryNameEn.trim(),
-          slug: generateSlug(newCategoryNameEn.trim()),
-        }
-      );
+      const submit = () =>
+        apiPost<{ id: string; name: string; nameEn: string; slug: string }>(
+          "/api/admin/categories",
+          {
+            name: newCategoryName.trim(),
+            nameEn: newCategoryNameEn.trim(),
+            slug: generateSlug(newCategoryNameEn.trim()),
+          }
+        );
+
+      let data: { id: string; name: string; nameEn: string; slug: string };
+      try {
+        data = await submit();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        data = await submit();
+      }
       const created: Category = { id: data.id, name: data.name };
       setCategoryList((prev) => [...prev, created]);
       updateField("categoryId", data.id);
@@ -246,6 +258,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
   const { guard: guardNavigation } = useUnsavedChanges(isDirty);
   const { can: canAdmin } = useAdminPermissions();
   const canCreateCategory = canAdmin("categories:write");
+  const { requireTotp, totpModal } = useTotpConfirm();
 
   // 更新表单字段
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -978,6 +991,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           </div>
         </div>
       </Modal>
+      {totpModal}
     </form>
   );
 }

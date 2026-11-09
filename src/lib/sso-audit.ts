@@ -5,6 +5,7 @@
  * 用于安全审计、异常检测和合规检查。
  */
 import { after } from "next/server";
+import { revalidateTag } from "next/cache";
 import { prisma } from "./prisma";
 import { apiConsole } from "@/lib/logger";
 
@@ -65,7 +66,14 @@ export function recordSsoEvent(context: SsoEventContext): Promise<void> {
         requestId: context.requestId || null,
       },
     })
-    .then(() => undefined)
+    .then(() => {
+      try {
+        revalidateTag("admin-sso-stats", "max");
+      } catch {
+        // 非请求上下文（cron/脚本）无法 revalidate，忽略
+      }
+      return undefined;
+    })
     .catch((error) => {
       apiConsole.error(`[SsoAudit] 持久化失败 (${context.event}):`, error);
     });

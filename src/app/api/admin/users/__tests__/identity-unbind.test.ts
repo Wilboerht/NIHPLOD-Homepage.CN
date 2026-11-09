@@ -29,6 +29,9 @@ vi.mock("@/lib/prisma", () => {
     externalIdentity: {
       findUnique: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
     $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(txMock)),
   };
   return { prisma, default: prisma };
@@ -94,6 +97,10 @@ describe("DELETE /api/admin/users/[id]/identities/[identityId]", () => {
       provider: "wechat_open",
       subjectId: "openid-1",
       unionId: "union-1",
+    });
+    (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      phone: "13800138000",
+      status: "ACTIVE",
     });
     txMock.externalIdentity.findMany.mockResolvedValue([]);
     txMock.user.findUnique.mockResolvedValue({

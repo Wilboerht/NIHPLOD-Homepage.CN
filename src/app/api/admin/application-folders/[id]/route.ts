@@ -7,6 +7,7 @@ import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -209,6 +210,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const rateLimitResponse2 = await checkAdminRateLimit(request, "admin-write", admin.id);
     if (rateLimitResponse2) return rateLimitResponse2;
+
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
 
     if (!validateCSRFToken(request)) return csrfForbiddenResponse();
 

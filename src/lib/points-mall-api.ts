@@ -20,6 +20,12 @@ import { htmlToPlainText } from "@/lib/html-sanitize";
 import { buildPurchaseJump } from "@/lib/purchase-jump";
 import { isPurchasePlatformKey } from "@/lib/purchase-platforms";
 import { querySfRoutes } from "@/lib/sf-express";
+import {
+  confirmRedemption,
+  getRedemptionTimeline,
+  requestAfterSales,
+  submitReturnShipment,
+} from "@/lib/redemption-state-machine";
 import type { MembershipLevel } from "@/generated/prisma/client";
 import type { ProductData } from "@/components/website/ProductDrawer";
 
@@ -50,6 +56,22 @@ const redeemSchema = z.object({
   requestId: z.string().min(1, "缺少请求标识").max(64),
   // 客户端确认页展示的积分；价格/等级变化时服务端拒绝并要求重新确认
   expectedPoints: z.number().int().min(1).optional(),
+});
+
+const afterSalesSchema = z.object({
+  requestId: z.string().min(1, "缺少请求标识").max(64),
+  reason: z.string().trim().min(1, "请填写售后原因").max(500),
+  images: z.array(z.string().url()).max(3).optional(),
+});
+
+const returnShipmentSchema = z.object({
+  waybillNo: z
+    .string()
+    .trim()
+    .min(8, "运单号格式不正确")
+    .max(32, "运单号过长")
+    .regex(/^[A-Za-z0-9-]+$/, "运单号格式不正确"),
+  carrier: z.string().trim().max(20).optional(),
 });
 
 function invalidParams(message: string): NextResponse {
@@ -375,12 +397,23 @@ export async function redeemPointsResponse(
         INSUFFICIENT: 400,
         INVALID_REQUEST: 400,
         PRICE_CHANGED: 409,
+        REDEMPTION_LIMIT_REACHED: 409,
       };
       return NextResponse.json(
         {
           success: false,
           error: { code: result.code, message: result.message },
           ...(result.currentPoints !== undefined ? { data: { points: result.currentPoints } } : {}),
+          ...(result.code === "REDEMPTION_LIMIT_REACHED"
+            ? {
+                data: {
+                  limit: result.limit,
+                  windowDays: result.windowDays,
+                  used: result.used,
+                  remaining: result.remaining,
+                },
+              }
+            : {}),
         },
         { status: statusMap[result.code] ?? 500 }
       );
@@ -444,6 +477,20 @@ export async function getRedemptionsResponse(
           carrier: true,
           waybillNo: true,
           fulfilledAt: true,
+          completedAt: true,
+          cancelledAt: true,
+          cancelNote: true,
+          afterSalesRequestedAt: true,
+          afterSalesReason: true,
+          afterSalesReviewNote: true,
+          afterSalesApprovedAt: true,
+          afterSalesClosedAt: true,
+          returnWaybillNo: true,
+          returnCarrier: true,
+          returnShippedAt: true,
+          returnReceivedAt: true,
+          refundedPoints: true,
+          refundedAt: true,
           createdAt: true,
           product: {
             select: {
@@ -473,6 +520,20 @@ export async function getRedemptionsResponse(
       carrier: r.carrier,
       waybillNo: r.waybillNo,
       fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
+      completedAt: r.completedAt?.toISOString() ?? null,
+      cancelledAt: r.cancelledAt?.toISOString() ?? null,
+      cancelNote: r.cancelNote,
+      afterSalesRequestedAt: r.afterSalesRequestedAt?.toISOString() ?? null,
+      afterSalesReason: r.afterSalesReason,
+      afterSalesReviewNote: r.afterSalesReviewNote,
+      afterSalesApprovedAt: r.afterSalesApprovedAt?.toISOString() ?? null,
+      afterSalesClosedAt: r.afterSalesClosedAt?.toISOString() ?? null,
+      returnWaybillNo: r.returnWaybillNo,
+      returnCarrier: r.returnCarrier,
+      returnShippedAt: r.returnShippedAt?.toISOString() ?? null,
+      returnReceivedAt: r.returnReceivedAt?.toISOString() ?? null,
+      refundedPoints: r.refundedPoints,
+      refundedAt: r.refundedAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
     }));
 
@@ -562,6 +623,126 @@ export async function getRedemptionTrackingResponse(
     apiConsole.error("[UserPointTracking] 轨迹查询失败:", error);
     return internalError();
   }
+}
+
+export async function confirmRedemptionResponse(
+  userId: string,
+  redemptionId: string
+): Promise<NextResponse> {
+  if (!validateCUID(redemptionId)) return invalidParams("非法 ID 格式");
+  const result = await confirmRedemption({ redemptionId, userId });
+  if (!result.ok) {
+    const status = result.code === "NOT_FOUND" ? 404 : result.code === "INTERNAL_ERROR" ? 500 : 409;
+    return NextResponse.json(
+      { success: false, error: { code: result.code, message: result.message } },
+      { status }
+    );
+  }
+  return NextResponse.json({ success: true, data: { status: result.status } });
+}
+
+export async function requestAfterSalesResponse(
+  userId: string,
+  redemptionId: string,
+  request: Request
+): Promise<NextResponse> {
+  if (!validateCUID(redemptionId)) return invalidParams("非法 ID 格式");
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return invalidParams("请求体不是合法 JSON");
+  }
+  const parsed = afterSalesSchema.safeParse(body);
+  if (!parsed.success) {
+    return invalidParams(parsed.error.issues[0]?.message || "参数错误");
+  }
+  const result = await requestAfterSales({
+    redemptionId,
+    userId,
+    requestId: parsed.data.requestId,
+    reason: parsed.data.reason,
+    images: parsed.data.images,
+  });
+  if (!result.ok) {
+    const status = result.code === "NOT_FOUND" ? 404 : result.code === "INTERNAL_ERROR" ? 500 : 409;
+    return NextResponse.json(
+      { success: false, error: { code: result.code, message: result.message } },
+      { status }
+    );
+  }
+  return NextResponse.json({ success: true, data: { status: result.status } });
+}
+
+export async function submitReturnShipmentResponse(
+  userId: string,
+  redemptionId: string,
+  request: Request
+): Promise<NextResponse> {
+  if (!validateCUID(redemptionId)) return invalidParams("非法 ID 格式");
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return invalidParams("请求体不是合法 JSON");
+  }
+  const parsed = returnShipmentSchema.safeParse(body);
+  if (!parsed.success) {
+    return invalidParams(parsed.error.issues[0]?.message || "参数错误");
+  }
+  const result = await submitReturnShipment({
+    redemptionId,
+    userId,
+    waybillNo: parsed.data.waybillNo,
+    carrier: parsed.data.carrier,
+  });
+  if (!result.ok) {
+    const status = result.code === "NOT_FOUND" ? 404 : result.code === "INTERNAL_ERROR" ? 500 : 409;
+    return NextResponse.json(
+      { success: false, error: { code: result.code, message: result.message } },
+      { status }
+    );
+  }
+  return NextResponse.json({ success: true, data: { status: result.status } });
+}
+
+export async function getRedemptionDetailResponse(
+  userId: string,
+  redemptionId: string
+): Promise<NextResponse> {
+  if (!validateCUID(redemptionId)) return invalidParams("非法 ID 格式");
+  const detail = await getRedemptionTimeline(redemptionId, userId);
+  if (!detail) {
+    return NextResponse.json(
+      { success: false, error: { code: "NOT_FOUND", message: "兑换记录不存在" } },
+      { status: 404 }
+    );
+  }
+  return NextResponse.json(
+    {
+      success: true,
+      data: {
+        ...detail,
+        priceYuan: Number(detail.priceYuan),
+        createdAt: detail.createdAt.toISOString(),
+        fulfilledAt: detail.fulfilledAt?.toISOString() ?? null,
+        completedAt: detail.completedAt?.toISOString() ?? null,
+        cancelledAt: detail.cancelledAt?.toISOString() ?? null,
+        afterSalesRequestedAt: detail.afterSalesRequestedAt?.toISOString() ?? null,
+        afterSalesReviewedAt: detail.afterSalesReviewedAt?.toISOString() ?? null,
+        afterSalesApprovedAt: detail.afterSalesApprovedAt?.toISOString() ?? null,
+        afterSalesClosedAt: detail.afterSalesClosedAt?.toISOString() ?? null,
+        returnShippedAt: detail.returnShippedAt?.toISOString() ?? null,
+        returnReceivedAt: detail.returnReceivedAt?.toISOString() ?? null,
+        refundedAt: detail.refundedAt?.toISOString() ?? null,
+        events: detail.events.map((event) => ({
+          ...event,
+          createdAt: event.createdAt.toISOString(),
+        })),
+      },
+    },
+    { headers: NO_STORE_HEADERS }
+  );
 }
 
 // ============================================

@@ -34,8 +34,8 @@ interface Message {
   type: string | null;
   content: string;
   read: boolean;
-  reply: string | null;
-  repliedAt: string | null;
+  internalNote: string | null;
+  notedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -76,7 +76,14 @@ function AdminMessagesContent() {
   const pageSize = [10, 20, 50, 100].includes(pageSizeParam) ? pageSizeParam : 20;
   const searchParam = get("search");
   const statusFilter = get("status", "all");
-  const repliedFilter = get("replied", "all");
+  const legacyNotedFilter = get("replied");
+  const notedFilter =
+    get("noted") ||
+    (legacyNotedFilter === "unreplied"
+      ? "unnoted"
+      : legacyNotedFilter === "replied"
+        ? "noted"
+        : "all");
   const typeFilter = get("type");
 
   // 状态
@@ -94,7 +101,7 @@ function AdminMessagesContent() {
   // 勾选状态：翻页/搜索/筛选变化时自动清空
   const selection = useRowSelection<Message>(
     (m) => m.id,
-    `${page}|${pageSize}|${searchParam}|${statusFilter}|${repliedFilter}|${typeFilter}`
+    `${page}|${pageSize}|${searchParam}|${statusFilter}|${notedFilter}|${typeFilter}`
   );
   const [batchActionLoading, setBatchActionLoading] = useState<string | null>(null);
 
@@ -102,10 +109,10 @@ function AdminMessagesContent() {
   const [detailMessage, setDetailMessage] = useState<Message | null>(null);
 
   // 回复
-  const [replyDraft, setReplyDraft] = useState("");
+  const [internalNoteDraft, setInternalNoteDraft] = useState("");
   const [replying, setReplying] = useState(false);
-  const isReplyDirty = !!detailMessage && replyDraft !== (detailMessage.reply ?? "");
-  const { confirmClose: confirmCloseReply } = useUnsavedChanges(isReplyDirty);
+  const isNoteDirty = !!detailMessage && internalNoteDraft !== (detailMessage.internalNote ?? "");
+  const { confirmClose: confirmCloseReply } = useUnsavedChanges(isNoteDirty);
 
   // 删除确认
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
@@ -128,7 +135,7 @@ function AdminMessagesContent() {
         pageSize,
         search: searchParam,
         status: statusFilter === "all" ? undefined : statusFilter,
-        replied: repliedFilter === "all" ? undefined : repliedFilter,
+        noted: notedFilter === "all" ? undefined : notedFilter,
         type: typeFilter || undefined,
       });
       if (!isLatest()) return;
@@ -149,7 +156,7 @@ function AdminMessagesContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, pageSize, searchParam, statusFilter, repliedFilter, typeFilter, takeLatestMessages]);
+  }, [page, pageSize, searchParam, statusFilter, notedFilter, typeFilter, takeLatestMessages]);
 
   useEffect(() => {
     deferInEffect(fetchMessages);
@@ -201,7 +208,7 @@ function AdminMessagesContent() {
   const viewDetail = async (message: Message) => {
     setRevealedPhone(null);
     setDetailMessage(message);
-    setReplyDraft(message.reply ?? "");
+    setInternalNoteDraft(message.internalNote ?? "");
     if (!message.read) {
       await markAsRead(message);
     }
@@ -242,10 +249,10 @@ function AdminMessagesContent() {
   };
 
   // 发送/更新回复
-  const handleReply = async () => {
+  const handleSaveInternalNote = async () => {
     if (!detailMessage) return;
-    const reply = replyDraft.trim();
-    if (!reply) {
+    const internalNote = internalNoteDraft.trim();
+    if (!internalNote) {
       showError("请输入备注内容");
       return;
     }
@@ -254,13 +261,13 @@ function AdminMessagesContent() {
     try {
       const saved = await apiPatch<{ updatedAt?: string }>(
         `/api/admin/messages/${detailMessage.id}`,
-        { reply, expectedUpdatedAt: detailMessage.updatedAt }
+        { internalNote, expectedUpdatedAt: detailMessage.updatedAt }
       );
-      success(detailMessage.reply ? "备注已更新" : "备注已保存");
+      success(detailMessage.internalNote ? "备注已更新" : "备注已保存");
       const updated = {
         ...detailMessage,
-        reply,
-        repliedAt: new Date().toISOString(),
+        internalNote,
+        notedAt: new Date().toISOString(),
         read: true,
         updatedAt: saved?.updatedAt ?? new Date().toISOString(),
       };
@@ -404,8 +411,8 @@ function AdminMessagesContent() {
           <div className="relative w-full md:w-64 lg:w-72">
             <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
             <Input
-              aria-label="搜索姓名、手机号或留言内容"
-              placeholder="搜索姓名 / 手机号 / 内容"
+              aria-label="搜索姓名、完整手机号或留言内容"
+              placeholder="搜索姓名 / 完整手机号 / 内容"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={search ? "pl-10 pr-10" : "pl-10"}
@@ -465,11 +472,11 @@ function AdminMessagesContent() {
             <Select
               options={[
                 { value: "all", label: "全部备注状态" },
-                { value: "unreplied", label: "无备注" },
-                { value: "replied", label: "有备注" },
+                { value: "unnoted", label: "无备注" },
+                { value: "noted", label: "有备注" },
               ]}
-              value={repliedFilter}
-              onChange={(e) => update({ replied: e.target.value })}
+              value={notedFilter}
+              onChange={(e) => update({ noted: e.target.value })}
               aria-label="按备注状态筛选"
             />
           </div>
@@ -482,7 +489,7 @@ function AdminMessagesContent() {
             />
           </div>
 
-          {(search || statusFilter !== "all" || repliedFilter !== "all" || typeFilter) && (
+          {(search || statusFilter !== "all" || notedFilter !== "all" || typeFilter) && (
             <Button
               variant="ghost"
               size="sm"
@@ -490,7 +497,7 @@ function AdminMessagesContent() {
               onClick={() => {
                 setSearch("");
                 update(
-                  { search: null, status: null, replied: null, type: null },
+                  { search: null, status: null, noted: null, type: null },
                   { replace: true }
                 );
               }}
@@ -615,7 +622,7 @@ function AdminMessagesContent() {
                         <Badge variant={message.read ? "default" : "warning"} size="sm">
                           {message.read ? "已读" : "未读"}
                         </Badge>
-                        {message.reply && (
+                        {message.internalNote && (
                           <Badge variant="success" size="sm">
                             有备注
                           </Badge>
@@ -817,7 +824,7 @@ function AdminMessagesContent() {
                       <Badge variant={message.read ? "default" : "warning"} size="sm">
                         {message.read ? "已读" : "未读"}
                       </Badge>
-                      {message.reply && (
+                      {message.internalNote && (
                         <Badge variant="success" size="sm">
                           有备注
                         </Badge>
@@ -896,13 +903,13 @@ function AdminMessagesContent() {
         footer={
           detailMessage && canWriteMessages ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-brand-charcoal/65">{replyDraft.length}/5000</span>
+              <span className="text-xs text-brand-charcoal/65">{internalNoteDraft.length}/5000</span>
               <div className="flex flex-wrap justify-end gap-3">
                 <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
                   {detailMessage.read ? "标记为未读" : "标记为已读"}
                 </Button>
-                <Button onClick={handleReply} loading={replying} disabled={!replyDraft.trim()}>
-                  {detailMessage.reply ? "更新备注" : "保存备注"}
+                <Button onClick={handleSaveInternalNote} loading={replying} disabled={!internalNoteDraft.trim()}>
+                  {detailMessage.internalNote ? "更新备注" : "保存备注"}
                 </Button>
               </div>
             </div>
@@ -923,7 +930,7 @@ function AdminMessagesContent() {
                     <Badge variant={detailMessage.read ? "default" : "warning"} size="sm">
                       {detailMessage.read ? "已读" : "未读"}
                     </Badge>
-                    {detailMessage.reply && (
+                    {detailMessage.internalNote && (
                       <Badge variant="success" size="sm">
                         有备注
                       </Badge>
@@ -965,11 +972,11 @@ function AdminMessagesContent() {
                     {new Date(detailMessage.createdAt).toLocaleString("zh-CN")}
                   </p>
                 </div>
-                {detailMessage.repliedAt && (
+                {detailMessage.notedAt && (
                   <div className="sm:col-span-2">
                     <p className="text-xs text-brand-charcoal/65">上次备注</p>
                     <p className="mt-0.5 text-brand-charcoal/70">
-                      {new Date(detailMessage.repliedAt).toLocaleString("zh-CN")}
+                      {new Date(detailMessage.notedAt).toLocaleString("zh-CN")}
                     </p>
                   </div>
                 )}
@@ -988,15 +995,15 @@ function AdminMessagesContent() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-brand-charcoal">内部备注</h3>
-                {detailMessage.repliedAt && (
+                {detailMessage.notedAt && (
                   <span className="text-xs text-brand-charcoal/65">
-                    上次备注：{new Date(detailMessage.repliedAt).toLocaleString("zh-CN")}
+                    上次备注：{new Date(detailMessage.notedAt).toLocaleString("zh-CN")}
                   </span>
                 )}
               </div>
               <textarea
-                value={replyDraft}
-                onChange={(e) => setReplyDraft(e.target.value)}
+                value={internalNoteDraft}
+                onChange={(e) => setInternalNoteDraft(e.target.value)}
                 rows={4}
                 maxLength={5000}
                 disabled={!canWriteMessages}

@@ -149,6 +149,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         { status: 404 }
       );
     }
+    if (previousClient.isSystem) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "SYSTEM_CLIENT", message: "系统内置客户端不可编辑" },
+        },
+        { status: 403 }
+      );
+    }
 
     const auditId = await beginAuditLog({
       action: "oauth_client_update",
@@ -268,6 +277,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "Client 不存在" } },
         { status: 404 }
+      );
+    }
+    if (client.isSystem) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "SYSTEM_CLIENT", message: "系统内置客户端不可删除" },
+        },
+        { status: 403 }
       );
     }
 

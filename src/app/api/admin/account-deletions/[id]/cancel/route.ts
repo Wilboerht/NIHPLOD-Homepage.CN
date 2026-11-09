@@ -2,10 +2,12 @@
  * 管理员撤回冷静期内的注销申请
  * POST /api/admin/account-deletions/:id/cancel
  *
- * 仅 owner 可操作；撤回后用户账号恢复可用，不触发匿名化。
+ * 需要 users:delete 权限并通过 step-up；撤回后用户账号恢复可用，不触发匿名化。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -27,22 +29,36 @@ export async function POST(
         { status: 401 }
       );
     }
-    if (admin.role !== "owner") {
+    if (!hasAdminPermission(admin, "users:delete")) {
       return NextResponse.json(
-        { success: false, error: { code: "FORBIDDEN", message: "仅超级管理员可撤回注销申请" } },
+        { success: false, error: { code: "FORBIDDEN", message: "权限不足：撤回注销申请" } },
         { status: 403 }
       );
     }
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
+    const stepUpResponse = await requireAdminStepUp(request, admin);
+    if (stepUpResponse) return stepUpResponse;
+
     const { id } = await params;
     if (!validateCUID(id)) return invalidIdResponse();
+
+    const deletionRequest = await prisma.accountDeletionRequest.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+    if (!deletionRequest) {
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "注销申请不存在" } },
+        { status: 404 }
+      );
+    }
 
     const auditId = await beginAuditLog({
       action: "account_deletion_cancel",
       targetType: "user",
-      targetId: id,
+      targetId: deletionRequest.userId,
       detail: { requestId: id, phase: "cancelled" },
       actorType: "ADMIN",
       actorEmail: admin.email,

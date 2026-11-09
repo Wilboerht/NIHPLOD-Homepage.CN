@@ -144,7 +144,7 @@ export default async function AdminDashboard() {
     if (stats.pendingApprovals !== undefined) {
       pendingQueueItems.push({
         key: "approvals",
-        label: "待审批申请",
+        label: "待处理审批",
         count: stats.pendingApprovals,
         href: "/admin/approvals?status=PENDING",
         icon: BadgeCheck,
@@ -173,7 +173,7 @@ export default async function AdminDashboard() {
   if (stats?.webhookFailures !== undefined && stats.webhookFailures > 0) {
     systemAlerts.push({
       key: "webhooks",
-      label: "Webhook 投递失败",
+      label: "通知投递失败",
       count: stats.webhookFailures,
       href: "/admin/webhook-failures",
     });

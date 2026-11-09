@@ -49,6 +49,7 @@ vi.mock("@/lib/wecom", async (importOriginal) => {
 
 import {
   notifyRedemptionAutoCancelled,
+  sendAfterSalesAgingAlert,
   sendGiftLowStockAlert,
   sendOpsDailyDigest,
   sendRedemptionExpiryReminders,
@@ -161,5 +162,36 @@ describe("ops-alert", () => {
     prismaMock.product.findMany.mockResolvedValueOnce([]);
     await sendGiftLowStockAlert(NOW);
     expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it("售后待办超时发送运营告警", async () => {
+    prismaMock.pointRedemption.findMany.mockImplementation(
+      async ({ where }: { where: { status: string } }) =>
+        where.status === "AFTER_SALES_REQUESTED"
+          ? [
+              {
+                id: "rd-1",
+                productName: "面霜小样",
+                points: 100,
+                afterSalesRequestedAt: new Date(NOW.getTime() - 5 * 24 * 60 * 60 * 1000),
+                user: { nickname: null, phone: "13800138000" },
+              },
+            ]
+          : []
+    );
+    prismaMock.pointRedemption.count.mockImplementation(
+      async ({ where }: { where: { status: string } }) =>
+        where.status === "AFTER_SALES_REQUESTED" ? 1 : 0
+    );
+
+    await sendAfterSalesAgingAlert(NOW);
+
+    await vi.waitFor(() => expect(mockSend).toHaveBeenCalledTimes(1));
+    const content = mockSend.mock.calls[0][0] as string;
+    expect(mockSend.mock.calls[0][1]).toBe("ops");
+    expect(content).toContain("兑换售后待办超时");
+    expect(content).toContain("待审核 >3 天：1 笔");
+    expect(content).toContain("面霜小样");
+    expect(content).toContain("138****8000");
   });
 });

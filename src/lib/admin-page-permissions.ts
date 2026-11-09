@@ -85,6 +85,14 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
     anyOf: ["spent:read", "spent:import", "spent:create", "spent:review"],
   },
   {
+    match: (pathname) => pathname === "/admin/reconciliation",
+    allOf: ["reconciliation:read"],
+  },
+  {
+    match: (pathname) => pathname === "/admin/redemption-after-sales",
+    allOf: ["redemptions:after-sales"],
+  },
+  {
     match: (pathname) => pathname === "/admin/point-gifts",
     anyOf: [
       "redemptions:read",
@@ -112,6 +120,10 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
   {
     match: (pathname) => pathname === "/admin/webhook-failures",
     allOf: ["webhooks:read"],
+  },
+  {
+    match: (pathname) => pathname === "/admin/notification-outbox",
+    allOf: ["notifications:read"],
   },
 
   // SSO

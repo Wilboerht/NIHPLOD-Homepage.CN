@@ -937,6 +937,15 @@ export async function POST(request: NextRequest) {
       success: true,
       detail: { scope, scopes: requestedScopes },
     });
+    scheduleSsoEvent({
+      event: "consent",
+      userId: userPayload.id,
+      clientId: client_id,
+      clientName: client.name,
+      ip,
+      success: true,
+      detail: { action: "granted", scopes: requestedScopes },
+    });
 
     return respondWithRedirect(redirectUrl);
   } catch (error) {

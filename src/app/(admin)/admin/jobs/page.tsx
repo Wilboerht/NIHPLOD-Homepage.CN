@@ -76,7 +76,9 @@ function AdminJobsContent() {
   const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
   const pageSizeParam = Number(searchParams.get("pageSize"));
   const pageSize =
-    Number.isFinite(pageSizeParam) && pageSizeParam >= 1 ? Math.floor(pageSizeParam) : 10;
+    Number.isFinite(pageSizeParam) && pageSizeParam >= 1
+      ? Math.min(100, Math.floor(pageSizeParam))
+      : 10;
   const statusFilter = searchParams.get("status") || "all";
   const searchParam = searchParams.get("search") || "";
   const [searchInput, setSearchInput] = useState(searchParam);

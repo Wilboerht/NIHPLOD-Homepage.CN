@@ -6,7 +6,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { txClient } = vi.hoisted(() => ({
   txClient: {
-    pointRedemption: { findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    pointRedemption: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      updateMany: vi.fn(),
+      count: vi.fn(),
+    },
     pointBalance: { findUnique: vi.fn() },
     product: { findUnique: vi.fn(), updateMany: vi.fn() },
     user: { findUnique: vi.fn() },
@@ -43,6 +48,7 @@ const mockTxProductFind = txClient.product.findUnique as ReturnType<typeof vi.fn
 const mockTxProductUpdateMany = txClient.product.updateMany as ReturnType<typeof vi.fn>;
 const mockTxUserFind = txClient.user.findUnique as ReturnType<typeof vi.fn>;
 const mockTxAddressFind = txClient.userAddress.findUnique as ReturnType<typeof vi.fn>;
+const mockTxRedemptionCount = txClient.pointRedemption.count as ReturnType<typeof vi.fn>;
 const mockPrismaRedemptionFind = (
   prisma.pointRedemption as unknown as { findUnique: ReturnType<typeof vi.fn> }
 ).findUnique;
@@ -57,6 +63,8 @@ const REDEEMABLE_PRODUCT = {
   pointRedeemable: true,
   published: true,
   redeemStock: null,
+  redeemLimitPerUser: null,
+  redeemLimitWindowDays: null,
 };
 
 const SHIPPING_ADDRESS = {
@@ -92,6 +100,7 @@ describe("redeemGiftForUser 兑换事务", () => {
     mockTxAddressFind.mockResolvedValue(SHIPPING_ADDRESS);
     mockTxBalanceFind.mockResolvedValue({ available: 770 });
     mockTxCreate.mockResolvedValue({ id: "redemption-1" });
+    mockTxRedemptionCount.mockResolvedValue(0);
     mockRedeemPoints.mockResolvedValue({ ok: true, available: 770, spent: 230 });
   });
 
@@ -135,6 +144,57 @@ describe("redeemGiftForUser 兑换事务", () => {
         phone: "13800138000",
         address: "上海市 浦东新区 世纪大道 100 号",
       }),
+    });
+  });
+
+  it("终身限购达到上限时拒绝兑换", async () => {
+    mockTxProductFind.mockResolvedValue({
+      ...REDEEMABLE_PRODUCT,
+      redeemLimitPerUser: 1,
+      redeemLimitWindowDays: null,
+    });
+    mockTxRedemptionCount.mockResolvedValue(1);
+
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "REDEMPTION_LIMIT_REACHED",
+      limit: 1,
+      windowDays: null,
+      used: 1,
+    });
+    expect(mockRedeemPoints).not.toHaveBeenCalled();
+    expect(mockTxProductUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("滚动限购只统计窗口内 PENDING/FULFILLED 的兑换", async () => {
+    mockTxProductFind.mockResolvedValue({
+      ...REDEEMABLE_PRODUCT,
+      redeemLimitPerUser: 2,
+      redeemLimitWindowDays: 30,
+    });
+
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(mockTxRedemptionCount).toHaveBeenCalledWith({
+      where: {
+        userId: "user-1",
+        productId: "product-1",
+        status: { notIn: ["CANCELLED", "REFUNDED"] },
+        createdAt: { gte: expect.any(Date) },
+      },
     });
   });
 

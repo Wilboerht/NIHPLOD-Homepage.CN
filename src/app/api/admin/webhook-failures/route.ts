@@ -131,6 +131,14 @@ export async function GET(request: NextRequest) {
             // 不回传 payload：其中含手机号等用户资料快照（PII），
             // 仅保留定位所需元数据；需要排查时走服务端日志。
             hasPayload: Boolean(item.payload),
+            event:
+              item.payload && typeof item.payload === "object"
+                ? ((item.payload as { event?: unknown }).event as string | undefined) ?? null
+                : null,
+            targetUrl:
+              kind === "webhook"
+                ? ((item as { targetUrl?: string | null }).targetUrl ?? null)
+                : null,
             lastError: lastErrorOf(item.payload),
           };
         }),

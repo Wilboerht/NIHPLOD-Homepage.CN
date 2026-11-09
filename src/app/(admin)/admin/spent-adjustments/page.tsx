@@ -150,6 +150,8 @@ function AdminSpentAdjustmentsContent() {
     Number.isFinite(typedReviewAmount) && typedReviewAmount > 0 ? typedReviewAmount : claimedAmount;
   const approvalThresholdReached =
     Math.max(claimedAmount, approvalReviewAmount) >= APPROVAL_THRESHOLDS.spentReviewApprove;
+  const [serverApprovalRequired, setServerApprovalRequired] = useState(false);
+  const requiresOwnerApproval = approvalThresholdReached || serverApprovalRequired;
   const { requireTotp, totpModal } = useTotpConfirm();
 
   const isReviewDirty =
@@ -213,6 +215,7 @@ function AdminSpentAdjustmentsContent() {
     setDecision("approve");
     setReviewAmount(item.amountClaimed != null ? String(item.amountClaimed) : "");
     setReviewNote("");
+    setServerApprovalRequired(false);
   };
 
   const handleReview = async () => {
@@ -257,6 +260,9 @@ function AdminSpentAdjustmentsContent() {
       }
     } catch (e) {
       if (e instanceof ApiError) {
+        if (e.code === "APPROVAL_REQUIRED") {
+          setServerApprovalRequired(true);
+        }
         showError(e.message);
       } else {
         showError("操作失败");
@@ -737,7 +743,7 @@ function AdminSpentAdjustmentsContent() {
                 取消
               </Button>
               {/* 非 owner 且达到审批阈值（按申报/核实较大值）时，不允许直接审核入账 */}
-              {!(decision === "approve" && !isOwnerActor && approvalThresholdReached) && (
+              {!(decision === "approve" && !isOwnerActor && requiresOwnerApproval) && (
                 <Button
                   onClick={handleReview}
                   loading={saving}
@@ -749,7 +755,7 @@ function AdminSpentAdjustmentsContent() {
               {decision === "approve" &&
                 !isOwnerActor &&
                 canRequestApproval &&
-                approvalThresholdReached && (
+                requiresOwnerApproval && (
                   <ApprovalRequestAction
                     policyKey="spent.review.approve"
                     initialValues={{
@@ -782,7 +788,7 @@ function AdminSpentAdjustmentsContent() {
           ) : detail &&
             canRequestApproval &&
             detail.status === "PENDING" &&
-            approvalThresholdReached ? (
+            requiresOwnerApproval ? (
             <div className="flex justify-end">
               <ApprovalRequestAction
                 policyKey="spent.review.approve"
@@ -1070,7 +1076,9 @@ function AdminSpentAdjustmentsContent() {
 
 export default function AdminSpentAdjustmentsPage() {
   return (
-    <RequirePermission permissions={["spent:read", "spent:import", "spent:create"]}>
+    <RequirePermission
+      permissions={["spent:read", "spent:import", "spent:create", "spent:review"]}
+    >
       <AdminSpentAdjustmentsContent />
     </RequirePermission>
   );

@@ -113,6 +113,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 404 }
       );
     }
+    if (user.status === "DELETED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "USER_DELETED", message: "该用户已注销，不能重置密码" },
+        },
+        { status: 409 }
+      );
+    }
 
     const tempPassword = generateTempPassword();
     const strength = validatePasswordStrength(tempPassword);

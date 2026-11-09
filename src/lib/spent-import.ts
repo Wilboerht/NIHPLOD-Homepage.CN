@@ -30,7 +30,11 @@ import {
 import {
   normalizeOrderNo,
   releaseSpentOrderClaim,
+  releaseSpentOrderRefund,
   SpentOrderConflictError,
+  SpentRefundExceedsOriginalError,
+  SpentRefundNotLinkedError,
+  SpentRefundReservationConflictError,
 } from "@/lib/spent-order";
 import type { Prisma, SpentAdjustmentChannel } from "@/generated/prisma/client";
 
@@ -496,7 +500,8 @@ function parseImportAoa(aoa: unknown[][], fileHash: string): ImportParseResult {
 
   const dataRows = aoa
     .slice(headerRowIndex + 1)
-    .filter((row) => row.some((cell) => cellText(cell) !== ""));
+    .map((row, i) => ({ row, rowIndex: headerRowIndex + 2 + i }))
+    .filter(({ row }) => row.some((cell) => cellText(cell) !== ""));
   if (dataRows.length === 0) {
     return { ok: false, code: "INVALID_FILE", message: "文件中没有数据行" };
   }
@@ -508,8 +513,7 @@ function parseImportAoa(aoa: unknown[][], fileHash: string): ImportParseResult {
     };
   }
 
-  const rows: ParsedImportRow[] = dataRows.map((row, i) => {
-    const rowIndex = headerRowIndex + 2 + i;
+  const rows: ParsedImportRow[] = dataRows.map(({ row, rowIndex }) => {
     const phone = parsePhoneValue(cellAt(row, columnIndex.phone));
     const amount = parseAmountValue(cellAt(row, columnIndex.amount));
     const purchasedAt = parseExcelDateValue(cellAt(row, columnIndex.purchasedAt));
@@ -833,13 +837,10 @@ export async function previewImportRows(
           },
         })
       : Promise.resolve([]),
-    userIds.length > 0 && orderNoKeys.length > 0 && prisma.spentOrderClaim
+    orderNoKeys.length > 0 && prisma.spentOrderClaim
       ? prisma.spentOrderClaim.findMany({
-          where: {
-            userId: { in: userIds },
-            orderNoKey: { in: orderNoKeys },
-          },
-          select: { userId: true, orderNoKey: true },
+          where: { orderNoKey: { in: orderNoKeys } },
+          select: { userId: true, orderNoKey: true, originalAmount: true, refundedAmount: true },
         })
       : Promise.resolve([]),
   ]);
@@ -871,11 +872,10 @@ export async function previewImportRows(
         )
       )
   );
-  const claimedOrderKeys = new Set(
-    orderClaims.map((claim) => `${claim.userId}:${claim.orderNoKey}`)
-  );
+  const claimByOrderKey = new Map(orderClaims.map((claim) => [claim.orderNoKey, claim]));
   const seenOrderKeys = new Set<string>();
   const seenRefundKeys = new Set<string>();
+  const seenRefundAmountByOrderKey = new Map<string, number>();
 
   let okCount = 0;
   let errorCount = 0;
@@ -898,29 +898,49 @@ export async function previewImportRows(
     if (!error && user && row.orderNoKey) {
       const orderKey = `${user.id}:${row.orderNoKey}`;
       if ((row.amount ?? 0) < 0) {
-        // 负数行是对原订单的退款/冲正，不能按“订单号已入账”拦截，
-        // 否则正常的退款导入永远无法执行；改为按内容指纹防重复退款。
-        const refundKey = rowReference(
-          user.phone,
-          row.amount ?? 0,
-          row.orderNo,
-          row.purchasedAt
-        );
-        if (importedContentKeys.has(refundKey)) {
-          error = "该退款行已通过 Excel 导入入账，请勿重复导入";
-        } else if (seenRefundKeys.has(refundKey)) {
-          error = "文件内退款行重复，请合并或删除重复行";
+        const claim = claimByOrderKey.get(row.orderNoKey);
+        const refundAmount = Math.abs(row.amount ?? 0);
+        const seenRefundAmount = seenRefundAmountByOrderKey.get(row.orderNoKey) ?? 0;
+        if (!claim || claim.userId !== user.id || claim.originalAmount === null) {
+          error = "退款行找不到对应的原始订单入账，无法退款";
+        } else if (
+          claim.refundedAmount + seenRefundAmount + refundAmount >
+          claim.originalAmount
+        ) {
+          error = "该订单累计退款金额已超过原始入账金额，请人工核对";
         } else {
-          seenRefundKeys.add(refundKey);
+          // 负数行是对原订单的退款/冲正，不能按“订单号已入账”拦截，
+          // 否则正常的退款导入永远无法执行；按内容指纹防同一退款行重复。
+          const refundKey = rowReference(
+            user.phone,
+            row.amount ?? 0,
+            row.orderNo,
+            row.purchasedAt
+          );
+          if (importedContentKeys.has(refundKey)) {
+            error = "该退款行已通过 Excel 导入入账，请勿重复导入";
+          } else if (seenRefundKeys.has(refundKey)) {
+            error = "文件内退款行重复，请合并或删除重复行";
+          } else {
+            seenRefundKeys.add(refundKey);
+            seenRefundAmountByOrderKey.set(
+              row.orderNoKey,
+              seenRefundAmount + refundAmount
+            );
+          }
         }
+      } else if (claimByOrderKey.has(row.orderNoKey)) {
+        const claim = claimByOrderKey.get(row.orderNoKey);
+        error =
+          claim?.userId === user.id
+            ? "该订单号已入账，请勿重复导入"
+            : "该订单号已被其他账号占用，请人工核对";
       } else if (pendingOrderKeys.has(orderKey)) {
         error = "该订单号存在待审核的消费补录申请，请先处理补录申请";
       } else if (approvedOrderKeys.has(orderKey)) {
         error = "该订单号已通过消费补录审核入账，请勿重复导入";
       } else if (importedOrderKeys.has(orderKey)) {
         error = "该订单号已通过 Excel 导入入账，如需修正请先撤销原批次";
-      } else if (claimedOrderKeys.has(orderKey)) {
-        error = "该订单号已被商城同步或其他来源入账，请勿重复导入";
       } else if (seenOrderKeys.has(orderKey)) {
         error = "文件内订单号重复，请合并或删除重复行";
       } else {
@@ -1323,6 +1343,7 @@ export async function executeImportBatch(params: {
                 orderNo: row.orderNo,
                 source: "SPENT_IMPORT",
                 requireActiveUser: true,
+                enforceRefundClaim: row.amount! < 0,
                 note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
                   row.orderNo ? ` ${row.orderNo}` : ""
                 }`,
@@ -1357,6 +1378,15 @@ export async function executeImportBatch(params: {
           }
           if (error instanceof SpentOrderConflictError) {
             return markError(`订单号已在其他来源入账（${error.source}），请先撤销原入账再导入`);
+          }
+          if (error instanceof SpentRefundNotLinkedError) {
+            return markError("退款行找不到对应的原始订单入账，无法退款");
+          }
+          if (error instanceof SpentRefundExceedsOriginalError) {
+            return markError("该订单累计退款金额已超过原始入账金额，请人工核对");
+          }
+          if (error instanceof SpentRefundReservationConflictError) {
+            return markError("退款占用发生并发冲突，请重试该行");
           }
           return markError("入账失败，请重试");
         }
@@ -1670,12 +1700,22 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
             },
             data: { revertedAt: new Date() },
           });
-          await releaseSpentOrderClaim(tx, {
-            userId: row.userId as string,
-            orderNoKey: row.orderNoKey,
-            source: "SPENT_IMPORT",
-            reference: row.reference,
-          });
+          if ((row.amount ?? 0) < 0) {
+            if (appliedDelta < 0) {
+              await releaseSpentOrderRefund(tx, {
+                userId: row.userId as string,
+                orderNoKey: row.orderNoKey as string,
+                amount: Math.abs(appliedDelta),
+              });
+            }
+          } else if (row.orderNoKey) {
+            await releaseSpentOrderClaim(tx, {
+              userId: row.userId as string,
+              orderNoKey: row.orderNoKey,
+              source: "SPENT_IMPORT",
+              reference: row.reference,
+            });
+          }
           await tx.spentImportRow.update({
             where: { id: row.id },
             data: { revertedAt: new Date() },

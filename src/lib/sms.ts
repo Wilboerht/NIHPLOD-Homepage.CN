@@ -167,7 +167,8 @@ export type SMSTemplate =
   | "ADMIN_PASSWORD_RESET"
   | "PHONE_CHANGED"
   | "ACCOUNT_DELETED"
-  | "ACCOUNT_DELETION_REMINDER";
+  | "ACCOUNT_DELETION_REMINDER"
+  | "REDEMPTION_STATUS";
 
 export interface SMSParams {
   phone: string;
@@ -357,6 +358,7 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
     PHONE_CHANGED: process.env.SMS_TEMPLATE_CODE_PHONE_CHANGED,
     ACCOUNT_DELETED: process.env.SMS_TEMPLATE_CODE_ACCOUNT_DELETED,
     ACCOUNT_DELETION_REMINDER: process.env.SMS_TEMPLATE_CODE_ACCOUNT_DELETION_REMINDER,
+    REDEMPTION_STATUS: process.env.SMS_TEMPLATE_CODE_REDEMPTION_STATUS,
   };
   return templates[template] || null;
 }
@@ -383,6 +385,7 @@ const TENCENT_TEMPLATE_PARAM_KEYS: Record<SMSTemplate, string[]> = {
   PHONE_CHANGED: ["time"],
   ACCOUNT_DELETED: ["time"],
   ACCOUNT_DELETION_REMINDER: ["time"],
+  REDEMPTION_STATUS: ["product", "status"],
 };
 
 /**
@@ -477,6 +480,7 @@ function getTencentTemplateId(template: SMSTemplate): string | null {
     PHONE_CHANGED: process.env.TENCENT_SMS_TEMPLATE_ID_PHONE_CHANGED,
     ACCOUNT_DELETED: process.env.TENCENT_SMS_TEMPLATE_ID_ACCOUNT_DELETED,
     ACCOUNT_DELETION_REMINDER: process.env.TENCENT_SMS_TEMPLATE_ID_ACCOUNT_DELETION_REMINDER,
+    REDEMPTION_STATUS: process.env.TENCENT_SMS_TEMPLATE_ID_REDEMPTION_STATUS,
   };
   return templates[template] || null;
 }

@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json(
         { success: result.ok, data: { taskName, ...result } },
-        { status: result.ok ? 200 : 500 }
+        { status: result.ok ? 200 : result.status === "SKIPPED" ? 409 : 500 }
       );
     }
 

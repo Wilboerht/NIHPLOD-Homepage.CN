@@ -274,6 +274,16 @@ interface UserDetail {
     clientName?: string | null;
     createdAt: string;
   }[];
+  accountDeletion?: {
+    id: string;
+    status: string;
+    requestedAt: string;
+    scheduledAt: string;
+    completedAt: string | null;
+    cancelledAt: string | null;
+    attempts: number;
+    lastError: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -936,15 +946,24 @@ function AdminUsersContent() {
     setBatchLoading(true);
     try {
       const result = await runWithStepUp(() =>
-        apiPost<{ updated: number }>("/api/admin/users", {
-          ids: Array.from(selectedIds),
-          status: targetStatus,
-        })
+        apiPost<{ updated: number; failed?: { id: string; message: string }[] }>(
+          "/api/admin/users",
+          {
+            ids: Array.from(selectedIds),
+            status: targetStatus,
+          }
+        )
       );
       if (result === null) return;
-      toast.success(
-        `已将选中的 ${selectedCount} 个用户设置为「${userStatusMap[targetStatus].label}」`
-      );
+      if (result.failed && result.failed.length > 0) {
+        toast.warning(
+          `已更新 ${result.updated} 个用户，${result.failed.length} 个失败，请查看列表后重试`
+        );
+      } else {
+        toast.success(
+          `已将选中的 ${selectedCount} 个用户设置为「${userStatusMap[targetStatus].label}」`
+        );
+      }
       setBatchTarget(null);
       userSelection.clear();
       await fetchUsers();
@@ -1391,7 +1410,7 @@ function AdminUsersContent() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {canDeleteUsers && isOwnerActor && (
+                        {canDeleteUsers && isOwnerActor && user.status !== "DELETED" && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -1507,7 +1526,7 @@ function AdminUsersContent() {
                           <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {canDeleteUsers && isOwnerActor && (
+                          {canDeleteUsers && isOwnerActor && user.status !== "DELETED" && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1599,7 +1618,10 @@ function AdminUsersContent() {
                           已验证
                         </Badge>
                       )}
-                      {canRevealPhone && !revealedPhone && detailUser.phone && (
+                        {canRevealPhone &&
+                          !revealedPhone &&
+                          detailUser.phone &&
+                          detailUser.phone.includes("*") && (
                         <button
                           type="button"
                           onClick={revealPhone}
@@ -1754,9 +1776,18 @@ function AdminUsersContent() {
                           {formatDate(detailUser.createdAt)}
                         </DetailField>
                         <DetailField label="最后登录">
-                          {detailLoginAttempts[0]
-                            ? formatDate(detailLoginAttempts[0].createdAt)
+                          {detailLoginAttempts.find((attempt) => attempt.success)
+                            ? formatDate(
+                                detailLoginAttempts.find((attempt) => attempt.success)!.createdAt
+                              )
                             : "—"}
+                        </DetailField>
+                        <DetailField label="注销申请">
+                          {detailUser.accountDeletion
+                            ? `${detailUser.accountDeletion.status} · 申请于 ${formatDate(
+                                detailUser.accountDeletion.requestedAt
+                              )}`
+                            : "无"}
                         </DetailField>
                         <DetailField label="收货地址">
                           {detailAddresses.length > 0 ? `${detailAddresses.length} 个` : "暂无"}

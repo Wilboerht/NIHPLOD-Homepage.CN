@@ -34,6 +34,12 @@
     "spent:check-conflicts": "tsx scripts/check-spent-order-conflicts.ts",
     "spent:purge-orphan-proofs": "tsx scripts/purge-orphan-spent-proofs.ts",
     "points:check-invariants": "tsx scripts/check-point-invariants.ts",
+    "reconciliation:check": "tsx scripts/check-reconciliation.ts",
+    "repair:account-deletion-points": "tsx scripts/repair-account-deletion-points.ts",
+    "spent:backfill-refund-claims": "tsx scripts/backfill-spent-refund-claims.ts",
+    "spent:repair-claims": "tsx scripts/backfill-spent-refund-claims.ts",
+    "spent:audit-refunds": "tsx scripts/audit-spent-refund-duplicates.ts",
+    "spent:repair-refunds": "tsx scripts/repair-spent-refund-duplicates.ts",
     "admin:reset-totp": "tsx scripts/reset-admin-totp.ts"
   },
   "prisma": {

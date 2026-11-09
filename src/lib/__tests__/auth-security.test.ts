@@ -7,6 +7,7 @@ import {
   saveRefreshToken,
   atomicallyRotateRefreshToken,
   revokeRefreshToken,
+  revokeOAuthRefreshTokensForUser,
   extractDeviceInfo,
   cleanupRevokedSessionsAndTokens,
   cleanupRevokedUserConsents,
@@ -536,6 +537,40 @@ describe("auth-security", () => {
       expect(mockRt.updateMany).toHaveBeenCalledWith({
         where: { userId: "user-1", revokedAt: null, clientId: null },
         data: { revokedAt: expect.any(Date), revokedReason: "logout" },
+      });
+    });
+
+    it("revokeOAuthRefreshTokensForUser 未指定 clientId 时只撤销 OAuth token", async () => {
+      const mockRt = await getMockRefreshToken();
+      mockRt.updateMany.mockResolvedValueOnce({ count: 2 });
+
+      const count = await revokeOAuthRefreshTokensForUser("user-1");
+
+      expect(count).toBe(2);
+      expect(mockRt.updateMany).toHaveBeenCalledWith({
+        where: {
+          userId: "user-1",
+          revokedAt: null,
+          clientId: { not: null },
+        },
+        data: { revokedAt: expect.any(Date), revokedReason: "admin_revoke" },
+      });
+    });
+
+    it("revokeOAuthRefreshTokensForUser 指定 clientId 时只撤销该 client", async () => {
+      const mockRt = await getMockRefreshToken();
+      mockRt.updateMany.mockResolvedValueOnce({ count: 1 });
+
+      const count = await revokeOAuthRefreshTokensForUser("user-1", "client-abc", "admin_revoke");
+
+      expect(count).toBe(1);
+      expect(mockRt.updateMany).toHaveBeenCalledWith({
+        where: {
+          userId: "user-1",
+          revokedAt: null,
+          clientId: "client-abc",
+        },
+        data: { revokedAt: expect.any(Date), revokedReason: "admin_revoke" },
       });
     });
 

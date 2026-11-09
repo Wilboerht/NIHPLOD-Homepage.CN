@@ -32,6 +32,7 @@ describe("管理端页面权限映射", () => {
       ["/admin/oauth/stats", "sso:read"],
       ["/admin/oauth-clients", "sso:clients:read"],
       ["/admin/products", "products:read"],
+      ["/admin/reconciliation", "reconciliation:read"],
       ["/admin/webhook-failures", "webhooks:read"],
     ];
 

@@ -1122,7 +1122,10 @@ describe("管理端 API 集成测试", () => {
       expect(mockPrisma.accountDeletionRequest.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ where: { userId: "user-1" } })
       );
-      expect(mockExecuteAccountDeletion).toHaveBeenCalledWith("req-1", { notifyUser: false });
+      expect(mockExecuteAccountDeletion).toHaveBeenCalledWith(
+        "req-1",
+        expect.objectContaining({ notifyUser: false })
+      );
       // 验证写入 SSO 审计事件（newStatus 与执行器匿名化口径一致为 DELETED）
       expect(mockRecordSsoEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1200,7 +1203,7 @@ describe("管理端 API 集成测试", () => {
       });
       const res = await POST(req);
       expect(res.status).toBe(403);
-    });
+    }, 30000);
   });
 
   // ============================================

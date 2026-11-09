@@ -365,6 +365,10 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
           aria-label={`切换到第 ${index + 1} 张图片`}
           aria-current={currentImageIndex === index ? "true" : undefined}
         >
+          <div
+            className="shimmer-skeleton pointer-events-none absolute inset-0 animate-shimmer bg-brand-beige/40 motion-reduce:animate-none"
+            aria-hidden="true"
+          />
           <Image
             src={img.url}
             alt={getImageAlt(img, index)}
@@ -451,6 +455,10 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                       aria-label={`${product.name} 图片轮播，共 ${product.images.length} 张，回车查看大图，左右方向键切换`}
                       tabIndex={0}
                     >
+                      <div
+                        className="shimmer-skeleton pointer-events-none absolute inset-0 animate-shimmer bg-brand-beige/40 motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
                       <m.div
                         className="flex h-full"
                         style={{ x }}
@@ -537,7 +545,10 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                   transition={{ duration: 0.6, ease: "easeOut" }}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <h1 className="font-serif text-[20px] font-normal tracking-[0.05em] text-brand-charcoal sm:text-[22px] lg:text-[28px]">
+                    <h1
+                      className="font-serif text-[20px] font-normal tracking-[0.05em] text-brand-charcoal focus:outline-none sm:text-[22px] lg:text-[28px]"
+                      tabIndex={-1}
+                    >
                       {product.name}
                     </h1>
                     <div className="flex items-center gap-1">

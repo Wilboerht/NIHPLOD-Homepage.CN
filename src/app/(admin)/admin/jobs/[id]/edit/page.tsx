@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { JobForm } from "@/components/admin/JobForm";
@@ -30,7 +30,10 @@ interface JobData {
 function EditJobContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const jobId = params.id as string;
+  const returnToParam = searchParams.get("returnTo") ?? "";
+  const backHref = returnToParam.startsWith("/admin/jobs") ? returnToParam : "/admin/jobs";
   const { error: showError } = useToast();
 
   const [job, setJob] = useState<JobData | null>(null);
@@ -89,7 +92,7 @@ function EditJobContent() {
     <div className="flex flex-col gap-5">
       <div className="flex items-start gap-1 sm:gap-2">
         <IconButton
-          href="/admin/jobs"
+          href={backHref}
           label="返回职位列表"
           className="-ml-2 -mt-2 shrink-0 sm:-mt-1"
         >
