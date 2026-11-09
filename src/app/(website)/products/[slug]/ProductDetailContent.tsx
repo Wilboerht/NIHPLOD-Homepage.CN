@@ -541,11 +541,6 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                       >
                         {product.name}
                       </h1>
-                      {product.nameEn && (
-                        <p className="mt-1.5 text-[11px] font-light uppercase tracking-[0.18em] text-brand-charcoal/50">
-                          {product.nameEn}
-                        </p>
-                      )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       {faqs.length > 0 && (
@@ -637,7 +632,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                           onClick={() => handleTabChange(tab.key)}
                           onKeyDown={handleTabKeyDown}
                           className={cn(
-                            "relative cursor-pointer pb-3 text-[13px] font-medium tracking-[0.04em] transition-colors before:absolute before:-inset-x-1 before:-inset-y-2 before:content-[''] md:text-[14px]",
+                            "relative cursor-pointer pb-3 text-[13px] font-medium tracking-[0.04em] transition-colors before:absolute before:-inset-x-1 before:-inset-y-2 before:content-['']",
                             activeTabKey === tab.key
                               ? "text-brand-charcoal"
                               : "text-brand-charcoal/70 hover:text-brand-charcoal/90"
@@ -674,13 +669,13 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                           <h2 className="sr-only">{tab.label}</h2>
                           {tabContent[tab.key] ? (
                             <div
-                              className="text-left text-[14px] font-light leading-[1.9] tracking-[0.04em] text-brand-charcoal/[0.85] [&_a]:text-brand-primary [&_a]:underline [&_a]:underline-offset-2 [&_li+_li]:mt-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-[1.2em] [&_p+p]:mt-[1.15em] [&_strong]:font-medium [&_strong]:text-brand-charcoal [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-[1.2em] md:text-[15px]"
+                              className="text-left text-[14px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/[0.85] [&_a]:text-brand-primary [&_a]:underline [&_a]:underline-offset-2 [&_li+_li]:mt-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-[1.2em] [&_p+p]:mt-[1.15em] [&_strong]:font-medium [&_strong]:text-brand-charcoal [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-[1.2em]"
                               dangerouslySetInnerHTML={{
                                 __html: sanitizeHtml(tabContent[tab.key]!),
                               }}
                             />
                           ) : (
-                            <p className="text-[14px] font-light leading-[1.9] text-brand-charcoal/50">暂无内容</p>
+                            <p className="text-[14px] font-light leading-[1.8] text-brand-charcoal/50">暂无内容</p>
                           )}
                         </div>
                       );

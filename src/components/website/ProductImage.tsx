@@ -11,6 +11,7 @@ interface ProductImageProps extends Omit<ImageProps, "onLoad" | "onError"> {
 }
 
 export function ProductImage({
+  alt,
   className,
   skeletonClassName,
   onLoad,
@@ -67,6 +68,7 @@ export function ProductImage({
         {...props}
         ref={imageRef}
         src={src}
+        alt={alt}
         className={cn(className, failed && "opacity-0")}
         onLoad={handleLoad}
         onError={handleError}
