@@ -3,7 +3,7 @@
  * GET /api/oauth/security/login-history - 最近 50 条登录尝试（脱敏 IP）
  *
  * 数据核心与网页端 /api/user/login-history 共用（src/lib/security-login-history.ts）。
- * 要求 scope 含 profile。
+ * 要求 scope 含 security:manage。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";

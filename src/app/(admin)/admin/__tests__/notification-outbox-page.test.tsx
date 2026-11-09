@@ -75,7 +75,7 @@ describe("事务通知队列页面", () => {
     expect((await screen.findAllByText("spent_review_result")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("死信").length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "重试" })[0]);
     expect(await screen.findByText("重新入队通知")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "重新入队" }));
 

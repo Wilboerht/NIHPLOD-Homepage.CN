@@ -4,7 +4,7 @@
  *
  * 数据核心与网页端 /api/user/identities 共用（src/lib/security-identities.ts）。
  * 不返回 subjectId（openid），避免平台标识泄漏。
- * 要求 scope 含 profile。
+ * 要求 scope 含 security:manage。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";

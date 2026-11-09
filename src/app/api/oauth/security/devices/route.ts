@@ -5,7 +5,7 @@
  * 数据核心与网页端 /api/user/devices 共用（src/lib/security-devices.ts）。
  * OAuth 场景无 Cookie：「当前设备」优先取当前小程序 client 的最近活跃会话，
  * 否则回退全量最近活跃会话。
- * 要求 scope 含 profile。
+ * 要求 scope 含 security:manage。
  *
  * CORS：仅允许已注册 redirect_uri 的 origin。
  */

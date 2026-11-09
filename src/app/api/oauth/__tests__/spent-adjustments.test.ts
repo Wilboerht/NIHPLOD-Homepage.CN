@@ -187,7 +187,7 @@ describe("/api/oauth/spent-adjustments", () => {
     expect(prismaMock.spentAdjustmentApplication.create).not.toHaveBeenCalled();
   });
 
-  it("POST 订单号已被其他来源占用返回 409 ORDER_CONFLICT", async () => {
+  it("POST 订单号已被其他来源占用返回通用重复错误，不泄露归属", async () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
       client_id: "test-client",
@@ -199,7 +199,7 @@ describe("/api/oauth/spent-adjustments", () => {
     const res = await POST(makeRequest("POST", { channel: "TMALL", orderNo: "ORDER123" }));
     expect(res.status).toBe(409);
     const body = await res.json();
-    expect(body.error.code).toBe("ORDER_CONFLICT");
+    expect(body.error.code).toBe("ORDER_NO_DUPLICATE");
     expect(prismaMock.spentAdjustmentApplication.create).not.toHaveBeenCalled();
   });
 

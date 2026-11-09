@@ -291,9 +291,20 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
   const canReadReport = can("advisor:report:read");
   const mainActive = mainStatus === "ACTIVE";
 
+  const requestOverviewWithStepUp = useCallback(async () => {
+    try {
+      return await requestOverview(userId);
+    } catch (error) {
+      if (!isTotpRequired(error)) throw error;
+      const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+      if (!verified) throw error;
+      return requestOverview(userId);
+    }
+  }, [requireTotp, userId]);
+
   useEffect(() => {
     const isLatest = takeLatest();
-    requestOverview(userId)
+    requestOverviewWithStepUp()
       .then((data) => {
         if (!isLatest()) return;
         setPayload(data);
@@ -307,14 +318,14 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
       .finally(() => {
         if (isLatest()) setLoading(false);
       });
-  }, [takeLatest, userId]);
+  }, [requestOverviewWithStepUp, takeLatest]);
 
   const reload = useCallback(() => {
     const isLatest = takeLatest();
     setLoading(true);
     setError("");
     setLimitEditing(false);
-    requestOverview(userId)
+    requestOverviewWithStepUp()
       .then((data) => {
         if (!isLatest()) return;
         setPayload(data);
@@ -328,7 +339,7 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
       .finally(() => {
         if (isLatest()) setLoading(false);
       });
-  }, [takeLatest, userId]);
+  }, [requestOverviewWithStepUp, takeLatest]);
 
   const startEditLimit = useCallback(() => {
     const account = payload?.overview?.account;

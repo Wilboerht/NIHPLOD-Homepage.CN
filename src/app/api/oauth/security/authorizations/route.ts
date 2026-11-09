@@ -4,7 +4,7 @@
  *
  * 数据核心与网页端 /api/user/oauth/sessions 共用（src/lib/security-authorizations.ts）。
  * 按 clientId 去重，每 client 返回最近一条；`isCurrentClient` 标记当前小程序自身。
- * 要求 scope 含 profile。
+ * 要求 scope 含 security:manage。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";

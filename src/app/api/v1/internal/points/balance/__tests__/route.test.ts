@@ -136,6 +136,19 @@ describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
     expect((await res.json()).error.code).toBe("USER_NOT_FOUND");
   });
 
+  it("已注销账户应返回 403 ACCOUNT_DELETED，不泄露余额", async () => {
+    mockUserFindUnique.mockResolvedValue({
+      id: "user-1",
+      membershipLevel: "GOLD",
+      status: "DELETED",
+    });
+
+    const res = await GET(createSignedRequest({ phone: "13800138000" }));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.code).toBe("ACCOUNT_DELETED");
+  });
+
   it("成功返回余额与兑礼率（userId 回传；frozen/nextReleaseAt 为废弃兼容字段）", async () => {
     const res = await GET(createSignedRequest({ phone: "13800138000" }));
     const data = await res.json();
@@ -153,7 +166,7 @@ describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
     });
     expect(mockUserFindUnique).toHaveBeenCalledWith({
       where: { phone: "13800138000" },
-      select: { id: true, membershipLevel: true },
+      select: { id: true, membershipLevel: true, status: true },
     });
   });
 
@@ -165,7 +178,7 @@ describe("GET /api/v1/internal/points/balance（商城查询积分）", () => {
     expect(data.data.userId).toBe("user-1");
     expect(mockUserFindUnique).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      select: { id: true, membershipLevel: true },
+      select: { id: true, membershipLevel: true, status: true },
     });
   });
 

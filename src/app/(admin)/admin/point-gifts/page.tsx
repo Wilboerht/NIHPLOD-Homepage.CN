@@ -292,6 +292,7 @@ function AdminPointGiftsContent() {
     canRedeemRead,
     view,
     takeLatestRedemptions,
+    updatePiiRevealed,
   ]);
 
   const handleRevealPii = async () => {

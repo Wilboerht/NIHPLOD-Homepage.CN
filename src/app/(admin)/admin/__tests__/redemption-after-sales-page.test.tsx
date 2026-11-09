@@ -75,7 +75,7 @@ describe("兑换售后页面", () => {
   it("审核通过使用正式弹窗提交，而不是原生 prompt", async () => {
     render(<RedemptionAfterSalesPage />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "通过" }));
+    fireEvent.click((await screen.findAllByRole("button", { name: "通过" }))[0]);
     expect(await screen.findByText("通过售后申请")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "确认通过" }));
 
@@ -92,6 +92,8 @@ describe("兑换售后页面", () => {
 
     render(<RedemptionAfterSalesPage />);
 
-    expect(await screen.findByRole("button", { name: "申请退分审批" })).toBeInTheDocument();
+    expect((await screen.findAllByRole("button", { name: "申请退分审批" })).length).toBeGreaterThan(
+      0
+    );
   });
 });

@@ -86,6 +86,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const rateLimitResponse = await checkAdminRateLimit(request, "advisor-user:read");
     if (rateLimitResponse) return rateLimitResponse;
+    const stepUp = await requireAdminStepUp(request, admin);
+    if (stepUp) return stepUp;
 
     const { id } = await context.params;
     if (!validateCUID(id)) return invalidIdResponse();

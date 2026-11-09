@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { advisorRequest } from "@/lib/advisor-internal";
 import { apiConsole } from "@/lib/logger";
@@ -36,6 +37,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const rateLimitResponse = await checkAdminRateLimit(request, "advisor-report:list");
     if (rateLimitResponse) return rateLimitResponse;
+    const stepUp = await requireAdminStepUp(request, admin);
+    if (stepUp) return stepUp;
 
     const { id } = await context.params;
     if (!validateCUID(id)) return invalidIdResponse();

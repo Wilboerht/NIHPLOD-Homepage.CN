@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, ChevronLeft, RefreshCw } from "lucide-react";
 import { apiGet, ApiError } from "@/lib/api-client";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import type {
@@ -568,10 +569,25 @@ export function AdvisorReports({ userId }: { userId: string }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const { requireTotp, totpModal } = useTotpConfirm();
+
+  const getWithStepUp = useCallback(
+    async <T,>(url: string): Promise<T> => {
+      try {
+        return await apiGet<T>(url);
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) throw error;
+        return apiGet<T>(url);
+      }
+    },
+    [requireTotp]
+  );
 
   useEffect(() => {
     const isLatest = takeLatestList();
-    apiGet<AdvisorReportListPayload>(
+    getWithStepUp<AdvisorReportListPayload>(
       `/api/admin/users/${userId}/advisor/reports?page=${page}&limit=8`
     )
       .then((data) => {
@@ -587,7 +603,7 @@ export function AdvisorReports({ userId }: { userId: string }) {
       .finally(() => {
         if (isLatest()) setLoading(false);
       });
-  }, [page, reloadToken, takeLatestList, userId]);
+  }, [getWithStepUp, page, reloadToken, takeLatestList, userId]);
 
   const loadList = useCallback((nextPage: number) => {
     setPage(nextPage);
@@ -604,7 +620,9 @@ export function AdvisorReports({ userId }: { userId: string }) {
       setDetail(null);
       setDetailLoading(true);
       setDetailError("");
-      apiGet<AdvisorReportDetail>(`/api/admin/users/${userId}/advisor/reports/${sessionId}`)
+      getWithStepUp<AdvisorReportDetail>(
+        `/api/admin/users/${userId}/advisor/reports/${sessionId}`
+      )
         .then((data) => {
           if (!isLatest()) return;
           setDetail(data);
@@ -617,12 +635,13 @@ export function AdvisorReports({ userId }: { userId: string }) {
           if (isLatest()) setDetailLoading(false);
         });
     },
-    [takeLatestDetail, userId]
+    [getWithStepUp, takeLatestDetail, userId]
   );
 
   if (detailOpen) {
     return (
-      <div className="rounded-xl border border-brand-charcoal/10 bg-white p-3 sm:p-4">
+      <>
+        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-3 sm:p-4">
         {detailLoading ? (
           <div className="space-y-3">
             <div className="h-8 w-40 animate-pulse rounded bg-brand-charcoal/[0.06]" />
@@ -639,12 +658,15 @@ export function AdvisorReports({ userId }: { userId: string }) {
         ) : detail ? (
           <AdvisorReportDetailView detail={detail} onBack={() => setDetailOpen(false)} />
         ) : null}
-      </div>
+        </div>
+        {totpModal}
+      </>
     );
   }
 
   return (
-    <div className="rounded-xl border border-brand-charcoal/10 bg-white">
+    <>
+      <div className="rounded-xl border border-brand-charcoal/10 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-charcoal/10 px-3 py-2.5 sm:px-4">
         <div>
           <h3 className="text-sm font-semibold text-brand-charcoal">测肤报告</h3>
@@ -762,6 +784,8 @@ export function AdvisorReports({ userId }: { userId: string }) {
           )}
         </>
       )}
-    </div>
+      </div>
+      {totpModal}
+    </>
   );
 }

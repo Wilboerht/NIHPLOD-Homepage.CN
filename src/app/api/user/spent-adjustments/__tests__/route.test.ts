@@ -216,7 +216,7 @@ describe("POST /api/user/spent-adjustments", () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it("订单号已被其他来源占用返回 409 ORDER_CONFLICT", async () => {
+  it("订单号已被其他来源占用返回通用重复错误，不泄露归属", async () => {
     (prismaMock.spentOrderClaim.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
       userId: "user-2",
     });
@@ -225,7 +225,7 @@ describe("POST /api/user/spent-adjustments", () => {
     const data = await res.json();
 
     expect(res.status).toBe(409);
-    expect(data.error.code).toBe("ORDER_CONFLICT");
+    expect(data.error.code).toBe("ORDER_NO_DUPLICATE");
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
