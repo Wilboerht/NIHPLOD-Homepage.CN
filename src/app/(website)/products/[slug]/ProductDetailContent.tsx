@@ -603,7 +603,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                       {product.benefits.map((benefit, index) => (
                         <li
                           key={index}
-                          className="inline-flex items-center rounded-full border border-brand-charcoal/[0.08] bg-white/50 px-3 py-1.5 text-[12px] font-normal tracking-[0.04em] text-brand-charcoal/70 md:text-[13px]"
+                          className="inline-flex items-center rounded-full border border-brand-charcoal/[0.08] bg-white/50 px-2.5 py-1 text-[11px] font-normal tracking-[0.04em] text-brand-charcoal/70 md:py-1.5 md:text-[12px]"
                         >
                           {benefit}
                         </li>
@@ -613,11 +613,11 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
 
                   <XiaohongshuLink
                     categoryName={product.category.name}
-                    className="mt-3 flex flex-col gap-1"
+                    className="mt-5 flex flex-col gap-1"
                   />
                 </m.div>
 
-                <div className="mt-7 rounded-2xl border border-brand-charcoal/[0.06] bg-brand-warm-white p-4 md:p-5 lg:p-6">
+                <div className="mt-5 rounded-2xl border border-brand-charcoal/[0.06] bg-brand-warm-white p-4 md:p-5 lg:p-6">
                   <div className="border-b border-brand-beige">
                     <div className="flex justify-start gap-6" role="tablist" aria-label="产品信息">
                       {tabs.map((tab) => (
