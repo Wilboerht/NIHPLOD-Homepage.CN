@@ -526,7 +526,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
               </div>
             </div>
 
-            <div className="pt-8 lg:min-w-0 lg:pt-0">
+            <div className="pt-6 lg:min-w-0 lg:pt-0">
               <div className="mx-auto max-w-2xl lg:mx-0">
                 <m.div
                   initial={false}
@@ -566,7 +566,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                     </div>
                   </div>
 
-                  <p className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-light leading-relaxed tracking-[0.02em] text-brand-charcoal/70">
+                  <p className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-light leading-relaxed tracking-[0.02em] text-brand-charcoal/70">
                     <span>
                       <span className="tracking-[0.06em] text-brand-charcoal/50">产地</span>{" "}
                       {product.origin || "法国"}
@@ -584,7 +584,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                     )}
                   </p>
 
-                  <div className="mt-5">
+                  <div className="mt-4">
                     <data
                       value={product.price}
                       className="inline-flex items-baseline gap-1 font-num text-brand-charcoal"
@@ -599,7 +599,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                   </div>
 
                   {product.benefits.length > 0 && (
-                    <ul className="mt-4 flex flex-wrap gap-2">
+                    <ul className="mt-3 flex flex-wrap gap-1.5 md:gap-2">
                       {product.benefits.map((benefit, index) => (
                         <li
                           key={index}
@@ -613,11 +613,11 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
 
                   <XiaohongshuLink
                     categoryName={product.category.name}
-                    className="mt-5 flex flex-col gap-1"
+                    className="mt-4 flex flex-col gap-1"
                   />
                 </m.div>
 
-                <div className="mt-5 rounded-2xl border border-brand-charcoal/[0.06] bg-brand-warm-white p-4 md:p-5 lg:p-6">
+                <div className="mt-4 rounded-2xl border border-brand-charcoal/[0.06] bg-brand-warm-white p-4 md:p-5 lg:p-6">
                   <div className="border-b border-brand-beige">
                     <div className="flex justify-start gap-6" role="tablist" aria-label="产品信息">
                       {tabs.map((tab) => (
@@ -650,7 +650,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                     </div>
                   </div>
 
-                  <div className="mt-5 grid">
+                  <div className="mt-4 grid">
                     {tabs.map((tab) => {
                       const isActive = activeTabKey === tab.key;
                       return (
@@ -683,7 +683,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                   </div>
                 </div>
 
-                <div className="mt-8 space-y-5 pb-6 lg:pb-7">
+                <div className="mt-6 space-y-4 pb-4 lg:pb-5">
                   {product.purchaseLinks.length > 0 && (
                     <div>
                       <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/50">
@@ -701,7 +701,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
             </div>
           </div>
 
-          <footer className="mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige/70 pt-6 text-center">
+          <footer className="mx-auto mt-6 w-full max-w-4xl border-t border-brand-beige/70 pt-5 text-center">
             <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.55] md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </span>
