@@ -36,7 +36,6 @@ type NavigateEventLike = Event & { navigationType?: string };
 
 interface ProductsShellContextValue {
   activeTab: ProductsTab;
-  setActiveTab: (tab: ProductsTab) => void;
   mobileView: MobileView;
   switchMobileView: (view: MobileView) => void;
   navigateToProduct: (slug: string) => void;
@@ -72,7 +71,7 @@ export function ProductsShell({
   const prefersReducedMotion = useReducedMotion();
 
   const isDetail = pathname.startsWith("/products/");
-  const [activeTab, setActiveTab] = useState<ProductsTab>("featured");
+  const [activeTab] = useState<ProductsTab>("featured");
   const [mobileView, setMobileView] = useState<MobileView>("products");
   const [pending, setPending] = useState<PendingTarget | null>(null);
   const [lastPathname, setLastPathname] = useState(pathname);
@@ -209,7 +208,6 @@ export function ProductsShell({
   const contextValue = useMemo<ProductsShellContextValue>(
     () => ({
       activeTab,
-      setActiveTab,
       mobileView,
       switchMobileView,
       navigateToProduct,
