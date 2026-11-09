@@ -10,6 +10,7 @@ import { productImageAlt } from "@/lib/image-alt";
 import { getCategoryIconPath } from "@/lib/product-icons";
 import { trackEvent } from "@/lib/analytics";
 import { useProductsShell, type ProductsCategory } from "@/components/website/ProductsShell";
+import { ProductImage } from "@/components/website/ProductImage";
 
 interface Product {
   id: string;
@@ -329,16 +330,12 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       >
                         <div className="texture-overlay pointer-events-none absolute inset-0 opacity-[0.03]" />
                         <div className="relative z-10 aspect-[4/5] w-full overflow-hidden bg-brand-cream">
-                          <div
-                            className="shimmer-skeleton pointer-events-none absolute inset-0 animate-shimmer bg-brand-beige/40 motion-reduce:animate-none"
-                            aria-hidden="true"
-                          />
                           {product.capacity && (
                             <div className="absolute right-3 top-3 z-20 rounded-full bg-white/90 px-3 py-1 text-[12px] font-light text-brand-primary shadow-sm">
                               {product.capacity}
                             </div>
                           )}
-                          <Image
+                          <ProductImage
                             src={product.images[0]?.url || ""}
                             alt={productImageAlt(product.name, product.images[0]?.alt)}
                             fill
@@ -491,13 +488,9 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                             : "aspect-[4/4.5] max-h-[42vh] [@media(max-height:700px)]:max-h-[32vh]"
                         )}
                       >
-                        <div
-                          className="shimmer-skeleton pointer-events-none absolute inset-0 animate-shimmer bg-brand-beige/40 motion-reduce:animate-none"
-                          aria-hidden="true"
-                        />
                         <div className="pointer-events-none absolute inset-3 z-10 border border-brand-charcoal/[0.08]" />
                         {product.images[0] && (
-                          <Image
+                          <ProductImage
                             src={product.images[0].url}
                             alt={productImageAlt(product.name, product.images[0].alt)}
                             fill

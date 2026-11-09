@@ -17,6 +17,7 @@ export default function ProductsError({ error, reset }: ProductsErrorProps) {
       digest: error.digest,
       component: "ProductsError",
     });
+    window.dispatchEvent(new Event("nihplod:products-error"));
   }, [error]);
 
   return (

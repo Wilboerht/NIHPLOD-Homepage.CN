@@ -11,6 +11,7 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useMounted } from "@/hooks/useMounted";
 import { PlatformIcon, XiaohongshuLink, AdvisorCTA } from "@/components/website";
 import { ProductFaq } from "@/components/website/ProductFaq";
+import { ProductImage } from "@/components/website/ProductImage";
 import { useProductsShell } from "@/components/website/ProductsShell";
 import { cn } from "@/lib/utils";
 import { productImageAlt } from "@/lib/image-alt";
@@ -365,11 +366,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
           aria-label={`切换到第 ${index + 1} 张图片`}
           aria-current={currentImageIndex === index ? "true" : undefined}
         >
-          <div
-            className="shimmer-skeleton pointer-events-none absolute inset-0 animate-shimmer bg-brand-beige/40 motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-          <Image
+          <ProductImage
             src={img.url}
             alt={getImageAlt(img, index)}
             fill
@@ -451,10 +448,6 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                       aria-label={`${product.name} 图片轮播，共 ${product.images.length} 张，回车查看大图，左右方向键切换`}
                       tabIndex={0}
                     >
-                      <div
-                        className="shimmer-skeleton pointer-events-none absolute inset-0 animate-shimmer bg-brand-beige/40 motion-reduce:animate-none"
-                        aria-hidden="true"
-                      />
                       <m.div
                         className="flex h-full"
                         style={{ x }}
@@ -470,7 +463,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                             aria-roledescription="slide"
                             aria-label={`第 ${index + 1} 张，共 ${product.images.length} 张`}
                           >
-                            <Image
+                            <ProductImage
                               src={img.url}
                               alt={getImageAlt(img, index)}
                               fill

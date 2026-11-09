@@ -1,11 +1,12 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen, fireEvent } from "@testing-library/react";
 
-const { mockPush, mockPathnameRef } = vi.hoisted(() => ({
+const { mockPush, mockReplace, mockPathnameRef } = vi.hoisted(() => ({
   mockPush: vi.fn(),
+  mockReplace: vi.fn(),
   mockPathnameRef: { current: "/products" },
 }));
 
@@ -13,7 +14,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => mockPathnameRef.current,
   useRouter: () => ({
     push: mockPush,
-    replace: vi.fn(),
+    replace: mockReplace,
     prefetch: vi.fn(),
     back: vi.fn(),
     forward: vi.fn(),
@@ -74,12 +75,17 @@ function renderShell(categories: ProductsCategory[] = []) {
 describe("ProductsShell navigation", () => {
   beforeEach(() => {
     mockPush.mockClear();
+    mockReplace.mockClear();
     mockPathnameRef.current = "/products";
     window.history.replaceState(null, "", "/");
     Object.defineProperty(window, "navigation", {
       configurable: true,
       value: new EventTarget(),
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("pushes immediately and shows the detail skeleton", () => {
@@ -208,4 +214,57 @@ describe("ProductsShell navigation", () => {
 
     expect(screen.getByRole("heading", { name: "list-heading" })).toHaveFocus();
   });
+
+  it("falls back to popstate cancellation without the Navigation API", () => {
+    Object.defineProperty(window, "navigation", {
+      configurable: true,
+      value: undefined,
+    });
+    renderShell();
+
+    fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
+    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(mockPush).toHaveBeenLastCalledWith("/products");
+    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByText("list-content")).toBeInTheDocument();
+  });
+
+  it("clears pending when the products error boundary reports an error", () => {
+    renderShell();
+
+    fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
+    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("nihplod:products-error"));
+    });
+
+    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByText("list-content")).toBeInTheDocument();
+    expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the slow loading hint and can cancel", () => {
+    vi.useFakeTimers();
+    renderShell();
+
+    fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
+    act(() => {
+      vi.advanceTimersByTime(8000);
+    });
+
+    expect(screen.getByText("加载时间较长，请稍候…")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("取消"));
+
+    expect(mockPush).toHaveBeenLastCalledWith("/products");
+    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.getByText("list-content")).toBeInTheDocument();
+  });
 });
+

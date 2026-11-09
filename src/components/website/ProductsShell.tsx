@@ -90,6 +90,15 @@ export function ProductsShell({
   const isNavigating = pending !== null && lastPathname === pathname;
   const showDetailChrome = isDetail || (isNavigating && pending?.kind === "detail");
 
+  const cancelPendingNavigation = useCallback(() => {
+    if (!pending) return;
+
+    shouldRestoreFocusRef.current = true;
+    setPending(null);
+    setSlowPending(false);
+    router.push(pathname);
+  }, [pending, pathname, router]);
+
   const navigate = useCallback(
     (href: string, kind: PendingTarget["kind"]) => {
       if (pending?.href === href) {
@@ -100,18 +109,17 @@ export function ProductsShell({
       if (pathname === href) {
         if (!pending) return;
 
-        setPending(null);
-        setSlowPending(false);
-        router.push(href);
+        cancelPendingNavigation();
         return;
       }
 
+      shouldRestoreFocusRef.current = true;
       setHasNavigated(true);
       setPending({ href, kind });
       setSlowPending(false);
       router.push(href);
     },
-    [pathname, pending, router]
+    [cancelPendingNavigation, pathname, pending, router]
   );
 
   const navigateToProduct = useCallback(
@@ -166,18 +174,22 @@ export function ProductsShell({
       if (event.navigationType !== "traverse") return;
 
       event.preventDefault();
-      setPending(null);
-      setSlowPending(false);
-      router.push(pathname);
+      cancelPendingNavigation();
     };
 
     navigation.addEventListener("navigate", handleNavigate);
     return () => navigation.removeEventListener("navigate", handleNavigate);
-  }, [pending, pathname, router]);
+  }, [pending, cancelPendingNavigation]);
 
   useEffect(() => {
     const handlePopState = () => {
+      if (pending) {
+        cancelPendingNavigation();
+        return;
+      }
+
       if (isDetail && window.location.pathname === "/products") {
+        shouldRestoreFocusRef.current = true;
         setHasNavigated(true);
         setPending({ href: "/products", kind: "list" });
         setSlowPending(false);
@@ -186,7 +198,20 @@ export function ProductsShell({
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [isDetail]);
+  }, [pending, cancelPendingNavigation, isDetail]);
+
+  useEffect(() => {
+    const handleProductsError = () => {
+      if (pending) {
+        shouldRestoreFocusRef.current = true;
+      }
+      setPending(null);
+      setSlowPending(false);
+    };
+
+    window.addEventListener("nihplod:products-error", handleProductsError);
+    return () => window.removeEventListener("nihplod:products-error", handleProductsError);
+  }, [pending]);
 
   const handleListNavClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -374,6 +399,14 @@ export function ProductsShell({
                     className="font-normal text-brand-primary underline-offset-2 hover:underline"
                   >
                     重试
+                  </button>
+                  <span className="text-brand-charcoal/20">|</span>
+                  <button
+                    type="button"
+                    onClick={cancelPendingNavigation}
+                    className="font-normal text-brand-charcoal/70 underline-offset-2 hover:underline"
+                  >
+                    取消
                   </button>
                 </div>
               </div>
