@@ -247,7 +247,7 @@ export function KineticBackground() {
             />
             <div className="kinetic-image-desktop absolute inset-0">
               <BentoImage
-                src="/images/kinetic-desktop.webp?v=2"
+                src="/images/kinetic-desktop.webp?v=3"
                 alt="旎柏品牌故事 - 桌面端展示"
                 sizes="22vw"
                 {...BENTO_IMAGE_PLACEHOLDERS.storyDesktop}
