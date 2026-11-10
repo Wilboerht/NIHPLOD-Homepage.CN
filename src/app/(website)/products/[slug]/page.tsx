@@ -250,8 +250,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   // 面包屑导航数据：仅使用真实存在的页面层级，最后一项为当前产品（无 item URL）
   const breadcrumbs = [
-    { name: "首页", url: "/" },
-    { name: "产品系列", url: "/products" },
+    { name: "产品当季热卖", url: "/products" },
     { name: product.name },
   ];
 

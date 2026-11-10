@@ -408,16 +408,12 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
             aria-label="面包屑"
             className="mb-4 hidden flex-wrap items-center gap-1.5 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50 lg:mb-5 lg:flex"
           >
-            <NextLink href="/" className="transition-colors hover:text-brand-charcoal">
-              首页
-            </NextLink>
-            <ChevronRight className="h-3 w-3 opacity-50" aria-hidden="true" />
             <NextLink
               href="/products"
               onClick={handleListLinkClick}
               className="transition-colors hover:text-brand-charcoal"
             >
-              产品系列
+              产品当季热卖
             </NextLink>
             <ChevronRight className="h-3 w-3 opacity-50" aria-hidden="true" />
             <span aria-current="page" className="text-brand-charcoal/70">
@@ -533,7 +529,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <h1
                         className="font-sans text-[20px] font-normal tracking-[0.05em] text-brand-charcoal focus:outline-none sm:text-[22px] lg:text-[28px]"
