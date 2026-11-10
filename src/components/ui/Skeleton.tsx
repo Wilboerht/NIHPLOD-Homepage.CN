@@ -7,7 +7,7 @@ interface SkeletonProps {
   variant?: "text" | "rectangular" | "circular";
   width?: string | number;
   height?: string | number;
-  animation?: "pulse" | "wave" | "none";
+  animation?: "pulse" | "breathe" | "none";
 }
 
 /**
@@ -28,7 +28,7 @@ export function Skeleton({
 
   const animationStyles = {
     pulse: "animate-pulse",
-    wave: "animate-shimmer shimmer-skeleton",
+    breathe: "animate-breathe",
     none: "",
   };
 

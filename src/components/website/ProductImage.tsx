@@ -59,7 +59,7 @@ export function ProductImage({
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute inset-0 bg-brand-beige/40 motion-reduce:animate-none",
-            failed ? "bg-brand-beige/50" : "shimmer-skeleton animate-shimmer",
+            failed ? "bg-brand-beige/50" : "animate-breathe",
             skeletonClassName
           )}
         />

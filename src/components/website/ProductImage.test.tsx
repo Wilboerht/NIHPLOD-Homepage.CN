@@ -34,7 +34,7 @@ vi.mock("next/image", () => ({
 import { ProductImage } from "@/components/website/ProductImage";
 
 describe("ProductImage", () => {
-  it("shows a shimmer skeleton until the image loads", () => {
+  it("shows a breathing skeleton until the image loads", () => {
     render(
       <div className="relative">
         <ProductImage src="/product.webp" alt="产品图" fill />
@@ -58,7 +58,7 @@ describe("ProductImage", () => {
     fireEvent.doubleClick(screen.getByTestId("mock-image"));
 
     const skeleton = screen.getByTestId("product-image-skeleton");
-    expect(skeleton.className).not.toContain("animate-shimmer");
+    expect(skeleton.className).not.toContain("animate-breathe");
     expect(screen.getByTestId("mock-image")).toHaveClass("opacity-0");
   });
 });
