@@ -1681,19 +1681,19 @@ function AdminUsersContent() {
                           已验证
                         </Badge>
                       )}
-                        {canRevealPhone &&
-                          !revealedPhone &&
-                          detailUser.phone &&
-                          detailUser.phone.includes("*") && (
-                        <button
-                          type="button"
-                          onClick={revealPhone}
-                          disabled={revealingPhone}
-                          className="ml-1 text-brand-primary hover:underline disabled:opacity-50"
-                        >
-                          {revealingPhone ? "加载中..." : "显示完整号码"}
-                        </button>
-                      )}
+                      {canRevealPhone &&
+                        !revealedPhone &&
+                        detailUser.phone &&
+                        detailUser.phone.includes("*") && (
+                          <button
+                            type="button"
+                            onClick={revealPhone}
+                            disabled={revealingPhone}
+                            className="ml-1 text-brand-primary hover:underline disabled:opacity-50"
+                          >
+                            {revealingPhone ? "加载中..." : "显示完整号码"}
+                          </button>
+                        )}
                     </span>
                     <span className="inline-flex min-w-0 items-center gap-1">
                       <span className="shrink-0 text-brand-charcoal/65">ID</span>
@@ -2736,9 +2736,7 @@ function AdminUsersContent() {
               className="ml-2"
               variant="ghost"
               size="sm"
-              onClick={() =>
-                deleteTarget && requestDeleteUser(deleteTarget.id, deleteTarget.label)
-              }
+              onClick={() => deleteTarget && requestDeleteUser(deleteTarget.id, deleteTarget.label)}
             >
               重试预检
             </Button>
@@ -2746,15 +2744,20 @@ function AdminUsersContent() {
         ) : deletePreflight ? (
           <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
             <p>
-              剩余积分 {deletePreflight.pointsAvailable}；待履约 {deletePreflight.pendingRedemptions} 笔；进行中售后 {deletePreflight.activeAfterSales} 笔。
+              剩余积分 {deletePreflight.pointsAvailable}；待履约{" "}
+              {deletePreflight.pendingRedemptions} 笔；进行中售后 {deletePreflight.activeAfterSales}{" "}
+              笔。
             </p>
             <p>
-              外部身份 {deletePreflight.externalIdentities} 个；累计消费 ¥{deletePreflight.totalSpent.toLocaleString()}。
+              外部身份 {deletePreflight.externalIdentities} 个；累计消费 ¥
+              {deletePreflight.totalSpent.toLocaleString()}。
             </p>
             {(deletePreflight.independentRecords.contactMessages > 0 ||
               deletePreflight.independentRecords.jobApplications > 0) && (
               <p>
-                同手机号另有留言 {deletePreflight.independentRecords.contactMessages} 条、简历 {deletePreflight.independentRecords.jobApplications} 份；这些记录不会在账号注销时自动删除。
+                同手机号另有留言 {deletePreflight.independentRecords.contactMessages} 条、简历{" "}
+                {deletePreflight.independentRecords.jobApplications}{" "}
+                份；这些记录不会在账号注销时自动删除。
               </p>
             )}
           </div>

@@ -80,6 +80,7 @@ function createRequest() {
   return new NextRequest("http://localhost/api/admin/users/user-1/identities/ei-1", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: "用户反馈绑定错误" }),
   } as never);
 }
 

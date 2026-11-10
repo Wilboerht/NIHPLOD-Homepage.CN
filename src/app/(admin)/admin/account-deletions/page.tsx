@@ -100,8 +100,7 @@ function AdminAccountDeletionsContent() {
   const { can: canAdmin, role } = useAdminPermissions();
   const isOwnerActor = role === "owner";
   const { requireTotp, totpModal } = useTotpConfirm();
-  const canRetry =
-    canAdmin("users:delete") && (isOwnerActor || canAdmin("approvals:request"));
+  const canRetry = canAdmin("users:delete") && (isOwnerActor || canAdmin("approvals:request"));
   const canCancel = canAdmin("users:delete");
   const statusParam = get("status", "FAILED");
   const status: DeletionStatus = STATUS_TABS.some((tab) => tab.key === statusParam)
@@ -479,7 +478,7 @@ function AdminAccountDeletionsContent() {
                       ) : (
                         <span className="text-xs text-brand-charcoal/65">只读</span>
                       )
-              ) : item.status === "PENDING" && canCancel ? (
+                    ) : item.status === "PENDING" && canCancel ? (
                       <Button
                         variant="outline"
                         size="sm"

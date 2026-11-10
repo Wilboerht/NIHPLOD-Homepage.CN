@@ -138,7 +138,7 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
     expect(updateUserPassword).toHaveBeenCalledWith(
       "user-1",
       temp,
-      expect.objectContaining({ skipHistoryCheck: true })
+      expect.objectContaining({ skipHistoryCheck: true, temporary: true })
     );
     expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: "user-1", revokedAt: null } })

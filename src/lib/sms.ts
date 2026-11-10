@@ -484,6 +484,7 @@ function getTencentTemplateId(template: SMSTemplate): string | null {
     ACCOUNT_DELETED: process.env.TENCENT_SMS_TEMPLATE_ID_ACCOUNT_DELETED,
     ACCOUNT_DELETION_REMINDER: process.env.TENCENT_SMS_TEMPLATE_ID_ACCOUNT_DELETION_REMINDER,
     REDEMPTION_STATUS: process.env.TENCENT_SMS_TEMPLATE_ID_REDEMPTION_STATUS,
+    SECURITY_ACTION: process.env.TENCENT_SMS_TEMPLATE_ID_SECURITY_ACTION,
   };
   return templates[template] || null;
 }

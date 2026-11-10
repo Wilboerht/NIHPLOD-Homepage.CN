@@ -78,6 +78,7 @@ describe("password-policy", () => {
             password: expect.any(String),
             passwordChangedAt: expect.any(Date),
             passwordExpiresAt: expect.any(Date),
+            passwordChangeRequired: false,
           }),
         })
       );
@@ -89,6 +90,21 @@ describe("password-policy", () => {
       expect(mocks.passwordHistoryDeleteMany).toHaveBeenCalledWith({
         where: { id: { in: ["h6"] } },
       });
+    }, 30_000);
+
+    it("临时密码 24 小时有效且必须修改", async () => {
+      mocks.passwordHistoryFindMany.mockResolvedValue([]);
+
+      const result = await updateUserPassword("user-1", "TempP@ssw0rd", {
+        temporary: true,
+      });
+
+      expect(result.success).toBe(true);
+      const data = mocks.userUpdate.mock.calls[0][0].data;
+      expect(data.passwordChangeRequired).toBe(true);
+      expect(data.passwordExpiresAt.getTime() - data.passwordChangedAt.getTime()).toBe(
+        24 * 60 * 60 * 1000
+      );
     }, 30_000);
   });
 

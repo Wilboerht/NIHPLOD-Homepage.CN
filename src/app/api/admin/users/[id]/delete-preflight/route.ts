@@ -11,7 +11,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   try {
     const admin = await verifyAuth(request);
     if (!admin) {
-      return NextResponse.json({ success: false, error: { code: "UNAUTHORIZED" } }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: { code: "UNAUTHORIZED" } },
+        { status: 401 }
+      );
     }
     if (!hasAdminPermission(admin, "users:delete")) {
       return NextResponse.json({ success: false, error: { code: "FORBIDDEN" } }, { status: 403 });
@@ -42,7 +45,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       prisma.pointRedemption.count({
         where: {
           userId: id,
-          status: { in: ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING", "RETURNED"] },
+          status: {
+            in: ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING", "RETURNED"],
+          },
         },
       }),
       prisma.externalIdentity.count({ where: { userId: id } }),
@@ -50,25 +55,31 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       prisma.jobApplication.count({ where: { phone: user.phone } }),
     ]);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        userId: id,
-        status: user.status,
-        totalSpent: user.totalSpent,
-        pointsAvailable: balance?.available ?? 0,
-        pendingRedemptions,
-        activeAfterSales,
-        externalIdentities,
-        independentRecords: {
-          contactMessages,
-          jobApplications,
-          note: "这些记录仅按手机号提示数量，注销账号不会自动删除，需按对应模块保留政策另行处理。",
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          userId: id,
+          status: user.status,
+          totalSpent: user.totalSpent,
+          pointsAvailable: balance?.available ?? 0,
+          pendingRedemptions,
+          activeAfterSales,
+          externalIdentities,
+          independentRecords: {
+            contactMessages,
+            jobApplications,
+            note: "这些记录仅按手机号提示数量，注销账号不会自动删除，需按对应模块保留政策另行处理。",
+          },
         },
       },
-    }, { headers: { "Cache-Control": "no-store, private" } });
+      { headers: { "Cache-Control": "no-store, private" } }
+    );
   } catch (error) {
     apiConsole.error("[AdminUserDeletePreflight] 查询失败:", error);
-    return NextResponse.json({ success: false, error: { code: "INTERNAL_ERROR" } }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR" } },
+      { status: 500 }
+    );
   }
 }

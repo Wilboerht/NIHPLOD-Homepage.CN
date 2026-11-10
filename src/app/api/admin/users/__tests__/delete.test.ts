@@ -94,6 +94,7 @@ const mockExecute = executeAccountDeletion as ReturnType<typeof vi.fn>;
 function deleteRequest() {
   return new NextRequest(`http://localhost/api/admin/users/${USER_ID}`, {
     method: "DELETE",
+    body: JSON.stringify({ reason: "用户申请注销" }),
   } as never);
 }
 

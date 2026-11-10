@@ -17,10 +17,7 @@ import { enqueueSecurityActionNotification } from "@/lib/security-notify";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!validateCSRFToken(request)) return csrfForbiddenResponse();
   try {
     const admin = await verifyAuth(request);

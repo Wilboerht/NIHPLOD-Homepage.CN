@@ -283,120 +283,123 @@ export async function GET(request: NextRequest, context: RouteContext) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          phone: canReadSensitive ? user.phone : maskPhone(user.phone),
-          phoneVerified: user.phoneVerified,
-          nickname: user.nickname,
-          avatar: user.avatar,
-          gender: user.gender,
-          status: user.status,
-          membershipLevel: user.membershipLevel,
-          totalSpent: user.totalSpent,
-          silverActivatedAt: user.silverActivatedAt?.toISOString() ?? null,
-          goldActivatedAt: user.goldActivatedAt?.toISOString() ?? null,
-          diamondActivatedAt: user.diamondActivatedAt?.toISOString() ?? null,
-          wechatOpenId: canReadSensitive ? user.wechatOpenId : maskIdentifier(user.wechatOpenId),
-          wechatUnionId: canReadSensitive ? user.wechatUnionId : maskIdentifier(user.wechatUnionId),
-          birthday: user.birthday?.toISOString() ?? null,
-          birthdayLocked: user.birthdayLocked,
-          externalIdentities: user.externalIdentities.map((i) => {
-            const meta = (i.metadata ?? null) as Record<string, unknown> | null;
-            const mpClientId = typeof meta?.mpClientId === "string" ? meta.mpClientId : null;
-            // metadata 可能包含 openid/昵称/头像等 PII：只返回白名单字段。
-            return {
-              id: i.id,
-              provider: i.provider,
-              subjectId: canReadSensitive ? i.subjectId : maskIdentifier(i.subjectId),
-              unionId: canReadSensitive ? i.unionId : maskIdentifier(i.unionId),
-              // 来源小程序标识与名称（存量行无 mpClientId，返回 null）
-              mpClientId,
-              clientName: mpClientId ? (clientNameMap.get(mpClientId) ?? null) : null,
-              createdAt: i.createdAt.toISOString(),
-            };
-          }),
-          accountDeletion: user.accountDeletionRequest
-            ? {
-                id: user.accountDeletionRequest.id,
-                status: user.accountDeletionRequest.status,
-                requestedAt: user.accountDeletionRequest.requestedAt.toISOString(),
-                scheduledAt: user.accountDeletionRequest.scheduledAt.toISOString(),
-                completedAt:
-                  user.accountDeletionRequest.completedAt?.toISOString() ?? null,
-                cancelledAt:
-                  user.accountDeletionRequest.cancelledAt?.toISOString() ?? null,
-                attempts: user.accountDeletionRequest.attempts,
-                lastError: user.accountDeletionRequest.lastError,
-              }
-            : null,
-          createdAt: user.createdAt.toISOString(),
-          updatedAt: user.updatedAt.toISOString(),
-        },
-        points: {
-          available: balance?.available ?? 0,
-          redemptions: redemptions.map((r) => ({
-            id: r.id,
-            productName: r.productName,
-            priceYuan: Number(r.priceYuan),
-            points: r.points,
-            status: r.status,
-            carrier: r.carrier,
-            waybillNo: r.waybillNo,
-            recipient: canReadSensitive ? r.recipient : maskIdentifier(r.recipient),
-            phone: canReadSensitive ? r.phone : r.phone ? maskPhone(r.phone) : r.phone,
-            address: canReadSensitive ? r.address : maskAddress(r.address),
-            fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
-            createdAt: r.createdAt.toISOString(),
-          })),
-          redemptionTotal,
-        },
-        addresses: addresses.map((a) => ({
-          id: a.id,
-          recipient: canReadSensitive ? a.recipient : maskIdentifier(a.recipient),
-          phone: canReadSensitive ? a.phone : maskPhone(a.phone),
-          region: a.region,
-          detail: canReadSensitive ? a.detail : maskAddress(a.detail),
-          isDefault: a.isDefault,
-          createdAt: a.createdAt.toISOString(),
-        })),
-        spentAdjustments: {
-          items: adjustments.map((a) => ({
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            phone: canReadSensitive ? user.phone : maskPhone(user.phone),
+            phoneVerified: user.phoneVerified,
+            nickname: user.nickname,
+            avatar: user.avatar,
+            gender: user.gender,
+            status: user.status,
+            membershipLevel: user.membershipLevel,
+            totalSpent: user.totalSpent,
+            silverActivatedAt: user.silverActivatedAt?.toISOString() ?? null,
+            goldActivatedAt: user.goldActivatedAt?.toISOString() ?? null,
+            diamondActivatedAt: user.diamondActivatedAt?.toISOString() ?? null,
+            wechatOpenId: canReadSensitive ? user.wechatOpenId : maskIdentifier(user.wechatOpenId),
+            wechatUnionId: canReadSensitive
+              ? user.wechatUnionId
+              : maskIdentifier(user.wechatUnionId),
+            birthday: user.birthday?.toISOString() ?? null,
+            birthdayLocked: user.birthdayLocked,
+            externalIdentities: user.externalIdentities.map((i) => {
+              const meta = (i.metadata ?? null) as Record<string, unknown> | null;
+              const mpClientId = typeof meta?.mpClientId === "string" ? meta.mpClientId : null;
+              // metadata 可能包含 openid/昵称/头像等 PII：只返回白名单字段。
+              return {
+                id: i.id,
+                provider: i.provider,
+                subjectId: canReadSensitive ? i.subjectId : maskIdentifier(i.subjectId),
+                unionId: canReadSensitive ? i.unionId : maskIdentifier(i.unionId),
+                // 来源小程序标识与名称（存量行无 mpClientId，返回 null）
+                mpClientId,
+                clientName: mpClientId ? (clientNameMap.get(mpClientId) ?? null) : null,
+                createdAt: i.createdAt.toISOString(),
+              };
+            }),
+            accountDeletion: user.accountDeletionRequest
+              ? {
+                  id: user.accountDeletionRequest.id,
+                  status: user.accountDeletionRequest.status,
+                  requestedAt: user.accountDeletionRequest.requestedAt.toISOString(),
+                  scheduledAt: user.accountDeletionRequest.scheduledAt.toISOString(),
+                  completedAt: user.accountDeletionRequest.completedAt?.toISOString() ?? null,
+                  cancelledAt: user.accountDeletionRequest.cancelledAt?.toISOString() ?? null,
+                  attempts: user.accountDeletionRequest.attempts,
+                  lastError: user.accountDeletionRequest.lastError,
+                }
+              : null,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+          },
+          points: {
+            available: balance?.available ?? 0,
+            redemptions: redemptions.map((r) => ({
+              id: r.id,
+              productName: r.productName,
+              priceYuan: Number(r.priceYuan),
+              points: r.points,
+              status: r.status,
+              carrier: r.carrier,
+              waybillNo: r.waybillNo,
+              recipient: canReadSensitive ? r.recipient : maskIdentifier(r.recipient),
+              phone: canReadSensitive ? r.phone : r.phone ? maskPhone(r.phone) : r.phone,
+              address: canReadSensitive ? r.address : maskAddress(r.address),
+              fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
+              createdAt: r.createdAt.toISOString(),
+            })),
+            redemptionTotal,
+          },
+          addresses: addresses.map((a) => ({
             id: a.id,
-            channel: a.channel,
-            orderNo: canReadSensitive ? a.orderNo : maskIdentifier(a.orderNo),
-            amountClaimed: a.amountClaimed,
-            status: a.status,
-            source: a.source,
-            createdByAdminName: a.createdByAdmin?.name ?? null,
-            reviewAmount: a.reviewAmount,
-            reviewNote: a.reviewNote,
+            recipient: canReadSensitive ? a.recipient : maskIdentifier(a.recipient),
+            phone: canReadSensitive ? a.phone : maskPhone(a.phone),
+            region: a.region,
+            detail: canReadSensitive ? a.detail : maskAddress(a.detail),
+            isDefault: a.isDefault,
             createdAt: a.createdAt.toISOString(),
           })),
-          total: adjustmentTotal,
+          spentAdjustments: {
+            items: adjustments.map((a) => ({
+              id: a.id,
+              channel: a.channel,
+              orderNo: canReadSensitive ? a.orderNo : maskIdentifier(a.orderNo),
+              amountClaimed: a.amountClaimed,
+              status: a.status,
+              source: a.source,
+              createdByAdminName: a.createdByAdmin?.name ?? null,
+              reviewAmount: a.reviewAmount,
+              reviewNote: a.reviewNote,
+              createdAt: a.createdAt.toISOString(),
+            })),
+            total: adjustmentTotal,
+          },
+          levelChanges: levelChanges.map((c) => ({
+            id: c.id,
+            fromLevel: c.fromLevel,
+            toLevel: c.toLevel,
+            note: c.note,
+            createdAt: c.createdAt.toISOString(),
+          })),
+          loginAttempts: loginAttempts.map((a) => ({
+            id: a.id,
+            type: a.type,
+            success: a.success,
+            reason: a.reason,
+            // IP/UA 属敏感数据，仅 users:sensitive:read 可见
+            ipAddress: canReadSensitive ? a.ipAddress : null,
+            userAgent: canReadSensitive ? a.userAgent : null,
+            clientId: a.clientId,
+            createdAt: a.createdAt.toISOString(),
+          })),
         },
-        levelChanges: levelChanges.map((c) => ({
-          id: c.id,
-          fromLevel: c.fromLevel,
-          toLevel: c.toLevel,
-          note: c.note,
-          createdAt: c.createdAt.toISOString(),
-        })),
-        loginAttempts: loginAttempts.map((a) => ({
-          id: a.id,
-          type: a.type,
-          success: a.success,
-          reason: a.reason,
-          // IP/UA 属敏感数据，仅 users:sensitive:read 可见
-          ipAddress: canReadSensitive ? a.ipAddress : null,
-          userAgent: canReadSensitive ? a.userAgent : null,
-          clientId: a.clientId,
-          createdAt: a.createdAt.toISOString(),
-        })),
       },
-    }, { headers: { "Cache-Control": "no-store, private", Pragma: "no-cache" } });
+      { headers: { "Cache-Control": "no-store, private", Pragma: "no-cache" } }
+    );
   } catch (error) {
     apiConsole.error("[AdminUserDetail] 异常:", error);
     return NextResponse.json(
@@ -540,15 +543,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const body = await request.json();
-    const result = updateUserSchema.safeParse(body);
-    if (!result.success) {
+    const parsedUpdate = updateUserSchema.safeParse(body);
+    if (!parsedUpdate.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
         { status: 400 }
       );
     }
 
-    const { status, birthday, unlockBirthday } = result.data;
+    const { status, birthday, unlockBirthday } = parsedUpdate.data;
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -692,7 +695,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         detail: {
           previousStatus: user.status,
           newStatus: status,
-          reason: result.data.reason,
+          reason: parsedUpdate.data.reason,
           phone: maskPhone(user.phone),
         },
         adminId: admin.id,
@@ -780,7 +783,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         userId: user.id,
         phone: user.phone,
         action:
-          status === "ACTIVE" ? "账号已恢复正常" : status === "SUSPENDED" ? "账号已被冻结" : "账号已被封禁",
+          status === "ACTIVE"
+            ? "账号已恢复正常"
+            : status === "SUSPENDED"
+              ? "账号已被冻结"
+              : "账号已被封禁",
         reference: `status:${user.id}:${status}:${Date.now()}`,
       }).catch((error) => apiConsole.warn("[AdminUserUpdate] 状态通知入队失败:", error));
     }

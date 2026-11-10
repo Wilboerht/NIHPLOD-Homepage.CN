@@ -35,6 +35,10 @@ vi.mock("@/lib/captcha-client", () => ({
   solveCaptcha: vi.fn().mockResolvedValue("test-captcha-token"),
 }));
 
+vi.mock("@/components/website/user-center/panels/SecurityPanel", () => ({
+  SecurityPanel: () => <div>请修改临时密码</div>,
+}));
+
 import LoginPage from "./page";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,6 +65,7 @@ describe("LoginPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ json: async () => ({}) }));
+    mockRefreshUser.mockResolvedValue(undefined);
     setupLoggedOut();
   });
 
@@ -161,6 +166,19 @@ describe("LoginPage", () => {
     expect(mockPush).not.toHaveBeenCalled();
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/"), { timeout: 3000 });
+  });
+
+  it("临时密码登录后必须先修改密码，不能直接跳转", async () => {
+    mockApiPost.mockResolvedValue({ user: { passwordChangeRequired: true } });
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("手机号"), { target: { value: "13800138000" } });
+    fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "TempP@ssw0rd" } });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.submit(document.getElementById("pc-login-form")!);
+
+    expect((await screen.findAllByText("请修改临时密码")).length).toBeGreaterThan(0);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("会话过期（expired=1）时在面板内嵌提示登录已过期", async () => {

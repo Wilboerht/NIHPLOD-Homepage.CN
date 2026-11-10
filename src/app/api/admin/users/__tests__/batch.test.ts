@@ -107,7 +107,7 @@ const OWNER = { id: "admin-1", email: "owner@test.com", name: "Owner", role: "ow
 function createRequest(body: unknown) {
   return new NextRequest("http://localhost/api/admin/users", {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify({ reason: "测试工单", ...(body as Record<string, unknown>) }),
     headers: { "Content-Type": "application/json" },
   } as never);
 }
