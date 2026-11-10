@@ -62,6 +62,17 @@ function Harness() {
   );
 }
 
+function BackHandlerHarness({ onBack }: { onBack: () => void }) {
+  const { setDetailBackHandler } = useProductsShell();
+
+  React.useEffect(() => {
+    setDetailBackHandler(onBack, "返回产品详情");
+    return () => setDetailBackHandler(null);
+  }, [onBack, setDetailBackHandler]);
+
+  return <p>detail-subview-content</p>;
+}
+
 function renderShell(categories: ProductsCategory[] = []) {
   return render(
     <LayoutProvider>
@@ -265,5 +276,23 @@ describe("ProductsShell navigation", () => {
     expect(mockPush).toHaveBeenLastCalledWith("/products");
     expect(screen.queryByTestId("product-detail-loading")).not.toBeInTheDocument();
     expect(screen.getByText("list-content")).toBeInTheDocument();
+  });
+
+  it("routes the mobile back control to a registered detail subview handler", () => {
+    mockPathnameRef.current = "/products/demo";
+    const onBack = vi.fn();
+
+    render(
+      <LayoutProvider>
+        <ProductsShell categories={[]}>
+          <BackHandlerHarness onBack={onBack} />
+        </ProductsShell>
+      </LayoutProvider>
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "返回产品详情" }));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });
