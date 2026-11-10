@@ -17,6 +17,7 @@ const tx = vi.hoisted(() => ({
   product: {
     updateMany: vi.fn(),
   },
+  pointRedemptionEvent: { create: vi.fn().mockResolvedValue({}) },
   user: {
     findUnique: vi.fn(),
   },

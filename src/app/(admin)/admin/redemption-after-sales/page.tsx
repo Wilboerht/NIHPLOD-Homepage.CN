@@ -5,7 +5,7 @@
  * 审核售后、确认收到退货、执行退分、关闭售后。
  */
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -20,6 +20,7 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { DataTable, PageHeader, RequirePermission, type Column } from "@/components/admin";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
+import { RedemptionTimelineModal } from "@/components/admin/RedemptionTimelineModal";
 import { APPROVAL_THRESHOLDS } from "@/lib/admin-approval-policy";
 
 type Status =
@@ -170,6 +171,7 @@ function AfterSalesContent() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [action, setAction] = useState<ActionState | null>(null);
   const [submittingAction, setSubmittingAction] = useState(false);
+  const [timelineId, setTimelineId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -252,6 +254,9 @@ function AfterSalesContent() {
 
   const renderActions = (item: Item) => (
     <div className="flex flex-wrap justify-end gap-1">
+      <Button size="sm" variant="ghost" onClick={() => setTimelineId(item.id)}>
+        详情
+      </Button>
       {canReview && item.status === "AFTER_SALES_REQUESTED" && (
         <>
           <Button
@@ -312,9 +317,7 @@ function AfterSalesContent() {
         </>
       )}
       {canReview &&
-        ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING", "RETURNED"].includes(
-          item.status
-        ) && (
+        ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING"].includes(item.status) && (
           <Button
             size="sm"
             variant="ghost"
@@ -333,15 +336,30 @@ function AfterSalesContent() {
         title="兑换售后"
         description="审核售后、确认退货、执行退分；所有操作写审计，退分需 TOTP。"
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<RefreshCw className="h-4 w-4" />}
-            loading={loading}
-            onClick={load}
-          >
-            刷新
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<Download className="h-4 w-4" />}
+              onClick={() =>
+                window.open(
+                  `/api/admin/point-redemptions/export?status=${encodeURIComponent(tab)}`,
+                  "_blank"
+                )
+              }
+            >
+              导出 CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              leftIcon={<RefreshCw className="h-4 w-4" />}
+              loading={loading}
+              onClick={load}
+            >
+              刷新
+            </Button>
+          </div>
         }
       />
 
@@ -468,6 +486,7 @@ function AfterSalesContent() {
           </div>
         )}
       </Modal>
+      <RedemptionTimelineModal redemptionId={timelineId} onClose={() => setTimelineId(null)} />
       {totpModal}
     </div>
   );

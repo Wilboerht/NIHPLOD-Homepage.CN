@@ -16,6 +16,10 @@ import { notifyNewRedemption } from "@/lib/admin-notify";
 import { getPointBalanceView, POINT_GRANT_LEDGER_TYPES } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { MAX_ADDRESSES, addressFieldsSchema, type UserAddressView } from "@/lib/user-address";
+import {
+  isOwnedSpentProofImageRef,
+  isValidSpentProofImageRef,
+} from "@/lib/spent-adjustment-meta";
 import { htmlToPlainText } from "@/lib/html-sanitize";
 import { buildPurchaseJump } from "@/lib/purchase-jump";
 import { isPurchasePlatformKey } from "@/lib/purchase-platforms";
@@ -61,7 +65,10 @@ const redeemSchema = z.object({
 const afterSalesSchema = z.object({
   requestId: z.string().min(1, "缺少请求标识").max(64),
   reason: z.string().trim().min(1, "请填写售后原因").max(500),
-  images: z.array(z.string().url()).max(3).optional(),
+  images: z
+    .array(z.string().max(500).refine(isValidSpentProofImageRef, "凭证图片格式不正确"))
+    .max(3)
+    .optional(),
 });
 
 const returnShipmentSchema = z.object({
@@ -656,6 +663,9 @@ export async function requestAfterSalesResponse(
   const parsed = afterSalesSchema.safeParse(body);
   if (!parsed.success) {
     return invalidParams(parsed.error.issues[0]?.message || "参数错误");
+  }
+  if (parsed.data.images?.some((image) => !isOwnedSpentProofImageRef(image, userId))) {
+    return invalidParams("凭证图片不属于当前用户");
   }
   const result = await requestAfterSales({
     redemptionId,

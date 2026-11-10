@@ -100,9 +100,17 @@ async function sendSmsJob(job: NotificationOutboxJob): Promise<NotificationSendR
   let params: Record<string, string>;
 
   switch (key) {
+    case "spent_review_undo":
     case "spent_review_result":
       template = "SPENT_REVIEW";
-      params = { result: str(payload.status) === "APPROVED" ? "已通过" : "未通过" };
+      params = {
+        result:
+          str(payload.status) === "UNDONE"
+            ? "已撤销待复核"
+            : str(payload.status) === "APPROVED"
+              ? "已通过"
+              : "未通过",
+      };
       break;
     case "spent_submitted":
       template = "SPENT_SUBMITTED";
@@ -167,10 +175,15 @@ async function sendWechatJob(job: NotificationOutboxJob): Promise<NotificationSe
   const payload = record(job.payload);
   const key = job.templateKey ?? job.eventType;
 
-  if (key === "spent_review_result") {
+  if (key === "spent_review_result" || key === "spent_review_undo") {
     const result = await sendSpentAdjustmentReviewMessage({
       userId: job.userId,
-      status: str(payload.status) === "APPROVED" ? "APPROVED" : "REJECTED",
+      status:
+        str(payload.status) === "UNDONE"
+          ? "UNDONE"
+          : str(payload.status) === "APPROVED"
+            ? "APPROVED"
+            : "REJECTED",
       orderNo: str(payload.orderNo),
       reviewAmount: typeof payload.reviewAmount === "number" ? payload.reviewAmount : undefined,
       reviewNote: typeof payload.reviewNote === "string" ? payload.reviewNote : undefined,
@@ -220,12 +233,20 @@ async function sendMiniprogramJob(job: NotificationOutboxJob): Promise<Notificat
         thing3: { value: "顺丰速运" },
       };
       break;
+    case "spent_review_undo":
     case "spent_review_result":
       templateId = process.env.MP_POINTS_TEMPLATE_SPENT_REVIEW;
       page = "pages/spent-adjustments/spent-adjustments";
       data = {
         date1: { value: formatWxDate(new Date()) },
-        thing2: { value: str(payload.status) === "APPROVED" ? "已通过" : "未通过" },
+        thing2: {
+          value:
+            str(payload.status) === "UNDONE"
+              ? "已撤销待复核"
+              : str(payload.status) === "APPROVED"
+                ? "已通过"
+                : "未通过",
+        },
       };
       break;
     case "spent_submitted":

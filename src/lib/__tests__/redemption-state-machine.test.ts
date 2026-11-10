@@ -35,6 +35,7 @@ vi.mock("@/lib/logger", () => ({
 
 import { adjustPoints } from "@/lib/points-ledger";
 import {
+  closeAfterSales,
   refundAfterSales,
   requestAfterSales,
   reviewAfterSales,
@@ -150,5 +151,19 @@ describe("redemption state machine", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("INVALID_STATUS");
     expect(adjustPoints).not.toHaveBeenCalled();
+  });
+
+  it("待退款订单不允许关闭，必须先完成退分", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseRedemption, status: "RETURNED" });
+
+    const closed = await closeAfterSales({
+      redemptionId: "rd-1",
+      actorType: "ADMIN",
+      actorId: "admin-1",
+      reason: "异常关闭",
+    });
+
+    expect(closed).toBe(false);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
   });
 });

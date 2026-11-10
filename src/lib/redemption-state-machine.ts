@@ -27,7 +27,6 @@ export const ACTIVE_AFTER_SALES_STATUSES: PointRedemptionStatus[] = [
   "AFTER_SALES_REQUESTED",
   "AFTER_SALES_APPROVED",
   "RETURNING",
-  "RETURNED",
 ];
 
 type Tx = Prisma.TransactionClient;
@@ -283,7 +282,7 @@ export async function requestAfterSales(params: {
         }
 
         const now = new Date();
-        const eventKey = `after-sales-request:${redemptionId}:${requestId}`;
+        const eventKey = `after-sales-request:${redemptionId}:${now.getTime()}:${requestId}`;
         const updated = await tx.pointRedemption.updateMany({
           where: { id: redemptionId, status: redemption.status },
           data: {
@@ -759,6 +758,13 @@ export async function closeStaleAfterSales(
     }
   }
   return closed;
+}
+
+export async function recordRedemptionEvent(
+  tx: Tx,
+  input: Parameters<typeof appendEvent>[1]
+): Promise<void> {
+  await appendEvent(tx, input);
 }
 
 export async function getRedemptionTimeline(redemptionId: string, userId?: string) {

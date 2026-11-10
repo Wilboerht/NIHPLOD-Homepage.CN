@@ -59,6 +59,11 @@ interface ApplicationItem {
   reviewNote: string | null;
   createdAt: string;
   reviewedAt: string | null;
+  lastReviewAmount: number | null;
+  lastReviewNote: string | null;
+  lastReviewedAt: string | null;
+  undoReason: string | null;
+  undoneAt: string | null;
 }
 
 const STATUS_ICONS = {
@@ -683,6 +688,15 @@ export function SpentAdjustmentPanel({
                     )}
                     {a.status === "REJECTED" && a.reviewNote && (
                       <p className="mt-1.5 text-xs text-red-500">驳回原因：{a.reviewNote}</p>
+                    )}
+                    {a.status === "PENDING" && a.undoneAt && (
+                      <div className="mt-1.5 text-xs text-amber-700">
+                        <p>上次审核已撤销，申请正在等待重新审核。</p>
+                        {a.lastReviewAmount !== null && (
+                          <p>上次入账金额：¥{a.lastReviewAmount.toLocaleString()}（已冲正）</p>
+                        )}
+                        {a.undoReason && <p>撤销原因：{a.undoReason}</p>}
+                      </div>
                     )}
                   </div>
                 );

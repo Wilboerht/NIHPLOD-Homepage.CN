@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
     // 避免按高档 rate 少扣积分。
     const outcome = await withPointTxRetry(() =>
       prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${user.id} FOR UPDATE`;
         const fresh = await tx.user.findUnique({
           where: { id: user.id },
           select: { membershipLevel: true, status: true },
@@ -212,6 +213,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           amount: points,
           reference: `redeem:${reference}`,
+          source: "MALL",
           note: note ?? `商城兑换 ${reference}`,
         });
         return { kind: "OK" as const, result };

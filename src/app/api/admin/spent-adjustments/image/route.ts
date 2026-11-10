@@ -37,7 +37,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!hasAdminPermission(admin, "spent:read")) {
+    if (
+      !hasAdminPermission(admin, "spent:read") &&
+      !hasAdminPermission(admin, "redemptions:after-sales")
+    ) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：消费凭证查看" } },
         { status: 403, headers: NO_STORE_HEADERS }
@@ -55,13 +58,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 对象必须存在于某条申请记录中，防止对任意私有对象签名/读取
-    const application = await prisma.spentAdjustmentApplication.findFirst({
-      where: { images: { has: key } },
-      select: { id: true, userId: true },
-    });
+    // 对象必须属于消费补录或兑换售后记录，防止对任意私有对象签名/读取。
+    const [application, redemption] = await Promise.all([
+      prisma.spentAdjustmentApplication.findFirst({
+        where: { images: { has: key } },
+        select: { id: true, userId: true },
+      }),
+      prisma.pointRedemption.findFirst({
+        where: { afterSalesImages: { has: key } },
+        select: { id: true, userId: true },
+      }),
+    ]);
+    const owner = application ?? redemption;
 
-    if (!application) {
+    if (!owner) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "图片不存在" } },
         { status: 404, headers: NO_STORE_HEADERS }
@@ -70,8 +80,8 @@ export async function GET(request: NextRequest) {
 
     await createAuditLogStrict({
       action: "spent_receipt_view",
-      targetType: "spent_adjustment",
-      targetId: application.id,
+      targetType: application ? "spent_adjustment" : "point_redemption",
+      targetId: owner.id,
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -81,7 +91,7 @@ export async function GET(request: NextRequest) {
       request,
     });
 
-    const result = await resolveSpentProofImage(application.userId, key);
+    const result = await resolveSpentProofImage(owner.userId, key);
     if (!result.ok) {
       return NextResponse.json(
         { success: false, error: { code: result.code, message: result.message } },

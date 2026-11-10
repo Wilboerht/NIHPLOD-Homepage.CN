@@ -126,6 +126,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   spent_proof_orphan_purge: "清理孤儿消费凭证",
   spent_import_preview: "预览消费记录导入",
   point_redemption_pii_view: "查看积分兑换完整收货信息",
+  point_redemption_export: "导出积分兑换记录",
+  spent_adjustment_export: "导出消费补录记录",
   application_list_view: "查看简历列表（PII）",
   audit_log_view: "查看审计日志",
   audit_log_detail_view: "查看审计日志详情",

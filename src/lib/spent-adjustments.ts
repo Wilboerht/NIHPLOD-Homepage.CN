@@ -6,7 +6,12 @@
  */
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
-import { applyExternalSpentSync, SpentReversalExceedsBalanceError } from "@/lib/points";
+import {
+  applyExternalSpentSync,
+  invalidateProfileCache,
+  pushMembershipUpdateWebhook,
+  SpentReversalExceedsBalanceError,
+} from "@/lib/points";
 import {
   normalizeOrderNo,
   releaseSpentOrderClaim,
@@ -85,6 +90,7 @@ export async function reviewApplication(params: {
   } = params;
   const approved = decision === "approve";
   const now = new Date();
+  const completedSync: Awaited<ReturnType<typeof applyExternalSpentSync>>[] = [];
 
   if (approved && (reviewAmount === undefined || reviewAmount <= 0)) {
     return { ok: false, code: "INVALID_PARAMS", message: "通过审核必须填写核实金额" };
@@ -134,23 +140,24 @@ export async function reviewApplication(params: {
     };
   }
 
-  // 跨来源去重：同一用户的同一订单号若已通过 Excel 导入成功入账且未撤销，
-  // 不允许再通过补录审核重复入账（导入侧执行时也会反向检查已通过的补录）。
-  const imported = await prisma.spentImportRow.findFirst({
-    where: {
-      userId: application.userId,
-      orderNo: { equals: application.orderNo, mode: "insensitive" },
-      status: "SUCCESS",
-      revertedAt: null,
-    },
-    select: { id: true },
-  });
-  if (imported) {
-    return {
-      ok: false,
-      code: "ORDER_ALREADY_IMPORTED",
-      message: "该订单号已通过 Excel 导入入账；请先撤销对应导入批次，再审核此申请",
-    };
+  // 仅通过审核需要订单入账冲突检查；驳回重复申请不应被已有入账阻塞。
+  if (approved) {
+    const imported = await prisma.spentImportRow.findFirst({
+      where: {
+        userId: application.userId,
+        orderNo: { equals: application.orderNo, mode: "insensitive" },
+        status: "SUCCESS",
+        revertedAt: null,
+      },
+      select: { id: true },
+    });
+    if (imported) {
+      return {
+        ok: false,
+        code: "ORDER_ALREADY_IMPORTED",
+        message: "该订单号已通过 Excel 导入入账，请勿重复审核",
+      };
+    }
   }
 
   try {
@@ -169,7 +176,11 @@ export async function reviewApplication(params: {
         const amount = reviewAmount ?? 0;
         const [userDay, userWeek, reviewerDay] = await Promise.all([
           tx.spentAdjustmentApplication.aggregate({
-            where: { userId: application.userId, status: "APPROVED", reviewedAt: { gte: dayStart } },
+            where: {
+              userId: application.userId,
+              status: "APPROVED",
+              reviewedAt: { gte: dayStart },
+            },
             _sum: { reviewAmount: true },
           }),
           tx.spentAdjustmentApplication.aggregate({
@@ -187,10 +198,8 @@ export async function reviewApplication(params: {
         ]);
 
         if (
-          (userDay._sum.reviewAmount ?? 0) + amount >
-            SPENT_REVIEW_CUMULATIVE_LIMITS.userDaily ||
-          (userWeek._sum.reviewAmount ?? 0) + amount >
-            SPENT_REVIEW_CUMULATIVE_LIMITS.userWeekly ||
+          (userDay._sum.reviewAmount ?? 0) + amount > SPENT_REVIEW_CUMULATIVE_LIMITS.userDaily ||
+          (userWeek._sum.reviewAmount ?? 0) + amount > SPENT_REVIEW_CUMULATIVE_LIMITS.userWeekly ||
           (reviewerDay._sum.reviewAmount ?? 0) + amount >
             SPENT_REVIEW_CUMULATIVE_LIMITS.reviewerDaily
         ) {
@@ -226,11 +235,13 @@ export async function reviewApplication(params: {
             orderNo: application.orderNo,
             source: "SPENT_ADJUSTMENT",
             requireActiveUser: true,
+            suppressWebhook: true,
             note: `消费补录：${SPENT_CHANNEL_LABELS[application.channel]} ${application.orderNo}`,
           },
           tx
         );
         if (!result) throw new Error("SPENT_ADJUSTMENT_USER_MISSING");
+        completedSync.push(result);
       }
       return true;
     });
@@ -241,6 +252,14 @@ export async function reviewApplication(params: {
         code: "ALREADY_REVIEWED",
         message: "该申请已被其他管理员处理，请刷新列表",
       };
+    }
+
+    const sync = completedSync[0];
+    if (sync && !sync.duplicated && sync.appliedDelta !== 0) {
+      invalidateProfileCache();
+      pushMembershipUpdateWebhook(application.userId, sync).catch((error) =>
+        apiConsole.warn(`[SpentAdjustment] 审核后会员 webhook 推送失败: ${error}`)
+      );
     }
 
     await notifyReviewResult({
@@ -282,8 +301,10 @@ export async function reviewApplication(params: {
 export async function undoApplication(params: {
   applicationId: string;
   adminId: string;
+  reason: string;
 }): Promise<ReviewResult> {
-  const { applicationId, adminId } = params;
+  const { applicationId, adminId, reason } = params;
+  const completedSync: Awaited<ReturnType<typeof applyExternalSpentSync>>[] = [];
 
   try {
     const application = await prisma.spentAdjustmentApplication.findUnique({
@@ -296,7 +317,7 @@ export async function undoApplication(params: {
         reviewNote: true,
         reviewedById: true,
         reviewedAt: true,
-        user: { select: { status: true } },
+        user: { select: { status: true, phone: true } },
       },
     });
 
@@ -324,6 +345,13 @@ export async function undoApplication(params: {
         where: { id: applicationId, status: "APPROVED" },
         data: {
           status: "PENDING",
+          lastReviewAmount: application.reviewAmount,
+          lastReviewNote: application.reviewNote,
+          lastReviewedById: application.reviewedById,
+          lastReviewedAt: application.reviewedAt,
+          undoReason: reason.trim(),
+          undoneById: adminId,
+          undoneAt: new Date(),
           reviewAmount: null,
           reviewNote: null,
           reviewedById: null,
@@ -338,11 +366,13 @@ export async function undoApplication(params: {
           spentDelta: -(application.reviewAmount ?? 0),
           reference: `manual-undo:${applicationId}:${Date.now()}`,
           allowNegativeClamp: false,
+          suppressWebhook: true,
           note: `撤销消费补录审核：${applicationId}（管理员 ${adminId}）`,
         },
         tx
       );
       if (!result) throw new Error("SPENT_ADJUSTMENT_USER_MISSING");
+      completedSync.push(result);
 
       await releaseSpentOrderClaim(tx, {
         userId: application.userId,
@@ -360,6 +390,23 @@ export async function undoApplication(params: {
         message: "该申请已被其他管理员处理，请刷新列表",
       };
     }
+
+    const sync = completedSync[0];
+    if (sync && !sync.duplicated && sync.appliedDelta !== 0) {
+      invalidateProfileCache();
+      pushMembershipUpdateWebhook(application.userId, sync).catch((error) =>
+        apiConsole.warn(`[SpentAdjustment] 撤销后会员 webhook 推送失败: ${error}`)
+      );
+    }
+
+    await notifyUndoResult({
+      applicationId,
+      cycle: Date.now(),
+      userId: application.userId,
+      phone: application.user.phone,
+      orderNo: application.orderNo,
+      reason: reason.trim(),
+    });
 
     apiConsole.info(`[SpentAdjustment] 撤销审核完成：applicationId=${applicationId}`);
     return { ok: true, status: "PENDING" };
@@ -434,4 +481,56 @@ async function notifyReviewResult(params: {
       aggregateId: orderNo,
     }),
   ]).catch((error) => apiConsole.error("[SpentAdjustment] 通知入队失败:", error));
+}
+
+async function notifyUndoResult(params: {
+  applicationId: string;
+  cycle: number;
+  userId: string;
+  phone: string;
+  orderNo: string;
+  reason: string;
+}): Promise<void> {
+  const baseKey = `spent-undo:${params.applicationId}:${params.cycle}`;
+  const payload = {
+    status: "UNDONE",
+    orderNo: params.orderNo,
+    reviewNote: params.reason,
+    statusLabel: "审核已撤销，等待重新审核",
+  };
+  await Promise.all([
+    enqueueNotification({
+      idempotencyKey: `${baseKey}:sms`,
+      channel: "SMS",
+      eventType: "spent_review_undo",
+      templateKey: "spent_review_undo",
+      userId: params.userId,
+      recipient: { phone: params.phone },
+      payload,
+      aggregateType: "spent_adjustment",
+      aggregateId: params.applicationId,
+    }),
+    enqueueNotification({
+      idempotencyKey: `${baseKey}:wechat`,
+      channel: "WECHAT_TEMPLATE",
+      eventType: "spent_review_undo",
+      templateKey: "spent_review_undo",
+      userId: params.userId,
+      recipient: { userId: params.userId },
+      payload,
+      aggregateType: "spent_adjustment",
+      aggregateId: params.applicationId,
+    }),
+    enqueueNotification({
+      idempotencyKey: `${baseKey}:mp`,
+      channel: "MINIPROGRAM",
+      eventType: "spent_review_undo",
+      templateKey: "spent_review_undo",
+      userId: params.userId,
+      recipient: { userId: params.userId },
+      payload,
+      aggregateType: "spent_adjustment",
+      aggregateId: params.applicationId,
+    }),
+  ]).catch((error) => apiConsole.error("[SpentAdjustment] 撤销通知入队失败:", error));
 }

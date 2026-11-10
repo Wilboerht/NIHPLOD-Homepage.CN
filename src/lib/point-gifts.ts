@@ -14,6 +14,7 @@ import { adjustPoints, redeemPoints, withPointTxRetry } from "@/lib/points-ledge
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { enqueueNotification } from "@/lib/notification-outbox";
+import { recordRedemptionEvent } from "@/lib/redemption-state-machine";
 
 /** 可兑换产品（产品库标记 + 已发布），按产品排序；字段供列表卡片与产品详情抽屉共用 */
 export async function listRedeemableProducts() {
@@ -282,6 +283,16 @@ export async function redeemGiftForUser(params: {
             address: fullAddress,
           },
         });
+        await recordRedemptionEvent(tx, {
+          redemptionId: redemption.id,
+          fromStatus: null,
+          toStatus: "PENDING",
+          actorType: "USER",
+          actorId: userId,
+          reasonCode: "redeem_created",
+          metadata: { points, clientId: clientId ?? null },
+          idempotencyKey: `redemption-created:${redemption.id}`,
+        });
 
         return {
           ok: true,
@@ -331,7 +342,7 @@ export async function fulfillRedemption(params: {
   code?: "NOT_FOUND" | "ALREADY_PROCESSED" | "NEGATIVE_BALANCE" | "USER_INACTIVE";
   available?: number;
 }> {
-  const { redemptionId, waybillNo } = params;
+  const { redemptionId, adminId, waybillNo } = params;
 
   return withPointTxRetry(() =>
     prisma.$transaction(async (tx) => {
@@ -379,6 +390,17 @@ export async function fulfillRedemption(params: {
         },
       });
       if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" as const };
+
+      await recordRedemptionEvent(tx, {
+        redemptionId,
+        fromStatus: "PENDING",
+        toStatus: "FULFILLED",
+        actorType: "ADMIN",
+        actorId: adminId,
+        reasonCode: "fulfilled",
+        metadata: { waybillNo: waybillNo ?? null },
+        idempotencyKey: `redemption-fulfilled:${redemptionId}`,
+      });
 
       const payload = {
         productName: redemption.productName,
@@ -445,8 +467,10 @@ async function releaseRedemptionStock(
 export async function cancelRedemption(params: {
   redemptionId: string;
   note?: string;
+  actorType?: "ADMIN" | "SYSTEM";
+  actorId?: string;
 }): Promise<{ ok: boolean; code?: "NOT_FOUND" | "ALREADY_PROCESSED"; points?: number }> {
-  const { redemptionId, note } = params;
+  const { redemptionId, note, actorType = "SYSTEM", actorId } = params;
 
   return withPointTxRetry(() =>
     prisma.$transaction(async (tx) => {
@@ -474,6 +498,17 @@ export async function cancelRedemption(params: {
       if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" };
 
       await releaseRedemptionStock(tx, redemption.productId, redemption.stockDeducted);
+      await recordRedemptionEvent(tx, {
+        redemptionId,
+        fromStatus: "PENDING",
+        toStatus: "CANCELLED",
+        actorType,
+        actorId,
+        reasonCode: actorType === "SYSTEM" ? "pending_timeout" : "admin_cancel",
+        reasonText: cancelNote,
+        metadata: { points: redemption.points },
+        idempotencyKey: `redemption-cancelled:${redemptionId}`,
+      });
 
       // 已注销用户不再写余额/流水，只完成取消与库存归还，避免注销后账户仍可变动。
       if (redemption.user.status !== "DELETED") {
@@ -529,22 +564,34 @@ export async function cancelRedemption(params: {
 /** 管理端：补录/更新运单号（已履约订单；传空字符串清除） */
 export async function updateRedemptionWaybill(params: {
   redemptionId: string;
+  adminId: string;
   waybillNo: string | null;
 }): Promise<{ ok: boolean; code?: "NOT_FOUND" | "INVALID_STATUS" }> {
-  const { redemptionId, waybillNo } = params;
-  const redemption = await prisma.pointRedemption.findUnique({
-    where: { id: redemptionId },
-    select: { id: true, status: true },
-  });
-  if (!redemption) return { ok: false, code: "NOT_FOUND" };
-  // 运单号只对已履约订单有意义；待履约/已取消单不应写入物流信息
-  if (redemption.status !== "FULFILLED") return { ok: false, code: "INVALID_STATUS" };
+  const { redemptionId, adminId, waybillNo } = params;
+  return prisma.$transaction(async (tx) => {
+    const redemption = await tx.pointRedemption.findUnique({
+      where: { id: redemptionId },
+      select: { id: true, status: true, waybillNo: true },
+    });
+    if (!redemption) return { ok: false, code: "NOT_FOUND" as const };
+    if (redemption.status !== "FULFILLED") return { ok: false, code: "INVALID_STATUS" as const };
 
-  await prisma.pointRedemption.update({
-    where: { id: redemptionId },
-    data: waybillNo ? { waybillNo, carrier: "SF" } : { waybillNo: null, carrier: null },
+    await tx.pointRedemption.update({
+      where: { id: redemptionId },
+      data: waybillNo ? { waybillNo, carrier: "SF" } : { waybillNo: null, carrier: null },
+    });
+    await recordRedemptionEvent(tx, {
+      redemptionId,
+      fromStatus: "FULFILLED",
+      toStatus: "FULFILLED",
+      actorType: "ADMIN",
+      actorId: adminId,
+      reasonCode: "waybill_updated",
+      metadata: { before: redemption.waybillNo, after: waybillNo },
+      idempotencyKey: `redemption-waybill:${redemptionId}:${Date.now()}`,
+    });
+    return { ok: true };
   });
-  return { ok: true };
 }
 
 /**

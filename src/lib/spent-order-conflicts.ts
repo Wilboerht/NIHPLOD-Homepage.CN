@@ -51,6 +51,7 @@ export async function findSpentOrderConflicts(
     where: {
       status: "SUCCESS",
       revertedAt: null,
+      amount: { gt: 0 },
       orderNo: { not: null },
       createdAt: { gte: cutoff },
     },

@@ -17,6 +17,7 @@ const { txClient } = vi.hoisted(() => ({
     },
     pointBalance: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn(), updateMany: vi.fn() },
     user: { findUnique: vi.fn() },
+    $queryRaw: vi.fn().mockResolvedValue([]),
   },
 }));
 

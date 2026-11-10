@@ -95,5 +95,6 @@ describe("兑换售后页面", () => {
     expect((await screen.findAllByRole("button", { name: "申请退分审批" })).length).toBeGreaterThan(
       0
     );
+    expect(screen.queryByRole("button", { name: "关闭" })).not.toBeInTheDocument();
   });
 });

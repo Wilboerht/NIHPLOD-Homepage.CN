@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 审计事件元数据（唯一事实源）。
  *
  * 标签仍在 audit-labels.ts（客户端/服务端共用）；这里补充分类、风险、
@@ -122,6 +122,8 @@ const SECURITY_ACTIONS = new Set([
   "spent_proof_public_purge",
   "spent_proof_orphan_purge",
   "point_redemption_pii_view",
+  "point_redemption_export",
+  "spent_adjustment_export",
   "amap_config_view",
   "user_deleted",
   "user_password_reset",
@@ -249,6 +251,8 @@ const MEDIUM_ACTIONS = new Set([
   "spent_receipt_view",
   "spent_proof_orphan_purge",
   "point_redemption_pii_view",
+  "point_redemption_export",
+  "spent_adjustment_export",
   "amap_config_view",
   "audit_log_view",
   "audit_log_detail_view",

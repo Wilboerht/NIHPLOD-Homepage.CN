@@ -63,6 +63,7 @@ export async function checkPointInvariants(limit = 200): Promise<PointInvariantR
     FROM "PointBalance" pb
     LEFT JOIN remaining r ON r."userId" = pb."userId"
     WHERE COALESCE(r.remaining, 0) < 0
+       OR (COALESCE(r.remaining, 0) = 0 AND pb."available" > 0)
        OR (COALESCE(r.remaining, 0) > 0 AND pb."available" <> COALESCE(r.remaining, 0))
     LIMIT ${take}
   `;

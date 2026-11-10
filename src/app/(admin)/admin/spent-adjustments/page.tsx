@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
+  Download,
   ExternalLink,
   Eye,
   FileSpreadsheet,
@@ -72,6 +73,13 @@ interface ApplicationItem {
   reviewAmount: number | null;
   reviewNote: string | null;
   reviewedAt: string | null;
+  lastReviewAmount: number | null;
+  lastReviewNote: string | null;
+  lastReviewedById: string | null;
+  lastReviewedAt: string | null;
+  undoReason: string | null;
+  undoneById: string | null;
+  undoneAt: string | null;
   reviewedBy: { name: string; email: string } | null;
   createdByAdmin: { id: string; name: string; email: string } | null;
   createdAt: string;
@@ -137,8 +145,7 @@ function AdminSpentAdjustmentsContent() {
   // 权限：Excel 导入/撤销导入需要 spent:import（与 API 层一致）
   const { can: canAdmin, role, id: currentAdminId } = useAdminPermissions();
   const isOwnerActor = role === "owner";
-  const isSelfSubmitted =
-    !!detail && !isOwnerActor && detail.createdByAdmin?.id === currentAdminId;
+  const isSelfSubmitted = !!detail && !isOwnerActor && detail.createdByAdmin?.id === currentAdminId;
   const canImport = canAdmin("spent:import");
   const canReadSpent = canAdmin("spent:read");
   const canCreate = canAdmin("spent:create");
@@ -415,6 +422,19 @@ function AdminSpentAdjustmentsContent() {
                 </Button>
               </>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (tab !== "ALL") params.set("status", tab);
+                if (searchParam) params.set("search", searchParam);
+                window.open(`/api/admin/spent-adjustments/export?${params}`, "_blank");
+              }}
+            >
+              <Download className="mr-1.5 h-4 w-4" />
+              导出 CSV
+            </Button>
             <Button variant="outline" size="sm" onClick={fetchData}>
               <RefreshCw className="mr-1.5 h-4 w-4" />
               刷新
@@ -913,6 +933,24 @@ function AdminSpentAdjustmentsContent() {
                   )}
                 </div>
               )}
+              {detail.undoneAt && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  <p>
+                    该申请曾于 {formatDateTime(detail.lastReviewedAt)} 审核，后于{" "}
+                    {formatDateTime(detail.undoneAt)} 撤销。
+                  </p>
+                  {detail.lastReviewAmount !== null && (
+                    <p className="mt-1">
+                      上次核实金额：¥{detail.lastReviewAmount.toLocaleString()}
+                    </p>
+                  )}
+                  {detail.lastReviewNote && (
+                    <p className="mt-1">上次审核备注：{detail.lastReviewNote}</p>
+                  )}
+                  <p className="mt-1">撤销原因：{detail.undoReason ?? "-"}</p>
+                  <p className="mt-1 break-all">撤销人 ID：{detail.undoneById ?? "-"}</p>
+                </div>
+              )}
             </div>
 
             {/* 凭证截图（登录已 TOTP，查看时不再重复 step-up） */}
@@ -1076,9 +1114,7 @@ function AdminSpentAdjustmentsContent() {
 
 export default function AdminSpentAdjustmentsPage() {
   return (
-    <RequirePermission
-      permissions={["spent:read", "spent:import", "spent:create", "spent:review"]}
-    >
+    <RequirePermission permissions={["spent:read", "spent:import", "spent:create", "spent:review"]}>
       <AdminSpentAdjustmentsContent />
     </RequirePermission>
   );

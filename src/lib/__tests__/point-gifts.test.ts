@@ -13,6 +13,7 @@ const { txClient } = vi.hoisted(() => ({
       count: vi.fn(),
     },
     pointBalance: { findUnique: vi.fn() },
+    pointRedemptionEvent: { create: vi.fn().mockResolvedValue({}) },
     product: { findUnique: vi.fn(), updateMany: vi.fn() },
     user: { findUnique: vi.fn() },
     userAddress: { findUnique: vi.fn() },

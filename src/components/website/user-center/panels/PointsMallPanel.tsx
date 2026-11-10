@@ -19,6 +19,7 @@ import {
   Clock,
   Copy,
   Gift,
+  ImagePlus,
   Loader2,
   Lock,
   MapPin,
@@ -35,6 +36,7 @@ import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { createClientRequestId } from "@/lib/request-id";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { receiptImageSrc } from "@/lib/spent-adjustment-meta";
 import { PanelShell } from "../PanelShell";
 
 // 产品详情抽屉体积较大（图片轮播/富文本/购买链接），仅在用户点击礼品时按需加载
@@ -86,6 +88,7 @@ interface RedemptionRecord {
   afterSalesRequestedAt?: string | null;
   afterSalesReason?: string | null;
   afterSalesReviewNote?: string | null;
+  afterSalesImages?: string[];
   afterSalesApprovedAt?: string | null;
   afterSalesClosedAt?: string | null;
   returnWaybillNo?: string | null;
@@ -248,6 +251,9 @@ export function PointsMallPanel() {
   const [detailGift, setDetailGift] = useState<GiftItem | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [afterSalesBusy, setAfterSalesBusy] = useState(false);
+  const [afterSalesReasonInput, setAfterSalesReasonInput] = useState("");
+  const [afterSalesImagesInput, setAfterSalesImagesInput] = useState<string[]>([]);
+  const [afterSalesUploading, setAfterSalesUploading] = useState(false);
   // 兑换幂等键：在确认兑换视图时生成，网络超时/重试复用，避免重复扣分
   const [redeemRequestId, setRedeemRequestId] = useState<string | null>(null);
   const redeemRequestRef = useRef<{ productId: string; requestId: string } | null>(null);
@@ -383,6 +389,8 @@ export function PointsMallPanel() {
     setView("detail");
     setTracking(null);
     setCopiedWaybill(false);
+    setAfterSalesReasonInput("");
+    setAfterSalesImagesInput([]);
     if (r.waybillNo) {
       void loadTracking(r.id);
     }
@@ -449,16 +457,51 @@ export function PointsMallPanel() {
     }
   };
 
+  const uploadAfterSalesImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setAfterSalesUploading(true);
+    try {
+      const selected = Array.from(files).slice(0, 3 - afterSalesImagesInput.length);
+      for (const file of selected) {
+        if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
+          showError("仅支持不超过 10MB 的图片");
+          continue;
+        }
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetchWithAuth("/api/user/spent-adjustments/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error?.message || "凭证上传失败");
+        }
+        setAfterSalesImagesInput((current) => [...current, result.data.url]);
+      }
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "凭证上传失败");
+    } finally {
+      setAfterSalesUploading(false);
+    }
+  };
+
   const applyAfterSales = async (redemption: RedemptionRecord) => {
-    const reason = window.prompt("请填写售后原因（例如：商品破损、发错货）");
-    if (!reason?.trim()) return;
+    const reason = afterSalesReasonInput.trim();
+    if (!reason) {
+      showError("请填写售后原因");
+      return;
+    }
     setAfterSalesBusy(true);
     try {
       await apiPost(`/api/user/points/redemptions/${redemption.id}/after-sales`, {
         requestId: createClientRequestId(),
-        reason: reason.trim(),
+        reason,
+        images: afterSalesImagesInput,
       });
       success("售后申请已提交");
+      setAfterSalesReasonInput("");
+      setAfterSalesImagesInput([]);
       await refreshAfterSales(redemption.id);
     } catch (error) {
       showError(error instanceof ApiError ? error.message : "售后申请失败");
@@ -491,8 +534,7 @@ export function PointsMallPanel() {
     // 离开确认页不丢幂等键：同商品再次进入沿用原 requestId，
     // 避免上次请求超时但服务端已成功时重复扣分
     const existing = redeemRequestRef.current;
-    const requestId =
-      existing?.productId === g.id ? existing.requestId : createClientRequestId();
+    const requestId = existing?.productId === g.id ? existing.requestId : createClientRequestId();
     redeemRequestRef.current = { productId: g.id, requestId };
     setRedeemRequestId(requestId);
     setShowNewAddress(false);
@@ -507,7 +549,8 @@ export function PointsMallPanel() {
   const handleRedeem = async () => {
     if (!confirmGift) return;
     // 同一确认视图内复用幂等键：首次请求超时但实际成功时，重试不会重复扣分
-    const requestId = redeemRequestId ?? redeemRequestRef.current?.requestId ?? createClientRequestId();
+    const requestId =
+      redeemRequestId ?? redeemRequestRef.current?.requestId ?? createClientRequestId();
     if (!redeemRequestId) setRedeemRequestId(requestId);
     redeemRequestRef.current = { productId: confirmGift.id, requestId };
 
@@ -1049,6 +1092,29 @@ export function PointsMallPanel() {
                         </span>
                       </div>
                     )}
+                    {selectedRedemption.afterSalesImages &&
+                      selectedRedemption.afterSalesImages.length > 0 && (
+                        <div>
+                          <p className="mb-2 text-stone-400">售后凭证</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedRedemption.afterSalesImages.map((image, index) => (
+                              <a
+                                key={image}
+                                href={receiptImageSrc(image, "user")}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={receiptImageSrc(image, "user")}
+                                  alt={`售后凭证 ${index + 1}`}
+                                  className="h-16 w-16 rounded-lg border border-stone-200 object-cover"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     {selectedRedemption.refundedPoints ? (
                       <div className="flex items-center justify-between">
                         <span className="text-stone-400">已退积分</span>
@@ -1074,6 +1140,65 @@ export function PointsMallPanel() {
 
                     {(selectedRedemption.status === "FULFILLED" ||
                       selectedRedemption.status === "COMPLETED" ||
+                      selectedRedemption.status === "AFTER_SALES_REJECTED") && (
+                      <div className="space-y-3 border-t border-stone-200/60 pt-4">
+                        <label className="block text-xs text-stone-500">
+                          售后原因
+                          <textarea
+                            value={afterSalesReasonInput}
+                            onChange={(event) => setAfterSalesReasonInput(event.target.value)}
+                            maxLength={500}
+                            rows={3}
+                            placeholder="请描述商品破损、错发或其他问题"
+                            className="mt-1 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs text-stone-700"
+                          />
+                        </label>
+                        <div>
+                          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600">
+                            <ImagePlus className="h-3.5 w-3.5" />
+                            {afterSalesUploading ? "上传中..." : "上传凭证（最多 3 张）"}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              disabled={afterSalesUploading || afterSalesImagesInput.length >= 3}
+                              onChange={(event) => {
+                                void uploadAfterSalesImages(event.target.files);
+                                event.target.value = "";
+                              }}
+                            />
+                          </label>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {afterSalesImagesInput.map((image, index) => (
+                              <div key={image} className="relative">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={receiptImageSrc(image, "user")}
+                                  alt={`待提交凭证 ${index + 1}`}
+                                  className="h-16 w-16 rounded-lg border border-stone-200 object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  aria-label={`移除凭证 ${index + 1}`}
+                                  onClick={() =>
+                                    setAfterSalesImagesInput((current) =>
+                                      current.filter((value) => value !== image)
+                                    )
+                                  }
+                                  className="absolute -right-1 -top-1 rounded-full bg-stone-700 p-0.5 text-white"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedRedemption.status === "FULFILLED" ||
+                      selectedRedemption.status === "COMPLETED" ||
                       selectedRedemption.status === "AFTER_SALES_REJECTED" ||
                       selectedRedemption.status === "AFTER_SALES_APPROVED") && (
                       <div className="flex flex-wrap gap-2 border-t border-stone-200/60 pt-4">
@@ -1092,7 +1217,9 @@ export function PointsMallPanel() {
                           selectedRedemption.status === "AFTER_SALES_REJECTED") && (
                           <button
                             type="button"
-                            disabled={afterSalesBusy}
+                            disabled={
+                              afterSalesBusy || afterSalesUploading || !afterSalesReasonInput.trim()
+                            }
                             onClick={() => void applyAfterSales(selectedRedemption)}
                             className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:bg-stone-50 disabled:opacity-50"
                           >

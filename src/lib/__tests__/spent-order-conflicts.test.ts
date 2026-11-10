@@ -30,6 +30,18 @@ describe("findSpentOrderConflicts", () => {
     expect(result.items).toEqual([]);
   });
 
+  it("跨来源扫描只检查正向入账，不把退款行当作冲突", async () => {
+    mocks.importRows.mockResolvedValue([]);
+
+    await findSpentOrderConflicts();
+
+    expect(mocks.importRows).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ amount: { gt: 0 } }),
+      })
+    );
+  });
+
   it("按用户+订单号忽略大小写匹配，并返回冲突摘要", async () => {
     mocks.importRows.mockResolvedValue([
       {

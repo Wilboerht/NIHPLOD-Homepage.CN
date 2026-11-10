@@ -86,6 +86,11 @@ export async function listSpentApplications(userId: string) {
       reviewNote: true,
       createdAt: true,
       reviewedAt: true,
+      lastReviewAmount: true,
+      lastReviewNote: true,
+      lastReviewedAt: true,
+      undoReason: true,
+      undoneAt: true,
     },
   });
 }

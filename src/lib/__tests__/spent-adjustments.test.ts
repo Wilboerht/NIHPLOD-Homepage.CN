@@ -27,6 +27,8 @@ vi.mock("@/lib/spent-order", () => ({
 
 vi.mock("@/lib/points", () => ({
   applyExternalSpentSync: vi.fn(),
+  invalidateProfileCache: vi.fn(),
+  pushMembershipUpdateWebhook: vi.fn().mockResolvedValue(undefined),
   SpentReversalExceedsBalanceError: class SpentReversalExceedsBalanceError extends Error {},
 }));
 
@@ -98,6 +100,7 @@ describe("reviewApplication", () => {
         orderNo: "ORDER123",
         source: "SPENT_ADJUSTMENT",
         requireActiveUser: true,
+        suppressWebhook: true,
         note: expect.stringContaining("ORDER123"),
       },
       expect.anything()
@@ -189,6 +192,24 @@ describe("reviewApplication", () => {
         payload: expect.objectContaining({ status: "REJECTED" }),
       })
     );
+  });
+
+  it("订单已导入时仍允许驳回重复申请", async () => {
+    mockFindUnique.mockResolvedValue(pendingApp);
+    (prisma.spentImportRow.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "row-1",
+    });
+    mockUpdateMany.mockResolvedValue({ count: 1 });
+
+    const result = await reviewApplication({
+      applicationId: "app-1",
+      decision: "reject",
+      adminId: "admin-1",
+      reviewNote: "订单已入账，请勿重复提交",
+    });
+
+    expect(result).toEqual({ ok: true, status: "REJECTED" });
+    expect(mockApplySync).not.toHaveBeenCalled();
   });
 
   it("用户非 ACTIVE：通过审核返回 USER_INACTIVE，不发起 CAS 与入账", async () => {
@@ -300,6 +321,7 @@ describe("undoApplication", () => {
       reviewNote: "已核实",
       reviewedById: "admin-1",
       reviewedAt: new Date("2026-09-02T10:00:00Z"),
+      user: { status: "ACTIVE", phone: "13800138000" },
     });
     mockUpdateMany.mockResolvedValue({ count: 1 });
     mockApplySync.mockResolvedValue({
@@ -311,6 +333,7 @@ describe("undoApplication", () => {
     const result = await undoApplication({
       applicationId: "app-1",
       adminId: "admin-2",
+      reason: "订单核实有误",
     });
 
     expect(result).toEqual({ ok: true, status: "PENDING" });
@@ -320,19 +343,25 @@ describe("undoApplication", () => {
         spentDelta: -1280,
         reference: expect.stringContaining("manual-undo:app-1:"),
         allowNegativeClamp: false,
+        suppressWebhook: true,
         note: expect.stringContaining("撤销"),
       },
       expect.anything()
     );
     expect(mockUpdateMany).toHaveBeenCalledWith({
       where: { id: "app-1", status: "APPROVED" },
-      data: {
+      data: expect.objectContaining({
         status: "PENDING",
+        lastReviewAmount: 1280,
+        lastReviewNote: "已核实",
+        lastReviewedById: "admin-1",
+        undoReason: "订单核实有误",
+        undoneById: "admin-2",
         reviewAmount: null,
         reviewNote: null,
         reviewedById: null,
         reviewedAt: null,
-      },
+      }),
     });
   });
 
@@ -342,6 +371,7 @@ describe("undoApplication", () => {
     const result = await undoApplication({
       applicationId: "app-1",
       adminId: "admin-1",
+      reason: "订单核实有误",
     });
 
     expect(result).toMatchObject({ ok: false, code: "NOT_APPROVED" });
@@ -357,6 +387,7 @@ describe("undoApplication", () => {
       reviewNote: "已核实",
       reviewedById: "admin-1",
       reviewedAt: new Date("2026-09-02T10:00:00Z"),
+      user: { status: "ACTIVE", phone: "13800138000" },
     });
     mockUpdateMany.mockResolvedValue({ count: 1 });
     mockApplySync.mockRejectedValue(new Error("DB down"));
@@ -364,6 +395,7 @@ describe("undoApplication", () => {
     const result = await undoApplication({
       applicationId: "app-1",
       adminId: "admin-2",
+      reason: "订单核实有误",
     });
 
     expect(result).toEqual({ ok: false, code: "INTERNAL_ERROR", message: "服务器错误" });
@@ -377,6 +409,7 @@ describe("undoApplication", () => {
     const result = await undoApplication({
       applicationId: "app-missing",
       adminId: "admin-1",
+      reason: "订单核实有误",
     });
 
     expect(result).toEqual({ ok: false, code: "NOT_FOUND", message: "申请不存在" });

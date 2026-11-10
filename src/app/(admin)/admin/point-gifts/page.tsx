@@ -6,7 +6,7 @@
  * - 兑换记录：查看与履约标记
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RefreshCw, Search, X } from "lucide-react";
+import { Download, RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -24,6 +24,7 @@ import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
+import { RedemptionTimelineModal } from "@/components/admin/RedemptionTimelineModal";
 import { APPROVAL_THRESHOLDS } from "@/lib/admin-approval-policy";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -184,6 +185,7 @@ function AdminPointGiftsContent() {
   const [cancelTarget, setCancelTarget] = useState<RedemptionItem | null>(null);
   const [cancelNote, setCancelNote] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [timelineId, setTimelineId] = useState<string | null>(null);
 
   const takeLatestProducts = useLatestRequest();
   const fetchProducts = useCallback(async () => {
@@ -612,6 +614,21 @@ function AdminPointGiftsContent() {
             {view === "redemptions" && canFulfill && !piiRevealed && (
               <Button variant="outline" size="sm" loading={revealingPii} onClick={handleRevealPii}>
                 验证并显示完整收件信息
+              </Button>
+            )}
+            {view === "redemptions" && canRedeemRead && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (tab !== "ALL") params.set("status", tab);
+                  if (redemptionSearchParam) params.set("search", redemptionSearchParam);
+                  window.open(`/api/admin/point-redemptions/export?${params}`, "_blank");
+                }}
+              >
+                <Download className="mr-1.5 h-4 w-4" />
+                导出 CSV
               </Button>
             )}
             <Button
@@ -1133,6 +1150,9 @@ function AdminPointGiftsContent() {
                         )}
                       </span>
                       <div className="flex flex-wrap justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setTimelineId(r.id)}>
+                          详情
+                        </Button>
                         {r.status === "PENDING" ? (
                           <>
                             {canFulfill && (
@@ -1293,6 +1313,9 @@ function AdminPointGiftsContent() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setTimelineId(r.id)}>
+                            详情
+                          </Button>
                           {r.status === "PENDING" ? (
                             <>
                               {canFulfill && (
@@ -1515,6 +1538,8 @@ function AdminPointGiftsContent() {
           hint="将写入退还流水备注与审计日志"
         />
       </ConfirmDialog>
+
+      <RedemptionTimelineModal redemptionId={timelineId} onClose={() => setTimelineId(null)} />
 
       {/* 资金类操作二次验证 */}
       {totpModal}

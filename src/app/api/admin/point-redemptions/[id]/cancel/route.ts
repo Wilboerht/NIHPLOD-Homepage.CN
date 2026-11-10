@@ -134,7 +134,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     let result: Awaited<ReturnType<typeof cancelRedemption>>;
     try {
-      result = await cancelRedemption({ redemptionId: id, note: parsed.data.note });
+      result = await cancelRedemption({
+        redemptionId: id,
+        note: parsed.data.note,
+        actorType: "ADMIN",
+        actorId: admin.id,
+      });
     } catch (error) {
       await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
       throw error;

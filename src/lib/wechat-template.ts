@@ -18,7 +18,7 @@ export interface SendTemplateMessageInput {
 
 export interface SendSpentAdjustmentMessageInput {
   userId: string;
-  status: "APPROVED" | "REJECTED";
+  status: "APPROVED" | "REJECTED" | "UNDONE";
   orderNo: string;
   reviewAmount?: number;
   reviewNote?: string;
@@ -201,13 +201,14 @@ export async function sendSpentAdjustmentReviewMessage(
   }
 
   const approved = status === "APPROVED";
+  const undone = status === "UNDONE";
   const payload = {
     touser: user.wechatOpenId,
     template_id: templateId,
     topcolor: "#171717",
     data: {
       result: {
-        value: approved ? "审核通过" : "审核未通过",
+        value: undone ? "审核已撤销" : approved ? "审核通过" : "审核未通过",
         color: approved ? "#059669" : "#dc2626",
       },
       // 微信模板 data 字段单值上限 20 字符，超长截断防止 API 报错
@@ -217,9 +218,11 @@ export async function sendSpentAdjustmentReviewMessage(
         : {}),
       remark: {
         // remark 上限 30 字符
-        value: (approved
-          ? "历史消费金额已累加，会员等级已按最新金额更新。"
-          : (reviewNote ?? "凭证未通过审核，如有疑问请联系客服。")
+        value: (undone
+          ? "原审核入账已冲正，等待重新审核。"
+          : approved
+            ? "历史消费金额已累加，会员等级已按最新金额更新。"
+            : (reviewNote ?? "凭证未通过审核，如有疑问请联系客服。")
         ).slice(0, 30),
         color: "#6b7280",
       },

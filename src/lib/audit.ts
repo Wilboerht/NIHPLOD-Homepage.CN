@@ -144,6 +144,8 @@ export type AuditAction =
   | "spent_proof_orphan_purge"
   | "spent_import_preview"
   | "point_redemption_pii_view"
+  | "point_redemption_export"
+  | "spent_adjustment_export"
   | "application_list_view"
   | "audit_log_view"
   | "audit_log_detail_view"
@@ -321,6 +323,8 @@ export const AUDIT_ACTIONS = [
   "spent_proof_orphan_purge",
   "spent_import_preview",
   "point_redemption_pii_view",
+  "point_redemption_export",
+  "spent_adjustment_export",
   "application_list_view",
   "audit_log_view",
   "audit_log_detail_view",
@@ -683,14 +687,10 @@ export async function getActiveAuditLegalHolds(): Promise<ActiveAuditLegalHold[]
     where: { active: true, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
     select: { targetType: true, targetId: true, userId: true, adminId: true },
   });
-  return holds.filter(
-    (hold) => (hold.targetType && hold.targetId) || hold.userId || hold.adminId
-  );
+  return holds.filter((hold) => (hold.targetType && hold.targetId) || hold.userId || hold.adminId);
 }
 
-function legalHoldConditions(
-  holds: readonly ActiveAuditLegalHold[]
-): Prisma.AuditLogWhereInput[] {
+function legalHoldConditions(holds: readonly ActiveAuditLegalHold[]): Prisma.AuditLogWhereInput[] {
   return holds.map((hold) => ({
     OR: [
       ...(hold.targetType && hold.targetId
@@ -761,8 +761,7 @@ export function buildAuditWhere(
  */
 export async function listAuditLogs(options: AuditLogQueryOptions) {
   const pageSize = Math.min(Math.max(options.pageSize ?? 20, 1), 100);
-  const legalHolds =
-    options.legalHold !== undefined ? await getActiveAuditLegalHolds() : [];
+  const legalHolds = options.legalHold !== undefined ? await getActiveAuditLegalHolds() : [];
   const baseWhere = buildAuditWhere(options, legalHolds);
   const cursor = decodeAuditCursor(options.cursor);
   if (options.cursor && !cursor) throw new Error("INVALID_CURSOR");

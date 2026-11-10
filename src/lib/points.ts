@@ -90,7 +90,7 @@ export async function applyExternalSpentSync(
     allowNegativeClamp?: boolean;
     /** 正向入账时可要求用户当前仍为 ACTIVE，防止注销/封禁与导入并发。 */
     requireActiveUser?: boolean;
-    /** 外层事务内调用时抑制提交前 webhook，由调用方在事务提交后补发。 */
+    /** 外层事务内调用时延后缓存失效与 webhook，由调用方在事务提交后执行。 */
     suppressWebhook?: boolean;
     /** Excel 导入退款行：要求绑定原始订单并受累计退款上限约束。 */
     enforceRefundClaim?: boolean;
@@ -296,7 +296,7 @@ export async function applyExternalSpentSync(
           result.membershipLevel
         }`
       );
-      invalidateProfileCache();
+      if (!params.suppressWebhook) invalidateProfileCache();
 
       // 消费额/等级实际变化时，向已授权且配置 webhookUri 的子项目实时推送
       // （等级没变但 totalSpent 变了也要推：银卡"每满 ¥1,000 加 20 次"依赖 totalSpent 本身）。

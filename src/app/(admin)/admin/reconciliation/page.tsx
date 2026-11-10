@@ -8,6 +8,7 @@
  * 只读，不提供修复按钮；修复仍需走脚本或人工流程。
  */
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { RefreshCw, Scale } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -648,6 +649,30 @@ function ReconciliationContent() {
       />
 
       {data && <SummaryCard data={data} />}
+
+      {data?.summary.hasIssues && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <span className="font-medium">处理入口：</span>
+          {data.summary.pointIssueCount > 0 && (
+            <>
+              <Link className="underline" href="/admin/users">
+                用户积分与流水
+              </Link>
+              <Link className="underline" href="/admin/point-gifts">
+                兑换履约
+              </Link>
+              <Link className="underline" href="/admin/redemption-after-sales">
+                兑换售后
+              </Link>
+            </>
+          )}
+          {data.summary.spentIssueCount > 0 && (
+            <Link className="underline" href="/admin/spent-adjustments">
+              消费审核与导入历史
+            </Link>
+          )}
+        </div>
+      )}
 
       {loadError && data && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">

@@ -22,7 +22,7 @@ import { cleanupRateLimitRecords } from "./ratelimit";
 import { grantBirthdayRewards } from "./points-ledger";
 import { expirePendingRedemptions } from "./point-gifts";
 import { autoCompleteRedemptions, closeStaleAfterSales } from "./redemption-state-machine";
-import { checkPointInvariants } from "./points-invariants";
+import { runAdminReconciliation } from "./admin-reconciliation";
 import { expirePointsCron } from "./points-ledger";
 import { failStaleImportBatches } from "./spent-import";
 import { findSpentOrderConflicts } from "./spent-order-conflicts";
@@ -51,7 +51,7 @@ import {
   notifyAuditIntegrityFailure,
   notifyCronFailure,
   notifyNotificationOutboxDead,
-  notifyPointInvariantIssues,
+  notifyReconciliationIssues,
   scanWebhookFailureQueues,
 } from "./admin-alert";
 import {
@@ -664,24 +664,22 @@ const tasks: ScheduledTask[] = [
   },
   {
     name: "Check Point Invariants",
-    // 每周一 05:00 对账：可用余额大于未消耗发放流水、或缺失余额行时告警
+    // 每周一 05:00 执行积分、兑换流水和消费订单完整对账
     cronExpression: "0 5 * * 1",
     handler: async () => {
       try {
-        const result = await checkPointInvariants();
-        if (result.negativeBalances > 0) {
-          apiConsole.warn(`[Cron] 存在 ${result.negativeBalances} 个负积分余额账户`);
+        const report = await runAdminReconciliation();
+        const negativeBalances = report.points.invariants.negativeBalances;
+        if (negativeBalances > 0) {
+          apiConsole.warn(`[Cron] 存在 ${negativeBalances} 个负积分余额账户`);
         }
-        if (result.issues.length > 0 || result.deletedUsersWithRemaining > 0) {
-          notifyPointInvariantIssues(result);
-        }
-        if (result.issues.length > 0 || result.deletedUsersWithRemaining > 0) {
-          throw new Error(
-            `积分账本对账发现 ${result.issues.length} 个异常、${result.deletedUsersWithRemaining} 个注销后仍有积分的账户`
-          );
+        if (report.summary.hasIssues) notifyReconciliationIssues(report);
+        const actionableIssues = report.summary.totalIssueCount - negativeBalances;
+        if (actionableIssues > 0) {
+          throw new Error(`财务对账发现 ${actionableIssues} 个待处理异常`);
         }
       } catch (error) {
-        apiConsole.error("[Cron] 积分账本对账失败:", error);
+        apiConsole.error("[Cron] 财务对账失败:", error);
         throw error;
       }
     },

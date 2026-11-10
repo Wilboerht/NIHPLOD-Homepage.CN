@@ -18,7 +18,7 @@
  * 所有函数接受事务客户端 tx，由调用方包在 prisma.$transaction 内。
  */
 import { Prisma } from "@/generated/prisma/client";
-import type { MembershipLevel } from "@/generated/prisma/client";
+import type { MembershipLevel, PointLedgerSource } from "@/generated/prisma/client";
 import { BIRTHDAY_POINTS } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
@@ -381,9 +381,15 @@ export type RedeemResult =
  */
 export async function redeemPoints(
   tx: PointTx,
-  params: { userId: string; amount: number; reference: string; note?: string }
+  params: {
+    userId: string;
+    amount: number;
+    reference: string;
+    note?: string;
+    source?: PointLedgerSource;
+  }
 ): Promise<RedeemResult> {
-  const { userId, amount, reference, note } = params;
+  const { userId, amount, reference, note, source = "WEBSITE" } = params;
   if (amount <= 0) return { ok: false, code: "INSUFFICIENT", available: 0 };
 
   await lockPointBalance(tx, userId);
@@ -452,7 +458,7 @@ export async function redeemPoints(
   }
 
   await tx.pointLedger.create({
-    data: { userId, type: "REDEEM", amount: -amount, reference, note: note ?? null },
+    data: { userId, type: "REDEEM", source, amount: -amount, reference, note: note ?? null },
   });
   return { ok: true, available: balance.available - amount, spent: amount };
 }

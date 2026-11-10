@@ -8,6 +8,7 @@ import { apiConsole } from "./logger";
 import { maskPhone } from "./mask-phone";
 import { claimAlert, notifyWithCooldown, sendAlert } from "./alert-notify";
 import type { PointInvariantResult } from "./points-invariants";
+import type { ReconciliationReport } from "./admin-reconciliation";
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -167,6 +168,25 @@ export function notifyPointInvariantIssues(result: PointInvariantResult): void {
       `- 对账异常：${result.issues.length}${result.truncated ? "（已截断）" : ""}`,
       ...(samples.length > 0 ? ["", "异常样例：", ...samples] : []),
       "- 请运行 `npm run points:check-invariants` 查看并人工处理",
+    ],
+  });
+}
+
+export function notifyReconciliationIssues(result: ReconciliationReport): void {
+  notifyWithCooldown({
+    ruleKey: "admin-reconciliation",
+    count: result.summary.totalIssueCount,
+    cooldownMs: 6 * HOUR,
+    type: "admin",
+    title: "财务对账发现待处理事项",
+    lines: [
+      `- 积分相关：${result.summary.pointIssueCount} 项`,
+      `- 消费相关：${result.summary.spentIssueCount} 项`,
+      `- 兑换流水关联：${result.points.redemptionLinks.count} 项`,
+      `- 累计消费不一致：${result.spent.totalMismatches.count} 项`,
+      `- 订单退款/占用异常：${result.spent.claimIssues.count} 项`,
+      `- 时间：${nowText()}`,
+      "- 请前往管理端「对账中心」核对并处理",
     ],
   });
 }

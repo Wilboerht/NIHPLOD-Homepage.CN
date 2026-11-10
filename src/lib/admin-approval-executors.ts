@@ -168,6 +168,8 @@ async function executeRedemptionCancel(
   const result = await cancelRedemption({
     redemptionId: payload.redemptionId,
     note: payload.note,
+    actorType: "ADMIN",
+    actorId: ctx.approver.id,
   });
   if (!result.ok) {
     throw new AdminApprovalError(
@@ -312,6 +314,7 @@ async function executeSpentReviewUndo(
   const result = await undoApplication({
     applicationId: payload.applicationId,
     adminId: ctx.approver.id,
+    reason: ctx.reason,
   });
   if (!result.ok) {
     throw new AdminApprovalError(

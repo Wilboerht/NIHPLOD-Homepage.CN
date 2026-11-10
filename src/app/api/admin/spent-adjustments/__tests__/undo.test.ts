@@ -63,7 +63,7 @@ const mockUndo = undoApplication as ReturnType<typeof vi.fn>;
 function createRequest(): NextRequest {
   return new NextRequest(
     new URL("/api/admin/spent-adjustments/app-1/undo", "http://localhost:3000"),
-    { method: "POST" } as never
+    { method: "POST", body: JSON.stringify({ reason: "订单核实有误" }) } as never
   );
 }
 
@@ -101,6 +101,7 @@ describe("POST /api/admin/spent-adjustments/[id]/undo", () => {
     expect(mockUndo).toHaveBeenCalledWith({
       applicationId: "app-1",
       adminId: "admin-1",
+      reason: "订单核实有误",
     });
     expect(beginAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({

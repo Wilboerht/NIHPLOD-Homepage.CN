@@ -17,6 +17,7 @@ const txMock = {
   product: {
     updateMany: vi.fn(),
   },
+  pointRedemptionEvent: { create: vi.fn().mockResolvedValue({}) },
 };
 
 vi.mock("@/lib/prisma", () => {

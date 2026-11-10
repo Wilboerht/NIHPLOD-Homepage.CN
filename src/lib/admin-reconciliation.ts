@@ -175,6 +175,7 @@ export async function findPointRedemptionLinkIssues(
         ON r."userId" = pl."userId"
        AND r."reference" = pl."reference"
       WHERE pl."type" = 'REDEEM'
+        AND pl."source" = 'WEBSITE'
         AND r."id" IS NULL
 
       UNION ALL
@@ -376,7 +377,8 @@ export async function findSpentClaimIssues(limit = 100): Promise<CappedResult<Sp
     WHERE (c."originalAmount" IS NULL AND c."refundedAmount" > 0)
        OR (c."originalAmount" IS NOT NULL AND c."refundedAmount" > c."originalAmount")
        OR (
-         c."originalAmount" IS NOT NULL
+         c."source" = 'SPENT_IMPORT'
+         AND c."originalAmount" IS NOT NULL
          AND c."refundedAmount" <> COALESCE(r.refunded, 0)
        )
     ORDER BY c."orderNoKey"

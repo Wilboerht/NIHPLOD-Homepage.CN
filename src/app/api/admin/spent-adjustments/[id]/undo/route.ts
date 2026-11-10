@@ -18,13 +18,10 @@ import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { undoApplication, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
 
-const undoBodySchema = z
-  .object({
-    totpCode: z.string().max(20).optional(),
-    reason: z.string().trim().max(200).optional(),
-  })
-  .optional()
-  .default({});
+const undoBodySchema = z.object({
+  totpCode: z.string().max(20).optional(),
+  reason: z.string().trim().min(2, "请填写撤销原因或工单号").max(200),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -114,6 +111,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       result = await undoApplication({
         applicationId: id,
         adminId: admin.id,
+        reason: parsedBody.data.reason,
       });
     } catch (error) {
       await finishAuditLog(auditId, "FAILURE", { decision: "undo", error: "EXCEPTION" });

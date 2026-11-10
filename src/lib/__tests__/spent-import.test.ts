@@ -28,6 +28,7 @@ vi.mock("@/lib/prisma", () => {
 
 vi.mock("@/lib/points", () => ({
   applyExternalSpentSync: vi.fn(),
+  invalidateProfileCache: vi.fn(),
   pushMembershipUpdateWebhook: vi.fn().mockResolvedValue(undefined),
   SpentReversalExceedsBalanceError: class SpentReversalExceedsBalanceError extends Error {},
 }));
@@ -685,8 +686,20 @@ describe("undoImportBatch", () => {
       undoneAt: null,
       totalAmount: 1500,
       rows: [
-        { id: "row-1", userId: "user-1", amount: 1000, appliedDelta: 1000, reference: "import:ref-1" },
-        { id: "row-2", userId: "user-2", amount: 500, appliedDelta: 500, reference: "import:ref-2" },
+        {
+          id: "row-1",
+          userId: "user-1",
+          amount: 1000,
+          appliedDelta: 1000,
+          reference: "import:ref-1",
+        },
+        {
+          id: "row-2",
+          userId: "user-2",
+          amount: 500,
+          appliedDelta: 500,
+          reference: "import:ref-2",
+        },
       ],
     });
     mockApplySync.mockRejectedValueOnce(new Error("db down"));

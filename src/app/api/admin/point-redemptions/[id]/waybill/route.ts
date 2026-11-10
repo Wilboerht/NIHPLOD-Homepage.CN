@@ -97,7 +97,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     let result: Awaited<ReturnType<typeof updateRedemptionWaybill>>;
     try {
-      result = await updateRedemptionWaybill({ redemptionId: id, waybillNo });
+      result = await updateRedemptionWaybill({ redemptionId: id, adminId: admin.id, waybillNo });
     } catch (error) {
       await finishAuditLog(auditId, "FAILURE", { error: "EXCEPTION" });
       throw error;

@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import {
   applyExternalSpentSync,
+  invalidateProfileCache,
   pushMembershipUpdateWebhook,
   SpentReversalExceedsBalanceError,
 } from "@/lib/points";
@@ -862,7 +863,10 @@ export async function previewImportRows(
   );
   const importedContentKeys = new Set(
     importedRows
-      .filter((row): row is typeof row & { orderNo: string; phone: string } => !!row.orderNo && !!row.phone)
+      .filter(
+        (row): row is typeof row & { orderNo: string; phone: string } =>
+          !!row.orderNo && !!row.phone
+      )
       .map((row) =>
         rowReference(
           row.phone,
@@ -903,30 +907,19 @@ export async function previewImportRows(
         const seenRefundAmount = seenRefundAmountByOrderKey.get(row.orderNoKey) ?? 0;
         if (!claim || claim.userId !== user.id || claim.originalAmount === null) {
           error = "退款行找不到对应的原始订单入账，无法退款";
-        } else if (
-          claim.refundedAmount + seenRefundAmount + refundAmount >
-          claim.originalAmount
-        ) {
+        } else if (claim.refundedAmount + seenRefundAmount + refundAmount > claim.originalAmount) {
           error = "该订单累计退款金额已超过原始入账金额，请人工核对";
         } else {
           // 负数行是对原订单的退款/冲正，不能按“订单号已入账”拦截，
           // 否则正常的退款导入永远无法执行；按内容指纹防同一退款行重复。
-          const refundKey = rowReference(
-            user.phone,
-            row.amount ?? 0,
-            row.orderNo,
-            row.purchasedAt
-          );
+          const refundKey = rowReference(user.phone, row.amount ?? 0, row.orderNo, row.purchasedAt);
           if (importedContentKeys.has(refundKey)) {
             error = "该退款行已通过 Excel 导入入账，请勿重复导入";
           } else if (seenRefundKeys.has(refundKey)) {
             error = "文件内退款行重复，请合并或删除重复行";
           } else {
             seenRefundKeys.add(refundKey);
-            seenRefundAmountByOrderKey.set(
-              row.orderNoKey,
-              seenRefundAmount + refundAmount
-            );
+            seenRefundAmountByOrderKey.set(row.orderNoKey, seenRefundAmount + refundAmount);
           }
         }
       } else if (claimByOrderKey.has(row.orderNoKey)) {
@@ -1034,14 +1027,7 @@ export async function executeImportBatch(params: {
   /** 审批执行幂等键；同一审批重试时复用已创建批次 */
   approvalId?: string;
 }): Promise<ExecuteResult> {
-  const {
-    rows: inputs,
-    fileName,
-    fileHash,
-    reason,
-    adminId,
-    approvalId,
-  } = params;
+  const { rows: inputs, fileName, fileHash, reason, adminId, approvalId } = params;
   const rejected = params.rejectedRows ?? [];
 
   if (inputs.length === 0 || inputs.length + rejected.length > IMPORT_MAX_ROWS) {
@@ -1183,9 +1169,7 @@ export async function executeImportBatch(params: {
               channel: row.channel ?? null,
               orderNo: row.orderNo ?? null,
               orderNoKey: row.orderNo ? normalizeOrderNo(row.orderNo) : null,
-              purchasedAt: row.purchasedAt
-                ? new Date(`${row.purchasedAt}T00:00:00.000Z`)
-                : null,
+              purchasedAt: row.purchasedAt ? new Date(`${row.purchasedAt}T00:00:00.000Z`) : null,
               note: row.note ?? null,
               reference: `rejected:${version}:${row.rowIndex}`,
               syncReference: `rejected:${row.rowIndex}`,
@@ -1316,7 +1300,8 @@ export async function executeImportBatch(params: {
         if (activeDuplicate) return markDuplicate();
 
         try {
-          return await prisma.$transaction<ExecuteRowResult>(async (tx) => {
+          const completedSync: Awaited<ReturnType<typeof applyExternalSpentSync>>[] = [];
+          const rowResult = await prisma.$transaction<ExecuteRowResult>(async (tx) => {
             const currentBatch = await tx.spentImportBatch.findUnique({
               where: { id: batch.id },
               select: { status: true, undoneAt: true, leaseToken: true },
@@ -1344,6 +1329,7 @@ export async function executeImportBatch(params: {
                 source: "SPENT_IMPORT",
                 requireActiveUser: true,
                 enforceRefundClaim: row.amount! < 0,
+                suppressWebhook: true,
                 note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
                   row.orderNo ? ` ${row.orderNo}` : ""
                 }`,
@@ -1352,6 +1338,7 @@ export async function executeImportBatch(params: {
               IMPORT_DAILY_LIMIT_YUAN
             );
             if (!result) throw new Error("SPENT_IMPORT_USER_MISSING");
+            completedSync.push(result);
 
             const appliedDelta = result.duplicated ? 0 : result.appliedDelta;
             const status = result.duplicated ? "DUPLICATE" : "SUCCESS";
@@ -1371,6 +1358,14 @@ export async function executeImportBatch(params: {
               reference: syncReference,
             };
           });
+          const sync = completedSync[0];
+          if (sync && !sync.duplicated && sync.appliedDelta !== 0) {
+            invalidateProfileCache();
+            pushMembershipUpdateWebhook(userId, sync).catch((error) =>
+              apiConsole.warn(`[SpentImport] 入账后会员 webhook 推送失败: ${error}`)
+            );
+          }
+          return rowResult;
         } catch (error) {
           apiConsole.error(`[SpentImport] 行 ${row.rowIndex} 入账失败:`, error);
           if (error instanceof Error && error.message === "IMPORT_BATCH_STALE") {
@@ -1756,6 +1751,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
 
   // 事务提交后再推送会员变更，避免回滚后子站收到错误状态。
   for (const [userId, result] of webhookUpdates) {
+    invalidateProfileCache();
     pushMembershipUpdateWebhook(userId, result).catch((error) =>
       apiConsole.warn(`[SpentImport] 撤销后会员 webhook 推送失败（不影响撤销）:`, error)
     );
