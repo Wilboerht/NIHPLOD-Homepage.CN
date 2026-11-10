@@ -780,6 +780,16 @@ export async function consumeWechatExchangeToken(token: string): Promise<boolean
   }
 }
 
+/**
+ * 释放尚未完成业务兑换的 WeChat Exchange Token。
+ * 仅用于“需要继续绑定”或业务失败路径；登录/绑定成功后不得释放。
+ */
+export async function releaseWechatExchangeToken(token: string): Promise<void> {
+  const hash = hashWechatExchangeToken(token);
+  usedWechatExchangeTokens.delete(hash);
+  await prisma.tokenBlacklist.deleteMany({ where: { key: `we:${hash}` } });
+}
+
 export interface WechatExchangePayload {
   type: "wechat_exchange";
   openid: string;

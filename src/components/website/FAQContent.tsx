@@ -249,7 +249,7 @@ export function FAQContent() {
                       className={cn(
                         "group border-b border-l-[1.5px] border-r-0 border-t-0 border-brand-charcoal/10 border-l-transparent transition-colors duration-500 ease-out",
                         openIndex === index
-                          ? "border-l-[#B5AC88] bg-[#FFFFFF]/40"
+                          ? "border-l-brand-buff bg-white/40"
                           : "hover:bg-white/20"
                       )}
                     >

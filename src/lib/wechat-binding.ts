@@ -30,6 +30,7 @@ import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { resolveMiniprogramCredentials } from "@/lib/miniprogram-clients";
 import { apiConsole } from "@/lib/logger";
+import { scheduleSsoEvent } from "@/lib/sso-audit";
 import type { NextRequest } from "next/server";
 
 /**
@@ -37,7 +38,7 @@ import type { NextRequest } from "next/server";
  * （RS256 Access Token，type=access_token，audience=clientId，子站可经 JWKS 验签；
  * 同时创建 OAuthSession，sid 入 token。撤销会话后的生效范围：主站
  * verifyOAuthAccessToken/introspect 立即失效；子站 JWKS 本地验签不感知撤销，
- * 依赖短 TTL 兜底——建 client 时 accessTokenTtlSeconds 必须设 900）。
+ * 依赖短 TTL 兜底——生产环境建议将 accessTokenTtlSeconds 设为 900）。
  * 不传时保持内部 HS256 双 Token 行为（网页绑定等既有路径不受影响）。
  */
 export interface WechatOAuthIssueOptions {
@@ -149,7 +150,7 @@ const MAX_OAUTH_SESSIONS_PER_CLIENT = 10;
  *
  * 撤销语义：revoke OAuthSession 后主站 verifyOAuthAccessToken/introspect 按 sid 查库
  * 立即失效；子站 JWKS 本地验签不感知撤销，依赖短 TTL
- * （建 client 时 accessTokenTtlSeconds 必须设 900）兜底。
+ * （生产环境建议 accessTokenTtlSeconds=900）兜底。
  */
 export async function issueOAuthTokens(
   user: { id: string; phone: string },
@@ -229,6 +230,14 @@ export async function issueOAuthTokens(
     clientId,
     sessionId
   );
+  scheduleSsoEvent({
+    event: "token",
+    userId: user.id,
+    clientId,
+    ip: getClientIP(request),
+    success: true,
+    detail: { grant_type: "miniprogram_direct", scope },
+  });
 
   return { accessToken, refreshToken, expiresIn: accessTokenTtlSeconds };
 }

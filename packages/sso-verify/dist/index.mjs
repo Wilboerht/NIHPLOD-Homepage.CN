@@ -209,7 +209,8 @@ function createTokenVerifier(options) {
         ...data.client_type ? { client_type: data.client_type } : {},
         ...data.sid ? { sid: data.sid } : {},
         ...typeof data.auth_time === "number" ? { auth_time: data.auth_time } : {},
-        ...data.cnf ? { cnf: data.cnf } : {}
+        ...data.cnf ? { cnf: data.cnf } : {},
+        ...data.token_type === "Bearer" || data.token_type === "DPoP" ? { token_type: data.token_type } : {}
       };
     }
     let ttl = introspectCacheTtl;
@@ -320,7 +321,7 @@ function createTokenVerifier(options) {
      *
      * 模式由 verificationMode 控制（默认 "auto"）：
      * - auto：配置了 Introspection 时优先 Introspection（实时感知撤销）；否则本地验签。
-     * - introspection：强制 Introspection（未配置端点时回退本地）。
+     * - introspection：强制 Introspection（缺少端点或 clientId 时抛配置错误）。
      * - local：仅本地验签（不感知撤销）。
      * - hybrid：本地优先，失败后 Introspection（旧版行为）。
      *
@@ -333,7 +334,12 @@ function createTokenVerifier(options) {
         return await runLocal();
       }
       if (verificationMode === "introspection") {
-        return hasIntrospection ? await runIntrospection() : await runLocal();
+        if (!hasIntrospection) {
+          throw new Error(
+            "[sso-verify] verificationMode=introspection \u5FC5\u987B\u914D\u7F6E introspectionEndpoint \u4E0E clientId"
+          );
+        }
+        return await runIntrospection();
       }
       if (verificationMode === "hybrid") {
         const local = await runLocal();

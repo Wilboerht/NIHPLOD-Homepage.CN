@@ -8,7 +8,7 @@
  * - 当前小程序的其它设备不可下线：撤销同 client 的 OAuthSession 会使当前会话立即失效
  *   （400 CURRENT_CLIENT_DEVICE）
  * - 关联 OAuth 会话同步撤销并触发 Backchannel Logout
- * 要求 scope 含 profile:write；用户级限流 10 次/小时。
+ * 要求 scope 含 security:manage；用户级限流 10 次/小时。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";

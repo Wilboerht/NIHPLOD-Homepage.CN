@@ -6,8 +6,8 @@
  * - GET：限流 429 / 非 owner 403 / 已过期未撤销 session 不计入活跃（where 含 expiresAt.gt）/
  *        手机号脱敏
  * - POST：两种终止模式（sessionId | userId+clientId）显式互斥 400 /
- *         session 不存在或已撤销 404 / 终止时联动 revokeRefreshToken，
- *         不再调用 blacklistUserTokens（即时失效由 sid 会话校验承担，避免误登出主站）
+ *         session 不存在或已撤销 404 / 单会话按 sid 精确撤销、批量模式级联撤销，
+ *         不调用 blacklistUserTokens（即时失效由 sid 会话校验承担，避免误登出主站）
  * - DELETE：缺少 confirm 400 / 批量撤销并逐用户 Backchannel Logout 通知
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -23,6 +23,7 @@ const {
   mockValidateCSRFToken,
   mockRevokeRefreshToken,
   mockRevokeOAuthRefreshTokensForUser,
+  mockRevokeOAuthClientSessions,
   mockBlacklistUserTokens,
   mockSendBackchannelLogout,
   mockEnqueueBackchannelLogoutForActiveSessions,
@@ -43,6 +44,7 @@ const {
     mockValidateCSRFToken: vi.fn(),
     mockRevokeRefreshToken: vi.fn(),
     mockRevokeOAuthRefreshTokensForUser: vi.fn(),
+    mockRevokeOAuthClientSessions: vi.fn(),
     mockBlacklistUserTokens: vi.fn(),
     mockSendBackchannelLogout: vi.fn(),
     mockEnqueueBackchannelLogoutForActiveSessions: vi.fn(),
@@ -108,6 +110,10 @@ vi.mock("@/lib/auth-security", () => ({
     mockRevokeOAuthRefreshTokensForUser(...args),
 }));
 
+vi.mock("@/lib/oauth-session-revoke", () => ({
+  revokeOAuthClientSessions: (...args: unknown[]) => mockRevokeOAuthClientSessions(...args),
+}));
+
 vi.mock("@/lib/token-blacklist", () => ({
   blacklistUserTokens: (...args: unknown[]) => mockBlacklistUserTokens(...args),
   removeFromBlacklist: vi.fn(),
@@ -165,6 +171,7 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
     mockValidateCSRFToken.mockReturnValue(true);
     mockRevokeRefreshToken.mockResolvedValue(undefined);
     mockRevokeOAuthRefreshTokensForUser.mockResolvedValue(undefined);
+    mockRevokeOAuthClientSessions.mockResolvedValue({ sessionCount: 1, latestSid: "sess-abc" });
     mockBlacklistUserTokens.mockResolvedValue(undefined);
     mockSendBackchannelLogout.mockResolvedValue(undefined);
     mockRecordSsoEvent.mockResolvedValue(undefined);
@@ -396,14 +403,8 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       expect(prismaMock.oAuthSession.update).not.toHaveBeenCalled();
     });
 
-    it("sessionId 模式：终止成功应级联撤销同 client 全部会话并联动 revokeRefreshToken，不再调用 blacklistUserTokens", async () => {
+    it("sessionId 模式：只撤销目标会话及其 refresh token，不误伤同 client 其他设备", async () => {
       prismaMock.oAuthSession.findUnique.mockResolvedValue(makeSession());
-      // 该用户在此 client 下有 2 条活跃会话（撤销前查询，sid 供 logout_token 携带）
-      prismaMock.oAuthSession.findMany.mockResolvedValue([
-        { id: "session-1", sessionId: "sid-1" },
-        { id: "session-2", sessionId: "sid-2" },
-      ]);
-      prismaMock.oAuthSession.updateMany.mockResolvedValue({ count: 2 });
 
       const { POST } = await import("@/app/api/admin/oauth/sessions/route");
       const res = await POST(
@@ -415,25 +416,14 @@ describe("管理端 OAuth 会话管理 /api/admin/oauth/sessions", () => {
       const data = await res.json();
 
       expect(res.status).toBe(200);
-      // RefreshToken 无 sid 列，撤销粒度是 user+client，会话撤销与之对齐（级联）
-      expect(data.data.terminatedCount).toBe(2);
-      expect(prismaMock.oAuthSession.updateMany).toHaveBeenCalledWith({
-        where: { userId: "user-1", clientId: "client-abc", revokedAt: null },
-        data: { revokedAt: expect.any(Date) },
+      expect(data.data.terminatedCount).toBe(1);
+      expect(mockRevokeOAuthClientSessions).toHaveBeenCalledWith("user-1", "client-abc", {
+        sid: "sess-abc",
+        reason: "admin_revoke",
       });
-      // 同步撤销该 user+client 的 refresh token
-      expect(mockRevokeOAuthRefreshTokensForUser).toHaveBeenCalledWith(
-        "user-1",
-        "client-abc",
-        "admin_revoke"
-      );
-      // 关键回归点：不再拉黑用户全部 token（会把用户误登出主站），
-      // access token 即时失效由 sid 会话校验承担
+      expect(mockRevokeOAuthRefreshTokensForUser).not.toHaveBeenCalled();
+      expect(mockSendBackchannelLogout).not.toHaveBeenCalled();
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
-      // 该 client 下全部会话已撤销，使用 sub-only 通知
-      expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
-        omitSid: true,
-      });
     });
 
     it("userId 模式：无活跃会话应返回 404", async () => {

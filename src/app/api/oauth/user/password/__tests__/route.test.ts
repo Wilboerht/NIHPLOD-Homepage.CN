@@ -5,7 +5,7 @@
  * POST /api/oauth/user/password/send-code  - 发送设置密码验证码
  *
  * 业务核心与主站会话路由共用（src/lib/password-manage.ts，已有覆盖）；
- * 本文件聚焦 OAuth 通道接线：scope=profile:write、错误映射、无 Cookie 全撤会话。
+ * 本文件聚焦 OAuth 通道接线：scope=password:write、错误映射、无 Cookie 全撤会话。
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
@@ -159,7 +159,7 @@ describe("OAuth 密码管理", () => {
   });
 
   describe("PUT /api/oauth/user/password", () => {
-    it("鉴权失败时直接返回鉴权响应，且请求 scope=profile:write", async () => {
+    it("鉴权失败时直接返回鉴权响应，且请求 scope=password:write", async () => {
       const denied = NextResponse.json({ error: "insufficient_scope" }, { status: 403 });
       mockAuthenticate.mockResolvedValue({ ok: false, response: denied });
 

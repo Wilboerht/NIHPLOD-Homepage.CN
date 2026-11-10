@@ -22,6 +22,7 @@ import { recordSsoEvent } from "@/lib/sso-audit";
 import { getClientIP } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 import { revokeOAuthRefreshTokensForUser } from "@/lib/auth-security";
+import { revokeOAuthClientSessions } from "@/lib/oauth-session-revoke";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -264,7 +265,7 @@ export async function POST(request: NextRequest) {
 
       const session = await prisma.oAuthSession.findUnique({
         where: { id: sessionId },
-        select: { id: true, userId: true, clientId: true, revokedAt: true },
+        select: { id: true, sessionId: true, userId: true, clientId: true, revokedAt: true },
       });
 
       if (!session || session.revokedAt) {
@@ -274,22 +275,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // RefreshToken 表无 sid 列，撤销粒度是"用户 + client"；为对齐粒度，
-      // 终止单会话时级联撤销该用户在此 client 下的全部 session，
-      // 避免其余 session 留存活但无法刷新的不一致状态。
-      // 撤销前先查出活跃会话的 sid，供 backchannel logout_token 携带
-      const activeSessions = await prisma.oAuthSession.findMany({
-        where: {
-          userId: session.userId,
-          clientId: session.clientId,
-          revokedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-        select: { id: true, sessionId: true },
-        orderBy: { createdAt: "desc" },
-      });
-
-      const terminatedCount = activeSessions.length > 0 ? activeSessions.length : 1;
+      const terminatedCount = 1;
       const auditId = await beginAuditLog({
         action: "oauth_session_terminate",
         targetType: "oauth_session",
@@ -299,7 +285,7 @@ export async function POST(request: NextRequest) {
           clientId: session.clientId,
           sessionId,
           terminatedCount,
-          cascaded: terminatedCount > 1,
+          cascaded: false,
         },
         adminId: admin.id,
         request,
@@ -314,25 +300,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await prisma.oAuthSession.updateMany({
-        where: { userId: session.userId, clientId: session.clientId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      // 未消费的授权码仍可在 TTL 内换发新会话，必须一并作废。
-      await prisma.oAuthAuthorizationCode?.deleteMany({
-        where: { userId: session.userId, clientId: session.clientId, used: false },
-      });
-
-      // 同步撤销该用户+client 下的活跃 RefreshToken
-      await revokeOAuthRefreshTokensForUser(session.userId, session.clientId, "admin_revoke");
-
-      // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
-      // sid 查到本 session 的 revokedAt 即拒绝），不再拉黑用户全部 token，
-      // 避免误登出主站会话。
-
-      // Backchannel Logout 通知：该用户在该 client 下的全部会话均已撤销，使用 sub-only
-      await sendBackchannelLogout(session.userId, [session.clientId], {
-        omitSid: true,
+      await revokeOAuthClientSessions(session.userId, session.clientId, {
+        sid: session.sessionId,
+        reason: "admin_revoke",
       });
 
       await recordSsoEvent({
@@ -345,7 +315,7 @@ export async function POST(request: NextRequest) {
           action: "session_terminated",
           sessionId,
           terminatedCount,
-          cascaded: terminatedCount > 1,
+          cascaded: false,
         },
       });
 
@@ -354,7 +324,7 @@ export async function POST(request: NextRequest) {
         clientId: session.clientId,
         sessionId,
         terminatedCount,
-        cascaded: terminatedCount > 1,
+        cascaded: false,
       });
 
       return NextResponse.json({

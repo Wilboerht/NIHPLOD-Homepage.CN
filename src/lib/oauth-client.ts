@@ -626,15 +626,7 @@ export async function deleteOAuthClient(id: string): Promise<boolean> {
     });
     if (!client) return false;
 
-    // 删除前将活跃会话的 Backchannel Logout 通知写入补偿队列（分页 + 异步投递）。
-    // client 行删除后重投任务查不到 client，会按 target_unavailable 丢弃，属预期行为。
-    if (client.backchannelLogoutUri) {
-      await enqueueBackchannelLogoutForActiveSessions({
-        clientId: client.clientId,
-        omitSid: true,
-      });
-    }
-
+    // Backchannel 通知由管理路由在删除前统一入队，保留目标 URI 快照。
     await prisma.$transaction(async (tx) => {
       // 清理关联数据
       await tx.oAuthSession.deleteMany({ where: { clientId: client.clientId } });

@@ -34,6 +34,7 @@ const PRODUCT: ProductData = {
 
 afterEach(() => {
   document.body.style.overflow = "";
+  Reflect.deleteProperty(navigator, "clipboard");
 });
 
 describe("ProductDrawer", () => {
@@ -44,6 +45,44 @@ describe("ProductDrawer", () => {
     expect(screen.getByText("购买渠道")).toBeInTheDocument();
     expect(screen.getAllByText("天猫").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /NIHPLOD Logo/ })).toHaveAttribute("href", "/");
+  });
+
+  it("配置小程序短链时仍直接打开微信小店 H5，不拦截为复制", () => {
+    const writeText = vi.fn();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    const h5Url = "https://store.weixin.qq.com/shop/a/aZcJxBmsAw3BI6C";
+    render(
+      <ProductDrawer
+        isOpen
+        onClose={vi.fn()}
+        product={{
+          ...PRODUCT,
+          purchaseLinks: [
+            {
+              id: "wechat-1",
+              platform: "微信小店",
+              platformKey: "wechat-shop",
+              url: h5Url,
+              miniProgramShortLink: "#小程序://微信小店/abc",
+            },
+          ],
+        }}
+      />
+    );
+
+    const links = screen.getAllByRole("link", { name: "微信小店" });
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", h5Url);
+      expect(link).toHaveAttribute("target", "_blank");
+    }
+    links[0].addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(links[0]);
+    expect(writeText).not.toHaveBeenCalled();
+    expect(screen.queryByText("已复制小程序跳转信息")).not.toBeInTheDocument();
   });
 
   it("传入 actionArea 时替代购买链接，且不渲染 Logo 链接", () => {

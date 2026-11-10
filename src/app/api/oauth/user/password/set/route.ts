@@ -4,7 +4,7 @@
  *
  * 供子项目（BFF）为无密码账号设置密码（短信验证码，type=reset）：
  * 与主站会话路由 /api/user/password/set 共用业务核心（src/lib/password-manage.ts）；
- * Bearer 鉴权（scope=profile:write）。成功后子站用户需重新登录。
+ * Bearer 鉴权（scope=password:write）。成功后子站用户需重新登录。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";

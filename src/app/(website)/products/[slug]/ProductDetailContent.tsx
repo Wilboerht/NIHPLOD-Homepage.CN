@@ -57,7 +57,7 @@ type TabType = "description" | "ingredients" | "usage";
 
 export function ProductDetailContent({ product, faqs }: ProductDetailContentProps) {
   const { success } = useToast();
-  const { navigateToList } = useProductsShell();
+  const { navigateToList, setDetailBackHandler } = useProductsShell();
   const mounted = useMounted();
 
   useEffect(() => {
@@ -83,7 +83,6 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
   const containerRef = useRef<HTMLDivElement>(null);
   const faqScrollRef = useRef<HTMLDivElement>(null);
   const faqButtonRef = useRef<HTMLButtonElement>(null);
-  const faqBackRef = useRef<HTMLButtonElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [prevProductId, setPrevProductId] = useState(product.id);
   if (prevProductId !== product.id) {
@@ -322,7 +321,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
     setFaqOpen(true);
     requestAnimationFrame(() => {
       faqScrollRef.current?.scrollTo({ top: 0 });
-      faqBackRef.current?.focus();
+      faqScrollRef.current?.focus();
     });
   }, []);
 
@@ -332,6 +331,23 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
       faqButtonRef.current?.focus();
     });
   }, []);
+
+  useEffect(() => {
+    if (!faqOpen) return;
+    setDetailBackHandler(closeFaq, "返回产品详情");
+    return () => setDetailBackHandler(null);
+  }, [faqOpen, closeFaq, setDetailBackHandler]);
+
+  useEffect(() => {
+    if (!faqOpen) return;
+
+    const handleFaqKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeFaq();
+    };
+
+    document.addEventListener("keydown", handleFaqKeyDown);
+    return () => document.removeEventListener("keydown", handleFaqKeyDown);
+  }, [faqOpen, closeFaq]);
 
   const handleListLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
@@ -725,17 +741,17 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
       {faqs.length > 0 && (
         <div
           ref={faqScrollRef}
+          tabIndex={-1}
           aria-hidden={!faqOpen}
           inert={!faqOpen}
           className={cn(
-            "scrollbar-hide absolute inset-0 z-20 h-full overflow-y-auto overscroll-contain bg-brand-cream transition-opacity duration-300",
+            "scrollbar-hide absolute inset-0 z-20 h-full overflow-y-auto overscroll-contain bg-brand-cream transition-opacity duration-300 focus:outline-none",
             faqOpen ? "opacity-100" : "pointer-events-none opacity-0"
           )}
         >
           <div className="mx-auto w-full max-w-[1920px] px-6 pb-6 pt-6 lg:pl-[51px] lg:pr-10 xl:pl-[calc(8%_+_11px)] xl:pr-[8%]">
-            <div className="mb-2 flex items-center">
+            <div className="mb-2 hidden items-center lg:flex">
               <button
-                ref={faqBackRef}
                 type="button"
                 onClick={closeFaq}
                 className="inline-flex items-center gap-1.5 py-2 text-[13px] font-normal tracking-[0.04em] text-brand-charcoal/60 transition-colors hover:text-brand-charcoal"

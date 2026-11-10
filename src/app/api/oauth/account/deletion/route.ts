@@ -5,7 +5,7 @@
  * DELETE /api/oauth/account/deletion - 撤回申请
  *
  * 与主站会话路由（/api/user/account/deletion）共用核心（src/lib/account-deletion-requests.ts）。
- * scope：查询需 profile；提交/撤回为账号级破坏性写操作，需 profile:write。
+ * scope：查询需 profile；提交/撤回为账号级破坏性写操作，需 account:delete。
  *
  * 安全边界说明：
  * - 小程序用户密码为注册时自动生成（不可知），本通道改为要求本人手机号收到的

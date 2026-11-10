@@ -67,6 +67,11 @@ vi.mock("@/lib/auth-logger", () => ({
   logAuthEvent: vi.fn(),
 }));
 
+vi.mock("@/lib/sso-audit", () => ({
+  scheduleSsoEvent: vi.fn(),
+  recordSsoEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/client-ip", () => ({
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
 }));

@@ -26,10 +26,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-import {
-  buildAdvisorProductSnapshot,
-  pushAdvisorProductSnapshot,
-} from "../advisor-product-sync";
+import { buildAdvisorProductSnapshot, pushAdvisorProductSnapshot } from "../advisor-product-sync";
 
 function productRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -99,10 +96,7 @@ describe("buildAdvisorProductSnapshot", () => {
       "https://nihplod.cn/uploads/products/a.webp",
       "https://nihplod.cn/uploads/products/b.webp",
     ]);
-    expect(item.purchaseLinks.map((link) => link.platformKey)).toEqual([
-      "tmall",
-      "xiaohongshu",
-    ]);
+    expect(item.purchaseLinks.map((link) => link.platformKey)).toEqual(["tmall", "xiaohongshu"]);
     expect(item.purchaseLinksTotal).toBe(3);
     expect(item.benefits).toEqual(["保湿", "修护"]);
   });
@@ -133,9 +127,34 @@ describe("buildAdvisorProductSnapshot", () => {
       }),
     ]);
     const snapshot = await buildAdvisorProductSnapshot();
-    expect(snapshot.products[0].images[0]).toBe(
-      "https://nihplod.cn/uploads/products/a.webp"
-    );
+    expect(snapshot.products[0].images[0]).toBe("https://nihplod.cn/uploads/products/a.webp");
+  });
+
+  it("微信小店只有官方 H5 链接时也保留同步", async () => {
+    mocks.findMany.mockResolvedValue([
+      productRow({
+        purchaseLinks: [
+          {
+            platform: "微信小店",
+            platformKey: "wechat-shop",
+            url: "https://store.weixin.qq.com/shop/a/aZcJxBmsAw3BI6C",
+            miniProgramShortLink: null,
+            miniProgramPath: null,
+            order: 0,
+          },
+        ],
+      }),
+    ]);
+
+    const snapshot = await buildAdvisorProductSnapshot();
+    expect(snapshot.products[0].purchaseLinks).toEqual([
+      {
+        platformKey: "wechat-shop",
+        platform: "微信小店",
+        url: "https://store.weixin.qq.com/shop/a/aZcJxBmsAw3BI6C",
+      },
+    ]);
+    expect(snapshot.products[0].purchaseLinksTotal).toBe(1);
   });
 });
 

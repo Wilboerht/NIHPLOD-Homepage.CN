@@ -3,7 +3,7 @@
  * PUT /api/oauth/user/password
  *
  * 供子项目（BFF）在用户中心修改密码：与主站会话路由 /api/user/password 共用
- * 业务核心（src/lib/password-manage.ts）；Bearer 鉴权（scope=profile:write）。
+ * 业务核心（src/lib/password-manage.ts）；Bearer 鉴权（scope=password:write）。
  * 无浏览器 Cookie 可保留：成功后其他设备 / OAuth 会话全撤并向子站发送
  * backchannel logout（子站用户需重新登录）。
  */

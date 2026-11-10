@@ -1,6 +1,6 @@
 /**
  * OAuth 换绑手机号端点测试
- * PUT  /api/oauth/phone            - 双验证码换绑（Bearer + scope=phone）
+ * PUT  /api/oauth/phone            - 双验证码换绑（Bearer + scope=phone:write）
  * POST /api/oauth/phone/send-code  - 发送换绑验证码
  *
  * 业务核心与主站会话路由共用（src/lib/phone-rebind.ts，已有覆盖）；

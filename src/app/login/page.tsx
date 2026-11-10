@@ -956,6 +956,8 @@ function LoginPageContent() {
         redirect_uri: redirectUri,
         state: stateParam,
       });
+      const popupNonce = searchParams.get("popup_nonce");
+      if (popupNonce) cancelParams.set("popup_nonce", popupNonce);
       // 必须完整页面导航：cancel 端点 302 重定向到跨域子项目回调
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`/api/oauth/cancel?${cancelParams.toString()}`);
@@ -1107,11 +1109,15 @@ function LoginPageContent() {
 
   const scopeDescriptions: Record<string, string> = {
     openid: "识别您的账号（用于登录）",
-    profile: "读取昵称、头像",
-    phone: "读取脱敏手机号；换绑手机号（需短信验证）",
-    membership: "读取会员等级、累计消费；读取和管理积分兑换与收货地址",
+    profile: "读取昵称、头像、性别及是否已设置密码",
+    phone: "读取脱敏手机号",
+    membership: "读取会员等级、累计消费；管理积分兑换与收货地址",
     birthday: "读取生日信息",
-    "profile:write": "修改昵称、头像、生日、性别、密码",
+    "profile:write": "修改昵称、头像、生日、性别",
+    "security:manage": "高敏感：查看安全记录，撤销其他应用授权、强制下线设备、解绑第三方身份",
+    "phone:write": "高敏感：通过短信验证换绑手机号",
+    "account:delete": "高敏感：通过短信验证申请或撤回账号注销",
+    "password:write": "高敏感：通过原密码或短信验证修改、设置登录密码",
   };
 
   const renderConsent = (variant: "pc" | "mobile") => {

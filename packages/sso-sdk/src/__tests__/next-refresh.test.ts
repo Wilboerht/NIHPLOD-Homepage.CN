@@ -32,6 +32,13 @@ describe("createRefreshRouteHandler", () => {
     expect(res.status).toBe(403);
   });
 
+  it("Origin 与 Sec-Fetch-Site 均缺失时拒绝", async () => {
+    const res = await handler(
+      new NextRequest("https://app.example.com/api/auth/refresh", { method: "POST" })
+    );
+    expect(res.status).toBe(403);
+  });
+
   it("缺少 refresh cookie 返回 401", async () => {
     const res = await handler(createRequest());
     expect(res.status).toBe(401);

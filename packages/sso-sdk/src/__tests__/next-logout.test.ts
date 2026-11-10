@@ -40,6 +40,13 @@ function buildRequest(
     .map(([k, v]) => `${k}=${v}`)
     .join("; ");
   const headers: Record<string, string> = { ...extraHeaders };
+  if (
+    method === "POST" &&
+    !headers.origin &&
+    !headers["sec-fetch-site"]
+  ) {
+    headers.origin = "https://myapp.com";
+  }
   if (cookieHeader) headers.cookie = cookieHeader;
   if (body !== undefined) {
     headers["content-type"] = "application/x-www-form-urlencoded";
@@ -92,6 +99,37 @@ describe("createLogoutRouteHandler", () => {
       buildRequest({}, {}, "POST", "global=1", { "sec-fetch-site": "cross-site" })
     );
     expect(res.status).toBe(403);
+  });
+
+  it("POST 缺少 Origin 与 Sec-Fetch-Site 时拒绝", async () => {
+    const handler = createLogoutRouteHandler(config);
+    const res = await handler(
+      new NextRequest("https://myapp.com/api/auth/logout", {
+        method: "POST",
+        body: "global=0",
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("本地登出撤销失败时返回 503、明确标记且仍清除本地 cookie", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/.well-known/openid-configuration")) {
+        return jsonResponse({ revocation_endpoint: "https://nihplod.cn/api/oauth/revoke" });
+      }
+      return jsonResponse({}, 503);
+    });
+    const handler = createLogoutRouteHandler(config);
+    const res = await handler(
+      buildRequest({}, { "__Host-nihplod_sso_rt": "rt-1" }, "POST")
+    );
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("x-sso-revocation")).toBe("failed");
+    expect(res.cookies.get("__Host-nihplod_sso_at")?.value).toBe("");
+    expect(res.cookies.get("__Host-nihplod_sso_rt")?.value).toBe("");
+    expect((await res.json()).error.code).toBe("REVOCATION_FAILED");
   });
 
   it("回跳 state 匹配时重定向到首页并清除 logout state cookie", async () => {

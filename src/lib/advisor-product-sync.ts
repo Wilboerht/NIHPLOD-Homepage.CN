@@ -118,9 +118,11 @@ function toAbsoluteAssetUrl(raw: string): string | null {
   return null;
 }
 
-function buildImages(
-  images: Array<{ url: string; order: number }>
-): { images: string[]; skipped: number; truncated: boolean } {
+function buildImages(images: Array<{ url: string; order: number }>): {
+  images: string[];
+  skipped: number;
+  truncated: boolean;
+} {
   const sorted = [...images].sort((a, b) => a.order - b.order);
   const result: string[] = [];
   let skipped = 0;
@@ -172,10 +174,6 @@ function buildPurchaseLinks(
     const miniProgramShortLink = link.miniProgramShortLink?.trim() || "";
     const miniProgramPath = link.miniProgramPath?.trim() || "";
     if (!url && !miniProgramShortLink) {
-      skipped += 1;
-      continue;
-    }
-    if (platformKey === "wechat-shop" && !miniProgramShortLink) {
       skipped += 1;
       continue;
     }
@@ -244,8 +242,7 @@ export async function buildAdvisorProductSnapshot(): Promise<AdvisorProductSnaps
       published: product.published && product.category.visible,
       updatedAt: product.updatedAt.toISOString(),
       capacity: product.capacity?.trim() || null,
-      howToUse:
-        htmlToPlainText(product.usage).slice(0, MAX_HOW_TO_USE_LENGTH).trim() || null,
+      howToUse: htmlToPlainText(product.usage).slice(0, MAX_HOW_TO_USE_LENGTH).trim() || null,
       origin: product.origin?.trim() || null,
       benefits: Array.isArray(product.benefits) ? product.benefits : [],
       images: imageResult.images,
@@ -273,10 +270,7 @@ export async function buildAdvisorProductSnapshot(): Promise<AdvisorProductSnaps
   };
 }
 
-function shouldRetry(result: {
-  status: number;
-  code: string;
-}): boolean {
+function shouldRetry(result: { status: number; code: string }): boolean {
   if (result.code === "NOT_CONFIGURED" || result.code === "SYNC_DISABLED") return false;
   if (result.code === "SYNC_IN_PROGRESS") return true;
   if (result.status === 0 || result.status === 429 || result.status >= 500) return true;

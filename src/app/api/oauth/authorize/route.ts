@@ -181,12 +181,14 @@ function buildErrorRedirect(
   redirectUri: string,
   error: string,
   errorDescription: string,
-  state?: string | null
+  state?: string | null,
+  popupNonce?: string | null
 ): NextResponse {
   const url = new URL(redirectUri);
   url.searchParams.set("error", error);
   url.searchParams.set("error_description", errorDescription);
   if (state) url.searchParams.set("state", state);
+  if (popupNonce) url.searchParams.set("popup_nonce", popupNonce);
   url.searchParams.set("iss", getIssuer());
   return redirectNoStore(url);
 }
@@ -306,7 +308,13 @@ export async function GET(request: NextRequest) {
         success: false,
         detail: { error, error_description: description, method: "GET" },
       });
-      return buildErrorRedirect(uri, error, description, stateValue);
+      return buildErrorRedirect(
+        uri,
+        error,
+        description,
+        stateValue,
+        searchParams.get("popup_nonce")
+      );
     };
 
     // Client 已停用：通过 302 回传错误
@@ -597,6 +605,7 @@ export async function GET(request: NextRequest) {
     consentUrl.searchParams.set("client_id", client_id);
     consentUrl.searchParams.set("redirect_uri", redirect_uri);
     consentUrl.searchParams.set("state", state);
+    if (popupNonce) consentUrl.searchParams.set("popup_nonce", popupNonce);
 
     return withRefreshedSession(redirectNoStore(consentUrl));
   } catch (error) {
@@ -730,7 +739,13 @@ export async function POST(request: NextRequest) {
         success: false,
         detail: { error, error_description: description, method: "POST" },
       });
-      return buildErrorRedirect(uri, error, description, stateValue);
+      return buildErrorRedirect(
+        uri,
+        error,
+        description,
+        stateValue,
+        typeof body.popup_nonce === "string" ? body.popup_nonce : null
+      );
     };
 
     // Client 已停用：通过 302 回传错误
@@ -830,6 +845,7 @@ export async function POST(request: NextRequest) {
     if (action === "deny") {
       redirectUrl.searchParams.set("error", "access_denied");
       redirectUrl.searchParams.set("error_description", "用户拒绝了授权请求");
+      if (popup_nonce) redirectUrl.searchParams.set("popup_nonce", popup_nonce);
 
       // 注意：deny 不再撤销既有 consent——用户拒绝的是本次扩大的 scope，
       // 历史授权保持有效，避免一次"拒绝"把既有登录态全部作废

@@ -5,6 +5,7 @@ import {
   MAX_GEO_FAQ_ANSWER_LENGTH,
   MAX_GEO_FAQ_QUESTION_LENGTH,
   ProductSchema,
+  PurchaseLinkSchema,
 } from "../product";
 
 const baseProduct = {
@@ -18,6 +19,57 @@ const baseProduct = {
   order: 0,
   published: false,
 };
+
+describe("PurchaseLinkSchema", () => {
+  const baseLink = {
+    platformKey: "wechat-shop",
+    platform: "微信小店",
+    url: "https://store.weixin.qq.com/shop/a/aZcJxBmsAw3BI6C",
+    order: 0,
+  };
+
+  it("接受微信小店官方商品 H5 短链和菜单复制的小程序短链", () => {
+    expect(
+      PurchaseLinkSchema.safeParse({
+        ...baseLink,
+        miniProgramShortLink: "#小程序://微信小店/abc",
+      }).success
+    ).toBe(true);
+  });
+
+  it("拒绝把普通文本、URL Link 或 Scheme 填入小程序短链", () => {
+    for (const miniProgramShortLink of [
+      "not-a-link",
+      "https://wxaurl.cn/TICKET",
+      "weixin://dl/business/?t=abc",
+    ]) {
+      expect(PurchaseLinkSchema.safeParse({ ...baseLink, miniProgramShortLink }).success).toBe(
+        false
+      );
+    }
+  });
+
+  it("接受官方示例路径、自定义分包路径和查询参数", () => {
+    for (const miniProgramPath of [
+      "page/index/index?id=123",
+      "pages/product/index?id=1",
+      "subpackage/shop/detail?id=1",
+      "/pages/product/index?id=1",
+    ]) {
+      expect(PurchaseLinkSchema.safeParse({ ...baseLink, miniProgramPath }).success).toBe(true);
+    }
+  });
+
+  it("拒绝不完整路径、完整 URL 和控制字符", () => {
+    for (const miniProgramPath of [
+      "pages/",
+      "https://example.com/pages/index",
+      "pages/index/index\nBAD",
+    ]) {
+      expect(PurchaseLinkSchema.safeParse({ ...baseLink, miniProgramPath }).success).toBe(false);
+    }
+  });
+});
 
 describe("GeoFaqsSchema", () => {
   it("trim 问题与答案", () => {

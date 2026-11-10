@@ -111,7 +111,9 @@ After successful verification, the token payload is attached to `req.user`.
 
 Introspection results are cached to reduce latency and load on the main site. This means a revoked access token may remain accepted locally until its cache entry expires. `active: true` results are cached for `introspectCacheTtl` (default 30s, additionally capped at the token's remaining `exp`); `active: false` results use the much shorter `introspectNegativeCacheTtl` (default 5s), so a previously-invalid token that becomes valid (e.g. re-issued) converges quickly, while revocation of an already-cached token takes at most `introspectCacheTtl`. Lower `introspectCacheTtl` for stronger revocation guarantees at the cost of more introspection calls. Use `verifier.invalidateCache(token)` to evict a specific token immediately.
 
-Concurrent `verify()` calls for the same token share a single in-flight introspection request, and failed requests (network errors / 5xx) are retried once by default — see `introspectRetries`.
+Concurrent `verify()` calls for the same token share a single in-flight introspection request, and failed requests (network errors / 5xx) are retried once by default — see `introspectRetries`. Cached results preserve DPoP `token_type`, `cnf`, `sid`, and `auth_time` consistently with the initial response. Resource servers accepting DPoP-bound tokens must validate the proof and bind its JWK thumbprint to `cnf.jkt`; token verification alone does not replace that proof check.
+
+`verificationMode: "introspection"` is strict: missing `introspectionEndpoint` or `clientId` causes a configuration error rather than local-JWT fallback. Use `auto` only when intentional local fallback is acceptable; `local` and `hybrid` do not provide immediate revocation awareness.
 
 ### Audience (aud) binding for introspection
 

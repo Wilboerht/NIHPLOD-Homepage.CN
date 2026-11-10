@@ -164,6 +164,12 @@ describe("createBackchannelLogoutRouteHandler", () => {
     expect(body.error_description).toContain("logout_token");
   });
 
+  it("超过 16KiB 的流式请求体返回 413，不进入验签", async () => {
+    const handler = createBackchannelLogoutRouteHandler(config);
+    const res = await handler(buildRequest(`logout_token=${"x".repeat(17 * 1024)}`));
+    expect(res.status).toBe(413);
+  });
+
   it("合法 token：200 空响应、onLogout 被调用、本站 SSO cookie 被清除", async () => {
     installFetchRouter();
     const onLogout = vi.fn();

@@ -40,6 +40,11 @@ interface ProductsShellContextValue {
   switchMobileView: (view: MobileView) => void;
   navigateToProduct: (slug: string) => void;
   navigateToList: () => void;
+  /**
+   * 详情子视图（如 FAQ 覆盖层）注册返回拦截。
+   * 注册后，移动端顶部返回优先关闭子视图，而不是离开产品页；label 用于无障碍文案。
+   */
+  setDetailBackHandler: (handler: (() => void) | null, label?: string) => void;
   listScrollTopRef: { current: number };
 }
 
@@ -80,6 +85,13 @@ export function ProductsShell({
   const listScrollTopRef = useRef(0);
   const contentRef = useRef<HTMLDivElement>(null);
   const shouldRestoreFocusRef = useRef(false);
+  const detailBackHandlerRef = useRef<(() => void) | null>(null);
+  const [detailBackLabel, setDetailBackLabel] = useState<string | null>(null);
+
+  const setDetailBackHandler = useCallback((handler: (() => void) | null, label?: string) => {
+    detailBackHandlerRef.current = handler;
+    setDetailBackLabel(handler ? (label ?? "返回") : null);
+  }, []);
 
   if (lastPathname !== pathname) {
     setLastPathname(pathname);
@@ -219,6 +231,16 @@ export function ProductsShell({
     navigateToList();
   };
 
+  const handleMobileBackClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (detailBackHandlerRef.current) {
+      e.preventDefault();
+      detailBackHandlerRef.current();
+      return;
+    }
+    handleListNavClick(e);
+  };
+
   const handleCategoryNavClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
@@ -237,9 +259,17 @@ export function ProductsShell({
       switchMobileView,
       navigateToProduct,
       navigateToList,
+      setDetailBackHandler,
       listScrollTopRef,
     }),
-    [activeTab, mobileView, switchMobileView, navigateToProduct, navigateToList]
+    [
+      activeTab,
+      mobileView,
+      switchMobileView,
+      navigateToProduct,
+      navigateToList,
+      setDetailBackHandler,
+    ]
   );
 
   return (
@@ -292,9 +322,9 @@ export function ProductsShell({
             {showDetailChrome && (
               <Link
                 href="/products"
-                onClick={handleListNavClick}
+                onClick={handleMobileBackClick}
                 className="absolute left-4 flex h-10 items-center gap-0.5 text-[13px] font-light tracking-[0.04em] text-brand-charcoal/60 transition-colors active:text-brand-charcoal"
-                aria-label="返回产品列表"
+                aria-label={detailBackLabel ?? "返回产品列表"}
               >
                 <ChevronLeft size={16} strokeWidth={1.5} />
                 返回

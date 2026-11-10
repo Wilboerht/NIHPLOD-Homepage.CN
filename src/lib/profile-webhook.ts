@@ -1,8 +1,8 @@
 /**
  * 用户资料变更 Webhook 推送
  *
- * 用户资料（昵称/头像/生日）变更后，向所有【该用户已授权（UserConsent 未撤销）
- * 且配置了 webhookUri 且 isActive】的 OAuthClient 投递签名事件 token，
+ * 用户资料（昵称/头像/生日）变更后，向所有【该用户已授权（UserConsent 未撤销，
+ * 或小程序直登存在活跃 OAuthSession）且配置了 webhookUri 且 isActive】的 OAuthClient 投递签名事件 token，
  * 解决子项目只能轮询拉取资料、变更后缓存滞后的问题。
  *
  * 模式与 backchannel-logout.ts 一致：
@@ -76,13 +76,25 @@ export async function sendProfileUpdateWebhook(
   profile: ProfileSnapshot,
   membership?: { level: string; totalSpent: number } | null
 ): Promise<void> {
-  // 该用户已授权（未撤销）的 client 及其 scope（按 scope 裁剪快照，防越权外泄）
-  const consents = await prisma.userConsent.findMany({
-    where: { userId, revokedAt: null },
-    select: { clientId: true, scopes: true },
-  });
-  if (consents.length === 0) return;
+  // 普通 OAuth 以 UserConsent 为准；小程序直登没有 consent 交互，以活跃会话的实际 scope 为准。
+  const [consents, directSessions] = await Promise.all([
+    prisma.userConsent.findMany({
+      where: { userId, revokedAt: null },
+      select: { clientId: true, scopes: true },
+    }),
+    prisma.oAuthSession.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      select: { clientId: true, scopes: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
   const scopeByClient = new Map(consents.map((c) => [c.clientId, toScopeSet(c.scopes)]));
+  for (const session of directSessions) {
+    if (!scopeByClient.has(session.clientId)) {
+      scopeByClient.set(session.clientId, toScopeSet(session.scopes));
+    }
+  }
+  if (scopeByClient.size === 0) return;
   const clientIds = [...scopeByClient.keys()];
 
   // 仅通知配置了 webhookUri 的活跃 client

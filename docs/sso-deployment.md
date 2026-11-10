@@ -228,11 +228,16 @@ NEXT_PUBLIC_EMBED_ALLOWED_ORIGINS=https://smart.nihplod.cn,https://mall.nihplod.
 
 `ALLOW_HS256_FALLBACK=true` 允许 access_token / id_token 在 RS256 验证失败后回退 HS256 验签，**仅供新旧密钥体系迁移过渡期临时启用**。过渡期结束必须改回 `false`（生产默认值）。长期开启会让 HS256 secret 泄露可直接伪造 token。
 
-### 2.7 SSRF 防护的已知边界（DNS rebinding）
+### 2.7 SSRF / DNS rebinding 防护
 
-主站对子项目注册的 `redirect_uri` / `backchannel_logout_uri` 做 SSRF 校验时，采用的是**字面主机名黑名单**（拦截 localhost、私网/保留 IP 段字面量），**不做 DNS 解析**。因此存在 DNS rebinding 绕过空间：攻击者可注册一个解析结果在公网与私网之间切换的域名，通过校验后在实际回调时解析到内网地址。
+`redirect_uri` 只用于浏览器重定向，主站不会主动向其发起服务端请求。Backchannel Logout、资料/状态 Webhook 的实际服务端投递统一经过 `src/lib/outbound-http.ts`：
 
-完整防护需在连接建立时校验实际解析结果，代价是每次回调都引入 DNS 查询，当前实现未覆盖。生产部署建议配合网络层防护兜底：为应用出口配置防火墙/代理规则，禁止主站 Pod（或实例）访问内网网段与云元数据地址（169.254.169.254 等）。
+- 仅允许 HTTPS、禁止 URL 内嵌凭据、不跟随重定向；
+- 连接前解析全部 DNS 地址，任一私网/保留地址即拒绝；
+- 使用 undici Agent 固定已验证的解析结果，避免检查后再次解析造成 DNS rebinding；
+- 限制超时与响应体大小。
+
+仍建议配合出口防火墙/代理实施最小权限网络策略，禁止主站实例访问不必要的内网服务与云元数据地址，作为独立防线。`npm run check:sso-config` 还会检查 RSA PEM 可解析性、公私钥配对及当前/历史 JWKS kid 唯一性；管理员 SSO 未启用时，其未配置项显示 SKIP 而不是 FAIL。
 
 ### 2.8 定时任务（本地 cron / 外部调度器）
 

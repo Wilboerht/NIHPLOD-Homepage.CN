@@ -60,6 +60,27 @@ export function getPurchasePlatformLabel(key: PurchasePlatformKey): string {
   return PURCHASE_PLATFORM_LABELS[key];
 }
 
+export function isValidMiniProgramShortLink(value: string): boolean {
+  const shortLink = value.trim();
+  const prefix = "#小程序://";
+  return (
+    shortLink.startsWith(prefix) &&
+    shortLink.length > prefix.length &&
+    !/[\u0000-\u001f\u007f]/.test(shortLink)
+  );
+}
+
+export function normalizeMiniProgramPath(value: string): string {
+  const path = value.trim();
+  return path.startsWith("/") && !path.startsWith("//") ? path.slice(1) : path;
+}
+
+export function isValidMiniProgramPath(value: string): boolean {
+  if (/[\u0000-\u0020\u007f]/.test(value)) return false;
+  const pagePath = normalizeMiniProgramPath(value).split("?", 1)[0];
+  return /^[a-z0-9_-]+(?:\/[a-z0-9_-]+)*$/i.test(pagePath);
+}
+
 export interface NormalizedPurchaseLink {
   id?: string;
   platformKey: PurchasePlatformKey | null;
@@ -89,7 +110,9 @@ export function normalizePurchaseLink(input: PurchaseLinkInput): NormalizedPurch
     : (input.platform ?? "").trim();
 
   const miniProgramShortLink = input.miniProgramShortLink?.trim() || null;
-  const miniProgramPath = input.miniProgramPath?.trim() || null;
+  const miniProgramPath = input.miniProgramPath
+    ? normalizeMiniProgramPath(input.miniProgramPath) || null
+    : null;
 
   return {
     id: input.id,

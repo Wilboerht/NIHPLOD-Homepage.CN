@@ -872,7 +872,11 @@ export async function POST(request: NextRequest) {
       const effectiveGrantedScopes = (refreshPayload.scope || session.scopes?.join(" ") || "openid")
         .split(" ")
         .filter(Boolean)
-        .filter((scope) => clientScopes.has(scope) && consentScopes.has(scope));
+        .filter(
+          (scope) =>
+            OIDC_IMPLICIT_SCOPES.includes(scope) ||
+            (clientScopes.has(scope) && consentScopes.has(scope))
+        );
 
       if (effectiveGrantedScopes.length === 0) {
         scheduleSsoEvent({

@@ -10,7 +10,7 @@ describe("purchase-jump", () => {
   });
 
   it("短链优先", () => {
-    PURCHASE_PLATFORM_APP_IDS.tmall = "wxtmall";
+    PURCHASE_PLATFORM_APP_IDS.tmall = "wx0000000000000000";
     expect(
       buildPurchaseJump({
         platformKey: "tmall",
@@ -21,16 +21,43 @@ describe("purchase-jump", () => {
   });
 
   it("短链缺失时使用 appId + path", () => {
-    PURCHASE_PLATFORM_APP_IDS.tmall = "wxtmall";
+    PURCHASE_PLATFORM_APP_IDS.tmall = "wx0000000000000000";
     expect(
       buildPurchaseJump({
         platformKey: "tmall",
-        miniProgramPath: "pages/product/index?id=1",
+        miniProgramPath: "/pages/product/index?id=1",
       })
     ).toEqual({
       type: "miniprogram",
-      appId: "wxtmall",
+      appId: "wx0000000000000000",
       path: "pages/product/index?id=1",
+    });
+  });
+
+  it("拒绝把普通文本、URL Link 或 Scheme 当作 shortLink", () => {
+    for (const miniProgramShortLink of [
+      "not-a-link",
+      "https://wxaurl.cn/TICKET",
+      "weixin://dl/business/?t=abc",
+    ]) {
+      expect(buildPurchaseJump({ platformKey: "wechat-shop", miniProgramShortLink })).toEqual({
+        type: "copy",
+      });
+    }
+  });
+
+  it("非法 AppID 或路径不生成跳转参数", () => {
+    PURCHASE_PLATFORM_APP_IDS["wechat-shop"] = "invalid-app-id";
+    expect(
+      buildPurchaseJump({
+        platformKey: "wechat-shop",
+        miniProgramPath: "page/index/index?id=123",
+      })
+    ).toEqual({ type: "copy" });
+
+    PURCHASE_PLATFORM_APP_IDS["wechat-shop"] = "wx0000000000000000";
+    expect(buildPurchaseJump({ platformKey: "wechat-shop", miniProgramPath: "pages/" })).toEqual({
+      type: "copy",
     });
   });
 

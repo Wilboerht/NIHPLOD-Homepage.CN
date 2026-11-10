@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockConsentFindMany = vi.fn();
+const mockDirectSessionFindMany = vi.fn();
 const mockConsentFindUnique = vi.fn();
 const mockUserFindUnique = vi.fn();
 const mockClientFindMany = vi.fn();
@@ -30,6 +31,9 @@ vi.mock("@/lib/prisma", () => ({
     oAuthClient: {
       findMany: (...args: unknown[]) => mockClientFindMany(...args),
       findUnique: (...args: unknown[]) => mockClientFindUnique(...args),
+    },
+    oAuthSession: {
+      findMany: (...args: unknown[]) => mockDirectSessionFindMany(...args),
     },
     webhookDeliveryFailure: {
       create: (...args: unknown[]) => mockFailureCreate(...args),
@@ -80,6 +84,7 @@ describe("profile-webhook", () => {
     // 重投前置检查默认通过：用户 ACTIVE、consent 未撤销
     mockUserFindUnique.mockResolvedValue({ status: "ACTIVE" });
     mockConsentFindUnique.mockResolvedValue({ revokedAt: null });
+    mockDirectSessionFindMany.mockResolvedValue([]);
   });
 
   it("用户无任何有效授权时不查询 client、不投递", async () => {
@@ -89,6 +94,28 @@ describe("profile-webhook", () => {
 
     expect(mockClientFindMany).not.toHaveBeenCalled();
     expect(globalFetch).not.toHaveBeenCalled();
+  });
+
+  it("小程序直登无 UserConsent 时按活跃会话 scope 投递", async () => {
+    mockConsentFindMany.mockResolvedValue([]);
+    mockDirectSessionFindMany.mockResolvedValue([
+      { clientId: "mini-client", scopes: ["profile"] },
+    ]);
+    mockClientFindMany.mockResolvedValue([
+      {
+        clientId: "mini-client",
+        webhookUri: "https://mini.example.com/webhook",
+        scopes: ["profile"],
+      },
+    ]);
+    mockSignProfileEventToken.mockResolvedValue("event-token-jwt");
+
+    await sendProfileUpdateWebhook("user-1", PROFILE);
+
+    expect(mockSignProfileEventToken).toHaveBeenCalledWith(
+      expect.objectContaining({ aud: "mini-client", profile: PROFILE })
+    );
+    expect(globalFetch).toHaveBeenCalledTimes(1);
   });
 
   it("仅投递给该用户已授权且配置了 webhookUri 的活跃 client", async () => {

@@ -71,6 +71,20 @@ describe("parseMiniprogramClientsEnv", () => {
     expect(result.entries).toEqual([VALID_SKIN, VALID_POINTS]);
   });
 
+  it("oauthScopes 仅接受受支持 scope，并保留合法追加配置", () => {
+    const valid = parseMiniprogramClientsEnv(
+      JSON.stringify([{ ...VALID_SKIN, oauthScopes: ["security:manage", "security:manage"] }])
+    );
+    expect(valid.errors).toEqual([]);
+    expect(valid.entries[0].oauthScopes).toEqual(["security:manage"]);
+
+    const invalid = parseMiniprogramClientsEnv(
+      JSON.stringify([{ ...VALID_SKIN, oauthScopes: ["not:supported"] }])
+    );
+    expect(invalid.entries).toEqual([]);
+    expect(invalid.errors[0]).toContain("不支持的 scope");
+  });
+
   it("非法 JSON / 非数组 → 整体报错且无条目", () => {
     expect(parseMiniprogramClientsEnv("{broken").errors).toEqual(["不是合法 JSON"]);
     expect(parseMiniprogramClientsEnv('{"clientId":"x"}').errors).toEqual(["需为 JSON 数组"]);

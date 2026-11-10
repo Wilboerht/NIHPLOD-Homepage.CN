@@ -1014,8 +1014,8 @@ function createRefreshRouteHandler(config) {
       return noStoreJson({ error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" }, 403);
     }
     const secFetchSite = request.headers.get("sec-fetch-site");
-    if (!requestOrigin && secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "none") {
-      return noStoreJson({ error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" }, 403);
+    if (!requestOrigin && (!secFetchSite || secFetchSite !== "same-origin" && secFetchSite !== "none")) {
+      return noStoreJson({ error: "forbidden", error_description: "\u7F3A\u5C11\u540C\u6E90\u8BF7\u6C42\u8BC1\u660E" }, 403);
     }
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
     if (!refreshToken) {
@@ -1267,9 +1267,9 @@ function createLogoutRouteHandler(config) {
       );
     }
     const secFetchSite = request.headers.get("sec-fetch-site");
-    if (!requestOrigin && secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "none") {
+    if (!requestOrigin && (!secFetchSite || secFetchSite !== "same-origin" && secFetchSite !== "none")) {
       return import_server4.NextResponse.json(
-        { error: "forbidden", error_description: "\u8DE8\u7AD9\u8BF7\u6C42\u88AB\u62D2\u7EDD" },
+        { error: "forbidden", error_description: "\u7F3A\u5C11\u540C\u6E90\u8BF7\u6C42\u8BC1\u660E" },
         { status: 403 }
       );
     }
@@ -1281,6 +1281,7 @@ function createLogoutRouteHandler(config) {
     const effectiveScope = formGlobal !== null ? formGlobal === "1" || formGlobal === "true" ? "global" : "local" : defaultScope;
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
     const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
+    let revocationFailed = false;
     if (refreshToken) {
       try {
         const discovery = config.serverBaseUrl ? null : await fetchDiscoveryCached(normalizedServerBase);
@@ -1305,9 +1306,11 @@ function createLogoutRouteHandler(config) {
           revokeRes = await doRevoke();
         }
         if (!revokeRes.ok) {
+          revocationFailed = true;
           console.warn(`[SSO SDK] \u767B\u51FA\u64A4\u9500 refresh_token \u5931\u8D25\uFF08HTTP ${revokeRes.status}\uFF09`);
         }
       } catch {
+        revocationFailed = true;
       }
     }
     const clearCookies = (res) => {
@@ -1352,11 +1355,23 @@ function createLogoutRouteHandler(config) {
       logoutUrl.searchParams.set("state", logoutState);
       const res = clearCookies(import_server4.NextResponse.redirect(logoutUrl.toString()));
       res.cookies.set(logoutStateCookieName, logoutState, getHostCookieOptions(600, secureCookies));
+      if (revocationFailed) res.headers.set("X-SSO-Revocation", "failed");
       return res;
     }
-    return clearCookies(
-      import_server4.NextResponse.redirect(callbackOrigin + "/")
-    );
+    if (revocationFailed) {
+      const res = import_server4.NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "REVOCATION_FAILED",
+            message: "\u672C\u7AD9\u5DF2\u9000\u51FA\uFF0C\u4F46\u670D\u52A1\u7AEF\u51ED\u8BC1\u64A4\u9500\u672A\u786E\u8BA4\uFF0C\u8BF7\u91CD\u8BD5\u6216\u8054\u7CFB\u7BA1\u7406\u5458"
+          }
+        },
+        { status: 503, headers: { "Cache-Control": "no-store", "X-SSO-Revocation": "failed" } }
+      );
+      return clearCookies(res);
+    }
+    return clearCookies(import_server4.NextResponse.redirect(callbackOrigin + "/"));
   };
 }
 
@@ -1535,6 +1550,43 @@ async function verifyLogoutTokenDetailed(logoutToken, ssoBaseUrl, clientId, opti
 }
 
 // src/next/backchannel-logout.ts
+var MAX_BACKCHANNEL_BODY_BYTES = 16 * 1024;
+async function readBoundedBody(request) {
+  const contentLengthRaw = request.headers.get("content-length");
+  if (contentLengthRaw) {
+    const contentLength = Number(contentLengthRaw);
+    if (!Number.isFinite(contentLength) || contentLength > MAX_BACKCHANNEL_BODY_BYTES) {
+      return null;
+    }
+  }
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MAX_BACKCHANNEL_BODY_BYTES) {
+        await reader.cancel().catch(() => {
+        });
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
 function createBackchannelLogoutRouteHandler(config) {
   const { clientId, ssoBaseUrl, onLogout } = config;
   const insecureLocalDev = resolveInsecureLocalDev(
@@ -1562,9 +1614,14 @@ function createBackchannelLogoutRouteHandler(config) {
         { status: 405 }
       );
     }
-    const logoutToken = new URLSearchParams(await request.text()).get(
-      "logout_token"
-    );
+    const body = await readBoundedBody(request);
+    if (body === null) {
+      return import_server5.NextResponse.json(
+        { error: "invalid_request", error_description: "\u8BF7\u6C42\u4F53\u8FC7\u5927\u6216 Content-Length \u975E\u6CD5" },
+        { status: 413 }
+      );
+    }
+    const logoutToken = new URLSearchParams(body).get("logout_token");
     if (!logoutToken) {
       return import_server5.NextResponse.json(
         { error: "invalid_request", error_description: "\u7F3A\u5C11 logout_token" },

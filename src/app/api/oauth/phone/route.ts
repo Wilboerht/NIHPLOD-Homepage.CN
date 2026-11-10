@@ -3,7 +3,7 @@
  * PUT /api/oauth/phone
  *
  * 供子项目（BFF）在用户中心换绑手机号：与主站会话路由 /api/user/phone 共用
- * 业务核心（src/lib/phone-rebind.ts），此处仅做 Bearer 鉴权（scope=phone）、
+ * 业务核心（src/lib/phone-rebind.ts），此处仅做 Bearer 鉴权（scope=phone:write）、
  * 限流与响应装饰；无浏览器 Cookie 可保留，成功后其他设备 / OAuth 会话全撤
  * 并向子站发送 backchannel logout（子站用户需重新登录）。
  */

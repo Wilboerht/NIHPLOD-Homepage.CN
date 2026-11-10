@@ -2,7 +2,7 @@
  * OAuth AccountDeletion 端点单元测试
  * GET/POST/DELETE /api/oauth/account/deletion
  *
- * 覆盖：未认证 401 / 缺 scope 403（读需 profile、写需 profile:write）/
+ * 覆盖：未认证 401 / 缺 scope 403（读需 profile、写需 account:delete）/
  * 查询透传（无申请 / 进行中）/ 提交成功（冷静期默认 7 天 + 手机号哈希不落明文）/
  * 提交频控 429 / 撤回成功 / 无进行中申请 409
  */

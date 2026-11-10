@@ -7,6 +7,8 @@ import {
   getPurchasePlatformLabel,
   isOfficialPurchasePlatform,
   isPurchasePlatformKey,
+  isValidMiniProgramPath,
+  isValidMiniProgramShortLink,
   resolvePurchasePlatformKey,
 } from "@/lib/purchase-platforms";
 
@@ -63,24 +65,22 @@ export const PurchaseLinkSchema = z
         path: ["platform"],
       });
     }
-    if (link.miniProgramShortLink && /[\u0000-\u001f\u007f]/.test(link.miniProgramShortLink)) {
+    if (
+      link.miniProgramShortLink?.trim() &&
+      !isValidMiniProgramShortLink(link.miniProgramShortLink)
+    ) {
       ctx.addIssue({
         code: "custom",
-        message: "小程序短链包含非法字符",
+        message: "请填写从小程序菜单“复制链接”获取的 #小程序:// 短链",
         path: ["miniProgramShortLink"],
       });
     }
-    if (link.miniProgramPath?.trim()) {
-      const path = link.miniProgramPath.trim();
-      const validPath =
-        (path.startsWith("/") && !path.startsWith("//")) || path.startsWith("pages/");
-      if (!validPath) {
-        ctx.addIssue({
-          code: "custom",
-          message: "小程序路径需以 / 或 pages/ 开头",
-          path: ["miniProgramPath"],
-        });
-      }
+    if (link.miniProgramPath?.trim() && !isValidMiniProgramPath(link.miniProgramPath)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "请输入有效的小程序页面路径，如 page/index/index?id=123",
+        path: ["miniProgramPath"],
+      });
     }
   });
 

@@ -202,6 +202,28 @@ describe("LoginPage", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it("consent 页完整展示高敏感 scope，且不混用读写权限", async () => {
+    const oauthParams = new URLSearchParams({
+      response_type: "code",
+      client_id: "client-1",
+      redirect_uri: "https://app.example.com/callback",
+      scope: "openid phone phone:write security:manage account:delete password:write",
+      state: "a".repeat(32),
+      code_challenge: "b".repeat(43),
+      code_challenge_method: "S256",
+    }).toString();
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams({ mode: "consent", oauth_params: oauthParams })
+    );
+    render(<LoginPage />);
+
+    expect(await screen.findByText("读取脱敏手机号")).toBeInTheDocument();
+    expect(screen.getByText(/高敏感：查看安全记录/)).toBeInTheDocument();
+    expect(screen.getByText(/高敏感：通过短信验证换绑手机号/)).toBeInTheDocument();
+    expect(screen.getByText(/申请或撤回账号注销/)).toBeInTheDocument();
+    expect(screen.getByText(/修改、设置登录密码/)).toBeInTheDocument();
+  });
+
   it("第三方登录（微信/抖音）按钮不对用户展示（留待后续拓展）", async () => {
     render(<LoginPage />);
 

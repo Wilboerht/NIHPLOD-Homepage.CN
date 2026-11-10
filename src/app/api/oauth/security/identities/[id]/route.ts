@@ -4,7 +4,7 @@
  *
  * 数据核心与网页端 /api/user/identities/{id} 共用（src/lib/security-identities.ts）。
  * 服务端约束：仅本人身份可解绑（越权 404）；占位手机号账号拒绝解绑（需真实手机号）。
- * 要求 scope 含 profile:write；用户级限流 10 次/小时。
+ * 要求 scope 含 security:manage；用户级限流 10 次/小时。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";

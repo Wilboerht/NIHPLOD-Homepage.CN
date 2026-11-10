@@ -13,6 +13,7 @@
  */
 import { apiConsole } from "@/lib/logger";
 import { legacyMiniprogramCredentials, type MiniprogramCredentials } from "@/lib/wechat";
+import { SUPPORTED_SCOPES } from "@/lib/oauth-constants";
 
 /** 缺省小程序客户端（测肤小程序）：请求未携带 clientId 时的兼容默认值 */
 export const DEFAULT_MINIPROGRAM_CLIENT_ID = "wechat-mp-skin";
@@ -25,6 +26,8 @@ const PLACEHOLDER_SECRET_PATTERN = /example|placeholder|replace|your-|xxxx/i;
 
 export interface MiniprogramClientEntry extends MiniprogramCredentials {
   clientId: string;
+  /** 额外 OAuth scope；高危能力必须逐 Client 显式配置 */
+  oauthScopes?: string[];
 }
 
 /** 解析结果：configured 表示 env 是否有内容；errors 为被丢弃条目的问题描述 */
@@ -62,7 +65,7 @@ export function parseMiniprogramClientsEnv(raw: string | undefined): Miniprogram
       errors.push("存在非对象条目（已丢弃）");
       continue;
     }
-    const { clientId, appId, appSecret } = item as Record<string, unknown>;
+    const { clientId, appId, appSecret, oauthScopes } = item as Record<string, unknown>;
     if (typeof clientId !== "string" || clientId.trim() === "") {
       errors.push("存在缺少 clientId 的条目（已丢弃）");
       continue;
@@ -83,8 +86,28 @@ export function parseMiniprogramClientsEnv(raw: string | undefined): Miniprogram
       errors.push(`clientId ${clientId} 的 appSecret 缺失、过短或为示例值（已丢弃）`);
       continue;
     }
+    if (
+      oauthScopes !== undefined &&
+      (!Array.isArray(oauthScopes) ||
+        oauthScopes.some(
+          (scope) =>
+            typeof scope !== "string" ||
+            scope.trim() === "" ||
+            !SUPPORTED_SCOPES.includes(scope.trim())
+        ))
+    ) {
+      errors.push(`clientId ${clientId} 的 oauthScopes 含空值或不支持的 scope（已丢弃）`);
+      continue;
+    }
     seen.add(clientId);
-    entries.push({ clientId, appId, appSecret });
+    entries.push({
+      clientId,
+      appId,
+      appSecret,
+      ...(oauthScopes
+        ? { oauthScopes: [...new Set(oauthScopes.map((scope) => scope.trim()))] }
+        : {}),
+    });
   }
 
   return { configured: true, entries, errors };
@@ -118,4 +141,10 @@ export function resolveMiniprogramCredentials(clientId: string): MiniprogramCred
     return legacyMiniprogramCredentials();
   }
   return null;
+}
+
+/** 返回该小程序显式追加的 OAuth scope；未配置时返回空数组。 */
+export function resolveMiniprogramOAuthScopes(clientId: string): string[] {
+  const { entries } = parseMiniprogramClientsEnv(process.env.MINIPROGRAM_CLIENTS);
+  return entries.find((entry) => entry.clientId === clientId)?.oauthScopes ?? [];
 }

@@ -4,7 +4,7 @@
  *
  * 数据核心与网页端 /api/user/oauth/revoke 共用（src/lib/security-authorizations.ts）。
  * 安全约束：禁止撤销当前小程序自身的授权（会导致操作端立即失去登录态）。
- * 要求 scope 含 profile:write；用户级限流 10 次/小时。
+ * 要求 scope 含 security:manage；用户级限流 10 次/小时。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";

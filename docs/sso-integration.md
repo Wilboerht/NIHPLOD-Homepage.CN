@@ -316,6 +316,8 @@ SSO 中心区分两种退出语义，子项目应按场景选择：
 
 仅清除子站自身的登录态：删除本地会话/Cookie 中的 token，并调用 `/api/oauth/revoke` 撤销本站 refresh_token（SDK 的 `sso.logout()` 默认行为）。**不动 IdP 侧会话**，用户在其他子站和官网的登录不受影响。适用于子站界面上常规的"退出登录"按钮。
 
+撤销请求会针对网络错误、5xx、429 重试一次。若仍未确认，SPA `logout()` 抛出 `revocation_failed`（本地 token 已清除）；Next.js 本地登出返回 503 + `REVOCATION_FAILED`，同时仍清除本地 Cookie。全局登出不会因本站撤销失败而中断，响应以 `X-SSO-Revocation: failed` 标记该不确定性。调用方应展示重试/运维提示，不能把它当作服务端凭证已确认失效。
+
 ### 全局退出（Global Logout）
 
 走 OIDC RP-Initiated Logout：重定向到 end_session_endpoint（SDK 的 `sso.logout(true)` / `createLogoutRouteHandler` 的 `redirectToSso: true`）。用户在官网 `/logout` 确认后，SSO 中心清除 IdP 会话、撤销 refresh token，并通过 Backchannel Logout 通知相关 RP。
@@ -332,7 +334,8 @@ SSO 中心区分两种退出语义，子项目应按场景选择：
 ### Backchannel Logout 的失效时效
 
 - 配置了 `backchannelLogoutUri` 的 RP 会收到 `logout_token`（携带 `sub`，有活跃会话时携带 `sid`），应立即清除该用户的本地会话；投递失败会重试一次后进入补偿队列，由 cron 周期重投。
-- 管理端批量级联操作（停用/删除 Client、批量终止会话）改为队列化投递：通知按用户写入补偿队列，响应返回后立即补投小批量，剩余积压由 cron 任务（每 15 分钟、每轮最多 200 条、并发 10）排空；队列同时保存目标 URI 快照，client 被删除后仍可投递。
+- 管理端批量级联操作（停用/删除 Client、批量终止会话）改为队列化投递：通知按用户写入补偿队列，响应返回后立即补投小批量，剩余积压由 cron 任务（每 15 分钟、每轮最多 200 条、并发 10）排空；队列同时保存目标 URI 快照，client 被删除后仍可投递。单次删除只入队一次。管理端按 sessionId 终止时仅撤销该 sid；按 userId/clientId 或全局终止才进行级联撤销。
+- SDK 的 backchannel 接收端将表单请求体限制为 16 KiB，并对 Content-Length 与流式读取双重校验；超限返回 413。
 - **SSO access token 的撤销感知 ≤ 30 秒**：服务端 `POST /api/oauth/introspect` 会实时按 `sid` 查会话状态（服务端不缓存结果，撤销立即反映）；子站侧（`@nihplod/sso-verify` / SDK middleware）默认把 introspection 结果缓存 30s（`introspectCacheTtl` 可调低），因此撤销后子站最长 30s 内停止接受该 token。
 - **子站本地会话的失效取决于其 access token TTL**：只做本地 JWT 验签（不 introspect、不处理 backchannel）的子站，被撤销的 token 在其剩余 TTL 内仍会通过验签。需要即时感知撤销的子站应实现 backchannel logout 接收端点，或改用 Introspection 校验。
 
@@ -488,7 +491,7 @@ try {
 
 - 回调路由必须渲染 `<CallbackPage />`（`@nihplod/sso-sdk/react`）：它检测 `window.opener` 并通过 postMessage 把回调 URL 回传主窗口，由主窗口完成 token 交换；
 - 回调页与主页面必须同 origin（postMessage 会校验来源 origin 与一次性 `popup_nonce`，伪造消息会被丢弃）；
-- 移动浏览器 / 严格弹窗策略下建议始终准备 `popup_blocked` 回退路径。
+- 移动浏览器 / 严格弹窗策略下建议始终准备 `popup_blocked` 回退路径；用户拒绝、取消及授权参数错误也会回传 `popup_nonce` 并关闭弹窗。流程整体超过 5 分钟会抛出 `popup_timeout`，调用方应提供重试入口。
 
 ### 嵌入（iframe）限制
 
@@ -528,14 +531,14 @@ Token/UserInfo/Introspect 端点白名单由已注册 `redirectUris` 自动推�
 {
   "event": "account_status_change",
   "sub": "<userId>",
-  "old_status": "active",
-  "new_status": "banned",
+  "old_status": "ACTIVE",
+  "new_status": "BANNED",
   "source": "admin",
   "timestamp": "2026-08-17T08:00:00.000Z"
 }
 ```
 
-`new_status` 取值：`active`（解冻）、`banned`（冻结/封禁）、`deleted`（删除）。
+`new_status` 取值：`ACTIVE`（解冻）、`SUSPENDED`（临时冻结）、`BANNED`（封禁）、`deleted`（删除，历史兼容小写）。`old_status` 同样使用前三种大写枚举或 `deleted`。接收方必须按上述大小写精确校验。
 
 ### 签名验证
 
@@ -650,12 +653,12 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ### 微信跨域登录 exchange token 传输（子站）
 
-主站微信回调后重定向到子站并携带一次性 `wechat_exchange_token`（兑换一次即作废）：
+主站微信回调后重定向到子站并携带短期 `wechat_exchange_token`；成功登录/绑定后一次性作废：
 
-- 默认（兼容现有子站）：`?wechat_auth=success|binding_required&wechat_exchange_token=...`；
-- 推荐（需子站改造）：主站设置 `WECHAT_EXCHANGE_TOKEN_TRANSPORT=fragment` 后改为 `#wechat_exchange_token=...`，子站从 `location.hash` 读取后立即 `history.replaceState` 清除。fragment 不随请求发送、不进服务器日志与 Referer，可显著降低凭证泄漏面；
+- 默认使用 fragment：`#wechat_exchange_token=...`。子站从 `location.hash` 读取后立即 `history.replaceState` 清除。fragment 不随请求发送、不进服务器日志与 Referer，可显著降低凭证泄漏面；
+- 仅兼容未改造子站时才设置 `WECHAT_EXCHANGE_TOKEN_TRANSPORT=query`，此时使用 `?wechat_auth=success|binding_required&wechat_exchange_token=...`；
 - 自动登录场景（`wechat_auth=success`）token TTL 已缩短为 2 分钟（`WECHAT_EXCHANGE_SUCCESS_TTL` 可调，该 token 会在子站落地页立即被兑换）；需要用户填写绑定表单的场景保留 10 分钟；
-- 子站读取后应尽快调用 `POST /api/v1/internal/wechat/exchange` 兑换，且不得把该 token 写入日志/埋点/统计。
+- 子站读取后应尽快调用 `POST /api/v1/internal/wechat/exchange` 兑换，且不得把该 token 写入日志/埋点/统计。若首次返回 `bindingRequired: true`，可在原 TTL 内携带同一 token 继续提交手机号和验证码；该探测及业务失败会释放一次性占用，登录/绑定成功后不可再次使用。
 
 ### 会员等级（四档，2026-09 起）
 
@@ -739,7 +742,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 - 退回积分立即到账、6 个月后过期，流水类型 `REDEEM_REFUND`，可在用户账单中显示为“兑换撤销退分”。
 - 响应：`{ success: true, data: { userId, refunded, available } }`。
 
-> OAuth 兑礼（`/api/oauth/points/redeem`）默认允许所有已授权 `membership` 的客户端。生产环境可通过 `OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS=wechat-mp-points,...` 收紧为官方客户端白名单。
+> OAuth 兑礼及兑换售后/确认收货（`/api/oauth/points/redeem` 等）采用默认拒绝策略。必须在 `OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS=wechat-mp-points,...` 中显式配置允许操作的 Client；留空时所有 OAuth Client 均返回 403。`membership` scope 与 Client 白名单必须同时满足。
 
 ### 积分查询（商城侧，签名内部 API）
 
@@ -859,7 +862,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ### 官网侧配置
 
-1. SSO 后台创建 **public** OAuth Client，scopes 建议 `openid profile phone membership profile:write birthday security:manage phone:write account:delete password:write`（`membership` 为积分/地址端点必需；`profile:write`/`birthday` 供「资料编辑」；后四个高危 scope 供账户/安全中心；未配置的 scope 会在登录签发时被交集剔除，不影响其余功能）；
+1. SSO 后台创建 **public** OAuth Client，基础 scopes 为 `openid profile phone membership profile:write birthday`（`membership` 为积分/地址端点必需；`profile:write`/`birthday` 供资料编辑；未配置的 scope 会在登录签发时被交集剔除）；
    - 注意：管理端创建时 **clientId 为随机生成且不可编辑**，创建后需在数据库改为约定值 `wechat-mp-points`（小程序登录与凭证分发均按 clientId 精确匹配）：
    ```sql
    UPDATE "OAuthClient"
@@ -869,8 +872,8 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
    （新建 client 尚无任何会话/授权/refresh token 引用，改名无副作用；TTL 也可在管理端编辑页调整）
    - 后台强制要求至少一个 `https://` 公网回调地址（redirectUris）：小程序不经过授权码回调流程，填一个占位地址即可（如 `https://nihplod.cn/mp/callback`）；
    - 建议 `accessTokenTtlSeconds` 设为 **900**：子项目本地 JWKS 验签不感知会话撤销，短 TTL 可把撤销延迟压到分钟级（小程序端已自动静默刷新，无感）；
-2. 环境变量 `MINIPROGRAM_CLIENTS` 登记该 clientId 的微信 AppID/AppSecret（格式见 `.env.example`，修改后需重启官网）；未配置旧变量回退仅对缺省客户端 `wechat-mp-skin` 生效；
-3. 发布前运行 `npm run check:sso-config` 校验（非法条目会 FAIL）。
+2. 环境变量 `MINIPROGRAM_CLIENTS` 登记该 clientId 的微信 AppID/AppSecret（修改后需重启官网）；未配置旧变量回退仅对缺省客户端 `wechat-mp-skin` 生效。高危能力默认不签发，确需账户/安全中心时，必须同时在后台 Client.scopes 和该条目的 `oauthScopes` 中显式开放，例如 `"oauthScopes":["security:manage","phone:write","account:delete","password:write"]`；只配置后台或只配置 env 都不会下发。升级前已依赖这些能力的客户端，发布时必须同步补齐 `oauthScopes`；
+3. 发布前运行 `npm run check:sso-config` 校验（非法或不支持的 scope、非法凭证条目会 FAIL）。
 
 ### 登录（wx.login → 双 Token）
 

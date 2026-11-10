@@ -168,6 +168,9 @@ describe("createTokenVerifier", () => {
       expect(payload!.cnf).toEqual({ jkt: "jkt-1" });
       expect(payload!.sid).toBe("sid-1");
       expect(payload!.auth_time).toBe(1700000000);
+
+      const cachedPayload = await verifier.verify("dpop-token");
+      expect(cachedPayload).toEqual(payload);
     });
 
     it("M2M token 默认拒绝用户态校验，显式 allowM2mTokens 才放行", async () => {
@@ -220,6 +223,20 @@ describe("createTokenVerifier", () => {
 
       expect(await verifier.verify(token)).toBeNull();
       expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("introspection 模式缺少端点配置时抛错，不回退本地验签", async () => {
+      const token = await createAccessToken();
+      const verifier = createTokenVerifier({
+        audience,
+        issuer,
+        accessTokenSecret: accessSecretString,
+        verificationMode: "introspection",
+      });
+
+      await expect(verifier.verify(token)).rejects.toThrow(
+        "必须配置 introspectionEndpoint 与 clientId"
+      );
     });
 
     it("introspection 返回 active=false 时拒绝", async () => {

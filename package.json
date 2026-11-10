@@ -121,6 +121,9 @@
     "@tiptap/extensions": "3.32.0",
     "dompurify": "3.4.17",
     "prosemirror-view": "1.42.6",
-    "uuid": "^11.1.1"
+    "uuid": "^11.1.1",
+    "readdir-glob": {
+      "minimatch": "11.0.5"
+    }
   }
 }

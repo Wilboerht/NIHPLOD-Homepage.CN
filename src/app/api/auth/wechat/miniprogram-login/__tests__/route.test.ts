@@ -31,6 +31,7 @@ vi.mock("@/lib/wechat", () => ({
 vi.mock("@/lib/miniprogram-clients", () => ({
   DEFAULT_MINIPROGRAM_CLIENT_ID: "wechat-mp-skin",
   resolveMiniprogramCredentials: vi.fn(),
+  resolveMiniprogramOAuthScopes: vi.fn().mockReturnValue([]),
 }));
 
 vi.mock("@/lib/jwt", () => ({
@@ -71,7 +72,10 @@ vi.mock("@/lib/logger", () => ({
 
 import { prisma } from "@/lib/prisma";
 import { code2session, getMiniprogramPhone } from "@/lib/wechat";
-import { resolveMiniprogramCredentials } from "@/lib/miniprogram-clients";
+import {
+  resolveMiniprogramCredentials,
+  resolveMiniprogramOAuthScopes,
+} from "@/lib/miniprogram-clients";
 import { signWechatBindToken } from "@/lib/jwt";
 import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { findUserByIdentity, findUserByUnionId, upsertIdentity } from "@/lib/external-identity";
@@ -84,6 +88,7 @@ const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 const mockCode2session = code2session as ReturnType<typeof vi.fn>;
 const mockGetPhone = getMiniprogramPhone as ReturnType<typeof vi.fn>;
 const mockResolveCredentials = resolveMiniprogramCredentials as ReturnType<typeof vi.fn>;
+const mockResolveOAuthScopes = resolveMiniprogramOAuthScopes as ReturnType<typeof vi.fn>;
 const mockFindByIdentity = findUserByIdentity as ReturnType<typeof vi.fn>;
 const mockFindByUnionId = findUserByUnionId as ReturnType<typeof vi.fn>;
 const mockUpsert = upsertIdentity as ReturnType<typeof vi.fn>;
@@ -488,7 +493,40 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
       );
     });
 
-    it("client scopes 与所需 scope 无交集应返回 500 且不签发", async () => {
+    it("高危 scope 仅在 env 与后台 Client 同时允许时追加", async () => {
+      mockResolveOAuthScopes.mockReturnValue(["security:manage"]);
+      mockGetOAuthClient.mockResolvedValue({
+        ...MP_CLIENT,
+        scopes: [...MP_CLIENT.scopes, "security:manage"],
+      });
+      mockCode2session.mockResolvedValue({
+        openid: "openid-1",
+        unionid: undefined,
+        sessionKey: "sk",
+      });
+      mockFindByIdentity.mockResolvedValue({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        wechatUnionId: null,
+      });
+      mockCheckStatus.mockResolvedValue({ valid: true });
+
+      const res = await POST(createRequest({ code: "wx-code" }));
+
+      expect(res.status).toBe(200);
+      expect(mockIssueOAuthTokens).toHaveBeenCalledWith(
+        { id: "user-1", phone: "13800138000" },
+        {
+          ...MP_OAUTH_OPTIONS,
+          scope: `${MP_OAUTH_OPTIONS.scope} security:manage`,
+        },
+        expect.anything()
+      );
+    });
+
+    it("未显式配置 openid 时仍按 OIDC 隐式 scope 签发", async () => {
       mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, scopes: ["email"] });
       mockCode2session.mockResolvedValue({
         openid: "openid-1",
@@ -505,14 +543,16 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
       mockCheckStatus.mockResolvedValue({ valid: true });
 
       const res = await POST(createRequest({ code: "wx-code" }));
-      const data = await res.json();
 
-      expect(res.status).toBe(500);
-      expect(data.error.code).toBe("OAUTH_CLIENT_MISSING");
-      expect(mockIssueOAuthTokens).not.toHaveBeenCalled();
+      expect(res.status).toBe(200);
+      expect(mockIssueOAuthTokens).toHaveBeenCalledWith(
+        { id: "user-1", phone: "13800138000" },
+        { ...MP_OAUTH_OPTIONS, scope: "openid" },
+        expect.anything()
+      );
     });
 
-    it("phoneCode 一键登录：scope 交集为空应返回 500 且不进入绑定流程", async () => {
+    it("phoneCode 一键登录同样保留隐式 openid", async () => {
       mockGetOAuthClient.mockResolvedValue({ ...MP_CLIENT, scopes: [] });
       mockCode2session.mockResolvedValue({
         openid: "openid-c",
@@ -520,13 +560,26 @@ describe("POST /api/auth/wechat/miniprogram-login", () => {
         sessionKey: "sk",
       });
       mockGetPhone.mockResolvedValue("13812340004");
+      mockResolveBinding.mockResolvedValue({
+        success: true,
+        data: {
+          user: { id: "user-1", phone: "13812340004", nickname: null, avatar: null },
+          accessToken: "at",
+          refreshToken: "rt",
+          expiresIn: 900,
+          passwordGenerated: true,
+          message: "绑定成功",
+        },
+      });
 
       const res = await POST(createRequest({ code: "wx-code", phoneCode: "phone-code-5" }));
-      const data = await res.json();
 
-      expect(res.status).toBe(500);
-      expect(data.error.code).toBe("OAUTH_CLIENT_MISSING");
-      expect(mockResolveBinding).not.toHaveBeenCalled();
+      expect(res.status).toBe(200);
+      expect(mockResolveBinding).toHaveBeenCalledWith(
+        expect.objectContaining({
+          oauth: expect.objectContaining({ scope: "openid" }),
+        })
+      );
     });
   });
 

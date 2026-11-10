@@ -1131,6 +1131,49 @@ describe("POST /api/oauth/token", () => {
       expect(body.scope).toBe("openid phone");
     });
 
+    it("client.scopes 未显式包含 openid 时仍保留隐式 openid 并签发 ID Token", async () => {
+      vi.mocked(verifyOAuthClientSecret).mockResolvedValue({
+        client: { ...validClient(), scopes: ["phone"] },
+        reason: "ok",
+      });
+      vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({
+        valid: true,
+      } as unknown as Awaited<ReturnType<typeof atomicallyRotateRefreshToken>>);
+      (prisma.oAuthSession.findFirst as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        sessionId: "sess-implicit-openid",
+        scopes: ["openid"],
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+      (prisma.userConsent.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+      (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: "user-1",
+        phone: "13800138000",
+        nickname: null,
+        avatar: null,
+        membershipLevel: null,
+        status: "ACTIVE",
+      });
+      const refreshToken = await signRefreshToken({
+        id: "user-1",
+        clientId: "test-client",
+        scope: "openid",
+      });
+
+      const res = await POST(
+        createRequest({
+          grant_type: "refresh_token",
+          client_id: "test-client",
+          client_secret: "secret",
+          refresh_token: refreshToken,
+        }) as unknown as NextRequest
+      );
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.scope).toBe("openid");
+      expect(body.id_token).toBeDefined();
+    });
+
     it("传入原授权 scope 子集时按子集签发新 token（RFC 6749 §6 scope 收窄）", async () => {
       vi.mocked(verifyOAuthClientSecret).mockResolvedValue({ client: validClient(), reason: "ok" });
       vi.mocked(atomicallyRotateRefreshToken).mockResolvedValue({

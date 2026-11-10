@@ -667,9 +667,17 @@ export class SsoClient {
             }
           }
         }, 500);
+        const timeoutTimer = setTimeout(() => {
+          if (completed) return;
+          completed = true;
+          cleanup();
+          if (!popup.closed) popup.close();
+          reject(new SsoError("popup_timeout", "登录超时，请重试"));
+        }, 5 * 60 * 1000);
 
         const cleanup = () => {
           clearInterval(pollTimer);
+          clearTimeout(timeoutTimer);
           window.removeEventListener("message", handleMessage);
           removePkceVerifier(`${this.config.clientId}_popup_nonce`);
         };
@@ -1079,10 +1087,10 @@ export class SsoClient {
    *   回跳页面应调用 validateLogoutState() 校验防登出 CSRF。
    */
   async logout(redirectToSso: boolean = false): Promise<void> {
-    // 获取 refresh_token 用于服务端撤销（需在 clearAllSsoData 之前）
     const tokenData = getTokenData(this.config.clientId);
     const refreshToken = tokenData?.refresh_token;
     const idTokenHint = tokenData?.id_token;
+    let revocationFailed = false;
 
     clearAllSsoData(this.config.clientId);
     this.debugLog("logout: 本地数据已清除", {
@@ -1090,12 +1098,8 @@ export class SsoClient {
       redirectToSso,
     });
 
-    // 尝试调用服务端 token revocation 端点（best-effort）
-    // 仅 Confidential Client 携带 client_secret；Public Client 不传 secret。
     if (refreshToken && this.config.clientId) {
       try {
-        // serverBaseUrl 配置时直连内网默认端点（discovery 文档内是公网 URL，
-        // 会绕行公网）；否则用 Discovery，兜底公网默认路径
         const discovery = this.config.serverBaseUrl ? null : await this._getDiscovery();
         const revokeUrl = this.config.serverBaseUrl
           ? `${this._serverBase}/api/oauth/revoke`
@@ -1119,21 +1123,20 @@ export class SsoClient {
             REVOKE_TIMEOUT_MS
           );
         let res = await doRevoke();
-        // 5xx/429 可重试：服务端 503 明确要求客户端重试，避免 refresh_token 残留。
         if (!res.ok && (res.status >= 500 || res.status === 429)) {
           await new Promise((resolve) => setTimeout(resolve, 300));
           res = await doRevoke();
         }
         if (!res.ok) {
+          revocationFailed = true;
           this.debugLog("logout: 服务端撤销 refresh_token 失败", { status: res.status });
         }
       } catch {
-        // 撤销失败不影响本地登出（best-effort）
+        revocationFailed = true;
       }
     }
 
     if (redirectToSso) {
-      // OIDC RP-Initiated Logout：携带 client_id / post_logout_redirect_uri / id_token_hint / state
       const discovery = await this._getDiscovery();
       const endSessionEndpoint =
         discovery?.end_session_endpoint || `${this.config.ssoBaseUrl}/api/oauth/end-session`;
@@ -1146,11 +1149,21 @@ export class SsoClient {
       if (idTokenHint) {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);
       }
-      // 携带 state 防登出 CSRF：回跳时用 validateLogoutState() 校验
       const state = generateState();
       saveLogoutState(state, this.config.clientId);
       logoutUrl.searchParams.set("state", state);
+      if (revocationFailed) {
+        console.warn("[SSO SDK] 本站 refresh_token 撤销未确认；仍继续执行 SSO 全局登出");
+      }
       window.location.href = logoutUrl.toString();
+      return;
+    }
+
+    if (revocationFailed) {
+      throw new SsoError(
+        "revocation_failed",
+        "本站登录数据已清除，但服务端凭证撤销未确认，请重试或联系管理员"
+      );
     }
   }
 

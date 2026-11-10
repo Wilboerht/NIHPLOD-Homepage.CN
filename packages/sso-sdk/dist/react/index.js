@@ -964,8 +964,16 @@ var _SsoClient = class _SsoClient {
             }
           }
         }, 500);
+        const timeoutTimer = setTimeout(() => {
+          if (completed) return;
+          completed = true;
+          cleanup();
+          if (!popup.closed) popup.close();
+          reject(new SsoError("popup_timeout", "\u767B\u5F55\u8D85\u65F6\uFF0C\u8BF7\u91CD\u8BD5"));
+        }, 5 * 60 * 1e3);
         const cleanup = () => {
           clearInterval(pollTimer);
+          clearTimeout(timeoutTimer);
           window.removeEventListener("message", handleMessage);
           removePkceVerifier(`${this.config.clientId}_popup_nonce`);
         };
@@ -1288,6 +1296,7 @@ var _SsoClient = class _SsoClient {
     const tokenData = getTokenData(this.config.clientId);
     const refreshToken = tokenData?.refresh_token;
     const idTokenHint = tokenData?.id_token;
+    let revocationFailed = false;
     clearAllSsoData(this.config.clientId);
     this.debugLog("logout: \u672C\u5730\u6570\u636E\u5DF2\u6E05\u9664", {
       clientId: this.config.clientId,
@@ -1320,9 +1329,11 @@ var _SsoClient = class _SsoClient {
           res = await doRevoke();
         }
         if (!res.ok) {
+          revocationFailed = true;
           this.debugLog("logout: \u670D\u52A1\u7AEF\u64A4\u9500 refresh_token \u5931\u8D25", { status: res.status });
         }
       } catch {
+        revocationFailed = true;
       }
     }
     if (redirectToSso) {
@@ -1340,7 +1351,17 @@ var _SsoClient = class _SsoClient {
       const state = generateState();
       saveLogoutState(state, this.config.clientId);
       logoutUrl.searchParams.set("state", state);
+      if (revocationFailed) {
+        console.warn("[SSO SDK] \u672C\u7AD9 refresh_token \u64A4\u9500\u672A\u786E\u8BA4\uFF1B\u4ECD\u7EE7\u7EED\u6267\u884C SSO \u5168\u5C40\u767B\u51FA");
+      }
       window.location.href = logoutUrl.toString();
+      return;
+    }
+    if (revocationFailed) {
+      throw new SsoError(
+        "revocation_failed",
+        "\u672C\u7AD9\u767B\u5F55\u6570\u636E\u5DF2\u6E05\u9664\uFF0C\u4F46\u670D\u52A1\u7AEF\u51ED\u8BC1\u64A4\u9500\u672A\u786E\u8BA4\uFF0C\u8BF7\u91CD\u8BD5\u6216\u8054\u7CFB\u7BA1\u7406\u5458"
+      );
     }
   }
   /**
@@ -1659,7 +1680,10 @@ function SsoProvider({
       broadcastSsoEvent(client.config.clientId, "logout");
       try {
         await client.logout(redirectToSso);
-      } catch {
+      } catch (err) {
+        setError(
+          err instanceof SsoError ? err : new SsoError("logout_failed", err instanceof Error ? err.message : String(err))
+        );
       }
     },
     [client]

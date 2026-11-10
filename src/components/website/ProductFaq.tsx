@@ -17,7 +17,7 @@ interface ProductFaqProps {
  * 答案始终保留在 DOM 中（关闭时仅收起高度），确保不执行 JS 的 AI 爬虫也能读取。
  */
 export function ProductFaq({ faqs, title = "常见问题", className }: ProductFaqProps) {
-  const [openIndex, setOpenIndex] = useState<number | null>(faqs.length > 0 ? 0 : null);
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   if (faqs.length === 0) {
     return null;
@@ -59,7 +59,7 @@ export function ProductFaq({ faqs, title = "常见问题", className }: ProductF
                   role="heading"
                   aria-level={3}
                   className={cn(
-                    "flex-1 text-[14px] font-light leading-snug tracking-[0.08em] text-brand-charcoal transition-colors duration-300 lg:text-[16px] lg:leading-normal",
+                    "flex-1 text-[14px] font-light leading-[1.6] tracking-[0.08em] text-brand-charcoal transition-colors duration-300 lg:text-[16px] lg:leading-normal",
                     isOpen ? "text-brand-charcoal" : "group-hover:text-brand-charcoal"
                   )}
                 >

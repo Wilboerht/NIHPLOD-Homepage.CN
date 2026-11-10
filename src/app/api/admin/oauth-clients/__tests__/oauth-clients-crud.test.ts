@@ -841,6 +841,7 @@ describe("管理端 OAuth Client CRUD", () => {
       // 受影响用户 Backchannel Logout 入队（异步投递）；不再逐用户同步 HTTP，
       // 也不再逐用户拉黑 token（会把用户误登出主站），
       // access token 即时失效由 sid 会话校验承担
+      expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledTimes(1);
       expect(mockEnqueueBackchannelLogoutForActiveSessions).toHaveBeenCalledWith({
         clientId: record.clientId,
         omitSid: true,

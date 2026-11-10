@@ -536,8 +536,12 @@ export function SsoProvider({
       broadcastSsoEvent(client.config.clientId, "logout");
       try {
         await client.logout(redirectToSso);
-      } catch {
-        // 本地已登出；撤销/跳转失败不阻塞调用方
+      } catch (err) {
+        setError(
+          err instanceof SsoError
+            ? err
+            : new SsoError("logout_failed", err instanceof Error ? err.message : String(err))
+        );
       }
     },
     [client]

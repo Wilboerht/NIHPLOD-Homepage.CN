@@ -38,7 +38,12 @@ import {
   checkAndRecordNonce,
   hashRequestBody,
 } from "@/lib/internal-api";
-import { signUserToken, signRefreshToken, verifyWechatExchangeToken } from "@/lib/jwt";
+import {
+  signUserToken,
+  signRefreshToken,
+  verifyWechatExchangeToken,
+  releaseWechatExchangeToken,
+} from "@/lib/jwt";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { upsertIdentity } from "@/lib/external-identity";
 import { checkUserStatus } from "@/lib/auth";
@@ -69,6 +74,16 @@ const ALLOWED_PROJECTS = ["advisor", "mall"] as const;
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  let consumedExchangeToken: string | null = null;
+  const releaseConsumedToken = async () => {
+    if (!consumedExchangeToken) return;
+    const token = consumedExchangeToken;
+    consumedExchangeToken = null;
+    await releaseWechatExchangeToken(token).catch((releaseError) => {
+      apiConsole.warn("[InternalApiV1] 释放未完成兑换的 token 失败:", releaseError);
+    });
+  };
+
   try {
     // 1. IP 速率限制
     const ip = getClientIP(request);
@@ -166,7 +181,7 @@ export async function POST(request: NextRequest) {
 
     const { wechatExchangeToken, phone, code, password, allowAutoPassword } = parsed.data;
 
-    // 5. 验证 exchange token
+    // 5. 验证并暂时消费 exchange token；需要继续绑定或业务失败时释放，成功后保持已消费状态
     const wechatInfo = await verifyWechatExchangeToken(wechatExchangeToken);
     if (!wechatInfo) {
       return NextResponse.json(
@@ -177,9 +192,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    consumedExchangeToken = wechatExchangeToken;
 
-    // 消费审计：token 为一次性凭证，记录兑换来源便于异常排查（不记录 token/openid 本体）
-    apiConsole.info("[InternalApiV1] 微信 exchange token 已消费", {
+    apiConsole.info("[InternalApiV1] 微信 exchange token 已验证", {
       ip,
       flow: phone && code ? "bind" : "login",
       userAgent: request.headers.get("user-agent") || undefined,
@@ -204,6 +219,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!bindingResult.success) {
+        await releaseConsumedToken();
         return NextResponse.json(
           { success: false, error: { code: bindingResult.code, message: bindingResult.message } },
           { status: bindingResult.code === "ACCOUNT_DISABLED" ? 403 : 400 }
@@ -221,30 +237,24 @@ export async function POST(request: NextRequest) {
 
     // 8. 未提供手机号：检查该微信是否已绑定有效账户
     if (!oldWechatUser || oldWechatUser.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
-      return NextResponse.json(
-        {
-          success: true,
-          data: {
-            bindingRequired: true,
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-          },
+      await releaseConsumedToken();
+      return NextResponse.json({
+        success: true,
+        data: {
+          bindingRequired: true,
+          user: null,
+          accessToken: null,
+          refreshToken: null,
         },
-        { status: 200 }
-      );
+      });
     }
 
     // 9. 已绑定有效账户，直接登录
-    const result = await finalizeLogin(
-      oldWechatUser,
-      wechatInfo,
-      false,
-      request,
-      wechatExchangeToken
-    );
-    return result;
+    return await finalizeLogin(oldWechatUser, wechatInfo, false, request, wechatExchangeToken);
   } catch (error) {
+    await releaseConsumedToken().catch((releaseError) => {
+      apiConsole.warn("[InternalApiV1] 释放未完成兑换的 token 失败:", releaseError);
+    });
     apiConsole.error("[InternalApiV1] 异常:", error);
     return NextResponse.json(
       { success: false, error: { code: "INTERNAL_ERROR", message: "服务器内部错误" } },

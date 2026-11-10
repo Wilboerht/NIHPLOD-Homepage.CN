@@ -4,7 +4,7 @@
  *
  * 供子项目（BFF）代理发码：发送 type=reset 验证码到当前账号自己的手机号
  *（手机号由主站按 token 所有者解析，前端无需传参，避免枚举/串号）；
- * 与主站设置密码流程共用核心（src/lib/password-manage.ts）；scope=profile:write。
+ * 与主站设置密码流程共用核心（src/lib/password-manage.ts）；scope=password:write。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";

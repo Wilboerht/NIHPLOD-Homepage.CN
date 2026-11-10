@@ -144,7 +144,7 @@ interface SsoVerifierOptions {
      * 验证模式（默认 "auto"）：
      * - "auto"：配置了 introspectionEndpoint + clientId 时使用 Introspection（可实时感知撤销）；
      *   未配置时回退本地 JWT 验签。
-     * - "introspection"：强制 Introspection；未配置端点时回退本地验签。
+     * - "introspection"：强制 Introspection；未配置端点或 clientId 时抛配置错误。
      * - "local"：仅本地 HS256/RS256 验签（不感知撤销，仅建议非敏感、高吞吐场景）。
      * - "hybrid"：先本地验签，失败后再 Introspection（旧版行为，性能优先）。
      *
@@ -245,7 +245,7 @@ declare function createTokenVerifier(options: SsoVerifierOptions): {
      *
      * 模式由 verificationMode 控制（默认 "auto"）：
      * - auto：配置了 Introspection 时优先 Introspection（实时感知撤销）；否则本地验签。
-     * - introspection：强制 Introspection（未配置端点时回退本地）。
+     * - introspection：强制 Introspection（缺少端点或 clientId 时抛配置错误）。
      * - local：仅本地验签（不感知撤销）。
      * - hybrid：本地优先，失败后 Introspection（旧版行为）。
      *

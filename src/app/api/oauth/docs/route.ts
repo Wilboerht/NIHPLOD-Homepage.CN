@@ -541,7 +541,7 @@ export async function GET(request: NextRequest) {
             },
             refresh_token: {
               type: "string",
-              description: "Refresh Token（仅 authorization_code 模式返回）",
+              description: "Refresh Token（authorization_code 与 refresh_token 换发均返回）",
             },
             id_token: {
               type: "string",

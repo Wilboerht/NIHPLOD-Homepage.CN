@@ -700,7 +700,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           {/* 购买渠道 */}
           <ProductFormSection
             title="购买渠道"
-            description="网页链接用于官网展示和复制兜底；小程序短链优先用于微信内跳转；路径仅在短链不可用时使用。"
+            description="网页链接用于官网点击打开，微信小店请填官方商品 H5 短链；小程序短链与路径仅用于小程序端跳转。"
             action={<Badge variant="primary">固定四类</Badge>}
           >
             <div className="space-y-3">
@@ -744,10 +744,14 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                           upsertCanonicalPurchaseLink(option.value, { url: e.target.value })
                         }
                         error={purchaseLinkError(index, "url")}
-                        placeholder="https://"
+                        placeholder={
+                          option.value === "wechat-shop"
+                            ? "https://store.weixin.qq.com/shop/a/..."
+                            : "https://"
+                        }
                       />
                       <Input
-                        label="小程序短链"
+                        label="小程序短链（仅小程序端）"
                         value={link?.miniProgramShortLink ?? ""}
                         onChange={(e) =>
                           upsertCanonicalPurchaseLink(option.value, {
@@ -758,7 +762,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                         placeholder="可选，#小程序://..."
                       />
                       <Input
-                        label="小程序路径（兜底）"
+                        label="小程序路径（仅小程序端兜底）"
                         value={link?.miniProgramPath ?? ""}
                         onChange={(e) =>
                           upsertCanonicalPurchaseLink(option.value, {
@@ -766,7 +770,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                           })
                         }
                         error={purchaseLinkError(index, "miniProgramPath")}
-                        placeholder="可选，pages/..."
+                        placeholder="可选，page/index/index?id=123"
                       />
                     </div>
                     {rowError && <p className="mt-2 text-sm text-red-500">{rowError}</p>}

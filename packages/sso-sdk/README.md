@@ -130,7 +130,7 @@ Returns `boolean`.
 
 ### `sso.logout(redirectToSso?)`
 
-Clear local token data and attempt to revoke the server-side refresh_token.
+Clear local token data and revoke the server-side refresh_token with one retry for network errors, 5xx and 429. If revocation remains unconfirmed, local logout throws `SsoError` with code `revocation_failed` after local data has been cleared. Global logout still proceeds to the IdP and logs that local revocation was not confirmed.
 
 | Parameter | Type | Default | Description |
 |------|------|------|------|
@@ -259,7 +259,7 @@ Authentication state is three-valued: `isLoading` (initializing/refreshing) → 
 
 `sessionExpired` turns `true` when refresh fails because the token was revoked/expired; unlike `error` it is **not** cleared when the local token has already been removed, so you can reliably show a "登录已过期，请重新登录" banner. It resets on successful login or explicit `logout()`.
 
-`loginPopup` keeps the current page state (no full-page redirect) and returns the exchanged token data; the callback tab notifies the opener via `postMessage` with a one-time nonce. If the browser blocks the popup, catch the `popup_blocked` error and fall back to `login()`.
+`loginPopup` keeps the current page state (no full-page redirect) and returns the exchanged token data; the callback tab notifies the opener via `postMessage` with a one-time nonce. Deny/cancel and authorization errors also notify the opener. The flow has a five-minute overall timeout (`popup_timeout`). If the browser blocks the popup, catch `popup_blocked` and fall back to `login()`.
 
 Cross-tab sync: `logout()` and silent token rotation broadcast over `BroadcastChannel`, so other tabs update immediately even though the default token storage is `sessionStorage` (a raw `storage` event does not fire for `sessionStorage`; the listener only helps when you opt into `createSecureStorage({ persist: true })`).
 
@@ -433,6 +433,8 @@ export const POST = handler;
 
 **Logout scopes (default changed):** the GET confirmation page now includes a "同时退出所有 NIHPLOD 平台" checkbox; when checked, the form POSTs `global=1` and the handler performs a global logout (end-session redirect) regardless of `defaultScope`. A POST without a `global` field uses `defaultScope`. If you trigger logout from your own fetch call, add `global=1` to the form body to opt into a global logout.
 
+POST requires an exact same-origin `Origin` or an allowed `Sec-Fetch-Site` header; requests with neither are rejected. If refresh-token revocation is unconfirmed, local logout returns 503 `REVOCATION_FAILED` and still clears local cookies. Global logout continues to the IdP and marks the redirect response with `X-SSO-Revocation: failed`.
+
 > **Migration:** `redirectToSso` is deprecated and logs a one-time warning. `redirectToSso: true` → `defaultScope: "global"`; `redirectToSso: false` → `defaultScope: "local"`. Note the default changed from "redirect to SSO" to **local logout** — pass `defaultScope: "global"` to keep the old behavior.
 
 ```typescript
@@ -448,7 +450,7 @@ export const POST = createBackchannelLogoutRouteHandler({
 });
 ```
 
-The backchannel handler receives `logout_token` pushes from the SSO center (OIDC Back-Channel Logout) when the user signs out globally or revokes consent, verifies the token (RS256 signature via JWKS, issuer/audience/expiry, `events` claim, `jti` replay protection), clears the SSO cookies, and calls your `onLogout` hook. If the hook throws, it responds 500 so the IdP retries delivery. **Remember to register this route's public URL as `backchannelLogoutUri` in the SSO admin console for your client.**
+The backchannel handler receives `logout_token` pushes from the SSO center (OIDC Back-Channel Logout) when the user signs out globally or revokes consent, verifies the token (RS256 signature via JWKS, issuer/audience/expiry, `events` claim, `jti` replay protection), clears the SSO cookies, and calls your `onLogout` hook. If the hook throws, it responds 500 so the IdP retries delivery. Request bodies are capped at 16 KiB with both Content-Length and streaming checks; oversized requests receive 413. **Remember to register this route's public URL as `backchannelLogoutUri` in the SSO admin console for your client.**
 
 > **jti replay storage (since 1.6.0):** the default replay cache is an in-memory per-instance Map. Multi-instance / serverless deployments MUST inject shared storage via the `jtiStore` option (e.g. Redis: `addIfAbsent` = `SET key 1 NX EX ttl`, `remove` = `DEL key` — `remove` lets the SDK release the jti so the IdP can redeliver after an `onLogout` failure; without it, redeliveries are rejected as replays).
 
@@ -552,6 +554,8 @@ All SDK failures are thrown as `SsoError` (`error.code` / `error.description`; `
 | `sso_server_error` | SSO server error | Retry later |
 | `popup_blocked` | `window.open` blocked | Fall back to full-page `login()` |
 | `popup_closed` | User closed the login popup | Offer retry |
+| `popup_timeout` | Popup flow exceeded five minutes | Close stale UI and offer retry |
+| `revocation_failed` | Local logout succeeded but server revocation is unconfirmed | Warn the user / retry; do not claim confirmed server-side revocation |
 | `id_token_*` (`id_token_invalid`, `..._signature`, `..._nonce_mismatch`, `..._at_hash_mismatch`, …) | ID token missing or failed validation (fail-closed) | Restart login; if persistent, check `scopes` parity between middleware and callback |
 | `logout_token_*` | Back-channel logout token validation failed | Return 400/500 so the IdP retries; check clock skew/JWKS |
 | `not_authenticated` | No local token when calling user APIs | Trigger login |

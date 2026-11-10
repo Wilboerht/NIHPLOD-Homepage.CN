@@ -2,7 +2,7 @@
 
 /**
  * 产品页可见 FAQ 组件测试
- * 覆盖：答案常驻 DOM、默认展开第一条、点击展开/收起、空列表不渲染
+ * 覆盖：答案常驻 DOM、默认收起、点击展开/收起、空列表不渲染
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -16,7 +16,7 @@ const faqs = [
 ];
 
 describe("ProductFaq", () => {
-  it("渲染全部问题且答案始终在 DOM 中，默认展开第一条", () => {
+  it("渲染全部问题且答案始终在 DOM 中，默认收起", () => {
     render(<ProductFaq faqs={faqs} />);
 
     expect(screen.getByText(faqs[0].question)).toBeInTheDocument();
@@ -26,7 +26,7 @@ describe("ProductFaq", () => {
 
     expect(screen.getByRole("button", { name: faqs[0].question })).toHaveAttribute(
       "aria-expanded",
-      "true"
+      "false"
     );
     expect(screen.getByRole("button", { name: faqs[1].question })).toHaveAttribute(
       "aria-expanded",

@@ -7,8 +7,8 @@
  *   - phoneCode：getPhoneNumber 按钮授权码（可选，携带时一步完成登录+手机号绑定）
  *   - clientId：来源小程序客户端（可选，缺省 wechat-mp-skin）。需同时在
  *     MINIPROGRAM_CLIENTS 配置该 client 的微信凭证（appId/secret），并在 SSO 后台
- *     建有同名 public OAuth Client（scopes 需覆盖 openid profile phone membership
- *     profile:write birthday）
+ *     建有同名 public OAuth Client（基础 scopes：openid profile phone membership
+ *     profile:write birthday；高危 scope 还需在 MINIPROGRAM_CLIENTS.oauthScopes 显式追加）
  *
  * 流程：code2session（按 clientId 对应凭证）换 openid/unionid → 按 ExternalIdentity
  * （provider=wechat_miniprogram）或 UnionID 聚合查找用户 → 三分支：
@@ -38,6 +38,7 @@ import { resolveWechatBinding, issueOAuthTokens } from "@/lib/wechat-binding";
 import {
   DEFAULT_MINIPROGRAM_CLIENT_ID,
   resolveMiniprogramCredentials,
+  resolveMiniprogramOAuthScopes,
 } from "@/lib/miniprogram-clients";
 import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { checkUserStatus } from "@/lib/auth";
@@ -50,12 +51,8 @@ import { apiConsole } from "@/lib/logger";
 
 const PROVIDER = "wechat_miniprogram";
 
-// 小程序登录所需 scope（实际签发 = 本集合 ∩ OAuthClient.scopes）
-// profile:write：资料编辑；birthday：生日回显；
-// security:manage / phone:write / account:delete / password:write：高危写能力独立授权
-const MP_OAUTH_SCOPE =
-  "openid profile phone membership profile:write birthday " +
-  "security:manage phone:write account:delete password:write";
+// 默认只申请基础能力；高危 scope 必须由 MINIPROGRAM_CLIENTS 的 oauthScopes 显式追加。
+const MP_OAUTH_SCOPE = "openid profile phone membership profile:write birthday";
 
 /**
  * 读取指定小程序 OAuth Client。缺失/停用/非 public 属部署配置错误：
@@ -88,16 +85,22 @@ async function requireMpOAuthClient(clientId: string) {
   return client;
 }
 
-/**
- * 计算实际签发 scope：MP_OAUTH_SCOPE ∩ client.scopes（保持 MP_OAUTH_SCOPE 的顺序）。
- * 交集为空属配置错误：打 error 日志并返回 null，调用方以 500 响应。
- */
+/** 实际签发 =（基础 scope + 当前 Client 显式追加 scope）∩ 后台 Client 白名单。 */
 function resolveMpScope(clientId: string, client: { scopes: string[] }): string | null {
-  const granted = MP_OAUTH_SCOPE.split(" ").filter((s) => client.scopes.includes(s));
+  const additionalScopes = resolveMiniprogramOAuthScopes(clientId);
+  const missingAdditional = additionalScopes.filter((scope) => !client.scopes.includes(scope));
+  if (missingAdditional.length > 0) {
+    apiConsole.warn(
+      `[MiniprogramLogin] OAuth Client "${clientId}" 未允许显式追加的 scopes: ${missingAdditional.join(" ")}`
+    );
+  }
+  const requested = [...MP_OAUTH_SCOPE.split(" "), ...additionalScopes];
+  const granted = [...new Set(requested)].filter(
+    (scope) => scope === "openid" || client.scopes.includes(scope)
+  );
   if (granted.length === 0) {
     apiConsole.error(
-      `[MiniprogramLogin] OAuth Client "${clientId}" 的 scopes（${client.scopes.join(" ") || "(空)"}）` +
-        `与小程序所需 scope（${MP_OAUTH_SCOPE}）无交集，请在 SSO 后台补齐 client scopes`
+      `[MiniprogramLogin] OAuth Client "${clientId}" 没有可用于小程序登录的 scope`
     );
     return null;
   }

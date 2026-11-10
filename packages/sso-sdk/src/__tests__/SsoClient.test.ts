@@ -1290,6 +1290,32 @@ describe("SsoClient", () => {
       expect(client.isAuthenticated()).toBe(false);
     });
 
+    it("服务端返回撤销失败时抛出 revocation_failed，但本地 token 已清除", async () => {
+      saveTokenData(
+        {
+          access_token: "test-token",
+          token_type: "Bearer",
+          expires_in: 900,
+          refresh_token: "test-refresh",
+          issued_at: Date.now(),
+          expires_at: Date.now() + 900000,
+        },
+        CLIENT_ID
+      );
+      installFetchRouter();
+      vi.mocked(globalThis.fetch).mockImplementation(async (input) =>
+        String(input).includes("/api/oauth/revoke")
+          ? jsonResponse({}, 503)
+          : jsonResponse(mockDiscovery)
+      );
+      const client = new SsoClient(defaultConfig);
+
+      await expect(client.logout(false)).rejects.toMatchObject({
+        code: "revocation_failed",
+      });
+      expect(getTokenData(CLIENT_ID)).toBeNull();
+    });
+
     it("redirectToSso=true 时保存 logout state，validateLogoutState 校验并一次性清除", async () => {
       installFetchRouter();
 
@@ -1429,7 +1455,33 @@ describe("SsoClient", () => {
       );
     }
 
-    it("logout 在 Discovery/revoke 不可达时仍会在超时后返回，且本地已清空", async () => {
+    it("loginPopup 超过整体时限时关闭弹窗并返回 popup_timeout", async () => {
+      vi.useFakeTimers();
+      try {
+        installFetchRouter();
+        const popup = { closed: false, focus: vi.fn(), close: vi.fn() };
+        const openSpy = vi
+          .spyOn(window, "open")
+          .mockReturnValue(popup as unknown as Window);
+        const client = new SsoClient(defaultConfig);
+        const settled = client.loginPopup().catch((err: unknown) => err);
+        for (let i = 0; i < 20 && openSpy.mock.calls.length === 0; i++) {
+          await vi.advanceTimersByTimeAsync(0);
+        }
+        expect(openSpy).toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+        const result = await settled;
+
+        expect(result).toBeInstanceOf(SsoError);
+        expect((result as SsoError).code).toBe("popup_timeout");
+        expect(popup.close).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("logout 在 Discovery/revoke 不可达时明确报撤销失败，且本地已清空", async () => {
       vi.useFakeTimers();
       try {
         saveValidToken();
@@ -1437,9 +1489,11 @@ describe("SsoClient", () => {
         const client = new SsoClient(defaultConfig);
 
         const p = client.logout(false);
+        const settled = p.catch((err: unknown) => err);
         await vi.advanceTimersByTimeAsync(15_000);
-        await expect(p).resolves.toBeUndefined();
-        // 本地登出优先：token 已清除
+        const result = await settled;
+        expect(result).toBeInstanceOf(SsoError);
+        expect((result as SsoError).code).toBe("revocation_failed");
         expect(getTokenData(CLIENT_ID)).toBeFalsy();
       } finally {
         vi.useRealTimers();

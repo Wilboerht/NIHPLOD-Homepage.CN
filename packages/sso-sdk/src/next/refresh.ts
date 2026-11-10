@@ -128,11 +128,9 @@ export function createRefreshRouteHandler(config: RefreshRouteConfig) {
     const secFetchSite = request.headers.get("sec-fetch-site");
     if (
       !requestOrigin &&
-      secFetchSite &&
-      secFetchSite !== "same-origin" &&
-      secFetchSite !== "none"
+      (!secFetchSite || (secFetchSite !== "same-origin" && secFetchSite !== "none"))
     ) {
-      return noStoreJson({ error: "forbidden", error_description: "跨站请求被拒绝" }, 403);
+      return noStoreJson({ error: "forbidden", error_description: "缺少同源请求证明" }, 403);
     }
 
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;

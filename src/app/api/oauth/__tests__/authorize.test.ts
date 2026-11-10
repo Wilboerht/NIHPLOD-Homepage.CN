@@ -418,6 +418,18 @@ describe("GET /api/oauth/authorize", () => {
     expect(body.success).toBe(true);
     expect(body.data.params).toContain("client_id=test-client");
   });
+  it("参数错误重定向应透传 popup_nonce", async () => {
+    const res = await GET(
+      new NextRequest(
+        buildAuthorizeUrl({ response_type: "token", popup_nonce: "popup123" })
+      )
+    );
+    const location = new URL(res.headers.get("location")!);
+
+    expect(res.status).toBe(302);
+    expect(location.searchParams.get("error")).toBe("unsupported_response_type");
+    expect(location.searchParams.get("popup_nonce")).toBe("popup123");
+  });
 });
 
 describe("GET /api/oauth/authorize 透明刷新（access 失效 + refresh 兜底）", () => {
@@ -749,6 +761,26 @@ describe("POST /api/oauth/authorize", () => {
     const location = res.headers.get("location")!;
     expect(location).toContain("error=invalid_scope");
     expect(location).toContain(`state=${VALID_STATE}`);
+  });
+
+  it("拒绝授权时应透传 popup_nonce，确保弹窗父页面收到错误回调", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    const req = createPostRequest({
+      action: "deny",
+      client_id: "test-client",
+      redirect_uri: "https://example.com/cb",
+      scope: "openid",
+      state: VALID_STATE,
+      code_challenge: VALID_CODE_CHALLENGE,
+      code_challenge_method: "S256",
+      popup_nonce: "popup123",
+    });
+    const res = await POST(req);
+    const location = new URL(res.headers.get("location")!);
+
+    expect(res.status).toBe(302);
+    expect(location.searchParams.get("error")).toBe("access_denied");
+    expect(location.searchParams.get("popup_nonce")).toBe("popup123");
   });
 
   it("授权成功重定向应原样透传 popup_nonce", async () => {

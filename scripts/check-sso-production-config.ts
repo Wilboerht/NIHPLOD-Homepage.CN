@@ -9,6 +9,7 @@
  * 生产环境也可直接以系统环境变量运行（dotenv 不覆盖已设置的变量，先加载的优先生效）。
  */
 import dotenv from "dotenv";
+import { createPrivateKey, createPublicKey } from "crypto";
 import { parseMiniprogramClientsEnv } from "@/lib/miniprogram-clients";
 
 // 加载环境变量：dotenv 不覆盖已设置的变量，先加载的优先；
@@ -325,6 +326,76 @@ for (const name of ["JWT_ACCESS_PUBLIC_KEY", "JWT_ID_TOKEN_PUBLIC_KEY"] as const
   }
 }
 
+// RSA 密钥不能只做存在性检查：PEM 损坏、公私钥不匹配或 kid 冲突会让线上验签失败。
+const rsaPairs = [
+  { name: "ACCESS", privateKey: "JWT_ACCESS_PRIVATE_KEY", publicKey: "JWT_ACCESS_PUBLIC_KEY" },
+  { name: "ID_TOKEN", privateKey: "JWT_ID_TOKEN_PRIVATE_KEY", publicKey: "JWT_ID_TOKEN_PUBLIC_KEY" },
+  {
+    name: "LOGOUT_TOKEN",
+    privateKey: "JWT_LOGOUT_TOKEN_PRIVATE_KEY",
+    publicKey: "JWT_LOGOUT_TOKEN_PUBLIC_KEY",
+  },
+] as const;
+for (const pair of rsaPairs) {
+  const privateRaw = process.env[pair.privateKey];
+  const publicRaw = process.env[pair.publicKey];
+  if (!privateRaw || !publicRaw) continue;
+  try {
+    const privateKey = createPrivateKey(privateRaw.replace(/\\n/g, "\n"));
+    const derived = createPublicKey(privateKey).export({ format: "der", type: "spki" });
+    const configured = createPublicKey(publicRaw.replace(/\\n/g, "\n")).export({
+      format: "der",
+      type: "spki",
+    });
+    if (!derived.equals(configured)) throw new Error("PUBLIC_KEY_MISMATCH");
+    check({
+      status: "PASS",
+      name: `${pair.name}_RSA_KEY_PAIR`,
+      message: "PEM 可解析，公私钥匹配",
+    });
+  } catch {
+    check({
+      status: "FAIL",
+      name: `${pair.name}_RSA_KEY_PAIR`,
+      message: "PEM 无法解析或公私钥不匹配",
+      fix: "重新生成完整密钥对并同步配置私钥与公钥；不要在日志中输出密钥内容",
+    });
+  }
+}
+
+const kidEntries = [
+  {
+    current: process.env.JWT_OAUTH_ACCESS_KID || "access-token-rs256-v1",
+    previous: process.env.JWT_OAUTH_ACCESS_PREV_KID || "access-token-rs256-v0",
+    hasPrevious: !!process.env.JWT_OAUTH_ACCESS_PREV_PUBLIC_KEY,
+  },
+  {
+    current: process.env.JWT_OAUTH_ID_TOKEN_KID || "id-token-rs256-v1",
+    previous: process.env.JWT_OAUTH_ID_TOKEN_PREV_KID || "id-token-rs256-v0",
+    hasPrevious: !!process.env.JWT_OAUTH_ID_TOKEN_PREV_PUBLIC_KEY,
+  },
+  {
+    current: process.env.JWT_LOGOUT_TOKEN_KID || "logout-token-rs256-v1",
+    previous: process.env.JWT_LOGOUT_TOKEN_PREV_KID || "logout-token-rs256-v0",
+    hasPrevious: !!process.env.JWT_LOGOUT_TOKEN_PREV_PUBLIC_KEY,
+  },
+];
+const kids = kidEntries.flatMap((entry) =>
+  entry.hasPrevious ? [entry.current, entry.previous] : [entry.current]
+);
+const duplicateKids = [...new Set(kids.filter((kid, index) => kids.indexOf(kid) !== index))];
+check({
+  status: duplicateKids.length > 0 ? "FAIL" : "PASS",
+  name: "JWKS_KID_UNIQUENESS",
+  message:
+    duplicateKids.length > 0
+      ? `存在重复 kid：${duplicateKids.join(", ")}，验证方可能选错公钥`
+      : "当前及上一代 JWKS kid 均唯一",
+  ...(duplicateKids.length > 0
+    ? { fix: "为每把当前/历史公钥配置互不相同的 kid 后重启" }
+    : {}),
+});
+
 // TOTP_ENCRYPTION_KEY：admin TOTP setup/verify/资金操作运行期强依赖
 if (!process.env.TOTP_ENCRYPTION_KEY) {
   check({
@@ -429,7 +500,7 @@ if (transport && transport !== "query" && transport !== "fragment") {
   check({
     status: "PASS",
     name: "WECHAT_EXCHANGE_TOKEN_TRANSPORT",
-    message: `当前为 ${transport ?? "query（默认）"}`,
+    message: `当前为 ${transport ?? "fragment（默认）"}`,
   });
 }
 
@@ -825,11 +896,14 @@ const advisorSsoVars = [
 for (const name of advisorSsoVars) {
   const value = process.env[name];
   if (!value) {
+    const enabled = process.env.ADVISOR_ADMIN_SSO_ENABLED === "true";
     check({
-      status: "FAIL",
+      status: enabled ? "FAIL" : "SKIP",
       name,
-      message: "未配置，测肤子站管理员将无法登录",
-      fix: "按 docs 配置主站 -> Skin-Advisor 管理员 SSO 变量后重启",
+      message: enabled ? "已启用管理员 SSO，但该项未配置" : "未配置（管理员 SSO 未启用，无需配置）",
+      ...(enabled
+        ? { fix: "按 docs 配置主站 -> Skin-Advisor 管理员 SSO 变量后重启" }
+        : {}),
     });
   } else if (
     (name === "ADVISOR_ADMIN_SSO_CLIENT_SECRET" || name === "ADVISOR_ADMIN_SSO_SECRET") &&

@@ -281,12 +281,10 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
     const secFetchSite = request.headers.get("sec-fetch-site");
     if (
       !requestOrigin &&
-      secFetchSite &&
-      secFetchSite !== "same-origin" &&
-      secFetchSite !== "none"
+      (!secFetchSite || (secFetchSite !== "same-origin" && secFetchSite !== "none"))
     ) {
       return NextResponse.json(
-        { error: "forbidden", error_description: "跨站请求被拒绝" },
+        { error: "forbidden", error_description: "缺少同源请求证明" },
         { status: 403 }
       );
     }
@@ -308,12 +306,10 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
 
     const refreshToken = request.cookies.get(refreshTokenCookieName)?.value;
     const idTokenHint = request.cookies.get(idTokenCookieName)?.value;
+    let revocationFailed = false;
 
-    // 1. best-effort 撤销服务端 refresh_token
     if (refreshToken) {
       try {
-        // 配置了内网地址时直连默认端点（跳过 discovery 的公网端点，
-        // 否则文档里的公网 URL 会让调用仍绕行公网）；否则用缓存的 discovery
         const discovery = config.serverBaseUrl
           ? null
           : await fetchDiscoveryCached(normalizedServerBase);
@@ -330,7 +326,6 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
         if (clientSecret) {
           body.set("client_secret", clientSecret);
         }
-        // 3s 超时兜底：撤销是 best-effort，主站缓慢时不得拖住登出流程
         const doRevoke = () =>
           fetch(revokeUrl, {
             method: "POST",
@@ -344,10 +339,11 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
           revokeRes = await doRevoke();
         }
         if (!revokeRes.ok) {
+          revocationFailed = true;
           console.warn(`[SSO SDK] 登出撤销 refresh_token 失败（HTTP ${revokeRes.status}）`);
         }
       } catch {
-        // 撤销失败不影响本地登出
+        revocationFailed = true;
       }
     }
 
@@ -405,11 +401,24 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       logoutUrl.searchParams.set("state", logoutState);
       const res = clearCookies(NextResponse.redirect(logoutUrl.toString()));
       res.cookies.set(logoutStateCookieName, logoutState, getHostCookieOptions(600, secureCookies));
+      if (revocationFailed) res.headers.set("X-SSO-Revocation", "failed");
       return res;
     }
 
-    return clearCookies(
-      NextResponse.redirect(callbackOrigin + "/")
-    );
+    if (revocationFailed) {
+      const res = NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "REVOCATION_FAILED",
+            message: "本站已退出，但服务端凭证撤销未确认，请重试或联系管理员",
+          },
+        },
+        { status: 503, headers: { "Cache-Control": "no-store", "X-SSO-Revocation": "failed" } }
+      );
+      return clearCookies(res);
+    }
+
+    return clearCookies(NextResponse.redirect(callbackOrigin + "/"));
   };
 }

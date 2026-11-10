@@ -40,6 +40,45 @@ import {
   toInsecureCookieName,
 } from "./constants";
 
+const MAX_BACKCHANNEL_BODY_BYTES = 16 * 1024;
+
+async function readBoundedBody(request: NextRequest): Promise<string | null> {
+  const contentLengthRaw = request.headers.get("content-length");
+  if (contentLengthRaw) {
+    const contentLength = Number(contentLengthRaw);
+    if (!Number.isFinite(contentLength) || contentLength > MAX_BACKCHANNEL_BODY_BYTES) {
+      return null;
+    }
+  }
+  if (!request.body) return "";
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MAX_BACKCHANNEL_BODY_BYTES) {
+        await reader.cancel().catch(() => {});
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 // ============================================
 // 类型定义
 // ============================================
@@ -128,9 +167,14 @@ export function createBackchannelLogoutRouteHandler(
       );
     }
 
-    const logoutToken = new URLSearchParams(await request.text()).get(
-      "logout_token"
-    );
+    const body = await readBoundedBody(request);
+    if (body === null) {
+      return NextResponse.json(
+        { error: "invalid_request", error_description: "请求体过大或 Content-Length 非法" },
+        { status: 413 }
+      );
+    }
+    const logoutToken = new URLSearchParams(body).get("logout_token");
     if (!logoutToken) {
       return NextResponse.json(
         { error: "invalid_request", error_description: "缺少 logout_token" },
