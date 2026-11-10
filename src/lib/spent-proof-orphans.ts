@@ -1,5 +1,5 @@
 /**
- * 清理未被任何消费补录申请引用的本地私有凭证文件。
+ * 清理未被消费补录或兑换售后记录引用的本地私有凭证文件。
  *
  * 场景：
  * - 用户/客服上传凭证后未提交，或提交被待审上限/重复订单拦截；
@@ -129,10 +129,14 @@ export async function purgeOrphanSpentProofs(options?: {
   const olderThanMs = options?.olderThanMs ?? DEFAULT_ORPHAN_TTL_MS;
   const rootDir = options?.rootDir ?? defaultSpentProofRoot();
 
-  const applications = await prisma.spentAdjustmentApplication.findMany({
-    select: { images: true },
-  });
-  const referencedKeys = applications.flatMap((application) => application.images);
+  const [applications, redemptions] = await Promise.all([
+    prisma.spentAdjustmentApplication.findMany({ select: { images: true } }),
+    prisma.pointRedemption.findMany({ select: { afterSalesImages: true } }),
+  ]);
+  const referencedKeys = [
+    ...applications.flatMap((application) => application.images),
+    ...redemptions.flatMap((redemption) => redemption.afterSalesImages),
+  ];
 
   const scan = await findOrphanSpentProofs({
     rootDir,

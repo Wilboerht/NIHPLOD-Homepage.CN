@@ -13,6 +13,7 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { enqueueSecurityActionNotification } from "@/lib/security-notify";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export async function POST(
 
     const deletionRequest = await prisma.accountDeletionRequest.findUnique({
       where: { id },
-      select: { userId: true },
+      select: { userId: true, user: { select: { phone: true } } },
     });
     if (!deletionRequest) {
       return NextResponse.json(
@@ -94,6 +95,12 @@ export async function POST(
     }
 
     await finishAuditLog(auditId, "SUCCESS", { requestId: id });
+    await enqueueSecurityActionNotification({
+      userId: deletionRequest.userId,
+      phone: deletionRequest.user.phone,
+      action: "注销申请已撤回",
+      reference: `deletion-cancel:${id}`,
+    }).catch((error) => apiConsole.warn("[AdminAccountDeletionCancel] 用户通知入队失败:", error));
     return NextResponse.json({ success: true, data: { status: "CANCELLED" } });
   } catch (error) {
     apiConsole.error("[AdminAccountDeletionCancel] 撤回异常:", error);

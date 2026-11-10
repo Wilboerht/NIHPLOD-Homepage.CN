@@ -14,6 +14,7 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { buildUserWhere, userListQuerySchema } from "@/lib/user-query";
+import { enqueueSecurityActionNotification } from "@/lib/security-notify";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -160,6 +161,7 @@ export async function POST(request: NextRequest) {
       .object({
         ids: z.array(z.string().min(1)).min(1).max(200),
         status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"]),
+        reason: z.string().trim().min(2, "请填写变更原因或工单号").max(200),
       })
       .safeParse(body);
     if (!parsed.success) {
@@ -169,7 +171,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ids, status } = parsed.data;
+    const { ids, status, reason } = parsed.data;
 
     if (isAdminApprovalEnforced() && admin.role !== "owner") {
       return NextResponse.json(
@@ -190,7 +192,7 @@ export async function POST(request: NextRequest) {
     // 解封时移出黑名单。逐个用户级联（量小，ids ≤ 200），外部通知失败不阻断整体流程。
     const targets = await prisma.user.findMany({
       where: { id: { in: ids } },
-      select: { id: true, status: true },
+      select: { id: true, status: true, phone: true },
     });
     // 跳过状态未变化的用户，避免无效的级联与审计噪音
     const toChange = targets.filter((u) => u.status !== status && u.status !== "DELETED");
@@ -201,7 +203,7 @@ export async function POST(request: NextRequest) {
       action: "user_status_change",
       targetType: "user",
       targetId: ids[0],
-      detail: { ids, status, count: 0, skippedDeleted },
+      detail: { ids, status, reason, count: 0, skippedDeleted },
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -254,6 +256,17 @@ export async function POST(request: NextRequest) {
               batch: true,
             },
           });
+          await enqueueSecurityActionNotification({
+            userId: u.id,
+            phone: u.phone,
+            action:
+              status === "ACTIVE"
+                ? "账号已恢复正常"
+                : status === "SUSPENDED"
+                  ? "账号已被冻结"
+                  : "账号已被封禁",
+            reference: `status:${u.id}:${status}:${Date.now()}`,
+          }).catch((error) => apiConsole.warn("[AdminUsersBatch] 用户通知入队失败:", error));
         } catch (error) {
           failed.push({
             id: u.id,

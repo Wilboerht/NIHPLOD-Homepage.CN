@@ -245,6 +245,21 @@ function UserDetailSkeleton() {
   );
 }
 
+interface DeletePreflight {
+  userId: string;
+  status: UserStatus;
+  totalSpent: number;
+  pointsAvailable: number;
+  pendingRedemptions: number;
+  activeAfterSales: number;
+  externalIdentities: number;
+  independentRecords: {
+    contactMessages: number;
+    jobApplications: number;
+    note: string;
+  };
+}
+
 interface UserDetail {
   id: string;
   phone: string | null;
@@ -604,7 +619,13 @@ function AdminUsersContent() {
   const [revealingPhone, setRevealingPhone] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusTarget, setStatusTarget] = useState<{ id: string; status: UserStatus } | null>(null);
+  const [statusReason, setStatusReason] = useState("");
+  const [batchReason, setBatchReason] = useState("");
+  const [identityUnbindReason, setIdentityUnbindReason] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deletePreflight, setDeletePreflight] = useState<DeletePreflight | null>(null);
+  const [deletePreflightError, setDeletePreflightError] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const takeLatestUsers = useLatestRequest();
@@ -798,11 +819,13 @@ function AdminUsersContent() {
 
   /** 解绑外部身份 */
   const confirmIdentityUnbind = async () => {
-    if (!detailUser || !identityUnbindTarget) return;
+    if (!detailUser || !identityUnbindTarget || identityUnbindReason.trim().length < 2) return;
     setIdentityUnbinding(true);
     try {
       const result = await runWithStepUp(() =>
-        apiDelete(`/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`)
+        apiDelete(`/api/admin/users/${detailUser.id}/identities/${identityUnbindTarget.id}`, {
+          reason: identityUnbindReason.trim(),
+        })
       );
       if (result === null) return;
       toast.success("已解绑该外部身份");
@@ -856,18 +879,30 @@ function AdminUsersContent() {
 
   const updateUserStatus = (userId: string, status: UserStatus) => {
     setStatusTarget({ id: userId, status });
+    setStatusReason("");
   };
 
   const requestDeleteUser = (id: string, label: string) => {
     setDeleteTarget({ id, label });
+    setDeleteReason("");
+    setDeletePreflight(null);
+    setDeletePreflightError(false);
+    void apiGet<DeletePreflight>(`/api/admin/users/${id}/delete-preflight`)
+      .then(setDeletePreflight)
+      .catch(() => setDeletePreflightError(true));
   };
 
   const confirmDeleteUser = async () => {
-    if (!deleteTarget) return;
+    if (
+      !deleteTarget ||
+      deleteReason.trim().length < 2 ||
+      deletePreflight?.userId !== deleteTarget.id
+    )
+      return;
     const { id } = deleteTarget;
     setDeleteLoading(true);
     try {
-      const submit = () => apiDelete(`/api/admin/users/${id}`);
+      const submit = () => apiDelete(`/api/admin/users/${id}`, { reason: deleteReason.trim() });
       try {
         await submit();
       } catch (err) {
@@ -907,12 +942,15 @@ function AdminUsersContent() {
   };
 
   const confirmStatusChange = async () => {
-    if (!statusTarget) return;
+    if (!statusTarget || statusReason.trim().length < 2) return;
     const { id, status } = statusTarget;
     setStatusLoading(true);
     try {
       const result = await runWithStepUp(() =>
-        apiPatch<{ user?: { status?: UserStatus } }>(`/api/admin/users/${id}`, { status })
+        apiPatch<{ user?: { status?: UserStatus } }>(`/api/admin/users/${id}`, {
+          status,
+          reason: statusReason.trim(),
+        })
       );
       if (result === null) return;
       // 服务端 CAS 冲突时会返回最新真实状态，不能继续提示请求状态。
@@ -961,7 +999,7 @@ function AdminUsersContent() {
   const isSelectionIndeterminate = userSelection.isIndeterminate(users);
 
   const confirmBatchChange = async () => {
-    if (!batchTarget || selectedIds.size === 0) return;
+    if (!batchTarget || selectedIds.size === 0 || batchReason.trim().length < 2) return;
     if (!isOwnerActor) {
       toast.error("批量修改用户状态需要 owner 审批，请到详情页逐条提交申请");
       return;
@@ -975,6 +1013,7 @@ function AdminUsersContent() {
           {
             ids: Array.from(selectedIds),
             status: targetStatus,
+            reason: batchReason.trim(),
           }
         )
       );
@@ -2519,14 +2558,26 @@ function AdminUsersContent() {
       {/* 解绑外部身份确认 */}
       <ConfirmDialog
         open={!!identityUnbindTarget}
-        onClose={() => setIdentityUnbindTarget(null)}
+        onClose={() => {
+          setIdentityUnbindTarget(null);
+          setIdentityUnbindReason("");
+        }}
         onConfirm={confirmIdentityUnbind}
         title="解绑外部身份"
         description={`确定解绑「${identityUnbindTarget?.label ?? ""}」吗？解绑后该平台将无法登录此账号，用户可在登录页重新绑定。`}
         confirmText="确认解绑"
+        confirmDisabled={identityUnbindReason.trim().length < 2}
         type="danger"
         loading={identityUnbinding}
-      />
+      >
+        <Input
+          label="解绑原因 / 工单号（必填）"
+          value={identityUnbindReason}
+          maxLength={200}
+          onChange={(event) => setIdentityUnbindReason(event.target.value)}
+          placeholder="如：用户反馈绑定错误 / CS-20261110-01"
+        />
+      </ConfirmDialog>
 
       {/* 重置密码确认 */}
       <ConfirmDialog
@@ -2565,7 +2616,7 @@ function AdminUsersContent() {
         <div className="space-y-4">
           <p className="text-sm text-brand-charcoal/70">
             请立即通过安全渠道将临时密码告知用户，关闭本窗口后无法再次查看。
-            用户所有会话已被强制下线，需使用该密码重新登录并尽快修改密码。
+            用户所有会话已被强制下线。临时密码 24 小时内有效，首次登录后必须修改密码。
           </p>
           <div className="flex items-center gap-2 rounded-lg bg-brand-charcoal/[0.04] px-4 py-3">
             <code className="flex-1 select-all break-all font-mono text-sm text-brand-charcoal">
@@ -2608,7 +2659,10 @@ function AdminUsersContent() {
       {/* 状态变更确认 */}
       <ConfirmDialog
         open={!!statusTarget}
-        onClose={() => setStatusTarget(null)}
+        onClose={() => {
+          setStatusTarget(null);
+          setStatusReason("");
+        }}
         onConfirm={confirmStatusChange}
         title="修改用户状态"
         type={statusTarget?.status === "BANNED" ? "danger" : "warning"}
@@ -2618,13 +2672,25 @@ function AdminUsersContent() {
             : ""
         }
         confirmText="确认修改"
+        confirmDisabled={statusReason.trim().length < 2}
         loading={statusLoading}
-      />
+      >
+        <Input
+          label="变更原因 / 工单号（必填）"
+          value={statusReason}
+          maxLength={200}
+          onChange={(event) => setStatusReason(event.target.value)}
+          placeholder="如：风控审核 / CS-20261110-01"
+        />
+      </ConfirmDialog>
 
       {/* 批量状态变更确认 */}
       <ConfirmDialog
         open={!!batchTarget}
-        onClose={() => setBatchTarget(null)}
+        onClose={() => {
+          setBatchTarget(null);
+          setBatchReason("");
+        }}
         onConfirm={confirmBatchChange}
         title="批量修改用户状态"
         type={batchTarget?.status === "BANNED" ? "danger" : "warning"}
@@ -2634,8 +2700,16 @@ function AdminUsersContent() {
             : ""
         }
         confirmText={`确认${batchTarget ? userStatusMap[batchTarget.status].label : ""}`}
+        confirmDisabled={batchReason.trim().length < 2}
         loading={batchLoading}
-      />
+      >
+        <Input
+          label="变更原因 / 工单号（必填）"
+          value={batchReason}
+          maxLength={200}
+          onChange={(event) => setBatchReason(event.target.value)}
+        />
+      </ConfirmDialog>
 
       {/* 删除用户确认 */}
       <ConfirmDialog
@@ -2645,13 +2719,56 @@ function AdminUsersContent() {
         title="删除用户"
         description={
           deleteTarget
-            ? `确定要删除用户「${deleteTarget.label}」吗？该操作将封禁账号并匿名化全部个人数据（GDPR 合规），不可恢复。`
+            ? `确定要删除用户「${deleteTarget.label}」吗？该操作将封禁账号并匿名化个人数据，不可恢复。`
             : ""
         }
         type="danger"
         confirmText="确认删除"
+        confirmDisabled={
+          deleteReason.trim().length < 2 || deletePreflight?.userId !== deleteTarget?.id
+        }
         loading={deleteLoading}
-      />
+      >
+        {deletePreflightError ? (
+          <div className="rounded-lg bg-red-50 p-3 text-xs text-red-600">
+            资产预检失败，不能执行删除。
+            <Button
+              className="ml-2"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                deleteTarget && requestDeleteUser(deleteTarget.id, deleteTarget.label)
+              }
+            >
+              重试预检
+            </Button>
+          </div>
+        ) : deletePreflight ? (
+          <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            <p>
+              剩余积分 {deletePreflight.pointsAvailable}；待履约 {deletePreflight.pendingRedemptions} 笔；进行中售后 {deletePreflight.activeAfterSales} 笔。
+            </p>
+            <p>
+              外部身份 {deletePreflight.externalIdentities} 个；累计消费 ¥{deletePreflight.totalSpent.toLocaleString()}。
+            </p>
+            {(deletePreflight.independentRecords.contactMessages > 0 ||
+              deletePreflight.independentRecords.jobApplications > 0) && (
+              <p>
+                同手机号另有留言 {deletePreflight.independentRecords.contactMessages} 条、简历 {deletePreflight.independentRecords.jobApplications} 份；这些记录不会在账号注销时自动删除。
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-brand-charcoal/60">正在核对积分、兑换、售后和关联数据...</p>
+        )}
+        <Input
+          label="删除原因 / 工单号（必填）"
+          value={deleteReason}
+          maxLength={200}
+          onChange={(event) => setDeleteReason(event.target.value)}
+          placeholder="如：用户申请注销 / GDPR-20261110-01"
+        />
+      </ConfirmDialog>
 
       <UserExportDialog
         open={exportOpen}

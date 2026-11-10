@@ -27,6 +27,7 @@ import { LoginForm } from "@/components/website/auth/LoginForm";
 import { RegisterForm } from "@/components/website/auth/RegisterForm";
 import { ForgotPasswordForm } from "@/components/website/auth/ForgotPasswordForm";
 import { WechatBindForm } from "@/components/website/auth/WechatBindForm";
+import { SecurityPanel } from "@/components/website/user-center/panels/SecurityPanel";
 import type { AuthFieldErrors } from "@/components/website/auth/AuthFieldError";
 
 type AuthMode = "login" | "register" | "reset" | "consent" | "wechat-bind";
@@ -243,6 +244,7 @@ function LoginPageContent() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginCode, setLoginCode] = useState("");
   const [loginMethod, setLoginMethod] = useState<"password" | "code">("password");
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
   const [loginCodeCountdown, setLoginCodeCountdown] = useState(0);
   const [loginCodeSending, setLoginCodeSending] = useState(false);
 
@@ -289,6 +291,7 @@ function LoginPageContent() {
     loginPhone?: string;
     loginNotice?: string;
     resetError?: string;
+    forgotPhone?: string;
   } | null>(null);
   const authRequestIdRef = useRef(0);
 
@@ -432,6 +435,7 @@ function LoginPageContent() {
     setFieldErrors({});
     setFormError("");
     setLoginNotice("");
+    setPasswordChangeRequired(false);
   }
 
   // 跨模式提示/预填的落地：渲染期重置完成后（effect 晚于渲染期 setState 生效）再写入，
@@ -446,6 +450,7 @@ function LoginPageContent() {
     } else if (mode === "reset") {
       pendingModePayload.current = null;
       if (pending.resetError) setFormError(pending.resetError);
+      if (pending.forgotPhone !== undefined) setForgotPhone(pending.forgotPhone);
     }
   }, [mode]);
 
@@ -576,21 +581,35 @@ function LoginPageContent() {
     }
     const requestId = ++authRequestIdRef.current;
     try {
+      let result: { user: { passwordChangeRequired?: boolean } };
       if (loginMethod === "code") {
         // 验证码登录：短信码即凭证，无需人机验证
         setLoading(true);
-        await apiPost("/api/auth/login", { phone: loginPhone, code: loginCode });
+        result = await apiPost("/api/auth/login", { phone: loginPhone, code: loginCode });
       } else {
         // 密码登录先过 PoW 人机验证（求解期间按钮显示「核验中…」）
         const captchaToken = await runWithCaptcha("login");
         setLoading(true);
-        await apiPost("/api/auth/login-password", {
+        result = await apiPost("/api/auth/login-password", {
           phone: loginPhone,
           password: loginPassword,
           captchaToken,
         });
       }
       if (requestId !== authRequestIdRef.current) return;
+      if (result.user?.passwordChangeRequired) {
+        if (loginMethod === "code") {
+          pendingModePayload.current = {
+            forgotPhone: loginPhone,
+            resetError: "为完成账户安全验证，请通过手机验证码设置新密码",
+          };
+          switchMode("reset");
+        } else {
+          await refreshUser(true).catch(() => undefined);
+          setPasswordChangeRequired(true);
+        }
+        return;
+      }
       await handleAuthSuccess("登录成功", requestId);
     } catch (error) {
       if (requestId !== authRequestIdRef.current) return;
@@ -970,6 +989,24 @@ function LoginPageContent() {
   const handleSwitchToRegister = () => switchMode("register");
 
   const renderForm = (variant: "pc" | "mobile") => {
+    if (passwordChangeRequired) {
+      return (
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-xl font-medium text-brand-charcoal">请修改临时密码</h2>
+            <p className="mt-2 text-sm leading-relaxed text-brand-charcoal/65">
+              临时密码仅用于本次身份验证，且有效期为 24 小时。设置新密码后再继续使用账户。
+            </p>
+          </div>
+          <SecurityPanel
+            onPasswordChanged={() => {
+              setPasswordChangeRequired(false);
+              void handleAuthSuccess("密码修改成功");
+            }}
+          />
+        </div>
+      );
+    }
     switch (mode) {
       case "login":
         return (

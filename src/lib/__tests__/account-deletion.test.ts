@@ -72,6 +72,9 @@ vi.mock("@/lib/prisma", () => ({
     spentAdjustmentApplication: {
       findMany: (...args: unknown[]) => mockSpentProofFindMany(...args),
     },
+    pointRedemption: {
+      findMany: (...args: unknown[]) => mockTxPointRedemptionFindMany(...args),
+    },
     $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
 }));
@@ -404,6 +407,24 @@ describe("executeAccountDeletion", () => {
       }),
       expect.any(Array)
     );
+  });
+
+  it("注销时删除售后凭证并清空撤销历史文本", async () => {
+    const image =
+      "private-local:spent-adjustments/user-1/123e4567-e89b-42d3-a456-426614174000.webp";
+    mockTxPointRedemptionFindMany.mockReset();
+    mockTxPointRedemptionFindMany
+      .mockResolvedValueOnce([{ afterSalesImages: [image] }])
+      .mockResolvedValue([]);
+
+    const result = await executeAccountDeletion("req-1");
+
+    expect(result).toBe("completed");
+    expect(mockDeleteSpentProofFile).toHaveBeenCalledWith(image, "user-1");
+    expect(mockTxSpentAdjustmentUpdateMany).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      data: { reviewNote: null, lastReviewNote: null, undoReason: null },
+    });
   });
 
   it("H1 回归：同一手机号被复用后两个用户先后注销，占位值不同且均成功（不再 P2002）", async () => {

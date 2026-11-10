@@ -17,6 +17,7 @@ import { hashIdentifier } from "./auth-security";
 import { createAdminTotpRecovery } from "./admin-totp-recovery";
 import { recordSsoEvent } from "./sso-audit";
 import { maskPhone } from "./mask-phone";
+import { enqueueSecurityActionNotification } from "./security-notify";
 import { AdminApprovalError } from "./admin-approval-errors";
 import {
   adminDeletePayloadSchema,
@@ -591,6 +592,18 @@ async function executeUserStatus(ctx: ApprovalExecutorContext): Promise<Approval
   if (!result.changed) {
     throw new AdminApprovalError("STALE", "用户状态已变化，请重新发起", 409);
   }
+
+  await enqueueSecurityActionNotification({
+    userId: user.id,
+    phone: user.phone,
+    action:
+      payload.status === "ACTIVE"
+        ? "账号已恢复正常"
+        : payload.status === "SUSPENDED"
+          ? "账号已被冻结"
+          : "账号已被封禁",
+    reference: `status-approval:${ctx.approvalId}`,
+  }).catch(() => undefined);
 
   await writeExecutorAudit({
     ctx,

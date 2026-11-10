@@ -280,6 +280,7 @@ export async function POST(request: NextRequest) {
           phone: user.phone,
           nickname: user.nickname,
           avatar: user.avatar,
+          passwordChangeRequired: user.passwordChangeRequired,
         },
       },
     });

@@ -22,9 +22,10 @@ const inputClass =
 interface SecurityPanelProps {
   /** 初始模式：change = 旧密码修改；set = 首次设置（未设过密码的账号） */
   initialMode?: "change" | "set";
+  onPasswordChanged?: () => void;
 }
 
-export function SecurityPanel({ initialMode = "change" }: SecurityPanelProps) {
+export function SecurityPanel({ initialMode = "change", onPasswordChanged }: SecurityPanelProps) {
   const { user, refreshUser } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
   const [oldPassword, setOldPassword] = useState("");
@@ -94,6 +95,7 @@ export function SecurityPanel({ initialMode = "change" }: SecurityPanelProps) {
           showSuccess("密码修改成功，其他设备已退出登录");
           // 同步最新资料（hasPassword 等）
           void refreshUser?.();
+          onPasswordChanged?.();
         } else if (data.error?.code === "PASSWORD_NOT_SET") {
           // 未设过密码的账号（如短信注册）：切换到短信验证码设置流程
           setPwdMode("set");
@@ -120,6 +122,7 @@ export function SecurityPanel({ initialMode = "change" }: SecurityPanelProps) {
           showSuccess("密码设置成功，其他设备已退出登录");
           // 同步最新资料（hasPassword 等）
           void refreshUser?.();
+          onPasswordChanged?.();
         } else {
           showError(data.error?.message || "设置失败");
         }

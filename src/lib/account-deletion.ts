@@ -195,12 +195,24 @@ export async function executeAccountDeletion(
     const avatarPurge = await purgeAvatarAssets(userId);
     const avatarPurgeFailed = avatarPurge.failed > 0;
 
-    const proofApplications = await prisma.spentAdjustmentApplication.findMany({
-      where: { userId, images: { isEmpty: false } },
-      select: { images: true },
-    });
+    const [proofApplications, proofRedemptions] = await Promise.all([
+      prisma.spentAdjustmentApplication.findMany({
+        where: { userId, images: { isEmpty: false } },
+        select: { images: true },
+      }),
+      prisma.pointRedemption.findMany({
+        where: { userId, afterSalesImages: { isEmpty: false } },
+        select: { afterSalesImages: true },
+      }),
+    ]);
+    const proofImages = [
+      ...new Set([
+        ...proofApplications.flatMap((item) => item.images),
+        ...proofRedemptions.flatMap((item) => item.afterSalesImages),
+      ]),
+    ];
     let proofPurgeFailed = false;
-    for (const image of proofApplications.flatMap((item) => item.images)) {
+    for (const image of proofImages) {
       try {
         const deleted = await deleteSpentProofFile(image, userId);
         if (!deleted) {
@@ -262,10 +274,10 @@ export async function executeAccountDeletion(
         },
       });
       closedPendingSpentAdjustments = closedPending.count;
-      // 审核备注/驳回原因属于自由文本，可能含 PII；注销后统一清空。
+      // 当前及历史审核/撤销自由文本均可能含 PII，注销后统一清空。
       await tx.spentAdjustmentApplication.updateMany({
         where: { userId },
-        data: { reviewNote: null },
+        data: { reviewNote: null, lastReviewNote: null, undoReason: null },
       });
       // SSO 授权同意全量撤销（与管理端删除路径同口径）
       await tx.userConsent.updateMany({
@@ -423,6 +435,7 @@ export async function executeAccountDeletion(
           wechatUnionId: null,
           passwordChangedAt: null,
           passwordExpiresAt: null,
+          passwordChangeRequired: false,
           // 本地校验的 JWT（access token iat 早于此时间一律拒绝）即时失效；
           // 残余限制：第三方仅凭 JWKS 验签的 sid-less OIDC token 仍存活至自然过期
           sessionsInvalidatedAt: new Date(),

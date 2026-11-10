@@ -164,6 +164,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const committed = await prisma.$transaction(async (tx) => {
         const result = await updateUserPassword(user.id, tempPassword, {
           skipHistoryCheck: true,
+          temporary: true,
           tx,
         });
         if (!result.success) {

@@ -8,9 +8,16 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 const mockFindMany = vi.fn();
+const mockRedemptionFindMany = vi.fn();
 vi.mock("@/lib/prisma", () => ({
-  prisma: { spentAdjustmentApplication: { findMany: () => mockFindMany() } },
-  default: { spentAdjustmentApplication: { findMany: () => mockFindMany() } },
+  prisma: {
+    spentAdjustmentApplication: { findMany: () => mockFindMany() },
+    pointRedemption: { findMany: () => mockRedemptionFindMany() },
+  },
+  default: {
+    spentAdjustmentApplication: { findMany: () => mockFindMany() },
+    pointRedemption: { findMany: () => mockRedemptionFindMany() },
+  },
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -44,6 +51,8 @@ async function makeProof(uuid: string, ageMs: number | null): Promise<string> {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  mockFindMany.mockResolvedValue([]);
+  mockRedemptionFindMany.mockResolvedValue([]);
   tempDir = await mkdtemp(join(tmpdir(), "spent-orphans-"));
   rootDir = join(tempDir, "spent-adjustments");
   userDir = join(rootDir, "user-1");
@@ -112,6 +121,17 @@ describe("purgeOrphanSpentProofs", () => {
     expect(result.candidates).toBe(1);
     expect(result.deleted).toBe(0);
     await expect(import("fs/promises").then((fs) => fs.stat(orphanPath))).resolves.toBeTruthy();
+  });
+
+  it("兑换售后引用也受保护，不会被误删", async () => {
+    const referenced = `private-local:spent-adjustments/user-1/${UUID_A}.webp`;
+    mockRedemptionFindMany.mockResolvedValue([{ afterSalesImages: [referenced] }]);
+    const referencedPath = await makeProof(UUID_A, 10 * 24 * 60 * 60 * 1000);
+
+    const result = await purgeOrphanSpentProofs({ rootDir, apply: true });
+
+    expect(result.candidates).toBe(0);
+    await expect(import("fs/promises").then((fs) => fs.stat(referencedPath))).resolves.toBeTruthy();
   });
 
   it("apply 删除未引用文件并保留被引用文件", async () => {

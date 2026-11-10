@@ -24,6 +24,7 @@ import { requireAdminStepUp } from "@/lib/admin-totp";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { hashIdentifier } from "@/lib/auth-security";
 import { executeAccountDeletion, DELETION_STATUS, DELETION_LEASE_MS } from "@/lib/account-deletion";
+import { enqueueSecurityActionNotification } from "@/lib/security-notify";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -477,6 +478,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 const updateUserSchema = z
   .object({
     status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"] as const).optional(),
+    reason: z.string().trim().max(200).optional(),
     // 生日：YYYY-MM-DD 或 null（清除）；客服代改不受生日锁定限制
     birthday: z
       .union([
@@ -498,7 +500,11 @@ const updateUserSchema = z
   .refine(
     (d) => d.status !== undefined || d.birthday !== undefined || d.unlockBirthday !== undefined,
     { message: "未提供可更新的字段" }
-  );
+  )
+  .refine((d) => d.status === undefined || (d.reason?.length ?? 0) >= 2, {
+    message: "状态变更需填写原因或工单号",
+    path: ["reason"],
+  });
 
 // PATCH /api/admin/users/:id - 修改用户状态 / 生日（客服代改）
 export async function PATCH(request: NextRequest, context: RouteContext) {
@@ -683,7 +689,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         action: "user_status_change",
         targetType: "user",
         targetId: user.id,
-        detail: { previousStatus: user.status, newStatus: status, phone: maskPhone(user.phone) },
+        detail: {
+          previousStatus: user.status,
+          newStatus: status,
+          reason: result.data.reason,
+          phone: maskPhone(user.phone),
+        },
         adminId: admin.id,
         request,
       });
@@ -765,6 +776,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           adminId: admin.id,
         },
       });
+      await enqueueSecurityActionNotification({
+        userId: user.id,
+        phone: user.phone,
+        action:
+          status === "ACTIVE" ? "账号已恢复正常" : status === "SUSPENDED" ? "账号已被冻结" : "账号已被封禁",
+        reference: `status:${user.id}:${status}:${Date.now()}`,
+      }).catch((error) => apiConsole.warn("[AdminUserUpdate] 状态通知入队失败:", error));
     }
 
     return NextResponse.json({
@@ -784,6 +802,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
   }
 }
+
+const deleteUserSchema = z.object({
+  reason: z.string().trim().min(2, "请填写删除原因或工单号").max(200),
+});
 
 // DELETE /api/admin/users/:id - 删除用户（匿名化注销，GDPR 合规）
 // 口径说明：与自助注销共用同一执行器（executeAccountDeletion）——创建到期时间为
@@ -837,6 +859,14 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
+    const parsed = deleteUserSchema.safeParse(await request.json().catch(() => ({})));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "请填写删除原因或工单号" } },
+        { status: 400 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
       where: { id },
       select: { id: true, phone: true, status: true },
@@ -880,7 +910,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       action: "user_deleted",
       targetType: "user",
       targetId: user.id,
-      detail: { previousStatus: user.status },
+      detail: { previousStatus: user.status, reason: parsed.data.reason },
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -917,13 +947,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
           where: { userId: id },
           create: {
             userId: id,
-            reason: "管理端删除",
+            reason: parsed.data.reason,
             phoneHash: hashIdentifier(user.phone),
             scheduledAt: now,
           },
           update: {
             status: DELETION_STATUS.PENDING,
-            reason: "管理端删除",
+            reason: parsed.data.reason,
             phoneHash: hashIdentifier(user.phone),
             requestedAt: now,
             scheduledAt: now,

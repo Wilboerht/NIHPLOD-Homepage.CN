@@ -6,6 +6,7 @@
  * 用于错误绑定（如微信绑错账号）的客服纠正；写审计 user_identity_unbind。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -15,8 +16,13 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { enqueueSecurityActionNotification } from "@/lib/security-notify";
 
 export const dynamic = "force-dynamic";
+
+const unbindSchema = z.object({
+  reason: z.string().trim().min(2, "请填写解绑原因或工单号").max(200),
+});
 
 export async function DELETE(
   request: NextRequest,
@@ -97,6 +103,14 @@ export async function DELETE(
       );
     }
 
+    const parsed = unbindSchema.safeParse(await request.json().catch(() => ({})));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_PARAMS", message: "请填写解绑原因或工单号" } },
+        { status: 400 }
+      );
+    }
+
     const auditId = await beginAuditLog({
       action: "user_identity_unbind",
       targetType: "user",
@@ -104,6 +118,7 @@ export async function DELETE(
       detail: {
         provider: identity.provider,
         subjectId: identity.subjectId,
+        reason: parsed.data.reason,
       },
       adminId: admin.id,
       request,
@@ -169,6 +184,13 @@ export async function DELETE(
       subjectId: identity.subjectId,
       clearedLegacy,
     });
+
+    await enqueueSecurityActionNotification({
+      userId: id,
+      phone: account.phone,
+      action: "第三方身份已解绑",
+      reference: `identity-unbind:${identityId}`,
+    }).catch((error) => apiConsole.warn("[AdminIdentityUnbind] 用户通知入队失败:", error));
 
     return NextResponse.json({ success: true, data: { message: "已解绑该外部身份" } });
   } catch (error) {

@@ -168,7 +168,8 @@ export type SMSTemplate =
   | "PHONE_CHANGED"
   | "ACCOUNT_DELETED"
   | "ACCOUNT_DELETION_REMINDER"
-  | "REDEMPTION_STATUS";
+  | "REDEMPTION_STATUS"
+  | "SECURITY_ACTION";
 
 export interface SMSParams {
   phone: string;
@@ -359,6 +360,7 @@ function getAliyunTemplateCode(template: SMSTemplate): string | null {
     ACCOUNT_DELETED: process.env.SMS_TEMPLATE_CODE_ACCOUNT_DELETED,
     ACCOUNT_DELETION_REMINDER: process.env.SMS_TEMPLATE_CODE_ACCOUNT_DELETION_REMINDER,
     REDEMPTION_STATUS: process.env.SMS_TEMPLATE_CODE_REDEMPTION_STATUS,
+    SECURITY_ACTION: process.env.SMS_TEMPLATE_CODE_SECURITY_ACTION,
   };
   return templates[template] || null;
 }
@@ -386,6 +388,7 @@ const TENCENT_TEMPLATE_PARAM_KEYS: Record<SMSTemplate, string[]> = {
   ACCOUNT_DELETED: ["time"],
   ACCOUNT_DELETION_REMINDER: ["time"],
   REDEMPTION_STATUS: ["product", "status"],
+  SECURITY_ACTION: ["action", "time"],
 };
 
 /**

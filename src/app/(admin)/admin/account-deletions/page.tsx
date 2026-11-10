@@ -12,6 +12,7 @@ import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { Empty } from "@/components/ui/Empty";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
@@ -114,6 +115,7 @@ function AdminAccountDeletionsContent() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [retryTarget, setRetryTarget] = useState<DeletionItem | null>(null);
   const [forceRetry, setForceRetry] = useState(false);
+  const [retryReason, setRetryReason] = useState("");
   const [cancelTarget, setCancelTarget] = useState<DeletionItem | null>(null);
 
   const takeLatest = useLatestRequest();
@@ -155,13 +157,14 @@ function AdminAccountDeletionsContent() {
   }, [page, totalPages, update]);
 
   const handleRetry = async (item: DeletionItem, force: boolean) => {
+    if (retryReason.trim().length < 2) return;
     setActioningId(item.id);
     try {
       if (!isOwnerActor) {
         await apiPost("/api/admin/approvals", {
           policyKey: "user.delete",
           payload: { userId: item.userId },
-          reason: "账号注销执行失败，申请 owner 审批重新执行",
+          reason: retryReason.trim(),
         });
         window.dispatchEvent(new Event("admin:nav-counts-refresh"));
         success("已提交 owner 审批；审批通过后系统将重新执行注销");
@@ -174,6 +177,7 @@ function AdminAccountDeletionsContent() {
       const submit = () =>
         apiPost<{ status: string; message: string }>("/api/admin/account-deletions", {
           id: item.id,
+          reason: retryReason.trim(),
           ...(force ? { force: true } : {}),
         });
 
@@ -529,6 +533,7 @@ function AdminAccountDeletionsContent() {
         onClose={() => {
           setRetryTarget(null);
           setForceRetry(false);
+          setRetryReason("");
         }}
         onConfirm={() => {
           if (retryTarget) return handleRetry(retryTarget, forceRetry);
@@ -536,9 +541,17 @@ function AdminAccountDeletionsContent() {
         title="人工重试注销"
         description={`确定立即对用户「${retryTarget?.userNickname || retryTarget?.userPhone || retryTarget?.userId}」重新执行注销吗？该操作将匿名化其个人数据且不可恢复。`}
         confirmText="立即执行"
+        confirmDisabled={retryReason.trim().length < 2}
         type="danger"
         loading={actioningId === retryTarget?.id}
       >
+        <Input
+          label="重试原因 / 工单号（必填）"
+          value={retryReason}
+          maxLength={200}
+          onChange={(event) => setRetryReason(event.target.value)}
+          placeholder="如：子站故障已恢复 / OPS-20261110-01"
+        />
         {isOwnerActor && (
           <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
             <input

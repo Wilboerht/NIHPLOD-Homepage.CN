@@ -144,6 +144,7 @@ const retrySchema = z.object({
   id: z.string().min(1),
   /** 自动重试达到上限后，管理员显式重置 attempts 并立即执行（写审计） */
   force: z.boolean().optional(),
+  reason: z.string().trim().min(2, "请填写重试原因或工单号").max(200),
 });
 
 export async function POST(request: NextRequest) {
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
     if (!parsed.success || !validateCUID(parsed.data.id)) {
       return invalidIdResponse();
     }
-    const { id, force } = parsed.data;
+    const { id, force, reason } = parsed.data;
 
     const deletionRequest = await prisma.accountDeletionRequest.findUnique({
       where: { id },
@@ -241,7 +242,7 @@ export async function POST(request: NextRequest) {
       action: "account_deletion_retry",
       targetType: "user",
       targetId: deletionRequest.userId,
-      detail: { requestId: id, force, previousAttempts: deletionRequest.attempts },
+      detail: { requestId: id, force, reason, previousAttempts: deletionRequest.attempts },
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,

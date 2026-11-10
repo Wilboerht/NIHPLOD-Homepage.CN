@@ -20,6 +20,7 @@ export const PASSWORD_MAX_LENGTH = 32;
 export const PASSWORD_HISTORY_LIMIT = 5;
 /** 默认密码过期天数（可通过环境变量覆盖） */
 export const PASSWORD_EXPIRY_DAYS = Math.max(1, Number(process.env.PASSWORD_EXPIRY_DAYS || 90));
+export const TEMP_PASSWORD_EXPIRY_HOURS = 24;
 
 /** 常见弱密码黑名单（小写比较） */
 export const WEAK_PASSWORD_BLACKLIST = new Set([

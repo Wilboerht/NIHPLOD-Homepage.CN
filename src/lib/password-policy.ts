@@ -5,7 +5,12 @@
 import bcrypt from "bcryptjs";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "./prisma";
-import { PASSWORD_HISTORY_LIMIT, hashPassword, getPasswordExpiryDate } from "./password";
+import {
+  PASSWORD_HISTORY_LIMIT,
+  TEMP_PASSWORD_EXPIRY_HOURS,
+  hashPassword,
+  getPasswordExpiryDate,
+} from "./password";
 
 type PasswordDb = Pick<Prisma.TransactionClient, "user" | "passwordHistory">;
 
@@ -76,7 +81,7 @@ export async function checkPasswordHistory(
 export async function updateUserPassword(
   userId: string,
   newPassword: string,
-  options: { skipHistoryCheck?: boolean; tx?: PasswordDb } = {}
+  options: { skipHistoryCheck?: boolean; temporary?: boolean; tx?: PasswordDb } = {}
 ): Promise<{ success: boolean; errorCode?: string; errorMessage?: string }> {
   if (!options.skipHistoryCheck) {
     const reused = await checkPasswordHistory(userId, newPassword);
@@ -91,7 +96,9 @@ export async function updateUserPassword(
 
   const hashedPassword = await hashPassword(newPassword);
   const changedAt = new Date();
-  const expiresAt = getPasswordExpiryDate();
+  const expiresAt = options.temporary
+    ? new Date(changedAt.getTime() + TEMP_PASSWORD_EXPIRY_HOURS * 60 * 60 * 1000)
+    : getPasswordExpiryDate();
 
   const persist = async (db: PasswordDb) => {
     await db.user.update({
@@ -100,6 +107,7 @@ export async function updateUserPassword(
         password: hashedPassword,
         passwordChangedAt: changedAt,
         passwordExpiresAt: expiresAt,
+        passwordChangeRequired: options.temporary === true,
       },
     });
 

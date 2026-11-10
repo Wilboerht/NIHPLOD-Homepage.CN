@@ -41,6 +41,10 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
 
+  typescript: {
+    ignoreBuildErrors: process.env.SKIP_BUILD_TYPECHECK === "1",
+  },
+
   ...(process.env.REDIS_URL
     ? {
         cacheHandler: require.resolve("./src/lib/next-cache-handler.ts"),

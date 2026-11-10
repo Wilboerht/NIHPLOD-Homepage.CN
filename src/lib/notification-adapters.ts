@@ -116,6 +116,13 @@ async function sendSmsJob(job: NotificationOutboxJob): Promise<NotificationSendR
       template = "SPENT_SUBMITTED";
       params = { orderNo: str(payload.orderNo) };
       break;
+    case "security_action":
+      template = "SECURITY_ACTION";
+      params = {
+        action: truncate(str(payload.action) || "账户安全信息变更", 20),
+        time: formatWxTime(new Date(str(payload.time))),
+      };
+      break;
     case "password_changed":
       template = "PASSWORD_RESET";
       params = { time: formatWxTime(new Date()) };
