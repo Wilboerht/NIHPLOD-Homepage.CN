@@ -88,14 +88,14 @@ describe("ProductsShell navigation", () => {
     vi.useRealTimers();
   });
 
-  it("pushes immediately and shows the detail skeleton", () => {
+  it("pushes immediately and shows the detail loading indicator", () => {
     renderShell();
 
     fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
 
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith("/products/demo");
-    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+    expect(screen.getByTestId("product-detail-loading")).toBeInTheDocument();
     expect(screen.queryByText("list-content")).not.toBeInTheDocument();
   });
 
@@ -103,12 +103,12 @@ describe("ProductsShell navigation", () => {
     renderShell();
 
     fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
-    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+    expect(screen.getByTestId("product-detail-loading")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("返回产品列表"));
 
     expect(mockPush).toHaveBeenLastCalledWith("/products");
-    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("product-detail-loading")).not.toBeInTheDocument();
     expect(screen.queryByTestId("products-list-skeleton")).not.toBeInTheDocument();
     expect(screen.getByText("list-content")).toBeInTheDocument();
   });
@@ -123,11 +123,11 @@ describe("ProductsShell navigation", () => {
     expect(screen.getByTestId("products-list-skeleton")).toBeInTheDocument();
   });
 
-  it("clears the pending skeleton after the pathname changes", () => {
+  it("clears the pending loading indicator after the pathname changes", () => {
     const { rerender } = renderShell();
 
     fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
-    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+    expect(screen.getByTestId("product-detail-loading")).toBeInTheDocument();
 
     mockPathnameRef.current = "/products/demo";
     rerender(
@@ -138,7 +138,7 @@ describe("ProductsShell navigation", () => {
       </LayoutProvider>
     );
 
-    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("product-detail-loading")).not.toBeInTheDocument();
     expect(screen.getByText("list-content")).toBeInTheDocument();
   });
 
@@ -151,7 +151,7 @@ describe("ProductsShell navigation", () => {
     fireEvent.click(screen.getByText("分类一"));
 
     expect(mockPush).toHaveBeenLastCalledWith("/products/other");
-    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+    expect(screen.getByTestId("product-detail-loading")).toBeInTheDocument();
   });
 
   it("retries the pending list navigation when back is clicked again", () => {
@@ -172,7 +172,7 @@ describe("ProductsShell navigation", () => {
     renderShell();
 
     fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
-    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+    expect(screen.getByTestId("product-detail-loading")).toBeInTheDocument();
 
     const navigation = (window as unknown as Window & { navigation: EventTarget }).navigation;
     const event = new Event("navigate");
@@ -183,7 +183,7 @@ describe("ProductsShell navigation", () => {
     });
 
     expect(mockPush).toHaveBeenLastCalledWith("/products");
-    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("product-detail-loading")).not.toBeInTheDocument();
     expect(screen.getByText("list-content")).toBeInTheDocument();
   });
 
@@ -223,14 +223,14 @@ describe("ProductsShell navigation", () => {
     renderShell();
 
     fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
-    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+    expect(screen.getByTestId("product-detail-loading")).toBeInTheDocument();
 
     act(() => {
       window.dispatchEvent(new PopStateEvent("popstate"));
     });
 
     expect(mockPush).toHaveBeenLastCalledWith("/products");
-    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("product-detail-loading")).not.toBeInTheDocument();
     expect(screen.getByText("list-content")).toBeInTheDocument();
   });
 
@@ -238,13 +238,13 @@ describe("ProductsShell navigation", () => {
     renderShell();
 
     fireEvent.click(screen.getByRole("button", { name: "open-detail" }));
-    expect(screen.getByTestId("product-detail-skeleton")).toBeInTheDocument();
+    expect(screen.getByTestId("product-detail-loading")).toBeInTheDocument();
 
     act(() => {
       window.dispatchEvent(new Event("nihplod:products-error"));
     });
 
-    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("product-detail-loading")).not.toBeInTheDocument();
     expect(screen.getByText("list-content")).toBeInTheDocument();
     expect(mockPush).toHaveBeenCalledTimes(1);
   });
@@ -263,8 +263,7 @@ describe("ProductsShell navigation", () => {
     fireEvent.click(screen.getByText("取消"));
 
     expect(mockPush).toHaveBeenLastCalledWith("/products");
-    expect(screen.queryByTestId("product-detail-skeleton")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("product-detail-loading")).not.toBeInTheDocument();
     expect(screen.getByText("list-content")).toBeInTheDocument();
   });
 });
-

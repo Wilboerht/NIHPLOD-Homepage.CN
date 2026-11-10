@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
-import { ProductDetailSkeleton } from "@/components/website/ProductDetailSkeleton";
+import { ProductDetailLoading } from "@/components/website/ProductDetailLoading";
 import { ProductsListSkeleton } from "@/components/website/ProductsListSkeleton";
 
 export interface ProductsCategory {
@@ -369,7 +369,7 @@ export function ProductsShell({
           <div className="relative min-h-0 flex-1 overflow-hidden" aria-busy={isNavigating}>
             {isNavigating && pending ? (
               pending.kind === "detail" ? (
-                <ProductDetailSkeleton />
+                <ProductDetailLoading />
               ) : (
                 <ProductsListSkeleton mobileView={mobileView} />
               )
