@@ -19,11 +19,13 @@ export function PolicyDocumentHeader({
 }: PolicyDocumentHeaderProps) {
   return (
     <header className="space-y-4 border-b border-brand-beige pb-6">
-      <h1 className="text-3xl font-normal leading-tight tracking-[-0.01em] text-brand-charcoal sm:text-4xl">
+      <h1 className="text-3xl font-light leading-tight tracking-[0.01em] text-brand-charcoal sm:text-4xl">
         {title}
       </h1>
-      {description && <p className="text-[15px] leading-7 text-brand-charcoal/70">{description}</p>}
-      <div className="flex items-center gap-1.5 text-sm text-brand-charcoal/70">
+      {description && (
+        <p className="text-[15px] font-light leading-7 text-brand-charcoal/70">{description}</p>
+      )}
+      <div className="flex items-center gap-1.5 text-xs font-light tracking-[0.06em] text-brand-charcoal/60">
         <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
         <span>最近更新：</span>
         <time dateTime={toDateTime(lastUpdated)}>{lastUpdated}</time>

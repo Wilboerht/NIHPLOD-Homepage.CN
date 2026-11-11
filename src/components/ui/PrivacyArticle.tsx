@@ -186,7 +186,7 @@ export const privacySections = sectionOrder.map((id) => ({
 
 export function PrivacyArticle() {
   return (
-    <main className="w-full max-w-2xl flex-1 break-words font-sans text-brand-charcoal/80">
+    <main className="w-full max-w-3xl flex-1 break-words font-sans text-brand-charcoal/80">
       <PolicyDocumentHeader
         title="隐私政策"
         lastUpdated={PRIVACY_LAST_UPDATED}
@@ -195,12 +195,12 @@ export function PrivacyArticle() {
       <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
         {privacySections.map((section) => (
           <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
-            <h2 className="mb-4 font-sans text-[19px] font-normal tracking-[0.04em] text-brand-charcoal md:mb-5 md:text-2xl md:font-light md:tracking-[0.03em]">
+            <h2 className="mb-4 font-sans text-[19px] font-light tracking-[0.04em] text-brand-charcoal md:mb-5 md:text-2xl md:tracking-[0.03em]">
               {section.title}
             </h2>
             <div className="space-y-4">
               {section.content.map((paragraph, pIdx) => (
-                <ContentParagraph key={pIdx} text={paragraph} isFirst={pIdx === 0} />
+                <ContentParagraph key={pIdx} text={paragraph} isFirst={pIdx === 0} showHighlights />
               ))}
             </div>
           </section>

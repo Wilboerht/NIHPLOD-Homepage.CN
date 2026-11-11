@@ -11,10 +11,10 @@ export interface TermsSection {
 
 /** 将平铺内容拆分为独立章节（每条内容的第一行为标题） */
 export function buildTermsSections(flatContent: string[]): TermsSection[] {
-  return flatContent.map((text) => {
+  return flatContent.map((text, index) => {
     const firstLine = text.split(/\r?\n/)[0].trim();
     const numMatch = firstLine.match(/^(\d+)\./);
-    const id = numMatch ? `terms-${numMatch[1]}` : `terms-intro`;
+    const id = numMatch ? `terms-${numMatch[1]}` : `terms-intro-${index}`;
     return { id, title: firstLine, content: text };
   });
 }
@@ -27,12 +27,12 @@ interface TermsArticleProps {
 
 export function TermsArticle({ sections, lastUpdated, description }: TermsArticleProps) {
   return (
-    <main className="w-full max-w-2xl flex-1 break-words font-sans text-brand-charcoal/80">
+    <main className="w-full max-w-3xl flex-1 break-words font-sans text-brand-charcoal/80">
       <PolicyDocumentHeader title="服务条款" lastUpdated={lastUpdated} description={description} />
       <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
         {sections.map((section, sIdx) => (
           <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
-            <h2 className="mb-4 font-sans text-[19px] font-normal tracking-[0.04em] text-brand-charcoal md:mb-5 md:text-2xl md:font-light md:tracking-[0.03em]">
+            <h2 className="mb-4 font-sans text-[19px] font-light tracking-[0.04em] text-brand-charcoal md:mb-5 md:text-2xl md:tracking-[0.03em]">
               {section.title}
             </h2>
             <div className="space-y-4">

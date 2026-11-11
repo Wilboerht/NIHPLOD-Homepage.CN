@@ -14,11 +14,41 @@ describe("policy article typography and semantics", () => {
     expect(container.querySelectorAll(".policy-article-body > p")).toHaveLength(2);
   });
 
-  it("连续编号项归并为有语义的列表", () => {
+  it("连续编号项归并为有序列表，并剥离原始编号避免双重编号", () => {
     const { container } = render(
       <ContentParagraph text={"（1）第一项\n（2）第二项\n（3）第三项"} />
     );
-    expect(container.querySelectorAll("ul.policy-list > li")).toHaveLength(3);
+    const items = container.querySelectorAll("ol.policy-list > li");
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent("第一项");
+    expect(items[0].textContent).not.toContain("（1）");
+  });
+
+  it("无序符号项渲染为无序列表，不与编号项混排", () => {
+    const { container } = render(
+      <ContentParagraph text={"（1）第一项\n\n- 项目甲\n- 项目乙"} />
+    );
+    expect(container.querySelectorAll("ol.policy-list > li")).toHaveLength(1);
+    const unordered = container.querySelectorAll("ul.policy-list--unordered > li");
+    expect(unordered).toHaveLength(2);
+    expect(unordered[0]).toHaveTextContent("项目甲");
+  });
+
+  it("行内列表拆分为独立列表项", () => {
+    const { container } = render(
+      <ContentParagraph text="联系我们： - 客服邮箱：service@nihplod.cn - 邮寄地址：上海市" />
+    );
+    expect(container.querySelectorAll("ul.policy-list--unordered > li")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: "service@nihplod.cn" })).toHaveAttribute(
+      "href",
+      "mailto:service@nihplod.cn"
+    );
+  });
+
+  it("数字加空格开头的正文不会误判为章节标题", () => {
+    const { container } = render(<ContentParagraph text="15 个工作日内予以响应。" />);
+    expect(container.querySelector("h3")).toBeNull();
+    expect(container.querySelector("p")).toHaveTextContent("15 个工作日内予以响应。");
   });
 
   it("邮箱和网页地址转换为安全链接", () => {
@@ -33,6 +63,22 @@ describe("policy article typography and semantics", () => {
       "rel",
       "noopener noreferrer"
     );
+  });
+
+  it("支持 **粗体** 与 [文字](url) 行内语法", () => {
+    render(
+      <ContentParagraph text="请**仔细阅读**[隐私政策](https://example.com/privacy)与[站内条款](/terms)。" />
+    );
+    expect(screen.getByText("仔细阅读")).toHaveProperty("tagName", "STRONG");
+    const external = screen.getByRole("link", { name: "隐私政策" });
+    expect(external).toHaveAttribute("href", "https://example.com/privacy");
+    expect(external).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("link", { name: "站内条款" })).toHaveAttribute("href", "/terms");
+  });
+
+  it("Markdown 链接中的危险协议按纯文本渲染", () => {
+    render(<ContentParagraph text="[点击](javascript:alert(1))" />);
+    expect(screen.queryByRole("link")).toBeNull();
   });
 
   it("文档头包含真正 h1 与机器可读更新日期", () => {

@@ -1628,6 +1628,7 @@
 
 /* 法律与政策长文：采用文章式垂直节奏，段落、章节和列表分别控制间距 */
 .policy-article-body {
+  font-weight: 300;
   line-height: 1.8;
   overflow-wrap: break-word;
 }
@@ -1665,6 +1666,10 @@
   list-style-type: decimal;
 }
 
+.policy-article-body .policy-list--unordered {
+  list-style-type: disc;
+}
+
 .policy-article-body .policy-list > li {
   padding-left: 0.125rem;
   font-size: 0.9375rem;
@@ -1692,7 +1697,7 @@
   }
 
   .policy-article-body .policy-list > li {
-    color: rgb(0 38 62 / 80%);
+    color: rgb(0 38 62 / 90%);
   }
 }
 

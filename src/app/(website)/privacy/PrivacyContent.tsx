@@ -15,7 +15,7 @@ export function PrivacyContent() {
       />
 
       <div className="policy-print-main flex-1 px-6 md:px-10">
-        <div className="mx-auto flex w-full max-w-2xl flex-col">
+        <div className="mx-auto flex w-full max-w-3xl flex-col">
           <PrivacyArticle />
         </div>
       </div>
