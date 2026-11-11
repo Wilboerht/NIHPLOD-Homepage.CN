@@ -27,7 +27,11 @@ export default function TermsEmbedPage() {
 
   return (
     <div className="min-h-dvh bg-[#fefcf8] px-6 py-8 md:px-10 md:py-12">
-      <TermsArticle sections={sections} />
+      <TermsArticle
+        sections={sections}
+        lastUpdated={defaultTermsContent.lastUpdated}
+        description={defaultTermsContent.description}
+      />
     </div>
   );
 }

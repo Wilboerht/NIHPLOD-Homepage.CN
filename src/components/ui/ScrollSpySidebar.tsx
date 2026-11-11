@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 interface Section {
   id: string;
@@ -9,91 +10,76 @@ interface Section {
 
 interface ScrollSpySidebarProps {
   sections: Section[];
-  /** 导航 aria-label */
   label?: string;
+  variant?: "desktop" | "mobile";
 }
 
-/**
- * 带 IntersectionObserver + rAF 防抖的滚动监听侧边栏
- * 移动端隐藏，仅 lg 以上显示
- */
-export default function ScrollSpySidebar({ sections, label = "目录导航" }: ScrollSpySidebarProps) {
+/** 政策/条款目录：桌面右侧粘性导航，移动端使用原生 details 折叠。 */
+export default function ScrollSpySidebar({
+  sections,
+  label = "目录导航",
+  variant = "desktop",
+}: ScrollSpySidebarProps) {
   const [activeId, setActiveId] = useState<string>("");
   const rafRef = useRef<number | null>(null);
   const navRef = useRef<HTMLDivElement>(null);
   const visibleSectionsRef = useRef<Set<string>>(new Set());
 
-  // 活跃项变更时自动滚动到可视区域
   useEffect(() => {
-    if (!activeId || !navRef.current) return;
-    const activeBtn = navRef.current.querySelector(
-      `[data-section-id="${activeId}"]`
-    ) as HTMLElement | null;
-    if (activeBtn) {
-      activeBtn.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (variant !== "desktop" || !activeId || !navRef.current) return;
+    const activeLink = navRef.current.querySelector<HTMLElement>(`[data-section-id="${activeId}"]`);
+    if (!activeLink) return;
+    const nav = navRef.current;
+    const navRect = nav.getBoundingClientRect();
+    const linkRect = activeLink.getBoundingClientRect();
+    const margin = 12;
+    if (linkRect.top < navRect.top + margin) {
+      nav.scrollTop -= navRect.top + margin - linkRect.top;
+    } else if (linkRect.bottom > navRect.bottom - margin) {
+      nav.scrollTop += linkRect.bottom - (navRect.bottom - margin);
     }
-  }, [activeId]);
+  }, [activeId, variant]);
 
   useEffect(() => {
-    if (sections.length === 0) return;
-
+    if (variant !== "desktop" || sections.length === 0) return;
     const visibleSet = visibleSectionsRef.current;
     visibleSet.clear();
 
     const selectActive = () => {
       if (visibleSet.size === 0) return;
-      const firstVisible = sections.find((s) => visibleSet.has(s.id));
+      const firstVisible = sections.find((section) => visibleSet.has(section.id));
       if (firstVisible) setActiveId(firstVisible.id);
     };
-
-    // 普通章节：底部留 40% 防止过早激活
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            visibleSet.add(entry.target.id);
-          } else {
-            visibleSet.delete(entry.target.id);
-          }
+          if (entry.isIntersecting) visibleSet.add(entry.target.id);
+          else visibleSet.delete(entry.target.id);
         });
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(selectActive);
       },
-      {
-        rootMargin: "-120px 0px -40% 0px",
-        threshold: 0,
-      }
+      { rootMargin: "-120px 0px -40% 0px", threshold: 0 }
     );
-
-    // 最后一个章节：不设底部边距，确保能被检测到
     const lastObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            visibleSet.add(entry.target.id);
-          } else {
-            visibleSet.delete(entry.target.id);
-          }
+          if (entry.isIntersecting) visibleSet.add(entry.target.id);
+          else visibleSet.delete(entry.target.id);
         });
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(selectActive);
       },
-      {
-        rootMargin: "-120px 0px 0px 0px",
-        threshold: 0,
-      }
+      { rootMargin: "-120px 0px 0px 0px", threshold: 0 }
     );
 
-    const allButLast = sections.slice(0, -1);
+    sections.slice(0, -1).forEach((section) => {
+      const element = document.getElementById(section.id);
+      if (element) observer.observe(element);
+    });
     const lastSection = sections[sections.length - 1];
-
-    allButLast
-      .map((s) => document.getElementById(s.id))
-      .filter(Boolean)
-      .forEach((el) => observer.observe(el!));
-
-    const lastEl = document.getElementById(lastSection.id);
-    if (lastEl) lastObserver.observe(lastEl);
+    const lastElement = document.getElementById(lastSection.id);
+    if (lastElement) lastObserver.observe(lastElement);
 
     return () => {
       observer.disconnect();
@@ -101,43 +87,64 @@ export default function ScrollSpySidebar({ sections, label = "目录导航" }: S
       visibleSet.clear();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [sections]);
+  }, [sections, variant]);
 
-  return (
-    <aside className="hidden w-72 shrink-0 lg:block">
-      <div
-        ref={navRef}
-        className="scrollbar-hide sticky top-[120px] max-h-[calc(100vh-8rem)] overflow-y-auto overscroll-contain md:top-32"
-      >
-        <nav className="flex flex-col space-y-1" aria-label={label}>
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              data-section-id={section.id}
-              onClick={() => {
-                const el = document.getElementById(section.id);
-                if (el) el.scrollIntoView({ behavior: "smooth" });
-              }}
-              aria-current={activeId === section.id ? "true" : undefined}
-              className={`group flex flex-col border-l px-4 py-3 text-left transition-all duration-200 ${
+  const list = (
+    <ul className="flex flex-col space-y-1">
+      {sections.map((section) => (
+        <li key={section.id}>
+          <a
+            href={`#${section.id}`}
+            data-section-id={section.id}
+            aria-current={activeId === section.id ? "location" : undefined}
+            className={`group flex flex-col border-l px-4 py-2.5 text-left transition-all duration-200 ${
+              activeId === section.id
+                ? "border-brand-primary"
+                : "border-brand-charcoal/20 hover:border-brand-charcoal/40"
+            }`}
+          >
+            <span
+              className={`text-sm font-light tracking-[0.04em] transition-colors ${
                 activeId === section.id
-                  ? "border-[#00263E]"
-                  : "border-brand-charcoal/20 hover:border-brand-charcoal/40"
+                  ? "text-brand-charcoal"
+                  : "text-brand-charcoal/65 group-hover:text-brand-charcoal"
               }`}
             >
-              <span
-                className={`text-sm font-light tracking-[0.12em] transition-colors ${
-                  activeId === section.id
-                    ? "text-brand-charcoal"
-                    : "text-brand-charcoal/65 group-hover:text-brand-charcoal"
-                }`}
-              >
-                {section.title}
-              </span>
-            </button>
-          ))}
+              {section.title}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+
+  if (variant === "mobile") {
+    return (
+      <details className="group mt-6 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-3 xl:hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-brand-charcoal">
+          <span>章节目录</span>
+          <ChevronDown
+            className="h-4 w-4 text-brand-charcoal/65 transition-transform group-open:rotate-180"
+            aria-hidden="true"
+          />
+        </summary>
+        <nav aria-label={label} className="mt-3 border-t border-brand-charcoal/10 pt-3">
+          {list}
         </nav>
+      </details>
+    );
+  }
+
+  return (
+    <aside className="hidden xl:col-start-3 xl:block xl:pl-10 2xl:pl-14">
+      <div
+        ref={navRef}
+        className="scrollbar-hide sticky top-[120px] max-h-[calc(100vh-8rem)] overflow-y-auto overscroll-contain"
+      >
+        <p className="mb-3 px-4 text-xs font-medium tracking-[0.08em] text-brand-charcoal/65">
+          目录
+        </p>
+        <nav aria-label={label}>{list}</nav>
       </div>
     </aside>
   );

@@ -1,4 +1,8 @@
 import { ContentParagraph } from "@/components/ui/PolicyContentRenderer";
+import { PolicyDocumentHeader } from "@/components/ui/PolicyDocumentHeader";
+import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
+
+export const PRIVACY_LAST_UPDATED = "2026年11月11日";
 
 // ============================================
 // 隐私政策正文（共享组件）
@@ -178,24 +182,32 @@ export const privacySections = sectionOrder.map((id) => ({
 }));
 
 // ============================================
-// 正文组件（不含导航/目录/页脚，可供嵌入页直接使用）
+// 正文组件（不含页面级导航/页脚；移动目录内嵌，可供嵌入页直接使用）
 // ============================================
 
 export function PrivacyArticle() {
   return (
-    <main className="max-w-4xl flex-1 space-y-10 break-words font-sans text-brand-charcoal/80 md:space-y-16 md:leading-relaxed">
-      {privacySections.map((section) => (
-        <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
-          <h2 className="mb-4 font-sans text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-8 md:text-2xl md:font-light md:tracking-[0.12em]">
-            {section.title}
-          </h2>
-          <div className="space-y-6">
-            {section.content.map((paragraph, pIdx) => (
-              <ContentParagraph key={pIdx} text={paragraph} isFirst={pIdx === 0} />
-            ))}
-          </div>
-        </section>
-      ))}
+    <main className="w-full max-w-2xl flex-1 break-words font-sans text-brand-charcoal/80">
+      <PolicyDocumentHeader
+        title="隐私政策"
+        lastUpdated={PRIVACY_LAST_UPDATED}
+        description="了解我们如何收集、使用和保护您的个人信息。"
+      />
+      <ScrollSpySidebar sections={privacySections} label="隐私政策目录导航" variant="mobile" />
+      <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
+        {privacySections.map((section) => (
+          <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
+            <h2 className="mb-4 font-sans text-[19px] font-normal tracking-[0.04em] text-brand-charcoal md:mb-5 md:text-2xl md:font-light md:tracking-[0.03em]">
+              {section.title}
+            </h2>
+            <div className="space-y-4">
+              {section.content.map((paragraph, pIdx) => (
+                <ContentParagraph key={pIdx} text={paragraph} isFirst={pIdx === 0} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </main>
   );
 }

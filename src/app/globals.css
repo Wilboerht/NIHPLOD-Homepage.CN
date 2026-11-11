@@ -1625,3 +1625,105 @@
     display: block;
   }
 }
+
+/* 法律与政策长文：采用文章式垂直节奏，段落、章节和列表分别控制间距 */
+.policy-article-body {
+  line-height: 1.8;
+  overflow-wrap: break-word;
+}
+
+.policy-article-body > * + * {
+  margin-top: 1rem;
+}
+
+.policy-article-body > .policy-section-heading,
+.policy-article-body > .policy-subheading {
+  color: #00263e;
+  line-height: 1.5;
+}
+
+.policy-article-body > .policy-section-heading {
+  margin-top: 2rem;
+  font-size: 1.1875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.policy-article-body > .policy-subheading {
+  margin-top: 1.75rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.policy-article-body > :first-child {
+  margin-top: 0;
+}
+
+.policy-article-body .policy-list {
+  padding-left: 1.5rem;
+  list-style-type: decimal;
+}
+
+.policy-article-body .policy-list > li {
+  padding-left: 0.125rem;
+  font-size: 0.9375rem;
+  color: rgb(0 38 62 / 90%);
+}
+
+.policy-article-body .policy-list > li + li {
+  margin-top: 0.5rem;
+}
+
+.policy-article-body .policy-list > li::marker {
+  color: rgb(0 38 62 / 65%);
+}
+
+@media (min-width: 768px) {
+  .policy-article-body .policy-section-heading {
+    font-size: 1.375rem;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+  }
+
+  .policy-article-body .policy-subheading {
+    font-size: 1.125rem;
+    font-weight: 400;
+  }
+
+  .policy-article-body .policy-list > li {
+    color: rgb(0 38 62 / 80%);
+  }
+}
+
+@media print {
+  .policy-page-shell {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .policy-page-shell > nav,
+  .policy-page-shell > footer,
+  .policy-page-shell aside,
+  .policy-page-shell details {
+    display: none !important;
+  }
+
+  .policy-print-main {
+    display: block !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .policy-print-main main {
+    max-width: none !important;
+  }
+
+  .policy-article-body,
+  .policy-article-body > .policy-section-heading,
+  .policy-article-body > .policy-subheading,
+  .policy-article-body .policy-list > li {
+    color: #000 !important;
+  }
+}
