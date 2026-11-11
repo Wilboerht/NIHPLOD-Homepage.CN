@@ -1,5 +1,10 @@
-import Link from "next/link";
-import { StandaloneNav } from "@/components/ui/StandaloneNav";
+"use client";
+
+import Image from "next/image";
+import { Link } from "next-view-transitions";
+import { cn } from "@/lib/utils";
+import { useLayout } from "@/contexts/LayoutContext";
+import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 
 const sections = [
   {
@@ -26,61 +31,91 @@ const sections = [
 ];
 
 export function TechnologyContent() {
+  const { isDrawerOpen } = useLayout();
+
   return (
-    <div className="flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32">
-      <StandaloneNav title="核心技术" />
+    <DrawerPageContainer wrapperClassName="!top-0 !pointer-events-none">
+      {/* 矿物纹理覆盖层 */}
+      <div className="texture-overlay absolute inset-0" />
 
-      <main className="flex-1 px-6 md:px-10">
-        <article className="mx-auto w-full max-w-3xl font-sans text-brand-charcoal/80">
-          <header className="space-y-4 border-b border-brand-beige pb-6">
-            <p className="text-xs font-light tracking-[0.2em] text-brand-charcoal/50">
-              LIPOSOME TECHNOLOGY
-            </p>
-            <h1 className="text-3xl font-light leading-tight tracking-[0.01em] text-brand-charcoal sm:text-4xl">
-              真脂质体技术
-            </h1>
-            <p className="text-[15px] font-light leading-7 text-brand-charcoal/70">
-              以 Dolphin-Skin 真脂质体专利技术为核心，让活性成分被妥善保护、靶向释放，让护肤更科学、更高效。
-            </p>
-          </header>
-
-          <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
-            {sections.map((section) => (
-              <section key={section.title}>
-                <h2 className="mb-4 font-sans text-[19px] font-light tracking-[0.04em] text-brand-charcoal md:mb-5 md:text-2xl md:tracking-[0.03em]">
-                  {section.title}
-                </h2>
-                <div className="space-y-4 text-[15px] font-light leading-[1.8] text-brand-charcoal/90 md:text-base">
-                  {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph.slice(0, 20)}>{paragraph}</p>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-
-          <div className="mt-12 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-5 md:p-6">
-            <p className="text-[15px] font-light leading-relaxed text-brand-charcoal/80">
-              想亲自体验脂质体技术带来的护肤改变？前往{" "}
-              <Link
-                href="/products"
-                className="text-brand-charcoal underline decoration-brand-charcoal/30 underline-offset-4 transition-colors hover:decoration-brand-charcoal/70"
-              >
-                产品系列
-              </Link>
-              ，探索搭载真脂质体技术的 NIHPLOD 产品。
-            </p>
-          </div>
-        </article>
-      </main>
-
-      <footer className="mt-12 md:mt-24 md:border-t md:border-brand-charcoal/10">
-        <div className="container mx-auto px-6 py-6 text-center md:px-8 md:py-10">
-          <p className="text-xs font-light tracking-[0.08em] text-brand-charcoal/70 md:tracking-[0.12em]">
-            &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
-          </p>
+      <div
+        className={cn(
+          "relative z-10 flex h-full flex-col overflow-hidden transition-opacity duration-300",
+          isDrawerOpen ? "opacity-100 delay-300" : "pointer-events-none opacity-0"
+        )}
+      >
+        {/* Header - 与 FAQ/About/Guide 的 88px 标准对齐 */}
+        <div className="sticky top-0 z-50 flex h-[88px] shrink-0 items-center justify-center border-b border-transparent bg-brand-cream/95 px-6 backdrop-blur-sm sm:justify-start sm:border-brand-charcoal/5 sm:px-[8%]">
+          <Link href="/" className="mt-1 flex items-center justify-center">
+            <div className="relative h-[28px] w-[100px] sm:h-9 sm:w-[150px]">
+              <Image
+                src="/images/NIHPLOD-logo.svg"
+                alt="NIHPLOD"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+          </Link>
+          <div className="texture-overlay absolute inset-0 z-[-1]" />
         </div>
-      </footer>
-    </div>
+
+        {/* 滚动内容区 */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <main className="px-6 pb-6 pt-8 sm:px-10 md:pt-12 lg:px-[15%] xl:px-[20%]">
+            <article className="mx-auto w-full max-w-3xl font-sans text-brand-charcoal/80">
+              <header className="space-y-4 border-b border-brand-beige pb-6">
+                <p className="text-xs font-light tracking-[0.2em] text-brand-charcoal/50">
+                  LIPOSOME TECHNOLOGY
+                </p>
+                <h1
+                  tabIndex={-1}
+                  className="text-3xl font-light leading-tight tracking-[0.01em] text-brand-charcoal focus:outline-none sm:text-4xl"
+                >
+                  真脂质体技术
+                </h1>
+                <p className="text-[15px] font-light leading-7 text-brand-charcoal/70">
+                  以 Dolphin-Skin 真脂质体专利技术为核心，让活性成分被妥善保护、靶向释放，让护肤更科学、更高效。
+                </p>
+              </header>
+
+              <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
+                {sections.map((section) => (
+                  <section key={section.title}>
+                    <h2 className="mb-4 font-sans text-[19px] font-light tracking-[0.04em] text-brand-charcoal md:mb-5 md:text-2xl md:tracking-[0.03em]">
+                      {section.title}
+                    </h2>
+                    <div className="space-y-4 text-[15px] font-light leading-[1.8] text-brand-charcoal/90 md:text-base">
+                      {section.paragraphs.map((paragraph) => (
+                        <p key={paragraph.slice(0, 20)}>{paragraph}</p>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+
+              <div className="mt-12 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-5 md:p-6">
+                <p className="text-[15px] font-light leading-relaxed text-brand-charcoal/80">
+                  想亲自体验脂质体技术带来的护肤改变？前往{" "}
+                  <Link
+                    href="/products"
+                    className="text-brand-charcoal underline decoration-brand-charcoal/30 underline-offset-4 transition-colors hover:decoration-brand-charcoal/70"
+                  >
+                    产品系列
+                  </Link>
+                  ，探索搭载真脂质体技术的 NIHPLOD 产品。
+                </p>
+              </div>
+            </article>
+          </main>
+
+          <footer className="mx-auto w-full max-w-4xl px-6 pb-6 pt-5 text-center">
+            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.55] md:tracking-[0.15em]">
+              &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+            </span>
+          </footer>
+        </div>
+      </div>
+    </DrawerPageContainer>
   );
 }

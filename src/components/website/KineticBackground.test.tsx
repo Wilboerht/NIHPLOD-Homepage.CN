@@ -105,4 +105,10 @@ describe("KineticBackground 便当盒", () => {
     const { container } = render(<KineticBackground />);
     expect(container.querySelectorAll(".kinetic-cell")).toHaveLength(7);
   });
+
+  it("技术介绍页 /technology 也渲染便当盒卡片", () => {
+    mockPathname = "/technology";
+    const { container } = render(<KineticBackground />);
+    expect(container.querySelectorAll(".kinetic-cell")).toHaveLength(7);
+  });
 });

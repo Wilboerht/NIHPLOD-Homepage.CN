@@ -12,7 +12,7 @@ import { Link } from "next-view-transitions";
  * 便当盒卡片完整渲染的页面白名单（含子路由，如产品详情页）。
  * 其他页面仅保留背景底色/点阵/水印，避免非首页页面也加载卡片大图。
  */
-const CARD_RENDER_PATHS = ["/", "/about", "/products", "/guide", "/faq"];
+const CARD_RENDER_PATHS = ["/", "/about", "/products", "/guide", "/faq", "/technology"];
 
 const BENTO_IMAGE_PLACEHOLDERS = {
   productHero: {
