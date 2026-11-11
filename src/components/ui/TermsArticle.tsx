@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ContentParagraph } from "@/components/ui/PolicyContentRenderer";
 import { PolicyDocumentHeader } from "@/components/ui/PolicyDocumentHeader";
-import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 
 // 供 /terms 与 /terms/embed 复用，内容和排版使用同一来源。
 export interface TermsSection {
@@ -30,7 +29,6 @@ export function TermsArticle({ sections, lastUpdated, description }: TermsArticl
   return (
     <main className="w-full max-w-2xl flex-1 break-words font-sans text-brand-charcoal/80">
       <PolicyDocumentHeader title="服务条款" lastUpdated={lastUpdated} description={description} />
-      <ScrollSpySidebar sections={sections} label="服务条款目录导航" variant="mobile" />
       <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
         {sections.map((section, sIdx) => (
           <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">

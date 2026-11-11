@@ -1,6 +1,5 @@
-import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 import { StandaloneNav } from "@/components/ui/StandaloneNav";
-import { PrivacyArticle, privacySections } from "@/components/ui/PrivacyArticle";
+import { PrivacyArticle } from "@/components/ui/PrivacyArticle";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -16,11 +15,8 @@ export function PrivacyContent() {
       />
 
       <div className="policy-print-main flex-1 px-6 md:px-10">
-        <div className="mx-auto grid w-full max-w-[90rem] gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(0,42rem)_minmax(0,1fr)] xl:gap-0">
-          <div className="mx-auto flex w-full max-w-2xl flex-col xl:col-start-2 xl:mx-0 xl:max-w-none">
-            <PrivacyArticle />
-          </div>
-          <ScrollSpySidebar sections={privacySections} label="隐私政策目录导航" />
+        <div className="mx-auto flex w-full max-w-2xl flex-col">
+          <PrivacyArticle />
         </div>
       </div>
 

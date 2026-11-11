@@ -1,6 +1,5 @@
 import { ContentParagraph } from "@/components/ui/PolicyContentRenderer";
 import { PolicyDocumentHeader } from "@/components/ui/PolicyDocumentHeader";
-import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
 
 export const PRIVACY_LAST_UPDATED = "2026年11月11日";
 
@@ -182,7 +181,7 @@ export const privacySections = sectionOrder.map((id) => ({
 }));
 
 // ============================================
-// 正文组件（不含页面级导航/页脚；移动目录内嵌，可供嵌入页直接使用）
+// 正文组件（不含页面级导航/页脚，可供嵌入页直接使用）
 // ============================================
 
 export function PrivacyArticle() {
@@ -193,7 +192,6 @@ export function PrivacyArticle() {
         lastUpdated={PRIVACY_LAST_UPDATED}
         description="了解我们如何收集、使用和保护您的个人信息。"
       />
-      <ScrollSpySidebar sections={privacySections} label="隐私政策目录导航" variant="mobile" />
       <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
         {privacySections.map((section) => (
           <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
