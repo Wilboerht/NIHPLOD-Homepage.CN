@@ -28,16 +28,16 @@ export function ProductFaq({ faqs, title = "常见问题", className }: ProductF
       id="faq"
       aria-label="产品常见问题"
       className={cn(
-        "mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-6 pb-16 pt-8 sm:px-0",
+        "mx-auto mt-8 w-full max-w-4xl border-t border-brand-beige px-4 pb-12 pt-6 sm:px-6",
         className
       )}
     >
-      <div className="mb-6 flex justify-center">
-        <h2 className="relative inline-block text-[24px] font-light tracking-[0.15em] text-brand-charcoal after:absolute after:-bottom-2.5 after:left-1/2 after:h-px after:w-[60%] after:-translate-x-1/2 after:bg-brand-charcoal/20">
+      <div className="mb-4 flex justify-start border-b border-brand-beige/80 pb-4">
+        <h2 className="text-[20px] font-normal tracking-[0.05em] text-brand-charcoal sm:text-[22px]">
           {title}
         </h2>
       </div>
-      <div className="mx-auto flex max-w-4xl flex-col">
+      <div className="flex w-full flex-col">
         {faqs.map((faq, index) => {
           const isOpen = openIndex === index;
           return (
@@ -53,15 +53,12 @@ export function ProductFaq({ faqs, title = "常见问题", className }: ProductF
                 onClick={() => setOpenIndex(isOpen ? null : index)}
                 aria-expanded={isOpen}
                 aria-controls={`faq-answer-${index}`}
-                className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left lg:py-6"
+                className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left sm:px-5"
               >
                 <span
                   role="heading"
                   aria-level={3}
-                  className={cn(
-                    "flex-1 text-[14px] font-light leading-[1.6] tracking-[0.08em] text-brand-charcoal transition-colors duration-300 lg:text-[16px] lg:leading-normal",
-                    isOpen ? "text-brand-charcoal" : "group-hover:text-brand-charcoal"
-                  )}
+                  className="flex-1 text-[14px] font-normal leading-[1.6] tracking-[0.03em] text-brand-charcoal transition-colors duration-300 lg:text-[15px]"
                 >
                   {faq.question}
                 </span>
@@ -73,7 +70,7 @@ export function ProductFaq({ faqs, title = "常见问题", className }: ProductF
                       : "group-hover:bg-brand-charcoal/[0.03] group-hover:text-brand-charcoal/50"
                   )}
                 >
-                  <Plus className="h-5 w-5 stroke-[1.5]" />
+                  <Plus className="h-4 w-4 stroke-[1.5]" />
                 </span>
               </button>
               <m.div
@@ -85,7 +82,7 @@ export function ProductFaq({ faqs, title = "常见问题", className }: ProductF
                 aria-hidden={!isOpen}
               >
                 <div style={{ overflow: "hidden" }}>
-                  <div className="whitespace-pre-line pb-8 pl-6 pr-6 pt-0 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 lg:pr-12 lg:text-[15px]">
+                  <div className="whitespace-pre-line px-4 pb-5 pt-0 text-[14px] font-light leading-[1.7] tracking-[0.02em] text-brand-charcoal/90 sm:px-5 lg:pr-8">
                     {faq.answer}
                   </div>
                 </div>

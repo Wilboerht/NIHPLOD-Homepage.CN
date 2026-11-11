@@ -760,11 +760,14 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                 返回产品详情
               </button>
             </div>
-            <ProductFaq
-              faqs={faqs}
-              title={`${product.category.name} · 常见问答`}
-              className="mt-2 w-full border-t-0 px-0 pb-0 pt-0"
-            />
+            <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12 xl:gap-16">
+              <div aria-hidden="true" className="hidden lg:block" />
+              <ProductFaq
+                faqs={faqs}
+                title={`${product.category.name} · 常见问答`}
+                className="mt-2 w-full max-w-none border-t-0 px-0 pb-0 pt-0"
+              />
+            </div>
           </div>
         </div>
       )}
