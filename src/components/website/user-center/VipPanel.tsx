@@ -655,7 +655,7 @@ export function VipPanel() {
               </button>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-stone-400">
-              会员等级按官方店铺累计消费实时判定，等级永久有效、可升可降。
+              会员等级按官方店铺累计净消费实时判定，无固定到期日；发生退款冲减消费后，等级可能相应调整。
             </p>
 
             {/* 四档权益一页式对比：当前最清晰，已解锁次之，未解锁去色淡化 */}

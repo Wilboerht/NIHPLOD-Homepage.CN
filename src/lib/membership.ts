@@ -9,7 +9,7 @@
  * - 金卡会员 GOLD：累计消费满 ¥5,000
  * - 钻石卡会员 DIAMOND：累计消费满 ¥10,000
  *
- * 等级永久有效、按累计消费实时判定（可升可降）；
+ * 等级无固定到期日、按累计净消费实时判定（可升可降）；
  * 权益跟随当前等级，肌肤档案数据终身保留。
  */
 import type { MembershipLevel } from "@/generated/prisma/client";

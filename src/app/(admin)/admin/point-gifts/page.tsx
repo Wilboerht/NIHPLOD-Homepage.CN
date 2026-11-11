@@ -53,6 +53,8 @@ interface RedemptionItem {
   carrier: string | null;
   waybillNo: string | null;
   createdAt: string;
+  fulfillableAt: string;
+  protectionActive: boolean;
   fulfilledAt: string | null;
   cancelledAt: string | null;
   cancelNote: string | null;
@@ -1160,8 +1162,14 @@ function AdminPointGiftsContent() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => openFulfillModal(r)}
+                                disabled={r.protectionActive}
+                                title={
+                                  r.protectionActive
+                                    ? `履约保护期至 ${formatDateTime(r.fulfillableAt)}`
+                                    : undefined
+                                }
                               >
-                                标记履约
+                                {r.protectionActive ? "保护期内" : "标记履约"}
                               </Button>
                             )}
                             {!isOwnerActor &&
@@ -1323,8 +1331,14 @@ function AdminPointGiftsContent() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => openFulfillModal(r)}
+                                  disabled={r.protectionActive}
+                                  title={
+                                    r.protectionActive
+                                      ? `履约保护期至 ${formatDateTime(r.fulfillableAt)}`
+                                      : undefined
+                                  }
                                 >
-                                  标记履约
+                                  {r.protectionActive ? "保护期内" : "标记履约"}
                                 </Button>
                               )}
                               {!isOwnerActor &&
@@ -1467,7 +1481,9 @@ function AdminPointGiftsContent() {
         title={fulfillTarget?.mode === "fulfill" ? "标记履约" : "维护运单号"}
         description={
           fulfillTarget?.mode === "fulfill"
-            ? "确认已发出该礼品？可选填顺丰运单号，填写后用户可查看物流轨迹。"
+            ? fulfillTarget.redemption.protectionActive
+              ? `订单处于 7 天履约保护期，预计 ${formatDateTime(fulfillTarget.redemption.fulfillableAt)} 后可发货。`
+              : "确认已发出该礼品？可选填顺丰运单号，填写后用户可查看物流轨迹。"
             : "填写或更新顺丰运单号（留空并保存可清除）。"
         }
         closeOnBackdrop={false}

@@ -16,12 +16,10 @@ import { notifyNewRedemption } from "@/lib/admin-notify";
 import { getPointBalanceView, POINT_GRANT_LEDGER_TYPES } from "@/lib/points-ledger";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { MAX_ADDRESSES, addressFieldsSchema, type UserAddressView } from "@/lib/user-address";
-import {
-  isOwnedSpentProofImageRef,
-  isValidSpentProofImageRef,
-} from "@/lib/spent-adjustment-meta";
+import { isOwnedSpentProofImageRef, isValidSpentProofImageRef } from "@/lib/spent-adjustment-meta";
 import { htmlToPlainText } from "@/lib/html-sanitize";
 import { buildPurchaseJump } from "@/lib/purchase-jump";
+import { getRedemptionProtectionView } from "@/lib/redemption-protection";
 import { isPurchasePlatformKey } from "@/lib/purchase-platforms";
 import { querySfRoutes } from "@/lib/sf-express";
 import {
@@ -542,6 +540,7 @@ export async function getRedemptionsResponse(
       refundedPoints: r.refundedPoints,
       refundedAt: r.refundedAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
+      ...getRedemptionProtectionView(r.createdAt),
     }));
 
     return NextResponse.json(

@@ -114,6 +114,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         ALREADY_PROCESSED: 409,
         NEGATIVE_BALANCE: 409,
         USER_INACTIVE: 409,
+        FULFILL_PROTECTION_ACTIVE: 409,
       };
       const message =
         result.code === "ALREADY_PROCESSED"
@@ -122,7 +123,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             ? `用户当前积分为负（${result.available ?? 0}），请先人工调整/取消兑换后再履约`
             : result.code === "USER_INACTIVE"
               ? "用户账号已注销/冻结，不能履约"
-              : "兑换记录不存在";
+              : result.code === "FULFILL_PROTECTION_ACTIVE"
+                ? `订单仍在 7 天履约保护期内，请于 ${result.fulfillableAt ? new Date(result.fulfillableAt).toLocaleString("zh-CN") : "期满后"} 再发货`
+                : "兑换记录不存在";
       return NextResponse.json(
         { success: false, error: { code: result.code, message } },
         { status: statusMap[result.code ?? ""] ?? 500 }

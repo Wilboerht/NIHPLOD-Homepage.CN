@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { adjustPoints, withPointTxRetry } from "@/lib/points-ledger";
 import { enqueueNotification } from "@/lib/notification-outbox";
 import { apiConsole } from "@/lib/logger";
+import { getRedemptionProtectionView } from "@/lib/redemption-protection";
 
 function envDays(name: string, fallback: number): number {
   const value = Number(process.env[name]);
@@ -825,5 +826,5 @@ export async function getRedemptionTimeline(redemptionId: string, userId?: strin
     },
   });
   if (!redemption || (userId && redemption.userId !== userId)) return null;
-  return redemption;
+  return { ...redemption, ...getRedemptionProtectionView(redemption.createdAt) };
 }

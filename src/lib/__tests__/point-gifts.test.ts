@@ -382,6 +382,7 @@ describe("fulfillRedemption 履约", () => {
       id: "r1",
       status: "PENDING",
       userId: "user-1",
+      createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
       user: { status: "ACTIVE" },
     });
     mockUpdateMany.mockResolvedValue({ count: 1 });
@@ -413,6 +414,7 @@ describe("fulfillRedemption 履约", () => {
       id: "r1",
       status: "PENDING",
       userId: "user-1",
+      createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
       user: { status: "ACTIVE" },
     });
     mockBalanceFind.mockResolvedValue({ available: -50 });
@@ -421,5 +423,26 @@ describe("fulfillRedemption 履约", () => {
 
     expect(result).toEqual({ ok: false, code: "NEGATIVE_BALANCE", available: -50 });
     expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("兑换后未满 7 天：保护期内拒绝履约并返回可履约时间", async () => {
+    const createdAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    mockFindUnique.mockResolvedValue({
+      id: "r1",
+      status: "PENDING",
+      userId: "user-1",
+      createdAt,
+      user: { status: "ACTIVE" },
+    });
+
+    const result = await fulfillRedemption({ redemptionId: "r1", adminId: "admin-1" });
+
+    expect(result).toEqual({
+      ok: false,
+      code: "FULFILL_PROTECTION_ACTIVE",
+      fulfillableAt: new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    });
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+    expect(mockBalanceFind).not.toHaveBeenCalled();
   });
 });

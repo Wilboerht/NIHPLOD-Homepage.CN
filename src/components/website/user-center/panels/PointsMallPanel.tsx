@@ -98,6 +98,8 @@ interface RedemptionRecord {
   refundedPoints?: number;
   refundedAt?: string | null;
   createdAt: string;
+  fulfillableAt?: string;
+  protectionActive?: boolean;
 }
 
 interface TrackingData {
@@ -750,7 +752,8 @@ export function PointsMallPanel() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-primary" />
                     <p className="text-xs text-stone-700">
-                      兑换成功，礼品将尽快为您寄出，可在「我的兑换记录」中查看发货进度
+                      兑换成功，订单有 7
+                      天履约保护期；期满且无退款异常后安排发货，可在「我的兑换记录」中查看进度
                     </p>
                   </div>
                   <button
@@ -1076,6 +1079,14 @@ export function PointsMallPanel() {
                           : ""}
                       </span>
                     </div>
+                    {selectedRedemption.status === "PENDING" &&
+                      selectedRedemption.protectionActive &&
+                      selectedRedemption.fulfillableAt && (
+                        <p className="rounded-lg bg-amber-50 px-3 py-2 text-left text-xs leading-relaxed text-amber-700">
+                          7 天履约保护期内暂不发货，预计{" "}
+                          {formatDateTime(selectedRedemption.fulfillableAt)} 后可安排履约。
+                        </p>
+                      )}
                     {selectedRedemption.afterSalesReason && (
                       <div className="flex items-start justify-between gap-4">
                         <span className="shrink-0 text-stone-400">售后原因</span>
@@ -1617,7 +1628,7 @@ export function PointsMallPanel() {
                     : "积分不足"}
               </button>
               <p className="mt-3 text-center text-[11px] leading-relaxed text-brand-charcoal/40">
-                兑换后可在「我的兑换记录」中查看发货进度
+                兑换后有 7 天履约保护期，可在「我的兑换记录」中查看预计履约时间与发货进度
               </p>
             </div>
           ) : null

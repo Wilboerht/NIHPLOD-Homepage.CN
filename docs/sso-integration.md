@@ -669,7 +669,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | `GOLD` | 金卡会员 | 累计消费 ≥ ¥5,000 |
 | `DIAMOND` | 钻石卡会员 | 累计消费 ≥ ¥10,000 |
 
-等级永久有效、按累计消费实时重算（退款可降级）；权益跟随当前等级，肌肤档案数据终身保留。OAuth `membership` scope 下发的 `membership_level` claim 为以上枚举值；同一 scope 同时下发 `total_spent`（number，累计消费金额，单位元），子站可直接据此计算按消费额阶梯变化的权益配额（如测肤次数），无需另行对接消费额接口。
+等级无固定到期日、按累计净消费实时重算（退款可降级）；权益跟随当前等级，肌肤档案数据终身保留。OAuth `membership` scope 下发的 `membership_level` claim 为以上枚举值；同一 scope 同时下发 `total_spent`（number，累计消费金额，单位元），子站可直接据此计算按消费额阶梯变化的权益配额（如测肤次数），无需另行对接消费额接口。
 
 ### 上报消费额变动
 

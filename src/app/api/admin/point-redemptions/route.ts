@@ -12,6 +12,7 @@ import { maskPhone, maskAddress } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { createAuditLogStrict } from "@/lib/audit";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { getRedemptionProtectionView } from "@/lib/redemption-protection";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -204,6 +205,7 @@ export async function GET(request: NextRequest) {
             carrier: r.carrier,
             waybillNo: r.waybillNo,
             createdAt: r.createdAt.toISOString(),
+            ...getRedemptionProtectionView(r.createdAt),
             fulfilledAt: r.fulfilledAt?.toISOString() ?? null,
             completedAt: r.completedAt?.toISOString() ?? null,
             cancelledAt: r.cancelledAt?.toISOString() ?? null,

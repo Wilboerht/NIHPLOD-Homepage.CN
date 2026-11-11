@@ -271,7 +271,7 @@ model User {
   wechatOpenId  String? @unique // 微信 OpenID
   wechatUnionId String? // 微信 UnionID
 
-  // 会员等级（四档，按累计消费实时判定，永久有效）
+  // 会员等级（四档，按累计净消费实时判定，无固定到期日，退款后可降档）
   membershipLevel        MembershipLevel @default(REGULAR)
   totalSpent             Int             @default(0) // 历史购买金额（元，退款扣减），等级判定依据
   // 各档首次达档时间（仅成长展示，不产生有效期）

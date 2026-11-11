@@ -15,6 +15,7 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { enqueueNotification } from "@/lib/notification-outbox";
 import { recordRedemptionEvent } from "@/lib/redemption-state-machine";
+import { getRedemptionFulfillableAt } from "@/lib/redemption-protection";
 
 /** 可兑换产品（产品库标记 + 已发布），按产品排序；字段供列表卡片与产品详情抽屉共用 */
 export async function listRedeemableProducts() {
@@ -339,8 +340,14 @@ export async function fulfillRedemption(params: {
   waybillNo?: string;
 }): Promise<{
   ok: boolean;
-  code?: "NOT_FOUND" | "ALREADY_PROCESSED" | "NEGATIVE_BALANCE" | "USER_INACTIVE";
+  code?:
+    | "NOT_FOUND"
+    | "ALREADY_PROCESSED"
+    | "NEGATIVE_BALANCE"
+    | "USER_INACTIVE"
+    | "FULFILL_PROTECTION_ACTIVE";
   available?: number;
+  fulfillableAt?: string;
 }> {
   const { redemptionId, adminId, waybillNo } = params;
 
@@ -353,6 +360,7 @@ export async function fulfillRedemption(params: {
           status: true,
           userId: true,
           productName: true,
+          createdAt: true,
           user: { select: { status: true, phone: true } },
         },
       });
@@ -362,6 +370,14 @@ export async function fulfillRedemption(params: {
       }
       if (redemption.user.status !== "ACTIVE") {
         return { ok: false, code: "USER_INACTIVE" as const };
+      }
+      const fulfillableAt = getRedemptionFulfillableAt(redemption.createdAt);
+      if (fulfillableAt.getTime() > Date.now()) {
+        return {
+          ok: false,
+          code: "FULFILL_PROTECTION_ACTIVE" as const,
+          fulfillableAt: fulfillableAt.toISOString(),
+        };
       }
 
       // 履约前风控：退款/消费额下降可把用户积分冲成负数（超兑债务）。
