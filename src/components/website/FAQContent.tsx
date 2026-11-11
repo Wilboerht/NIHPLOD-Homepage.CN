@@ -9,19 +9,38 @@ import { Plus, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
-import { faqData } from "@/config/faq-data";
+import { faqData, type FaqLink } from "@/config/faq-data";
 
 /** Footer 版权信息组件 */
 function FooterCopyright() {
   return <>&copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.</>;
 }
 
+/** 将段落中关键词的首次出现渲染为站内链接 */
+function renderParagraphWithLink(paragraph: string, link: FaqLink) {
+  const index = paragraph.indexOf(link.keyword);
+  if (index === -1) return paragraph;
+  return (
+    <>
+      {paragraph.slice(0, index)}
+      <Link
+        href={link.href}
+        className="text-brand-primary underline decoration-brand-primary/40 underline-offset-2 transition-colors hover:decoration-brand-primary"
+      >
+        {link.keyword}
+      </Link>
+      {paragraph.slice(index + link.keyword.length)}
+    </>
+  );
+}
+
 /** 渲染纯文本 FAQ 段落（与 FAQPage 结构化数据同源） */
-function FaqAnswer({ paragraphs }: { paragraphs: string[] }) {
+function FaqAnswer({ paragraphs, links }: { paragraphs: string[]; links?: FaqLink[] }) {
   return (
     <>
       {paragraphs.map((paragraph, index) => {
         const isNote = paragraph.startsWith("* ");
+        const link = links?.find((item) => item.paragraphIndex === index);
         return (
           <p
             key={index}
@@ -31,7 +50,7 @@ function FaqAnswer({ paragraphs }: { paragraphs: string[] }) {
                 "text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/50"
             )}
           >
-            {paragraph}
+            {link ? renderParagraphWithLink(paragraph, link) : paragraph}
           </p>
         );
       })}
@@ -219,7 +238,10 @@ export function FAQContent() {
 
                       {/* Answer */}
                       <div className="mt-6 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90">
-                        <FaqAnswer paragraphs={faqData[mobileSelectedIndex].answer} />
+                        <FaqAnswer
+                          paragraphs={faqData[mobileSelectedIndex].answer}
+                          links={faqData[mobileSelectedIndex].links}
+                        />
                       </div>
 
                       {/* Mobile Footer Copyright */}
@@ -289,7 +311,7 @@ export function FAQContent() {
                           >
                             <div style={{ overflow: "hidden" }}>
                               <div className="pb-8 pl-6 pr-6 pt-0 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 lg:pr-12 lg:text-[15px]">
-                                <FaqAnswer paragraphs={faq.answer} />
+                                <FaqAnswer paragraphs={faq.answer} links={faq.links} />
                               </div>
                             </div>
                           </m.div>

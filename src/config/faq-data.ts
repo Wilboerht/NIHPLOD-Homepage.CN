@@ -3,10 +3,21 @@
  * 页面可见内容与 FAQPage 结构化数据共用，避免 schema 与可见文案不一致
  */
 
+export interface FaqLink {
+  /** answer 段落索引 */
+  paragraphIndex: number;
+  /** 段落中需要加链的关键词（仅首次出现） */
+  keyword: string;
+  /** 站内路径 */
+  href: string;
+}
+
 export interface FaqEntry {
   question: string;
   /** 段落数组；以 "* " 开头的段落按脚注样式渲染 */
   answer: string[];
+  /** 可选：将指定段落中的关键词渲染为站内链接（结构化数据仍使用纯文本） */
+  links?: FaqLink[];
 }
 
 export const faqData: FaqEntry[] = [
@@ -26,6 +37,7 @@ export const faqData: FaqEntry[] = [
       "然而，这些有效成分是否真的能被皮肤吸收而不被氧化、分解或产生不良反应，这可能是您真正需要认真考虑的问题。",
       "NIHPLOD 的主要产品，结合了当今前沿的脂质体技术，将重要的活性成分和生长因子靶向输送到皮肤进行修复或改善，从而更有效地达到理想的护肤效果。",
     ],
+    links: [{ paragraphIndex: 2, keyword: "脂质体", href: "/technology" }],
   },
   {
     question: "使用 NIHPLOD 的产品多久可以看到效果？",

@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import NextLink from "next/link";
 import { sanitizeHtml } from "@/lib/html-sanitize";
-import { linkFirstKeyword } from "@/lib/link-first-keyword";
 import { m, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { ChevronLeft, ChevronRight, HelpCircle, Share2, X } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -115,10 +114,7 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
   const lightboxTrapRef = useFocusTrap(lightboxOpen);
 
   const tabContent: Record<TabType, string | null> = {
-    // 产品描述中「脂质体技术」首处自动加链到技术介绍页（站内锚文本内链）
-    description: product.description
-      ? linkFirstKeyword(product.description, "脂质体技术", "/technology")
-      : product.description,
+    description: product.description,
     ingredients: product.ingredients,
     usage: product.usage,
   };
@@ -764,14 +760,11 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
                 返回产品详情
               </button>
             </div>
-            <div className="lg:grid lg:grid-cols-[4fr_6fr] lg:gap-12 xl:gap-16">
-              <div aria-hidden="true" className="hidden lg:block" />
-              <ProductFaq
-                faqs={faqs}
-                title={`${product.category.name} · 常见问答`}
-                className="mt-2 w-full max-w-none border-t-0 px-0 pb-0 pt-0"
-              />
-            </div>
+            <ProductFaq
+              faqs={faqs}
+              title={`${product.category.name} · 常见问答`}
+              className="mt-2 border-t-0 px-0 pb-0 pt-0"
+            />
           </div>
         </div>
       )}
