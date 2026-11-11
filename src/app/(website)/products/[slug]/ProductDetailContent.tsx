@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import NextLink from "next/link";
 import { sanitizeHtml } from "@/lib/html-sanitize";
+import { linkFirstKeyword } from "@/lib/link-first-keyword";
 import { m, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { ChevronLeft, ChevronRight, HelpCircle, Share2, X } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -114,7 +115,10 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
   const lightboxTrapRef = useFocusTrap(lightboxOpen);
 
   const tabContent: Record<TabType, string | null> = {
-    description: product.description,
+    // 产品描述中「脂质体技术」首处自动加链到技术介绍页（站内锚文本内链）
+    description: product.description
+      ? linkFirstKeyword(product.description, "脂质体技术", "/technology")
+      : product.description,
     ingredients: product.ingredients,
     usage: product.usage,
   };

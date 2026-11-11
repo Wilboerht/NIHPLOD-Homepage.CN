@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAdminSsoConfig, isAdminSsoEnabled, safeSecretEqual } from "@/lib/admin-sso";
-import { resolveAdvisorRole } from "@/lib/admin-permissions";
+import {
+  resolveAdminPermissions,
+  resolveAdvisorRole,
+} from "@/lib/admin-permissions";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
@@ -74,6 +77,7 @@ export async function POST(request: NextRequest) {
         tokenVersion: true,
         status: true,
         deletedAt: true,
+        totpEnabled: true,
       },
     });
 
@@ -97,13 +101,18 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         data: {
-          // 只返回影子账号同步所需的最小字段；不再暴露完整权限集合与 TOTP 状态。
+          // 只返回影子账号同步所需的最小字段：advisor 相关权限 + TOTP 状态，
+          // 不下发主站全量权限集合。
           admins: admins.map((admin) => ({
             id: admin.id,
             email: admin.email,
             name: admin.name,
             role: admin.role,
+            permissions: resolveAdminPermissions(admin.role, admin.permissions).filter(
+              (permission) => permission.startsWith("advisor:")
+            ),
             advisorRole: resolveAdvisorRole(admin.role, admin.permissions),
+            totpEnabled: admin.totpEnabled,
             ver: admin.tokenVersion,
             status: admin.status,
             deletedAt: admin.deletedAt,

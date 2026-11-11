@@ -23,6 +23,7 @@ NIHPLOD 统一认证中心（nihplod.cn）生产部署操作手册。按本文�
 2. **应用密钥**（逐个重新生成 ≥32 字符强随机串，更新部署环境变量）：
    - `JWT_ADMIN_SECRET`、`JWT_ACCESS_SECRET`、`JWT_REFRESH_SECRET`、`JWT_WECHAT_BIND_SECRET`、`JWT_WECHAT_EXCHANGE_SECRET`、`JWT_ID_TOKEN_SECRET`、`JWT_LOGOUT_SECRET`
    - `LOGIN_ATTEMPT_HMAC_KEY`、`SMS_CODE_HMAC_KEY`
+   - `ADVISOR_ADMIN_SSO_CLIENT_SECRET`（管理员 SSO 客户端密钥；断言签名已改为 RS256，旧的 `ADVISOR_ADMIN_SSO_SECRET` 轮换后直接删除）
    - `INTERNAL_API_KEYS`（重新签发并同步所有子项目）
    - 影响：轮换 `JWT_*_SECRET` 会使存量令牌/会话失效（用户需重新登录），选择低峰期执行。
 3. **RS256 密钥对**：若生产使用 RS256，用 `npm run generate:oauth-rs256-keys` 重新生成
@@ -270,6 +271,50 @@ curl -X POST "https://nihplod.cn/api/cron/run" \
 | 换绑手机号（`/api/user/phone`） | 撤销其余设备，保留当前设备 | 全部撤销 | 全部撤销并通知子站 |
 
 管理员安全约定：**只有 `owner` 角色可修改其他管理员的密码/邮箱，且 owner 不可删除自己或最后一个 owner**（`src/lib/admin-safety.ts`，含数据库 advisory lock 防并发绕过）；管理员登录 TOTP 与资金类操作 TOTP 均按一次性使用处理（同码在有效窗口内跨实例重放会被拒绝）。
+
+### 2.10 测肤子站管理员 SSO（RS256 + JWKS）
+
+主站 → Skin-Advisor 的管理员 SSO 断言**必须使用 RS256**：主站持有私钥，子站只从 `/api/oauth/jwks` 获取公钥验签。历史上双方共享的 `ADVISOR_ADMIN_SSO_SECRET` / `ADMIN_SSO_SECRET` 已弃用——共享密钥意味着子站被攻破后可伪造任意管理员（含 `super_admin`）。
+
+主站配置（`ADVISOR_ADMIN_SSO_ENABLED=true` 时全部必填）：
+
+```bash
+ADVISOR_ADMIN_SSO_CLIENT_ID=skin-advisor-admin
+ADVISOR_ADMIN_SSO_CLIENT_SECRET=<≥32 字符强随机串>
+ADVISOR_ADMIN_SSO_REDIRECT_URI=https://smart.nihplod.cn/api/admin/auth/sso/callback
+ADVISOR_ADMIN_SSO_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
+ADVISOR_ADMIN_SSO_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n..."
+ADVISOR_ADMIN_SSO_KID=advisor-admin-rs256-v1
+```
+
+生成密钥对：
+
+```bash
+npm run generate:admin-sso-keys
+```
+
+子站配置：默认从 `ADMIN_SSO_TOKEN_URL` 同源拉取 JWKS（`/api/oauth/jwks`；同机部署会走 `127.0.0.1`，无需绕公网/Cloudflare），无需共享密钥；如需离线固定公钥，可配置 `ADMIN_SSO_PUBLIC_KEY`，或用 `ADMIN_SSO_JWKS_URL` 覆盖 JWKS 地址。
+
+**迁移顺序（零中断）**：
+
+1. 子站先发布支持 RS256/JWKS 的版本，并保留 `ADMIN_SSO_ALLOW_LEGACY_HS256=true` + 旧 `ADMIN_SSO_SECRET` 作为回退；
+2. 主站配置 RS256 密钥对后发布（`ADVISOR_ADMIN_SSO_SIGNING_ALG` 无需设置，默认 RS256）；
+3. 观察 `admin_sso_authorize` / `admin_sso_token` 审计与子站登录成功率；
+4. 子站删除 `ADMIN_SSO_SECRET` 与 `ADMIN_SSO_ALLOW_LEGACY_HS256`；主站删除 `ADVISOR_ADMIN_SSO_SECRET`。
+
+**回滚/应急**：主站临时设置 `ADVISOR_ADMIN_SSO_SIGNING_ALG=HS256` 并保留旧共享密钥即可回退（`npm run check:sso-config` 会将该状态标记为 FAIL，提醒尽快恢复 RS256）。
+
+**密钥轮换**：与 OAuth 密钥轮换一致——先把旧公钥配置到 `ADVISOR_ADMIN_SSO_PREV_PUBLIC_KEY` / `ADVISOR_ADMIN_SSO_PREV_KID` 并发布，再切换私钥/公钥与 `ADVISOR_ADMIN_SSO_KID`，待旧断言全部过期（60 秒）后移除 `*_PREV_*`。
+
+**验收**：
+
+```bash
+# 主站 JWKS 应包含管理员公钥（kid=advisor-admin-rs256-v1）
+curl -s https://nihplod.cn/api/oauth/jwks | grep -o 'advisor-admin-rs256-v1'
+
+# 配置检查：管理员 SSO 启用时应无 FAIL
+npm run check:sso-config
+```
 
 ---
 

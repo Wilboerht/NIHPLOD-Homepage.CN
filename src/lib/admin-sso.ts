@@ -15,16 +15,21 @@ import {
   resolveAdvisorRole,
   type AdminRoleValue,
 } from "./admin-permissions";
+import { getAdminSsoKeyId, importAdminSsoPrivateKey } from "./admin-sso-keys";
 
 export const ADMIN_SSO_AUDIENCE = "advisor-admin";
 export const ADMIN_SSO_CODE_TTL_MS = 60 * 1000;
 export const ADMIN_SSO_ASSERTION_TTL_SECONDS = 60;
 
+export type AdminSsoSigningConfig =
+  | { alg: "RS256"; keyId: string; privateKey: string }
+  | { alg: "HS256"; secret: string };
+
 export interface AdminSsoConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  secret: string;
+  signing: AdminSsoSigningConfig;
 }
 
 function readRequired(name: string): string {
@@ -35,21 +40,46 @@ function readRequired(name: string): string {
   return value;
 }
 
+/**
+ * 默认使用 RS256。仅在显式设置 ADVISOR_ADMIN_SSO_SIGNING_ALG=HS256 时
+ * 保留共享密钥回退（迁移窗口/紧急回滚），生产最终必须删除该配置。
+ */
 export function getAdminSsoConfig(): AdminSsoConfig {
   const clientSecret = readRequired("ADVISOR_ADMIN_SSO_CLIENT_SECRET");
-  const secret = readRequired("ADVISOR_ADMIN_SSO_SECRET");
   if (clientSecret.length < 32) {
     throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_CLIENT_SECRET 至少需要 32 位");
   }
-  if (secret.length < 32) {
-    throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_SECRET 至少需要 32 位");
+
+  const requestedAlg = process.env.ADVISOR_ADMIN_SSO_SIGNING_ALG?.trim().toUpperCase();
+  const privateKey = process.env.ADVISOR_ADMIN_SSO_PRIVATE_KEY;
+  const legacySecret = process.env.ADVISOR_ADMIN_SSO_SECRET;
+  const signingAlg = requestedAlg || (privateKey ? "RS256" : legacySecret ? "HS256" : "");
+
+  let signing: AdminSsoSigningConfig;
+  if (signingAlg === "RS256") {
+    if (!privateKey) {
+      throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_PRIVATE_KEY 未配置");
+    }
+    signing = { alg: "RS256", keyId: getAdminSsoKeyId(), privateKey };
+  } else if (signingAlg === "HS256") {
+    if (!legacySecret) {
+      throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_SECRET 未配置");
+    }
+    if (legacySecret.length < 32) {
+      throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_SECRET 至少需要 32 位");
+    }
+    signing = { alg: "HS256", secret: legacySecret };
+  } else {
+    throw new Error(
+      "[AdminSSO] 未配置签名密钥：请配置 ADVISOR_ADMIN_SSO_PRIVATE_KEY（RS256）"
+    );
   }
 
   return {
     clientId: readRequired("ADVISOR_ADMIN_SSO_CLIENT_ID"),
     clientSecret,
     redirectUri: readRequired("ADVISOR_ADMIN_SSO_REDIRECT_URI"),
-    secret,
+    signing,
   };
 }
 
@@ -180,7 +210,10 @@ export interface AdminSsoAssertionInput {
 }
 
 /**
- * 签发 60 秒管理员断言。子站用同一 ADMIN_SSO_SECRET 验签。
+ * 签发 60 秒管理员断言。
+ *
+ * 默认 RS256：子站通过 JWKS 公钥验签，即使子站被攻破也无法伪造其他管理员。
+ * 仅迁移窗口内允许显式 HS256 共享密钥回退。
  */
 export async function signAdminSsoAssertion(
   admin: AdminSsoAssertionInput,
@@ -191,9 +224,14 @@ export async function signAdminSsoAssertion(
     throw new Error("[AdminSSO] admin has no advisor access");
   }
 
-  const permissions = resolveAdminPermissions(admin.role, admin.permissionOverrides);
+  // 只下发子站需要的权限，避免把主站全量权限（users:delete/admins:write 等）
+  // 暴露给子站；子站 resolveLocalAdminRole 仍依赖 advisor:access / advisor:admin。
+  const permissions = resolveAdminPermissions(
+    admin.role,
+    admin.permissionOverrides
+  ).filter((permission) => permission.startsWith("advisor:"));
 
-  return new SignJWT({
+  const assertion = new SignJWT({
     email: admin.email,
     name: admin.name,
     role: admin.role,
@@ -202,13 +240,23 @@ export async function signAdminSsoAssertion(
     ver: admin.tokenVersion,
     totp: admin.totpEnabled,
     mainSessionExp: admin.mainSessionExp,
+    token_use: "admin_sso",
   })
-    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer(getIssuer())
     .setAudience(ADMIN_SSO_AUDIENCE)
     .setSubject(admin.id)
     .setJti(randomUUID())
     .setIssuedAt()
-    .setExpirationTime(`${ADMIN_SSO_ASSERTION_TTL_SECONDS}s`)
-    .sign(new TextEncoder().encode(config.secret));
+    .setExpirationTime(`${ADMIN_SSO_ASSERTION_TTL_SECONDS}s`);
+
+  if (config.signing.alg === "RS256") {
+    const privateKey = await importAdminSsoPrivateKey(config.signing.privateKey);
+    return assertion
+      .setProtectedHeader({ alg: "RS256", typ: "JWT", kid: config.signing.keyId })
+      .sign(privateKey);
+  }
+
+  return assertion
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .sign(new TextEncoder().encode(config.signing.secret));
 }

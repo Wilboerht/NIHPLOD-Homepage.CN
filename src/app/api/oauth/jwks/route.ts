@@ -2,7 +2,7 @@
  * JWKS (JSON Web Key Set) 端点
  * GET /api/oauth/jwks
  *
- * 发布 RS256 公钥（access token / ID token / logout token 三类），
+ * 发布 RS256 公钥（access token / ID token / logout token / 管理员 SSO 断言），
  * 供子项目本地验签。密钥轮换过渡期同时暴露当前与上一代公钥（各自 kid），
  * 验证侧按 kid 匹配。
  *
@@ -26,6 +26,12 @@ import {
   getLogoutTokenKeyId,
   getPrevLogoutTokenKeyId,
 } from "@/lib/jwt";
+import {
+  getAdminSsoKeyId,
+  getAdminSsoPublicKey,
+  getPrevAdminSsoKeyId,
+  getPrevAdminSsoPublicKey,
+} from "@/lib/admin-sso-keys";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +78,8 @@ export async function GET(request: Request) {
       { getKey: getPrevIdTokenPublicKey, kid: getPrevIdTokenKeyId() },
       { getKey: getLogoutTokenPublicKey, kid: getLogoutTokenKeyId() },
       { getKey: getPrevLogoutTokenPublicKey, kid: getPrevLogoutTokenKeyId() },
+      { getKey: getAdminSsoPublicKey, kid: getAdminSsoKeyId() },
+      { getKey: getPrevAdminSsoPublicKey, kid: getPrevAdminSsoKeyId() },
     ];
 
     for (const { getKey, kid } of keyEntries) {

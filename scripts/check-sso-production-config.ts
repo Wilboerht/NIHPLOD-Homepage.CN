@@ -335,6 +335,11 @@ const rsaPairs = [
     privateKey: "JWT_LOGOUT_TOKEN_PRIVATE_KEY",
     publicKey: "JWT_LOGOUT_TOKEN_PUBLIC_KEY",
   },
+  {
+    name: "ADVISOR_ADMIN_SSO",
+    privateKey: "ADVISOR_ADMIN_SSO_PRIVATE_KEY",
+    publicKey: "ADVISOR_ADMIN_SSO_PUBLIC_KEY",
+  },
 ] as const;
 for (const pair of rsaPairs) {
   const privateRaw = process.env[pair.privateKey];
@@ -378,6 +383,11 @@ const kidEntries = [
     current: process.env.JWT_LOGOUT_TOKEN_KID || "logout-token-rs256-v1",
     previous: process.env.JWT_LOGOUT_TOKEN_PREV_KID || "logout-token-rs256-v0",
     hasPrevious: !!process.env.JWT_LOGOUT_TOKEN_PREV_PUBLIC_KEY,
+  },
+  {
+    current: process.env.ADVISOR_ADMIN_SSO_KID || "advisor-admin-rs256-v1",
+    previous: process.env.ADVISOR_ADMIN_SSO_PREV_KID || "advisor-admin-rs256-v0",
+    hasPrevious: !!process.env.ADVISOR_ADMIN_SSO_PREV_PUBLIC_KEY,
   },
 ];
 const kids = kidEntries.flatMap((entry) =>
@@ -890,7 +900,6 @@ const advisorSsoVars = [
   "ADVISOR_ADMIN_SSO_CLIENT_ID",
   "ADVISOR_ADMIN_SSO_CLIENT_SECRET",
   "ADVISOR_ADMIN_SSO_REDIRECT_URI",
-  "ADVISOR_ADMIN_SSO_SECRET",
 ] as const;
 
 for (const name of advisorSsoVars) {
@@ -905,10 +914,7 @@ for (const name of advisorSsoVars) {
         ? { fix: "按 docs 配置主站 -> Skin-Advisor 管理员 SSO 变量后重启" }
         : {}),
     });
-  } else if (
-    (name === "ADVISOR_ADMIN_SSO_CLIENT_SECRET" || name === "ADVISOR_ADMIN_SSO_SECRET") &&
-    value.length < MIN_SECRET_LENGTH
-  ) {
+  } else if (name === "ADVISOR_ADMIN_SSO_CLIENT_SECRET" && value.length < MIN_SECRET_LENGTH) {
     check({
       status: "FAIL",
       name,
@@ -954,6 +960,87 @@ if (advisorSsoEnabled === "true") {
     status: "PASS",
     name: "ADVISOR_ADMIN_SSO_ENABLED",
     message: "未显式启用（默认关闭）",
+  });
+}
+
+// 管理员 SSO 断言必须使用 RS256；HS256 共享密钥仅用于迁移回退，生产不得长期保留。
+const advisorSigningAlgRaw = (process.env.ADVISOR_ADMIN_SSO_SIGNING_ALG || "")
+  .trim()
+  .toUpperCase();
+const advisorHasPrivateKey = !!process.env.ADVISOR_ADMIN_SSO_PRIVATE_KEY;
+const advisorHasPublicKey = !!process.env.ADVISOR_ADMIN_SSO_PUBLIC_KEY;
+const advisorHasLegacySecret = !!process.env.ADVISOR_ADMIN_SSO_SECRET;
+const advisorSigningAlg =
+  advisorSigningAlgRaw ||
+  (advisorHasPrivateKey ? "RS256" : advisorHasLegacySecret ? "HS256" : "");
+
+if (advisorSsoEnabled === "true") {
+  if (advisorSigningAlgRaw && !["RS256", "HS256"].includes(advisorSigningAlgRaw)) {
+    check({
+      status: "FAIL",
+      name: "ADVISOR_ADMIN_SSO_SIGNING_ALG",
+      message: `不支持的签名算法：${advisorSigningAlgRaw}（仅支持 RS256）`,
+      fix: "删除 ADVISOR_ADMIN_SSO_SIGNING_ALG 或设为 RS256",
+    });
+  }
+
+  if (advisorSigningAlg === "RS256") {
+    check({
+      status: advisorHasPrivateKey ? "PASS" : "FAIL",
+      name: "ADVISOR_ADMIN_SSO_PRIVATE_KEY",
+      message: advisorHasPrivateKey ? "已配置 RS256 私钥" : "未配置，无法签发管理员断言",
+      ...(advisorHasPrivateKey
+        ? {}
+        : { fix: "运行 npm run generate:admin-sso-keys 生成密钥对并配置私钥" }),
+    });
+    check({
+      status: advisorHasPublicKey ? "PASS" : "FAIL",
+      name: "ADVISOR_ADMIN_SSO_PUBLIC_KEY",
+      message: advisorHasPublicKey
+        ? "已配置，JWKS 将发布管理员验签公钥"
+        : "未配置，子站无法通过 JWKS 验签",
+      ...(advisorHasPublicKey
+        ? {}
+        : { fix: "配置与私钥配套的 SPKI 公钥，使 /api/oauth/jwks 可发布" }),
+    });
+    check({
+      status: advisorHasLegacySecret ? "FAIL" : "PASS",
+      name: "ADVISOR_ADMIN_SSO_SECRET",
+      message: advisorHasLegacySecret
+        ? "已弃用：RS256 模式不应继续保留共享签名密钥"
+        : "未配置（已移除共享签名密钥）",
+      ...(advisorHasLegacySecret
+        ? { fix: "确认子站已切换 JWKS 验签后删除 ADVISOR_ADMIN_SSO_SECRET" }
+        : {}),
+    });
+  } else if (advisorSigningAlg === "HS256") {
+    check({
+      status: "FAIL",
+      name: "ADVISOR_ADMIN_SSO_SIGNING_ALG",
+      message: "HS256 共享密钥模式存在伪造风险，仅限迁移窗口，生产不得启用",
+      fix: "配置 ADVISOR_ADMIN_SSO_PRIVATE_KEY / _PUBLIC_KEY，切换为 RS256",
+    });
+    check({
+      status: advisorHasLegacySecret ? "PASS" : "FAIL",
+      name: "ADVISOR_ADMIN_SSO_SECRET",
+      message: advisorHasLegacySecret ? "已配置（迁移回退模式）" : "未配置，HS256 无法签发",
+      ...(advisorHasLegacySecret
+        ? {}
+        : { fix: "临时配置共享密钥，或直接切换 RS256" }),
+    });
+  } else {
+    check({
+      status: "FAIL",
+      name: "ADVISOR_ADMIN_SSO_SIGNING",
+      message: "未配置任何签名密钥，管理员 SSO 无法签发断言",
+      fix: "运行 npm run generate:admin-sso-keys 生成 RS256 密钥对",
+    });
+  }
+} else {
+  check({
+    status: "SKIP",
+    name: "ADVISOR_ADMIN_SSO_SIGNING",
+    message: "管理员 SSO 未启用，跳过签名密钥检查",
   });
 }
 
