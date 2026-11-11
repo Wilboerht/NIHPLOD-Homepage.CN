@@ -76,6 +76,12 @@ import {
 } from "@/lib/spent-adjustment-meta";
 import type { UserExportGroup } from "@/lib/user-export";
 import { UserExportDialog } from "./UserExportDialog";
+import {
+  AddressCorrectionPanel,
+  ProfileCorrectionControl,
+  RedemptionCorrectionActions,
+} from "@/components/admin/UserCorrectionControls";
+import { UserAccountSecurityTools } from "@/components/admin/UserAccountSecurityTools";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "BANNED" | "DELETED";
 
@@ -330,6 +336,7 @@ interface RedemptionDetailItem {
   status:
     | "PENDING"
     | "FULFILLED"
+    | "COMPLETED"
     | "CANCELLED"
     | "AFTER_SALES_REQUESTED"
     | "AFTER_SALES_APPROVED"
@@ -408,6 +415,7 @@ const POINT_TYPE_LABELS: Record<string, string> = {
 const REDEMPTION_STATUS_LABELS: Record<string, string> = {
   PENDING: "待履约",
   FULFILLED: "已履约",
+  COMPLETED: "已完成",
   CANCELLED: "已取消",
   AFTER_SALES_REQUESTED: "售后待审核",
   AFTER_SALES_APPROVED: "售后待寄回",
@@ -421,6 +429,7 @@ const REDEMPTION_STATUS_LABELS: Record<string, string> = {
 const REDEMPTION_STATUS_BADGES: Record<string, string> = {
   PENDING: "bg-amber-100 text-amber-700",
   FULFILLED: "bg-emerald-100 text-emerald-700",
+  COMPLETED: "bg-emerald-100 text-emerald-700",
   CANCELLED: "bg-gray-100 text-gray-500",
   AFTER_SALES_REQUESTED: "bg-amber-100 text-amber-700",
   AFTER_SALES_APPROVED: "bg-blue-100 text-blue-700",
@@ -543,6 +552,10 @@ function AdminUsersContent() {
   const canWriteUsers = canAdmin("users:write");
   const canDeleteUsers = canAdmin("users:delete");
   const canSecurityWrite = canAdmin("users:security:write");
+  const canPhoneWrite = canAdmin("users:phone:write");
+  const canMergeUsers = canAdmin("users:merge");
+  const canFulfillRedemptions = canAdmin("redemptions:fulfill");
+  const canAfterSales = canAdmin("redemptions:after-sales");
   const canAdjustPoints = canAdmin("points:adjust");
   const canRevealPhone = canAdmin("users:sensitive:read");
   const canReadAdvisorProfile = canAdmin("advisor:users:read");
@@ -1070,7 +1083,7 @@ function AdminUsersContent() {
     }
   };
 
-  const openDetail = async (id: string) => {
+  const openDetail = async (id: string, preserveTab = false) => {
     const isLatest = takeLatestDetail();
     setDetailOpen(true);
     setDetailLoading(true);
@@ -1083,7 +1096,7 @@ function AdminUsersContent() {
     setDetailAdjustmentTotal(0);
     setDetailLevelChanges([]);
     setDetailLoginAttempts([]);
-    setActiveDetailTab("overview");
+    if (!preserveTab) setActiveDetailTab("overview");
     setRevealedPhone("");
     setLedgerItems([]);
     setLedgerPage(1);
@@ -1867,138 +1880,165 @@ function AdminUsersContent() {
 
                 {/* 基本信息 */}
                 {activeDetailTab === "basic" && (
-                  <DetailSection title="账号资料">
-                    <dl className="grid gap-x-6 sm:grid-cols-2">
-                      <DetailRow label="性别">
-                        {detailUser.gender === "male"
-                          ? "男"
-                          : detailUser.gender === "female"
-                            ? "女"
-                            : "未设置"}
-                      </DetailRow>
-                      <DetailRow label="生日">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span>
-                            {detailUser.birthday
-                              ? new Date(detailUser.birthday).toLocaleDateString("zh-CN", {
-                                  timeZone: "UTC",
-                                })
+                  <div className="space-y-4">
+                    <DetailSection
+                      title="账号资料"
+                      action={
+                        canWriteUsers && detailUser.status !== "DELETED" ? (
+                          <ProfileCorrectionControl
+                            user={detailUser}
+                            runWithStepUp={runWithStepUp}
+                            onChanged={() => openDetail(detailUser.id, true)}
+                          />
+                        ) : undefined
+                      }
+                    >
+                      <dl className="grid gap-x-6 sm:grid-cols-2">
+                        <DetailRow label="性别">
+                          {detailUser.gender === "male"
+                            ? "男"
+                            : detailUser.gender === "female"
+                              ? "女"
                               : "未设置"}
-                          </span>
-                          {detailUser.birthdayLocked && (
-                            <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
-                              已锁定
-                            </Badge>
-                          )}
-                          {canWriteUsers && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-auto px-1.5 py-0.5 text-xs"
-                              onClick={() => {
-                                setBirthdayInput(
-                                  detailUser.birthday
-                                    ? new Date(detailUser.birthday).toISOString().slice(0, 10)
-                                    : ""
-                                );
-                                setBirthdayEditOpen(true);
-                              }}
-                            >
-                              修改
-                            </Button>
-                          )}
-                        </div>
-                      </DetailRow>
-                      <DetailRow label="最后更新">{formatDate(detailUser.updatedAt)}</DetailRow>
-                      <DetailRow label="微信 UnionID">
-                        {detailUser.wechatUnionId ? (
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <code
-                              className="min-w-0 truncate font-mono text-xs text-brand-charcoal/70"
-                              title={detailUser.wechatUnionId}
-                            >
-                              {detailUser.wechatUnionId}
-                            </code>
-                            <Tooltip content="复制 UnionID" side="top">
-                              <button
-                                type="button"
-                                aria-label="复制微信 UnionID"
-                                onClick={() =>
-                                  void copyText(detailUser.wechatUnionId ?? "", "微信 UnionID")
-                                }
-                                className="inline-flex shrink-0 rounded p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80"
+                        </DetailRow>
+                        <DetailRow label="生日">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span>
+                              {detailUser.birthday
+                                ? new Date(detailUser.birthday).toLocaleDateString("zh-CN", {
+                                    timeZone: "UTC",
+                                  })
+                                : "未设置"}
+                            </span>
+                            {detailUser.birthdayLocked && (
+                              <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
+                                已锁定
+                              </Badge>
+                            )}
+                            {canWriteUsers && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-auto px-1.5 py-0.5 text-xs"
+                                onClick={() => {
+                                  setBirthdayInput(
+                                    detailUser.birthday
+                                      ? new Date(detailUser.birthday).toISOString().slice(0, 10)
+                                      : ""
+                                  );
+                                  setBirthdayEditOpen(true);
+                                }}
                               >
-                                <Copy className="h-3.5 w-3.5" />
-                              </button>
-                            </Tooltip>
+                                修改
+                              </Button>
+                            )}
                           </div>
-                        ) : (
-                          <span className="text-brand-charcoal/65">未绑定</span>
-                        )}
-                      </DetailRow>
-                      <DetailRow label="第三方平台绑定" className="sm:col-span-2">
-                        {detailUser.externalIdentities &&
-                        detailUser.externalIdentities.length > 0 ? (
-                          <div className="divide-y divide-brand-charcoal/[0.06] overflow-hidden rounded-lg border border-brand-charcoal/10">
-                            {detailUser.externalIdentities.map((identity) => {
-                              // 小程序渠道无昵称快照：优先显示来源小程序名称（新数据），
-                              // 其次平台昵称快照（网页扫码绑定）
-                              const identityLabel =
-                                identity.clientName || getIdentityNickname(identity.metadata);
-                              return (
-                                <div
-                                  key={identity.id}
-                                  className="flex flex-wrap items-center gap-2 px-3 py-2"
+                        </DetailRow>
+                        <DetailRow label="最后更新">{formatDate(detailUser.updatedAt)}</DetailRow>
+                        <DetailRow label="微信 UnionID">
+                          {detailUser.wechatUnionId ? (
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <code
+                                className="min-w-0 truncate font-mono text-xs text-brand-charcoal/70"
+                                title={detailUser.wechatUnionId}
+                              >
+                                {detailUser.wechatUnionId}
+                              </code>
+                              <Tooltip content="复制 UnionID" side="top">
+                                <button
+                                  type="button"
+                                  aria-label="复制微信 UnionID"
+                                  onClick={() =>
+                                    void copyText(detailUser.wechatUnionId ?? "", "微信 UnionID")
+                                  }
+                                  className="inline-flex shrink-0 rounded p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80"
                                 >
-                                  <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
-                                    {providerLabelMap[identity.provider] || identity.provider}
-                                  </Badge>
-                                  {identityLabel && (
-                                    <span className="max-w-[12rem] truncate text-brand-charcoal/70">
-                                      {identityLabel}
-                                    </span>
-                                  )}
-                                  {/* OpenID：无 users:sensitive:read 时由服务端脱敏，明文仅见于敏感权限 */}
-                                  <code
-                                    className="max-w-[12rem] truncate font-mono text-[11px] text-brand-charcoal/65"
-                                    title={`OpenID: ${identity.subjectId}`}
+                                  <Copy className="h-3.5 w-3.5" />
+                                </button>
+                              </Tooltip>
+                            </div>
+                          ) : (
+                            <span className="text-brand-charcoal/65">未绑定</span>
+                          )}
+                        </DetailRow>
+                        <DetailRow label="第三方平台绑定" className="sm:col-span-2">
+                          {detailUser.externalIdentities &&
+                          detailUser.externalIdentities.length > 0 ? (
+                            <div className="divide-y divide-brand-charcoal/[0.06] overflow-hidden rounded-lg border border-brand-charcoal/10">
+                              {detailUser.externalIdentities.map((identity) => {
+                                // 小程序渠道无昵称快照：优先显示来源小程序名称（新数据），
+                                // 其次平台昵称快照（网页扫码绑定）
+                                const identityLabel =
+                                  identity.clientName || getIdentityNickname(identity.metadata);
+                                return (
+                                  <div
+                                    key={identity.id}
+                                    className="flex flex-wrap items-center gap-2 px-3 py-2"
                                   >
-                                    {identity.subjectId}
-                                  </code>
-                                  <span className="ml-auto text-xs text-brand-charcoal/65">
-                                    {formatDate(identity.createdAt)}
-                                  </span>
-                                  {canWriteUsers && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setIdentityUnbindTarget({
-                                          id: identity.id,
-                                          label:
-                                            providerLabelMap[identity.provider] ||
-                                            identity.provider,
-                                        })
-                                      }
-                                      className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                                    <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
+                                      {providerLabelMap[identity.provider] || identity.provider}
+                                    </Badge>
+                                    {identityLabel && (
+                                      <span className="max-w-[12rem] truncate text-brand-charcoal/70">
+                                        {identityLabel}
+                                      </span>
+                                    )}
+                                    {/* OpenID：无 users:sensitive:read 时由服务端脱敏，明文仅见于敏感权限 */}
+                                    <code
+                                      className="max-w-[12rem] truncate font-mono text-[11px] text-brand-charcoal/65"
+                                      title={`OpenID: ${identity.subjectId}`}
                                     >
-                                      解绑
-                                    </button>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : detailUser.wechatOpenId ? (
-                          // 双写过渡期兜底：迁移前历史数据可能仅有旧列
-                          <Badge variant="success" className="px-1.5 py-0 text-[11px]">
-                            微信已绑定（历史数据）
-                          </Badge>
-                        ) : (
-                          <span className="text-brand-charcoal/65">未绑定</span>
-                        )}
-                      </DetailRow>
-                    </dl>
-                  </DetailSection>
+                                      {identity.subjectId}
+                                    </code>
+                                    <span className="ml-auto text-xs text-brand-charcoal/65">
+                                      {formatDate(identity.createdAt)}
+                                    </span>
+                                    {canWriteUsers && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setIdentityUnbindTarget({
+                                            id: identity.id,
+                                            label:
+                                              providerLabelMap[identity.provider] ||
+                                              identity.provider,
+                                          })
+                                        }
+                                        className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                                      >
+                                        解绑
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : detailUser.wechatOpenId ? (
+                            // 双写过渡期兜底：迁移前历史数据可能仅有旧列
+                            <Badge variant="success" className="px-1.5 py-0 text-[11px]">
+                              微信已绑定（历史数据）
+                            </Badge>
+                          ) : (
+                            <span className="text-brand-charcoal/65">未绑定</span>
+                          )}
+                        </DetailRow>
+                      </dl>
+                    </DetailSection>
+                    {detailUser.status !== "DELETED" &&
+                      (canPhoneWrite || canMergeUsers || canSecurityWrite) && (
+                        <DetailSection title="账户安全与客服代办">
+                          <UserAccountSecurityTools
+                            user={detailUser}
+                            isOwner={isOwnerActor}
+                            canPhoneWrite={canPhoneWrite}
+                            canMerge={canMergeUsers}
+                            canSecurityWrite={canSecurityWrite}
+                            runWithStepUp={runWithStepUp}
+                            onChanged={() => openDetail(detailUser.id, true)}
+                          />
+                        </DetailSection>
+                      )}
+                  </div>
                 )}
 
                 {/* 测肤档案 */}
@@ -2162,6 +2202,16 @@ function AdminUsersContent() {
                                   快照收货：{r.recipient} {r.phone} {r.address}
                                 </p>
                               )}
+                              {detailUser.status !== "DELETED" && (
+                                <RedemptionCorrectionActions
+                                  redemption={r}
+                                  canReadSensitive={canRevealPhone}
+                                  canFulfill={canFulfillRedemptions}
+                                  canAfterSales={canAfterSales}
+                                  runWithStepUp={runWithStepUp}
+                                  onChanged={() => openDetail(detailUser.id, true)}
+                                />
+                              )}
                             </div>
                           ))}
                         </div>
@@ -2173,23 +2223,26 @@ function AdminUsersContent() {
                 {/* 收货地址 */}
                 {activeDetailTab === "address" && (
                   <DetailSection title="收货地址" bodyClassName="p-0">
-                    {detailAddresses.length === 0 ? (
+                    {detailUser.status === "DELETED" ? (
+                      <Empty title="已注销账户地址不可修改" className="py-8" />
+                    ) : canWriteUsers ? (
+                      <AddressCorrectionPanel
+                        userId={detailUser.id}
+                        addresses={detailAddresses}
+                        canReadSensitive={canRevealPhone}
+                        runWithStepUp={runWithStepUp}
+                        onChanged={() => openDetail(detailUser.id, true)}
+                      />
+                    ) : detailAddresses.length === 0 ? (
                       <Empty title="暂无收货地址" className="py-8" />
                     ) : (
                       <div className="divide-y divide-brand-charcoal/10">
                         {detailAddresses.map((a) => (
                           <div key={a.id} className="px-4 py-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-medium text-brand-charcoal">
-                                {a.recipient}
-                              </p>
+                            <p className="text-sm font-medium text-brand-charcoal">
+                              {a.recipient}{" "}
                               <span className="text-xs text-brand-charcoal/65">{a.phone}</span>
-                              {a.isDefault && (
-                                <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
-                                  默认
-                                </Badge>
-                              )}
-                            </div>
+                            </p>
                             <p className="mt-1 text-xs text-brand-charcoal/70">
                               {a.region} {a.detail}
                             </p>

@@ -39,6 +39,7 @@ import {
   refundAfterSales,
   requestAfterSales,
   reviewAfterSales,
+  submitReturnShipment,
 } from "@/lib/redemption-state-machine";
 
 const baseRedemption = {
@@ -165,5 +166,40 @@ describe("redemption state machine", () => {
 
     expect(closed).toBe(false);
     expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("代客售后申请在时间线中记录管理员而非用户本人", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseRedemption, status: "COMPLETED" });
+    const result = await requestAfterSales({
+      redemptionId: "rd-1",
+      userId: "user-1",
+      requestId: "req-admin-1",
+      reason: "商品破损",
+      actorType: "ADMIN",
+      actorId: "admin-1",
+    });
+    expect(result.ok).toBe(true);
+    expect(mockEventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorType: "ADMIN",
+        actorId: "admin-1",
+        reasonCode: "admin_request",
+      }),
+    });
+  });
+
+  it("代填退运单沿用状态机并记录管理员", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseRedemption, status: "AFTER_SALES_APPROVED" });
+    const result = await submitReturnShipment({
+      redemptionId: "rd-1",
+      userId: "user-1",
+      waybillNo: "SF12345678",
+      actorType: "ADMIN",
+      actorId: "admin-1",
+    });
+    expect(result).toEqual({ ok: true, status: "RETURNING" });
+    expect(mockEventCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ actorType: "ADMIN", actorId: "admin-1" }),
+    });
   });
 });

@@ -20,10 +20,7 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, private",
 } as const;
 
-async function withFileDeleteRetry<T>(
-  action: () => Promise<T>,
-  attempts = 3
-): Promise<T> {
+async function withFileDeleteRetry<T>(action: () => Promise<T>, attempts = 3): Promise<T> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i += 1) {
     try {
@@ -98,6 +95,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       select: {
         id: true,
         jobId: true,
+        userId: true,
         name: true,
         phone: true,
         resumePath: true,
@@ -216,11 +214,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
     const { status, notes, folderId, expectedStatus, expectedUpdatedAt } = parsed.data;
 
-    if (
-      status &&
-      expectedStatus &&
-      !ALLOWED_TRANSITIONS[expectedStatus]?.includes(status)
-    ) {
+    if (status && expectedStatus && !ALLOWED_TRANSITIONS[expectedStatus]?.includes(status)) {
       return NextResponse.json(
         {
           success: false,
@@ -321,9 +315,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         );
       }
       const invalidTransition =
-        status &&
-        !expectedStatus &&
-        !(ALLOWED_TRANSITIONS[status] ?? []).includes(current.status);
+        status && !expectedStatus && !(ALLOWED_TRANSITIONS[status] ?? []).includes(current.status);
       const statusConflict = expectedStatus && current.status !== expectedStatus;
       return NextResponse.json(
         {
@@ -354,6 +346,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       select: {
         id: true,
         jobId: true,
+        userId: true,
         name: true,
         phone: true,
         resumeFileName: true,
@@ -500,15 +493,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
           });
         }
       } else {
-        resumeFileDeleted = await withFileDeleteRetry(() =>
-          deleteUploadedFile(resumePath)
-        ).catch((error) => {
-          apiConsole.error("[AdminApplicationDelete] 旧公开简历删除失败:", {
-            applicationId: id,
-            error,
-          });
-          return false;
-        });
+        resumeFileDeleted = await withFileDeleteRetry(() => deleteUploadedFile(resumePath)).catch(
+          (error) => {
+            apiConsole.error("[AdminApplicationDelete] 旧公开简历删除失败:", {
+              applicationId: id,
+              error,
+            });
+            return false;
+          }
+        );
       }
     }
 

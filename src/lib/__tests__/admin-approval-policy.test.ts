@@ -44,4 +44,12 @@ describe("admin approval policy", () => {
     expect(APPROVAL_POLICIES["totp.recovery.issue"].requestPermission).toBe("admins:write");
     expect(APPROVAL_POLICIES["admin.delete"].requestPermission).toBe("admins:write");
   });
+
+  it("手机号换绑与账户合并使用独立高风险权限且必须审批", () => {
+    expect(APPROVAL_POLICIES["user.phone.change"].requestPermission).toBe("users:phone:write");
+    expect(APPROVAL_POLICIES["user.accounts.merge"].requestPermission).toBe("users:merge");
+    expect(APPROVAL_POLICIES["user.phone.change"].hidden).toBe(true);
+    expect(APPROVAL_POLICIES["user.accounts.merge"].hidden).toBe(true);
+    expect(APPROVAL_POLICIES["user.accounts.merge"].executionMode).toBe("AUTO");
+  });
 });

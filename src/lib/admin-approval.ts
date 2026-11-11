@@ -23,6 +23,8 @@ import {
 } from "./admin-approval-policy";
 import { executeApprovalPolicy, type ApprovalExecutorResult } from "./admin-approval-executors";
 import { verifyImportPreviewToken } from "./spent-import";
+import { AccountSecurityError, getPhoneChangePreflight } from "./admin-account-security";
+import { getAccountMergePreflight } from "./admin-account-merge";
 
 const APPROVAL_TTL_MS = 24 * 60 * 60 * 1000;
 const EXECUTING_TIMEOUT_MS = 30 * 60 * 1000;
@@ -322,6 +324,81 @@ async function resolveApprovalTarget(
         targetSnapshot: { status: user.status },
         approvalRequired: true,
       };
+    }
+    case "user.phone.change": {
+      try {
+        const preflight = await getPhoneChangePreflight(
+          String(payload.userId),
+          String(payload.newPhone)
+        );
+        if (preflight.currentPhoneHash !== String(payload.expectedPhoneHash)) {
+          throw new AdminApprovalError("STALE", "手机号快照不一致，请重新预检", 409);
+        }
+        if (!preflight.available) {
+          throw new AdminApprovalError(
+            "PHONE_OCCUPIED",
+            "新手机号已绑定其他账户，请先处理账户合并或原账户换绑",
+            409
+          );
+        }
+        return {
+          targetType: "user",
+          targetId: preflight.userId,
+          targetLabel: preflight.currentPhone,
+          targetSnapshot: {
+            status: preflight.status,
+            phoneHash: preflight.currentPhoneHash,
+            newPhone: preflight.newPhone,
+          },
+          approvalRequired: true,
+        };
+      } catch (error) {
+        if (error instanceof AccountSecurityError) {
+          throw new AdminApprovalError(error.code, error.message, error.status);
+        }
+        throw error;
+      }
+    }
+    case "user.accounts.merge": {
+      try {
+        const preflight = await getAccountMergePreflight(
+          String(payload.sourceUserId),
+          String(payload.targetUserId)
+        );
+        if (
+          preflight.source.updatedAt !== String(payload.expectedSourceUpdatedAt) ||
+          preflight.target.updatedAt !== String(payload.expectedTargetUpdatedAt)
+        ) {
+          throw new AdminApprovalError("STALE", "账户快照不一致，请重新预检", 409);
+        }
+        if (!preflight.canMerge) {
+          throw new AdminApprovalError(
+            "MERGE_CONFLICT",
+            preflight.conflicts[0]?.message || "账户存在合并冲突",
+            409
+          );
+        }
+        return {
+          targetType: "user",
+          targetId: preflight.target.id,
+          targetLabel: `${preflight.source.nickname || preflight.source.phone} → ${preflight.target.nickname || preflight.target.phone}`,
+          targetSnapshot: {
+            sourceUserId: preflight.source.id,
+            sourceStatus: preflight.source.status,
+            targetStatus: preflight.target.status,
+            sourceUpdatedAt: preflight.source.updatedAt,
+            targetUpdatedAt: preflight.target.updatedAt,
+            pointsAfter: preflight.preview.pointsAfter,
+            totalSpentAfter: preflight.preview.spentAfter,
+          },
+          approvalRequired: true,
+        };
+      } catch (error) {
+        if (error instanceof AccountSecurityError) {
+          throw new AdminApprovalError(error.code, error.message, error.status);
+        }
+        throw error;
+      }
     }
     case "totp.recovery.issue": {
       const adminId = String(payload.adminId);
@@ -875,11 +952,7 @@ export async function retryApprovalRequest(input: ApprovalDecisionInput) {
     request.targetId === input.admin.id &&
     (request.policyKey === "admin.delete" || request.policyKey === "totp.recovery.issue")
   ) {
-    throw new AdminApprovalError(
-      "SELF_APPROVAL_FORBIDDEN",
-      "不能重试针对自己的高风险申请",
-      400
-    );
+    throw new AdminApprovalError("SELF_APPROVAL_FORBIDDEN", "不能重试针对自己的高风险申请", 400);
   }
 
   if (request.executionMode === "AUTO") {

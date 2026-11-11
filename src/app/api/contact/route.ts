@@ -7,6 +7,7 @@ import { BODY_LIMITS } from "@/lib/body-limits";
 import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/lib/request-body";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { resolveAuthenticatedUserIdForPhone } from "@/lib/record-account-links";
 
 // 表单验证 schema
 const ContactFormSchema = z.object({
@@ -66,11 +67,12 @@ export async function POST(request: NextRequest) {
     };
     const readableType = typeMap[_type || ""] || _type || "其他";
 
-    // 保存留言到数据库
+    const userId = await resolveAuthenticatedUserIdForPhone(request, phone);
     await prisma.contactMessage.create({
       data: {
         name,
         phone,
+        userId,
         type: _type, // 保存原始英文枚举值到 DB
         content,
       },

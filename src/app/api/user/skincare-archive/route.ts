@@ -18,10 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withUserAuth } from "@/lib/auth";
 import { advisorRequest, mapAdvisorError, resolveClientIp } from "@/lib/advisor-internal";
-import { prisma } from "@/lib/prisma";
-import { grantCheckinPoints } from "@/lib/points-ledger";
-import { getUtc8DateKey } from "@/lib/timezone";
-import { apiConsole } from "@/lib/logger";
+import { upsertSkincareDiary } from "@/lib/skincare-diary";
 
 export const dynamic = "force-dynamic";
 
@@ -58,15 +55,6 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
   return NextResponse.json(result.data);
 });
 
-/** 子站打卡响应（内部接口契约） */
-interface DiaryUpsertUpstream {
-  success?: boolean;
-  data?: { id: string; date: string; skinState: string; tags: unknown; note: string | null } | null;
-  isFirstManualCheckin?: boolean;
-  streak?: number;
-  points?: number;
-}
-
 export const POST = withUserAuth(async (request: NextRequest, payload) => {
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object") {
@@ -75,89 +63,18 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       { status: 400 }
     );
   }
-
-  const result = await advisorRequest<DiaryUpsertUpstream>("/api/internal/diary", {
-    method: "POST",
-    query: { userId: payload.id },
-    body,
-  });
-
+  const result = await upsertSkincareDiary(payload.id, body);
   if (!result.ok) {
-    // 400（输入校验）/429（限流）语义保留；其余归一为 502
     const mapped = mapAdvisorError(result);
     return NextResponse.json(
       { success: false, error: { code: mapped.code, message: mapped.message } },
       { status: mapped.status }
     );
   }
-
-  const upstream = result.data;
-  const entry = upstream?.data ?? null;
-  const dateStr = entry && typeof entry.date === "string" ? entry.date.slice(0, 10) : "";
-
-  // 官网账本直发：仅"当日首次手动打卡"发放；reference 与子站完全一致，天然幂等。
-  // 发放失败不阻断打卡（与子站口径一致：打卡成功、积分静默缺失）
-  let points: { granted: number; streak: number } | undefined;
-
-  // 金额封顶（S8）：业务规则为 +1/+2/+3，上限 10；上游返回值异常时跳过发分并告警，
-  // 不影响打卡主流程（告警仅含 userId 与原始值，不含手机号等 PII）
-  const rawAmount = upstream?.points;
-  const amountValid =
-    typeof rawAmount === "number" &&
-    Number.isInteger(rawAmount) &&
-    rawAmount > 0 &&
-    rawAmount <= 10;
-  if (upstream?.isFirstManualCheckin && !amountValid) {
-    apiConsole.warn("[skincare-archive] 打卡积分金额异常，已跳过发分", {
-      userId: payload.id,
-      points: rawAmount,
-    });
-  }
-
-  // 只有“今天（UTC+8）”的打卡才发积分：补录历史日期只写日记、不发分，
-  // 避免用户逐日补录刷积分。reference 幂等，重复提交/编辑不会重复发放。
-  const todayKey = getUtc8DateKey();
-  const isToday = !!dateStr && dateStr === todayKey;
-  const streak = typeof upstream?.streak === "number" ? upstream.streak : null;
-
-  // 首次打卡拿上游金额；若是首次发分失败后的重试（上游已不再返回 points/isFirst），
-  // 用 streak 兜底补发（1/2/3+ 天 → 1/2/3 分），保证已打卡用户不丢积分。
-  // 非首次且上游仍返回合法 points 时不发分，避免编辑历史记录反复触发。
-  const fallbackAmount =
-    streak !== null && Number.isInteger(streak) ? Math.min(3, Math.max(1, streak)) : null;
-  const isFirst = upstream?.isFirstManualCheckin === true;
-  const grantAmount = isFirst
-    ? amountValid
-      ? rawAmount
-      : null
-    : amountValid
-      ? null
-      : fallbackAmount;
-  const shouldAttemptGrant = isToday && grantAmount !== null;
-
-  if (shouldAttemptGrant) {
-    const amountToGrant = grantAmount as number;
-    try {
-      const grant = await prisma.$transaction((tx) =>
-        grantCheckinPoints(tx, {
-          userId: payload.id,
-          amount: amountToGrant,
-          reference: `checkin:${payload.id}:${dateStr}`,
-          note: streak !== null ? `连续第 ${streak} 天` : "打卡奖励",
-        })
-      );
-      if (!grant.duplicated && grant.amount > 0) {
-        points = { granted: grant.amount, streak: streak ?? 1 };
-      }
-    } catch (error) {
-      apiConsole.error("[skincare-archive] 打卡积分发放失败", { error: String(error) });
-    }
-  }
-
   return NextResponse.json({
     success: true,
-    data: entry,
-    ...(points ? { points } : {}),
+    data: result.entry,
+    ...(result.points ? { points: result.points } : {}),
   });
 });
 

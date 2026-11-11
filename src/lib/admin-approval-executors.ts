@@ -31,8 +31,12 @@ import {
   totpRecoveryPayloadSchema,
   userDeletePayloadSchema,
   userStatusPayloadSchema,
+  userPhoneChangePayloadSchema,
+  userAccountMergePayloadSchema,
   type ApprovalPolicyKey,
 } from "./admin-approval-policy";
+import { AccountSecurityError, changeUserPhoneByAdmin } from "./admin-account-security";
+import { mergeUserAccounts } from "./admin-account-merge";
 
 export interface ApprovalExecutorContext {
   approvalId: string;
@@ -742,6 +746,84 @@ async function executeUserDelete(ctx: ApprovalExecutorContext): Promise<Approval
   return { resultMeta: { requestId: deletionRequest.id } };
 }
 
+async function executeUserPhoneChange(
+  ctx: ApprovalExecutorContext
+): Promise<ApprovalExecutorResult> {
+  const payload = userPhoneChangePayloadSchema.parse(ctx.payload);
+  try {
+    const result = await changeUserPhoneByAdmin({
+      ...payload,
+      reason: ctx.reason,
+      actor: {
+        ...ctx.approver,
+        email: ctx.approver.email ?? "",
+        name: ctx.approver.name ?? "",
+      },
+      approvalId: ctx.approvalId,
+    });
+    await recordSsoEvent({
+      event: "status_change",
+      userId: payload.userId,
+      success: true,
+      detail: {
+        action: "admin_phone_change",
+        adminId: ctx.approver.id,
+        approvalId: ctx.approvalId,
+        requesterId: ctx.requester.id,
+      },
+    });
+    return {
+      resultMeta: {
+        userId: result.userId,
+        newPhone: maskPhone(result.phone),
+        sessionsRevoked: result.sessionsRevoked,
+      },
+    };
+  } catch (error) {
+    if (error instanceof AccountSecurityError) {
+      throw new AdminApprovalError(error.code, error.message, error.status);
+    }
+    throw error;
+  }
+}
+
+async function executeUserAccountsMerge(
+  ctx: ApprovalExecutorContext
+): Promise<ApprovalExecutorResult> {
+  const payload = userAccountMergePayloadSchema.parse(ctx.payload);
+  try {
+    const result = await mergeUserAccounts({
+      ...payload,
+      reason: ctx.reason,
+      actor: {
+        ...ctx.approver,
+        email: ctx.approver.email ?? "",
+        name: ctx.approver.name ?? "",
+      },
+      operationId: ctx.approvalId,
+      approvalId: ctx.approvalId,
+    });
+    await recordSsoEvent({
+      event: "status_change",
+      userId: payload.targetUserId,
+      success: true,
+      detail: {
+        action: "user_accounts_merge",
+        sourceUserId: payload.sourceUserId,
+        adminId: ctx.approver.id,
+        approvalId: ctx.approvalId,
+        requesterId: ctx.requester.id,
+      },
+    });
+    return { resultMeta: result };
+  } catch (error) {
+    if (error instanceof AccountSecurityError) {
+      throw new AdminApprovalError(error.code, error.message, error.status);
+    }
+    throw error;
+  }
+}
+
 async function executeTotpRecovery(ctx: ApprovalExecutorContext): Promise<ApprovalExecutorResult> {
   const payload = totpRecoveryPayloadSchema.parse(ctx.payload);
   if (payload.adminId === ctx.requester.id) {
@@ -823,6 +905,10 @@ export async function executeApprovalPolicy(
       return executeUserStatus(ctx);
     case "user.delete":
       return executeUserDelete(ctx);
+    case "user.phone.change":
+      return executeUserPhoneChange(ctx);
+    case "user.accounts.merge":
+      return executeUserAccountsMerge(ctx);
     case "totp.recovery.issue":
       return executeTotpRecovery(ctx);
     default:

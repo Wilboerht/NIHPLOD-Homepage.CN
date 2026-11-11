@@ -15,30 +15,30 @@ datasource db {
 // ============================================
 
 model Product {
-  id              String         @id @default(cuid())
-  name            String // 产品名称（中文）
-  nameEn          String // 产品名称（英文）
-  slug            String         @unique // URL 标识
-  description     String         @db.Text // 产品描述
-  price           Decimal        @db.Decimal(10, 2) // 参考价格
-  capacity        String? // 规格容量
-  categoryId      String
-  category        Category       @relation(fields: [categoryId], references: [id])
-  images          Image[] // 产品图片
-  purchaseLinks   PurchaseLink[] // 多平台购买链接
-  ingredients     String?        @db.Text // 成分说明
-  usage           String?        @db.Text // 使用方法
-  benefits        String[] // 功效标签
-  origin          String? // 产地
-  order           Int            @default(0) // 排序（数字越小越靠前）
-  published       Boolean        @default(false) // 是否发布
-  pointRedeemable Boolean        @default(false) // 是否可在用户面板积分兑换（兑换扣分 = ⌊价格 ÷ 当前兑礼率⌋）
-  redeemStock     Int? // 积分兑换库存（null = 不限量；兑换时条件扣减，0 即拒绝）
+  id                    String         @id @default(cuid())
+  name                  String // 产品名称（中文）
+  nameEn                String // 产品名称（英文）
+  slug                  String         @unique // URL 标识
+  description           String         @db.Text // 产品描述
+  price                 Decimal        @db.Decimal(10, 2) // 参考价格
+  capacity              String? // 规格容量
+  categoryId            String
+  category              Category       @relation(fields: [categoryId], references: [id])
+  images                Image[] // 产品图片
+  purchaseLinks         PurchaseLink[] // 多平台购买链接
+  ingredients           String?        @db.Text // 成分说明
+  usage                 String?        @db.Text // 使用方法
+  benefits              String[] // 功效标签
+  origin                String? // 产地
+  order                 Int            @default(0) // 排序（数字越小越靠前）
+  published             Boolean        @default(false) // 是否发布
+  pointRedeemable       Boolean        @default(false) // 是否可在用户面板积分兑换（兑换扣分 = ⌊价格 ÷ 当前兑礼率⌋）
+  redeemStock           Int? // 积分兑换库存（null = 不限量；兑换时条件扣减，0 即拒绝）
   redeemLimitPerUser    Int? // 每用户限购数量（null = 不限购）
   redeemLimitWindowDays Int? // 限购统计周期天数（null + limit = 终身限购）
-  geoFaqs         Json? // 人工维护的 GEO FAQ 数据（为空时使用规则兜底）
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @default(now()) @updatedAt
+  geoFaqs               Json? // 人工维护的 GEO FAQ 数据（为空时使用规则兜底）
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @default(now()) @updatedAt
 
   pointRedemptions PointRedemption[]
   slugRedirects    ProductSlugRedirect[]
@@ -165,6 +165,7 @@ model Job {
 model JobApplication {
   id               String    @id @default(cuid())
   jobId            String // 申请的职位ID
+  userId           String? // 经手机号核验后关联的官网账户；历史投递可为空
   name             String // 申请人姓名
   phone            String // 手机号
   resumePath       String // 简历文件路径（含存储后端前缀）
@@ -180,10 +181,12 @@ model JobApplication {
 
   job    Job                @relation(fields: [jobId], references: [id], onDelete: Restrict)
   folder ApplicationFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  user   User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([jobId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@index([folderId])
+  @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt(sort: Desc)])
   @@index([name])
   @@index([phone])
@@ -210,18 +213,22 @@ model ApplicationFolder {
 // ============================================
 
 model ContactMessage {
-  id        String    @id @default(cuid())
-  name      String // 留言人姓名
-  phone     String // 联系电话
-  type      String? // 留言类型 (咨询、合作等)
-  content   String    @db.Text // 留言内容
+  id           String    @id @default(cuid())
+  userId       String? // 经手机号核验后关联的官网账户；历史留言可为空
+  name         String // 留言人姓名
+  phone        String // 联系电话
+  type         String? // 留言类型 (咨询、合作等)
+  content      String    @db.Text // 留言内容
   internalNote String?   @db.Text // 管理员内部备注（不发送给用户）
   notedAt      DateTime? // 内部备注时间
-  read      Boolean   @default(false) // 是否已读
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @default(now()) @updatedAt
+  read         Boolean   @default(false) // 是否已读
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([read, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ============================================
@@ -252,11 +259,11 @@ model User {
   status        UserStatus @default(ACTIVE) // 账号状态
 
   // 密码策略
-  passwordChangedAt     DateTime? // 上次密码修改时间
-  passwordExpiresAt     DateTime? // 密码过期时间（null 表示未启用过期策略）
-  passwordChangeRequired Boolean  @default(false) // 管理端临时密码必须修改
+  passwordChangedAt      DateTime? // 上次密码修改时间
+  passwordExpiresAt      DateTime? // 密码过期时间（null 表示未启用过期策略）
+  passwordChangeRequired Boolean   @default(false) // 管理端临时密码必须修改
   // 全设备登出时间：access token iat 早于此时间一律拒绝（与 passwordChangedAt 同口径）
-  sessionsInvalidatedAt DateTime?
+  sessionsInvalidatedAt  DateTime?
 
   // 多租户预留：如需租户隔离，添加 tenantId String? 字段，并在所有查询中添加 WHERE tenantId = ? 条件
 
@@ -295,6 +302,8 @@ model User {
   addresses                   UserAddress[]
   avatarAssets                AvatarAsset[]
   membershipLevelChanges      MembershipLevelChange[]
+  contactMessages             ContactMessage[]
+  jobApplications             JobApplication[]
 
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
@@ -642,8 +651,8 @@ enum NotificationStatus {
  * idempotencyKey 唯一，保证重试/并发不会重复发送同一业务事件。
  */
 model NotificationOutbox {
-  id                String             @id @default(cuid())
-  idempotencyKey    String             @unique
+  id                String              @id @default(cuid())
+  idempotencyKey    String              @unique
   channel           NotificationChannel
   eventType         String
   aggregateType     String?
@@ -652,17 +661,17 @@ model NotificationOutbox {
   recipient         Json?
   templateKey       String?
   payload           Json
-  status            NotificationStatus @default(PENDING)
-  attempts          Int                @default(0)
-  maxAttempts       Int                @default(6)
-  nextAttemptAt     DateTime           @default(now())
+  status            NotificationStatus  @default(PENDING)
+  attempts          Int                 @default(0)
+  maxAttempts       Int                 @default(6)
+  nextAttemptAt     DateTime            @default(now())
   leaseToken        String?
   lockedUntil       DateTime?
-  lastError         String?            @db.Text
+  lastError         String?             @db.Text
   providerMessageId String?
   sentAt            DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   @@index([status, nextAttemptAt])
   @@index([userId, createdAt(sort: Desc)])
@@ -1176,18 +1185,18 @@ enum PointLedgerType {
 
 // 积分流水（FIFO 消耗：发放类流水记录 remaining，兑礼/过期按时间序消耗）
 model PointLedger {
-  id          String          @id @default(cuid())
+  id          String            @id @default(cuid())
   userId      String
   type        PointLedgerType
   source      PointLedgerSource @default(UNKNOWN) // 兑换流水来源；历史数据为 UNKNOWN
   amount      Int // 正加负减
   remaining   Int? // 剩余未消耗（仅发放类正向流水，null=非消耗对象）
   reference   String // 幂等键（消费单据 reference / birthday:{userId}:{year} / checkin:{userId}:{date} / redeem:{单号}）
-  note        String?         @db.Text
+  note        String?           @db.Text
   frozenUntil DateTime? // 稳定期解冻时间（已废弃：无冻结期，保留列向后兼容）
   releasedAt  DateTime? // 到账时间（无冻结期：发放即到账，恒非空）
   expiresAt   DateTime? // 过期时间（发放后 6 个月）
-  createdAt   DateTime        @default(now())
+  createdAt   DateTime          @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -1266,29 +1275,29 @@ model PointRedemption {
   cancelNote    String?               @db.Text // 取消原因（管理端填写）
 
   // 售后 / 退货 / 退款
-  afterSalesRequestedAt DateTime?
-  afterSalesReason      String?   @db.Text
-  afterSalesImages      String[]  @default([])
-  afterSalesReviewedAt  DateTime?
+  afterSalesRequestedAt  DateTime?
+  afterSalesReason       String?   @db.Text
+  afterSalesImages       String[]  @default([])
+  afterSalesReviewedAt   DateTime?
   afterSalesReviewedById String?
-  afterSalesReviewNote  String?   @db.Text
-  afterSalesApprovedAt  DateTime?
-  afterSalesClosedAt    DateTime?
-  returnWaybillNo       String?
-  returnCarrier         String?
-  returnShippedAt       DateTime?
-  returnReceivedAt      DateTime?
-  inspectionNote        String?   @db.Text
-  restockApproved       Boolean   @default(false)
-  stockRestored         Boolean   @default(false)
-  stockRestoredAt       DateTime?
-  refundedPoints        Int       @default(0)
-  refundedAt            DateTime?
+  afterSalesReviewNote   String?   @db.Text
+  afterSalesApprovedAt   DateTime?
+  afterSalesClosedAt     DateTime?
+  returnWaybillNo        String?
+  returnCarrier          String?
+  returnShippedAt        DateTime?
+  returnReceivedAt       DateTime?
+  inspectionNote         String?   @db.Text
+  restockApproved        Boolean   @default(false)
+  stockRestored          Boolean   @default(false)
+  stockRestoredAt        DateTime?
+  refundedPoints         Int       @default(0)
+  refundedAt             DateTime?
 
-  createdAt     DateTime              @default(now())
+  createdAt DateTime @default(now())
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  user    User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  product Product?               @relation(fields: [productId], references: [id], onDelete: SetNull)
   events  PointRedemptionEvent[]
 
   @@unique([userId, reference]) // 幂等防重：同一请求单只产生一条兑换记录

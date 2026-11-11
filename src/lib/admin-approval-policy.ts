@@ -12,6 +12,8 @@ export const APPROVAL_POLICY_KEYS = [
   "admin.delete",
   "user.status",
   "user.delete",
+  "user.phone.change",
+  "user.accounts.merge",
   "totp.recovery.issue",
 ] as const;
 
@@ -100,6 +102,20 @@ export const userStatusPayloadSchema = z.object({
 
 export const userDeletePayloadSchema = z.object({
   userId: z.string().cuid(),
+});
+
+export const userPhoneChangePayloadSchema = z.object({
+  userId: z.string().cuid(),
+  newPhone: z.string().regex(/^1[3-9]\d{9}$/),
+  expectedPhoneHash: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+export const userAccountMergePayloadSchema = z.object({
+  sourceUserId: z.string().cuid(),
+  targetUserId: z.string().cuid(),
+  expectedSourceUpdatedAt: z.string().datetime(),
+  expectedTargetUpdatedAt: z.string().datetime(),
+  confirmation: z.literal("MERGE"),
 });
 
 export const totpRecoveryPayloadSchema = z.object({
@@ -221,6 +237,30 @@ export const APPROVAL_POLICIES: Record<ApprovalPolicyKey, ApprovalPolicy> = {
     actionPermission: "users:delete",
     payloadSchema: userDeletePayloadSchema,
     summary: "非 owner 删除/匿名化用户需要 owner 审批",
+  },
+  "user.phone.change": {
+    key: "user.phone.change",
+    label: "换绑用户手机号",
+    action: "user_phone_changed",
+    targetType: "user",
+    executionMode: "AUTO",
+    requestPermission: "users:phone:write",
+    actionPermission: "users:phone:write",
+    payloadSchema: userPhoneChangePayloadSchema,
+    summary: "手机号是登录凭证；非 owner 换绑必须经 owner 审批，执行后撤销全部用户会话",
+    hidden: true,
+  },
+  "user.accounts.merge": {
+    key: "user.accounts.merge",
+    label: "合并重复用户账户",
+    action: "user_accounts_merge",
+    targetType: "user",
+    executionMode: "AUTO",
+    requestPermission: "users:merge",
+    actionPermission: "users:merge",
+    payloadSchema: userAccountMergePayloadSchema,
+    summary: "合并前执行全站预检；任何账本、订单、身份或子站冲突都会拒绝执行",
+    hidden: true,
   },
   "totp.recovery.issue": {
     key: "totp.recovery.issue",

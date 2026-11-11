@@ -8,6 +8,7 @@ import { isBodyTooLargeError, payloadTooLargeResponse, readFormDataBody } from "
 import { fileTypeFromBuffer } from "file-type";
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
+import { resolveAuthenticatedUserIdForPhone } from "@/lib/record-account-links";
 
 // 表单验证 schema
 const ApplyFormSchema = z.object({
@@ -232,11 +233,13 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV === "development")
       apiConsole.debug("💾 [Apply API] Creating DB record");
     try {
+      const userId = await resolveAuthenticatedUserIdForPhone(request, validatedPhone);
       await prisma.jobApplication.create({
         data: {
           jobId: validatedJobId,
           name: validatedName,
           phone: validatedPhone,
+          userId,
           resumePath: resumeKey,
           resumeFileName: sanitizeResumeFileName(resumeField.name),
           resumeSize: resumeField.size,

@@ -22,6 +22,7 @@ import { useToast } from "@/components/ui/Toast";
 import { PanelCard } from "@/components/admin/PanelCard";
 import { StatStrip } from "@/components/admin/StatStrip";
 import { AdvisorReports } from "@/components/admin/users/AdvisorReports";
+import { UserDiaryAdminPanel } from "@/components/admin/UserDiaryAdminPanel";
 import { cn } from "@/lib/utils";
 import type { AdvisorOverviewPayload, AdvisorUserOverview } from "@/types/advisor-user";
 
@@ -572,6 +573,9 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
         canReadReport={canReadReport}
         actions={actions}
       />
+      {mainStatus !== "DELETED" && (
+        <UserDiaryAdminPanel userId={userId} canWrite={canWrite && mainActive} onChanged={reload} />
+      )}
       <ConfirmDialog
         open={roleTarget !== null}
         onClose={() => setRoleTarget(null)}

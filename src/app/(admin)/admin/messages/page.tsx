@@ -26,9 +26,11 @@ import { formatRelativeTime } from "@/lib/format";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { IconButton } from "@/components/admin/IconButton";
+import { RecordAccountLinkControl } from "@/components/admin/RecordAccountLinkControl";
 
 interface Message {
   id: string;
+  userId: string | null;
   name: string;
   phone: string;
   type: string | null;
@@ -284,10 +286,9 @@ function AdminMessagesContent() {
   const toggleRead = async (message: Message) => {
     const nextRead = !message.read;
     try {
-      const saved = await apiPatch<{ updatedAt?: string }>(
-        `/api/admin/messages/${message.id}`,
-        { read: nextRead }
-      );
+      const saved = await apiPatch<{ updatedAt?: string }>(`/api/admin/messages/${message.id}`, {
+        read: nextRead,
+      });
       success(nextRead ? "已标记为已读" : "已标记为未读");
       setDetailMessage((prev) =>
         prev && prev.id === message.id
@@ -496,10 +497,7 @@ function AdminMessagesContent() {
               leftIcon={<X className="h-4 w-4" />}
               onClick={() => {
                 setSearch("");
-                update(
-                  { search: null, status: null, noted: null, type: null },
-                  { replace: true }
-                );
+                update({ search: null, status: null, noted: null, type: null }, { replace: true });
               }}
             >
               清除筛选
@@ -903,12 +901,27 @@ function AdminMessagesContent() {
         footer={
           detailMessage && canWriteMessages ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-brand-charcoal/65">{internalNoteDraft.length}/5000</span>
+              <span className="text-xs text-brand-charcoal/65">
+                {internalNoteDraft.length}/5000
+              </span>
               <div className="flex flex-wrap justify-end gap-3">
+                <RecordAccountLinkControl
+                  kind="message"
+                  recordId={detailMessage.id}
+                  userId={detailMessage.userId}
+                  onChanged={(userId) => {
+                    setDetailMessage((current) => (current ? { ...current, userId } : null));
+                    void fetchMessages();
+                  }}
+                />
                 <Button variant="outline" onClick={() => toggleRead(detailMessage)}>
                   {detailMessage.read ? "标记为未读" : "标记为已读"}
                 </Button>
-                <Button onClick={handleSaveInternalNote} loading={replying} disabled={!internalNoteDraft.trim()}>
+                <Button
+                  onClick={handleSaveInternalNote}
+                  loading={replying}
+                  disabled={!internalNoteDraft.trim()}
+                >
                   {detailMessage.internalNote ? "更新备注" : "保存备注"}
                 </Button>
               </div>
@@ -946,10 +959,7 @@ function AdminMessagesContent() {
                     )}
                     {canReadSensitivePhone && revealedPhone && (
                       <Tooltip content="复制手机号" side="top">
-                        <IconButton
-                          label="复制手机号"
-                          onClick={() => copyPhone(revealedPhone)}
-                        >
+                        <IconButton label="复制手机号" onClick={() => copyPhone(revealedPhone)}>
                           <Copy className="h-3.5 w-3.5" />
                         </IconButton>
                       </Tooltip>

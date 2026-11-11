@@ -40,12 +40,14 @@ export type AuditAction =
   | "delete_job"
   | "batch_job"
   | "update_application"
+  | "application_user_link"
   | "delete_application"
   | "create_application_folder"
   | "update_application_folder"
   | "delete_application_folder"
   | "reorder_categories"
   | "update_message"
+  | "message_user_link"
   | "delete_message"
   | "batch_message"
   | "message_sensitive_view"
@@ -68,6 +70,9 @@ export type AuditAction =
   | "user_detail_sensitive_view"
   | "advisor_user_view"
   | "advisor_user_update"
+  | "advisor_diary_view"
+  | "advisor_diary_upsert"
+  | "advisor_diary_delete"
   | "advisor_report_view"
   | "application_detail_view"
   | "application_sensitive_view"
@@ -76,6 +81,14 @@ export type AuditAction =
   | "user_birthday_update"
   | "user_password_reset"
   | "user_identity_unbind"
+  | "user_identity_bind"
+  | "user_profile_admin_update"
+  | "user_address_admin_create"
+  | "user_address_admin_update"
+  | "user_address_admin_delete"
+  | "user_accounts_merge"
+  | "user_devices_view"
+  | "user_device_revoke"
   | "user_points_adjust"
   | "points_internal_sync"
   | "points_internal_grant"
@@ -96,9 +109,12 @@ export type AuditAction =
   | "point_gift_update"
   | "point_redemption_fulfill"
   | "point_redemption_waybill_update"
+  | "point_redemption_recipient_update"
   | "point_redemption_cancel"
   | "point_redemption_refund"
   | "point_redemption_confirm"
+  | "point_redemption_after_sales_request"
+  | "point_redemption_return_shipment"
   | "point_redemption_after_sales_review"
   | "point_redemption_return_receive"
   | "point_redemption_after_sales_close"
@@ -219,12 +235,14 @@ export const AUDIT_ACTIONS = [
   "delete_job",
   "batch_job",
   "update_application",
+  "application_user_link",
   "delete_application",
   "create_application_folder",
   "update_application_folder",
   "delete_application_folder",
   "reorder_categories",
   "update_message",
+  "message_user_link",
   "delete_message",
   "batch_message",
   "message_sensitive_view",
@@ -245,6 +263,9 @@ export const AUDIT_ACTIONS = [
   "user_detail_sensitive_view",
   "advisor_user_view",
   "advisor_user_update",
+  "advisor_diary_view",
+  "advisor_diary_upsert",
+  "advisor_diary_delete",
   "advisor_report_view",
   "application_detail_view",
   "application_sensitive_view",
@@ -253,6 +274,14 @@ export const AUDIT_ACTIONS = [
   "user_birthday_update",
   "user_password_reset",
   "user_identity_unbind",
+  "user_identity_bind",
+  "user_profile_admin_update",
+  "user_address_admin_create",
+  "user_address_admin_update",
+  "user_address_admin_delete",
+  "user_accounts_merge",
+  "user_devices_view",
+  "user_device_revoke",
   "user_points_adjust",
   "points_internal_sync",
   "points_internal_grant",
@@ -273,9 +302,12 @@ export const AUDIT_ACTIONS = [
   "point_gift_update",
   "point_redemption_fulfill",
   "point_redemption_waybill_update",
+  "point_redemption_recipient_update",
   "point_redemption_cancel",
   "point_redemption_refund",
   "point_redemption_confirm",
+  "point_redemption_after_sales_request",
+  "point_redemption_return_shipment",
   "point_redemption_after_sales_review",
   "point_redemption_return_receive",
   "point_redemption_after_sales_close",

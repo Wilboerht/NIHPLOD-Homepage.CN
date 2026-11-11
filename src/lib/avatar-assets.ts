@@ -58,15 +58,18 @@ export async function prepareAvatarReplacement(
     userId: string;
     nextAvatar: string | null;
     newUpload?: AvatarUploadRefs;
+    allowInactive?: boolean;
   }
 ): Promise<{ previousAvatar: string | null }> {
-  const { userId, nextAvatar, newUpload } = params;
+  const { userId, nextAvatar, newUpload, allowInactive = false } = params;
   await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
   const user = await tx.user.findUnique({
     where: { id: userId },
     select: { avatar: true, status: true },
   });
-  if (!user || user.status !== "ACTIVE") throw new Error("AVATAR_USER_NOT_ACTIVE");
+  if (!user || (user.status !== "ACTIVE" && !(allowInactive && user.status !== "DELETED"))) {
+    throw new Error("AVATAR_USER_NOT_ACTIVE");
+  }
 
   if (newUpload) {
     await tx.avatarAsset.create({

@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           jobId: true,
+          userId: true,
           name: true,
           phone: true,
           resumePath: true,

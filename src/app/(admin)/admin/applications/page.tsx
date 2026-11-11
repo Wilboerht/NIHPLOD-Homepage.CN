@@ -47,6 +47,7 @@ import {
   RequirePermission,
   type Column,
 } from "@/components/admin";
+import { RecordAccountLinkControl } from "@/components/admin/RecordAccountLinkControl";
 
 interface Job {
   id: string;
@@ -65,6 +66,7 @@ interface ApplicationFolder {
 
 interface Application {
   id: string;
+  userId: string | null;
   jobId: string;
   name: string;
   phone: string;
@@ -546,8 +548,7 @@ function AdminApplicationsContent() {
 
     setDeletingFolder(true);
     try {
-      const submit = () =>
-        apiDelete(`/api/admin/application-folders/${deleteFolderTarget.id}`);
+      const submit = () => apiDelete(`/api/admin/application-folders/${deleteFolderTarget.id}`);
       try {
         await submit();
       } catch (error) {
@@ -1096,6 +1097,17 @@ function AdminApplicationsContent() {
             {/* 简历下载 */}
             <div>
               <div className="flex flex-wrap items-center gap-3">
+                {canWrite && (
+                  <RecordAccountLinkControl
+                    kind="application"
+                    recordId={detailApplication.id}
+                    userId={detailApplication.userId}
+                    onChanged={(userId) => {
+                      setDetailApplication((current) => (current ? { ...current, userId } : null));
+                      void fetchApplications();
+                    }}
+                  />
+                )}
                 <Button
                   variant="outline"
                   leftIcon={<Download className="h-4 w-4" />}

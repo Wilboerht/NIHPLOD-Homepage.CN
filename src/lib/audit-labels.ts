@@ -152,6 +152,22 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   admin_approval_execution_failed: "Owner 审批执行失败",
   admin_approval_stale: "Owner 审批目标已变化",
   admin_approval_result_unknown: "Owner 审批执行结果未知",
+  user_profile_admin_update: "管理员修改用户资料",
+  user_address_admin_create: "管理员新增用户地址",
+  user_address_admin_update: "管理员修改用户地址",
+  user_address_admin_delete: "管理员删除用户地址",
+  point_redemption_recipient_update: "修改兑换收货信息",
+  point_redemption_after_sales_request: "代客申请兑换售后",
+  point_redemption_return_shipment: "代客填写退货运单",
+  user_devices_view: "管理员查看用户设备",
+  user_device_revoke: "管理员撤销用户设备",
+  advisor_diary_view: "管理员查看测肤日记",
+  advisor_diary_upsert: "管理员代写测肤日记",
+  advisor_diary_delete: "管理员删除测肤日记",
+  message_user_link: "调整留言账户关联",
+  application_user_link: "调整简历账户关联",
+  user_identity_bind: "管理员绑定外部身份",
+  user_accounts_merge: "合并用户账户",
 };
 
 export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {

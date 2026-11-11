@@ -9,8 +9,7 @@ import { join, relative } from "node:path";
 
 const ROOT = join(process.cwd(), "src", "app", "api", "admin");
 const AUDIT_CALL = /createAuditLog|beginAuditLog|createAuditLogStrict|createAuditLogTx/;
-const MUTATING_EXPORT =
-  /export\s+(?:async\s+function|const)\s+(POST|PUT|PATCH|DELETE)\b/;
+const MUTATING_EXPORT = /export\s+(?:async\s+function|const)\s+(POST|PUT|PATCH|DELETE)\b/;
 
 /** 明确不需要写审计的端点（必须写原因） */
 const ALLOWLIST = new Map<string, string>([
@@ -24,6 +23,35 @@ const ALLOWLIST = new Map<string, string>([
   [
     "src/app/api/admin/spent-adjustments/upload/route.ts",
     "凭证上传仅暂存文件，最终提交由 POST /api/admin/spent-adjustments 写入严格审计",
+  ],
+  [
+    "src/app/api/admin/applications/[id]/link/route.ts",
+    "审计在 record-account-links.ts 的关联事务内写入",
+  ],
+  [
+    "src/app/api/admin/messages/[id]/link/route.ts",
+    "审计在 record-account-links.ts 的关联事务内写入",
+  ],
+  [
+    "src/app/api/admin/point-redemptions/[id]/recipient/route.ts",
+    "审计在 admin-user-corrections.ts 的兑换纠错事务内写入",
+  ],
+  [
+    "src/app/api/admin/users/[id]/addresses/route.ts",
+    "审计在 admin-user-corrections.ts 的地址事务内写入",
+  ],
+  [
+    "src/app/api/admin/users/[id]/addresses/[addressId]/route.ts",
+    "审计在 admin-user-corrections.ts 的地址事务内写入",
+  ],
+  ["src/app/api/admin/users/[id]/merge/route.ts", "审计在 admin-account-merge.ts 的合并事务内写入"],
+  [
+    "src/app/api/admin/users/[id]/phone/route.ts",
+    "审计在 admin-account-security.ts 的换绑事务内写入",
+  ],
+  [
+    "src/app/api/admin/users/[id]/profile/route.ts",
+    "审计在 admin-user-corrections.ts 的资料事务内写入",
   ],
 ]);
 

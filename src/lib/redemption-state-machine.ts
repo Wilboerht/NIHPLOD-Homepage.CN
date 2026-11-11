@@ -236,10 +236,14 @@ export async function requestAfterSales(params: {
   requestId: string;
   reason: string;
   images?: string[];
+  actorType?: "USER" | "ADMIN";
+  actorId?: string;
 }): Promise<
   { ok: true; status: "AFTER_SALES_REQUESTED" } | { ok: false; code: string; message: string }
 > {
   const { redemptionId, userId, requestId, reason, images } = params;
+  const actorType = params.actorType ?? "USER";
+  const actorId = params.actorId ?? userId;
   if (!requestId || requestId.length > 64) {
     return { ok: false, code: "INVALID_REQUEST", message: "请求参数错误" };
   }
@@ -319,9 +323,9 @@ export async function requestAfterSales(params: {
           redemptionId,
           fromStatus: redemption.status,
           toStatus: "AFTER_SALES_REQUESTED",
-          actorType: "USER",
-          actorId: userId,
-          reasonCode: "user_request",
+          actorType,
+          actorId,
+          reasonCode: actorType === "ADMIN" ? "admin_request" : "user_request",
           reasonText: reason.trim(),
           metadata: { images: images?.slice(0, 3) ?? [] },
           idempotencyKey: eventKey,
@@ -425,8 +429,12 @@ export async function submitReturnShipment(params: {
   userId: string;
   waybillNo: string;
   carrier?: string;
+  actorType?: "USER" | "ADMIN";
+  actorId?: string;
 }): Promise<{ ok: true; status: "RETURNING" } | { ok: false; code: string; message: string }> {
   const { redemptionId, userId, waybillNo, carrier = "SF" } = params;
+  const actorType = params.actorType ?? "USER";
+  const actorId = params.actorId ?? userId;
   if (!waybillNo.trim()) {
     return { ok: false, code: "WAYBILL_REQUIRED", message: "请填写退回运单号" };
   }
@@ -477,9 +485,9 @@ export async function submitReturnShipment(params: {
           redemptionId,
           fromStatus: "AFTER_SALES_APPROVED",
           toStatus: "RETURNING",
-          actorType: "USER",
-          actorId: userId,
-          reasonCode: "return_shipped",
+          actorType,
+          actorId,
+          reasonCode: actorType === "ADMIN" ? "admin_return_shipped" : "return_shipped",
           metadata: { waybillNo: waybillNo.trim(), carrier },
           idempotencyKey: eventKey,
         });
