@@ -1,6 +1,6 @@
 ﻿// @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/Toast";
 
@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => {
   return {
     document,
     apiGet: vi.fn().mockResolvedValue(document),
+    apiDelete: vi.fn(),
     can: vi.fn().mockReturnValue(true),
     MockApiError,
   };
@@ -48,7 +49,7 @@ vi.mock("@/lib/api-client", () => ({
   apiGet: mocks.apiGet,
   apiPut: vi.fn(),
   apiPost: vi.fn(),
-  apiDelete: vi.fn(),
+  apiDelete: mocks.apiDelete,
   getApiErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
@@ -83,7 +84,60 @@ describe("LegalDocumentEditor", () => {
     expect(screen.getByLabelText("章节标题")).toHaveValue("1. 隐私权");
     expect(screen.getByText("已发布 v1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /保存草稿/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^发布$/ })).toBeInTheDocument();
+    const publishButton = screen.getByRole("button", { name: /^发布$/ });
+    expect(publishButton).toBeInTheDocument();
+    expect(publishButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("页面描述"), {
+      target: { value: "修改后的描述" },
+    });
+    expect(publishButton).toBeEnabled();
+  });
+
+  it("未发布过版本时允许首次发布", async () => {
+    mocks.apiGet.mockResolvedValue({
+      ...mocks.document,
+      publishedVersion: 0,
+      publishedAt: null,
+      publishedBy: null,
+      contentSource: "default",
+      publishedContent: null,
+    });
+    render(
+      <ToastProvider>
+        <LegalDocumentEditor slug="terms" />
+      </ToastProvider>
+    );
+
+    const publishButton = await screen.findByRole("button", { name: /^发布$/ });
+    expect(publishButton).toBeEnabled();
+  });
+
+  it("丢弃草稿遇到 STALE_UPDATE 时自动刷新", async () => {
+    mocks.apiGet.mockResolvedValue({
+      ...mocks.document,
+      hasDraft: true,
+      draftRevision: 2,
+      draftContent: mocks.document.content,
+      contentSource: "draft",
+      draftUpdatedBy: "Owner",
+      draftUpdatedAt: "2026-11-12T00:00:00.000Z",
+    });
+    mocks.apiDelete.mockRejectedValue(new mocks.MockApiError("STALE_UPDATE"));
+
+    render(
+      <ToastProvider>
+        <LegalDocumentEditor slug="terms" />
+      </ToastProvider>
+    );
+
+    await screen.findByText("服务条款 · 法务文档");
+    fireEvent.click(screen.getByRole("button", { name: "丢弃草稿" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "丢弃草稿" }));
+
+    expect(await screen.findByText("草稿已被其他管理员修改，正在刷新最新内容")).toBeInTheDocument();
+    expect(mocks.apiGet.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it("无写权限时隐藏编辑与发布操作", async () => {

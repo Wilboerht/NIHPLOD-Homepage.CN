@@ -41,6 +41,7 @@ export function LegalPublishDialog({
   nextVersion,
 }: LegalPublishDialogProps) {
   const [note, setNote] = useState("");
+  const noteValid = note.trim().length >= 2;
   const changedSections = countChangedSections(content, baseContent);
   const orderChanged = baseContent
     ? content.sections.map((section) => section.id).join("|") !==
@@ -72,12 +73,15 @@ export function LegalPublishDialog({
         ) : null}
 
         <Textarea
-          label="发布说明（可选）"
+          label="发布说明"
           value={note}
           onChange={(event) => setNote(event.target.value)}
           maxLength={200}
           placeholder="例如：根据 2026 年新规更新个人信息处理说明"
           rows={3}
+          required
+          error={note.length > 0 && !noteValid ? "发布说明至少 2 个字符" : undefined}
+          hint={noteValid ? undefined : "必填，用于审计记录与版本历史"}
         />
 
         <p className="text-xs text-brand-charcoal/50">
@@ -90,9 +94,10 @@ export function LegalPublishDialog({
           </Button>
           <Button
             onClick={() => {
+              if (!noteValid) return;
               void onConfirm(note.trim());
             }}
-            disabled={loading}
+            disabled={loading || !noteValid}
           >
             {loading ? "发布中..." : `确认发布 v${nextVersion}`}
           </Button>

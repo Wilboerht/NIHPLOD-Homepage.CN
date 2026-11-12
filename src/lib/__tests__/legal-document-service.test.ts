@@ -148,6 +148,7 @@ describe("legal document service", () => {
         slug: "terms",
         content: { description: content.description, sections: content.sections },
         expectedRevision: 2,
+        note: "发布测试",
         admin: ADMIN,
       })
     ).rejects.toMatchObject({ code: "NO_CHANGES" });
@@ -165,9 +166,23 @@ describe("legal document service", () => {
         slug: "terms",
         content: { description: content.description, sections: content.sections },
         expectedRevision: 2,
+        note: "发布测试",
         admin: ADMIN,
       })
     ).rejects.toBeInstanceOf(LegalDocumentError);
+  });
+
+  it("发布说明不足时拒绝，且不开启事务", async () => {
+    await expect(
+      publishLegalDocument({
+        slug: "terms",
+        content: { description: content.description, sections: content.sections },
+        expectedRevision: 0,
+        note: " ",
+        admin: ADMIN,
+      })
+    ).rejects.toMatchObject({ code: "INVALID_CONTENT" });
+    expect(prismaMock.prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it("首次发布在无文档时创建 v1", async () => {
@@ -181,6 +196,7 @@ describe("legal document service", () => {
       slug: "terms",
       content: { description: content.description, sections: content.sections },
       expectedRevision: 0,
+      note: "首次发布",
       admin: ADMIN,
     });
 

@@ -245,10 +245,15 @@ export async function publishLegalDocument(input: {
   slug: LegalDocumentSlug;
   content: { description: string; sections: NormalizedSectionInput[] };
   expectedRevision: number;
-  note?: string;
+  note: string;
   admin: LegalAdminActor;
   request?: Request;
 }): Promise<LegalAdminDocumentDetail> {
+  const note = input.note.trim();
+  if (note.length < 2) {
+    throw new LegalDocumentError("INVALID_CONTENT", "请填写发布说明（至少 2 个字符）", 400);
+  }
+
   await prisma.$transaction(
     async (tx) => {
       const row = await tx.legalDocument.findUnique({ where: { slug: input.slug } });
@@ -337,7 +342,7 @@ export async function publishLegalDocument(input: {
             content: toInputJson(content)!,
             contentHash,
             sectionCount: content.sections.length,
-            note: input.note?.trim() || null,
+            note,
             schemaVersion: 1,
             createdById: input.admin.id,
             createdByEmail: input.admin.email ?? null,
@@ -360,11 +365,11 @@ export async function publishLegalDocument(input: {
           slug: input.slug,
           version,
           previousVersion: row?.publishedVersion ?? 0,
-          note: input.note?.trim() || null,
+          note,
           sectionCount: content.sections.length,
           contentHash,
         },
-        reason: input.note?.trim() || undefined,
+        reason: note,
         adminId: input.admin.id,
         actorEmail: input.admin.email ?? undefined,
         actorName: actorName ?? undefined,

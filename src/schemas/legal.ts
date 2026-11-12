@@ -108,7 +108,7 @@ export const legalDraftSaveRequestSchema = z.object({
 export const legalPublishRequestSchema = z.object({
   content: legalPublishContentInputSchema,
   expectedRevision: z.number().int().min(0),
-  note: z.string().trim().max(200, "发布说明最多 200 字").optional(),
+  note: z.string().trim().min(2, "请填写发布说明（至少 2 个字符）").max(200, "发布说明最多 200 字"),
 });
 
 export const legalDiscardDraftRequestSchema = z.object({

@@ -186,7 +186,10 @@ export function LegalVersionHistory({
                       variant="ghost"
                       size="sm"
                       onClick={() => setRestoreTarget(version)}
-                      disabled={readOnly}
+                      disabled={readOnly || version.isCurrentPublished}
+                      title={
+                        version.isCurrentPublished ? "当前线上版本，无需恢复为草稿" : undefined
+                      }
                     >
                       恢复为草稿
                     </Button>

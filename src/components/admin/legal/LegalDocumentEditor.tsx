@@ -181,11 +181,16 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
 
   const confirmPublish = async (note: string) => {
     if (!content || !document) return;
+    const publishNote = note.trim();
+    if (publishNote.length < 2) {
+      toast.error("请填写发布说明（至少 2 个字符）");
+      return;
+    }
     setPublishing(true);
     const payload = {
       content,
       expectedRevision: document.draftRevision,
-      note: note || undefined,
+      note: publishNote,
     };
 
     const submit = () =>
@@ -231,7 +236,17 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
       setDiscardOpen(false);
       toast.success("草稿已丢弃");
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "丢弃草稿失败"));
+      if (error instanceof ApiError && error.code === "STALE_UPDATE") {
+        toast.error("草稿已被其他管理员修改，正在刷新最新内容");
+        setDiscardOpen(false);
+        void loadDocument();
+      } else if (error instanceof ApiError && error.code === "NO_DRAFT") {
+        toast.info("草稿已被其他管理员处理，正在刷新最新内容");
+        setDiscardOpen(false);
+        void loadDocument();
+      } else {
+        toast.error(getApiErrorMessage(error, "丢弃草稿失败"));
+      }
     } finally {
       setDiscarding(false);
     }
@@ -278,6 +293,10 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   ]
     .filter(Boolean)
     .join("，");
+
+  const publishDisabled =
+    publishing ||
+    (!isDirty && document.publishedVersion > 0 && document.contentSource !== "default");
 
   return (
     <div className="space-y-6">
@@ -326,7 +345,10 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
                 <Button
                   size="sm"
                   onClick={handlePublishClick}
-                  disabled={publishing}
+                  disabled={publishDisabled}
+                  title={
+                    publishDisabled && !publishing ? "内容与线上版本一致，无需发布" : undefined
+                  }
                   leftIcon={<Send className="h-4 w-4" />}
                 >
                   {publishing ? "发布中..." : "发布"}

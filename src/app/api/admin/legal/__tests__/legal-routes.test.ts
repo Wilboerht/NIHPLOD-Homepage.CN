@@ -268,11 +268,26 @@ describe("admin legal routes", () => {
       jsonRequest("http://localhost/api/admin/legal/terms/publish", "POST", {
         content,
         expectedRevision: 1,
+        note: "测试发布",
       }),
       { params: Promise.resolve({ slug: "terms" }) }
     );
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error.code).toBe("NO_CHANGES");
+  });
+
+  it("发布说明必填，缺失时不调用服务层", async () => {
+    const response = await publishPOST(
+      jsonRequest("http://localhost/api/admin/legal/terms/publish", "POST", {
+        content,
+        expectedRevision: 1,
+      }),
+      { params: Promise.resolve({ slug: "terms" }) }
+    );
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(mocks.publishLegalDocument).not.toHaveBeenCalled();
   });
 });
