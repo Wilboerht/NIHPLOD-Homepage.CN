@@ -14,13 +14,14 @@ import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
-import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import { cuidSchema, validateCUID, invalidIdResponse } from "@/lib/validation";
 import { maskPhone } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { retryWebhookFailureById } from "@/lib/profile-webhook";
 import { retryBackchannelFailureById } from "@/lib/backchannel-logout";
 import { retryStatusWebhookFailureById } from "@/lib/webhook";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ const querySchema = z.object({
 
 const actionSchema = z.object({
   kind: z.enum(["webhook", "backchannel"]),
-  id: z.string().cuid(),
+  id: cuidSchema,
   action: z.enum(["retry", "delete"]),
 });
 
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
             hasPayload: Boolean(item.payload),
             event:
               item.payload && typeof item.payload === "object"
-                ? ((item.payload as { event?: unknown }).event as string | undefined) ?? null
+                ? (((item.payload as { event?: unknown }).event as string | undefined) ?? null)
                 : null,
             targetUrl:
               kind === "webhook"
@@ -223,6 +224,7 @@ export async function POST(request: NextRequest) {
         );
       }
       await finishAuditLog(auditId, "SUCCESS", { kind });
+      invalidateAdminStats();
       return NextResponse.json({
         success: true,
         data: { status: "deleted", message: "记录已丢弃" },
@@ -294,7 +296,11 @@ export async function POST(request: NextRequest) {
     }
 
     const auditOutcome =
-      result.status === "delivered" ? "SUCCESS" : result.status === "dropped" ? "PARTIAL" : "FAILURE";
+      result.status === "delivered"
+        ? "SUCCESS"
+        : result.status === "dropped"
+          ? "PARTIAL"
+          : "FAILURE";
     await finishAuditLog(auditId, auditOutcome, {
       kind,
       event: isStatusWebhook ? "account_status_change" : "profile_update",
@@ -302,6 +308,7 @@ export async function POST(request: NextRequest) {
       attempts: result.attempts ?? null,
       error: result.error ?? null,
     });
+    invalidateAdminStats();
 
     const messages: Record<string, string> = {
       delivered: "重投成功，记录已移除",

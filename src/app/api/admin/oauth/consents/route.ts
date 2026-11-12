@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     // 分页参数：parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），
     // 必须先经 Number.isFinite 校验再钳制到合法范围
     const rawPage = parseInt(searchParams.get("page") || "1", 10);
-    const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+    const page = Number.isFinite(rawPage) ? Math.min(Math.max(1, rawPage), 1000) : 1;
     const rawPageSize = parseInt(searchParams.get("pageSize") || "20", 10);
     const pageSize = Number.isFinite(rawPageSize) ? Math.min(Math.max(1, rawPageSize), 100) : 20;
     const search = searchParams.get("search") || undefined;
@@ -71,7 +71,8 @@ export async function GET(request: NextRequest) {
         );
       }
       const users = await prisma.user.findMany({
-        where: { phone: { contains: search } },
+        // 手机号只做精确匹配，避免逐位 contains 搜索被用于枚举用户
+        where: { phone: { equals: search } },
         select: { id: true },
         take: 500,
       });
@@ -250,6 +251,11 @@ export async function POST(request: NextRequest) {
 
       // 同步撤销该用户在该 client 下的所有 Refresh Token
       await revokeOAuthRefreshTokensForUser(userId, clientId, "admin_revoke");
+
+      // 清理未使用授权码：否则撤销授权前签发、仍在 5 分钟有效期内的 code 仍可兑换 token
+      await prisma.oAuthAuthorizationCode.deleteMany({
+        where: { userId, clientId, used: false },
+      });
 
       // 已签发 access token 的即时失效由 sid 会话校验承担（verifyOAuthAccessToken 按
       // sid 查到 OAuthSession.revokedAt 即拒绝），不再拉黑用户全部 token，避免误登出主站会话。

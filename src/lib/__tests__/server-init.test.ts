@@ -17,6 +17,8 @@ function stubProductionRuntimeEnv() {
   vi.stubEnv("TRUST_PROXY_HOPS", "1");
   vi.stubEnv("RATE_LIMIT_STORAGE", "database");
   vi.stubEnv("ALI_OSS_PRIVATE_BUCKET", "test-private-bucket");
+  vi.stubEnv("AUDIT_INTEGRITY_HMAC_KEY", "test-audit-integrity-hmac-key-32chars");
+  vi.stubEnv("TOTP_ENCRYPTION_KEY", "test-totp-encryption-key-32chars");
 }
 
 describe("server-init", () => {
@@ -130,6 +132,33 @@ describe("server-init", () => {
 
     const { initializeApp } = await import("@/lib/server-init");
     await expect(initializeApp()).rejects.toThrow("RATE_LIMIT_STORAGE");
+
+    vi.unstubAllEnvs();
+  });
+
+  it("生产环境关闭 owner 审批时应启动失败", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    stubProductionRuntimeEnv();
+    vi.stubEnv("ALLOW_HS256_FALLBACK", "true");
+    vi.stubEnv("SMS_PROVIDER", "tencent");
+    vi.stubEnv("ADMIN_APPROVAL_ENABLED", "false");
+
+    const { initializeApp } = await import("@/lib/server-init");
+    await expect(initializeApp()).rejects.toThrow("ADMIN_APPROVAL_ENABLED");
+
+    vi.unstubAllEnvs();
+  });
+
+  it("生产环境缺少审计 HMAC key 时应启动失败", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    stubProductionRuntimeEnv();
+    vi.stubEnv("ALLOW_HS256_FALLBACK", "true");
+    vi.stubEnv("SMS_PROVIDER", "tencent");
+    vi.stubEnv("AUDIT_INTEGRITY_HMAC_KEY", "");
+    vi.stubEnv("AUDIT_INTEGRITY_HMAC_KEYS", "");
+
+    const { initializeApp } = await import("@/lib/server-init");
+    await expect(initializeApp()).rejects.toThrow("AUDIT_INTEGRITY_HMAC_KEY");
 
     vi.unstubAllEnvs();
   });

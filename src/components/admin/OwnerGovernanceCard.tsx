@@ -4,7 +4,7 @@ import type { OwnerGovernanceData } from "@/lib/admin-dashboard-governance";
 import { APPROVAL_POLICIES, type ApprovalPolicyKey } from "@/lib/admin-approval-policy";
 import { PERMISSION_LABELS } from "@/lib/admin-permissions";
 import { formatDateTimeSeconds, formatRelativeTime } from "@/lib/format";
-import { Badge } from "./Badge";
+import { Badge } from "@/components/ui/Badge";
 import { DashboardModalCard } from "./DashboardModalCard";
 
 function CountBox({
@@ -142,7 +142,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
                     <span className="truncate text-sm font-medium text-brand-charcoal">
                       {holder.name || holder.email}
                     </span>
-                    <Badge variant="neutral">{holder.roleLabel}</Badge>
+                    <Badge variant="secondary">{holder.roleLabel}</Badge>
                     <Badge variant={holder.totpEnabled ? "success" : "danger"}>
                       TOTP {holder.totpEnabled ? "已启用" : "未启用"}
                     </Badge>

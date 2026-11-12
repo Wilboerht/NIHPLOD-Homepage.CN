@@ -34,15 +34,16 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
   const username = process.env.ADVISOR_BREAK_GLASS_USERNAME || "";
   const password = process.env.ADVISOR_BREAK_GLASS_PASSWORD || "";
   const totpSecret = process.env.ADVISOR_BREAK_GLASS_TOTP_SECRET || "";
-  const enabled = process.env.ADVISOR_BREAK_GLASS_ENABLED !== "false";
+  // 应急凭据属于高危后门：默认关闭，只有显式设置为 "true" 才可查看。
+  const enabled = process.env.ADVISOR_BREAK_GLASS_ENABLED === "true";
   // 示例值 CHANGE_ME 不能被视为“已配置”，避免直接暴露已知应急凭据
   const configured = Boolean(
     enabled &&
-      username &&
-      password &&
-      totpSecret &&
-      password !== "CHANGE_ME" &&
-      totpSecret !== "CHANGE_ME"
+    username &&
+    password &&
+    totpSecret &&
+    password !== "CHANGE_ME" &&
+    totpSecret !== "CHANGE_ME"
   );
 
   const otpauthUrl =
@@ -87,6 +88,12 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
           }
         : { configured: false },
     },
-    { headers: { "Cache-Control": "no-store, private" } }
+    {
+      headers: {
+        "Cache-Control": "no-store, private",
+        Pragma: "no-cache",
+        "X-Content-Type-Options": "nosniff",
+      },
+    }
   );
 });

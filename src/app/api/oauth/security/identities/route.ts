@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     });
     if (!auth.ok) return auth.response;
 
-    const identities = await listSecurityIdentities(auth.payload.id);
+    const identities = await listSecurityIdentities(auth.payload.id, auth.payload.client_id);
     return auth.resJson({ success: true, data: { identities } });
   } catch (error) {
     apiConsole.error("[OAuth Security Identities] 异常:", error);

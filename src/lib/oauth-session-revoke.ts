@@ -61,6 +61,11 @@ export async function revokeOAuthClientSessions(
         ...(options.reason ? { revokedReason: options.reason } : {}),
       },
     });
+    // 授权码存活期很短，但撤销后仍可能在有效期内被兑换；一并清掉该 user+client
+    // 下未使用的授权码，避免绕过会话撤销。
+    await prisma.oAuthAuthorizationCode.deleteMany({
+      where: { userId, clientId, used: false },
+    });
     if (activeSessions.length > 0) {
       // 携带 sid：RP 只应结束对应会话，不应清掉该用户在其他设备上的会话。
       // 异步入队投递，避免 RP 不可达时阻塞登出响应。
@@ -97,6 +102,10 @@ export async function revokeOAuthClientSessions(
 
   // 同步撤销该 client 的全部 Refresh Token，防止旧 refresh_token 继续换发 access_token
   await revokeRefreshToken(userId, undefined, clientId, options?.reason);
+
+  await prisma.oAuthAuthorizationCode.deleteMany({
+    where: { userId, clientId, used: false },
+  });
 
   if (activeSessions.length > 0) {
     // 全量撤销：sub-only token，要求 RP 清除该用户在该 client 的全部会话。

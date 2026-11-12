@@ -15,6 +15,7 @@ import { maskIdentifier, maskIp, maskPhone } from "@/lib/mask-phone";
 import { maskAuditDetail, redactSensitiveAuditDetail } from "@/lib/audit-sanitize";
 import { apiConsole } from "@/lib/logger";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { verifyAdminStepUpGrant } from "@/lib/admin-step-up";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, private",
@@ -73,7 +74,11 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
     const isExport = searchParams.get("export") === "csv";
-    const canViewSensitive = hasAdminPermission(admin, "audit:sensitive:read");
+    // 敏感列表也要求 step-up（导出分支另在下方严格校验）；
+    // 无 step-up 时降级为脱敏字段，而不是直接 403，保持页面可用。
+    const canViewSensitive =
+      hasAdminPermission(admin, "audit:sensitive:read") &&
+      (isExport || (await verifyAdminStepUpGrant(request, admin)));
     if (isExport && !hasAdminPermission(admin, "audit:export")) {
       return NextResponse.json(
         { success: false, error: { code: "FORBIDDEN", message: "权限不足：审计日志导出" } },

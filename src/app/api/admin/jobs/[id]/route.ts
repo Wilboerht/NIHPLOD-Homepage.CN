@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -162,6 +163,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // 清除前端缓存并推送搜索引擎
     revalidatePath("/careers");
+    invalidateAdminStats();
     pushSearchEngines(["/careers"]);
 
     // 记录审计日志
@@ -268,6 +270,7 @@ export async function DELETE(
 
     // 清除前端缓存并推送搜索引擎
     revalidatePath("/careers");
+    invalidateAdminStats();
     pushSearchEngines(["/careers"]);
 
     // 记录审计日志

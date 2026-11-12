@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
@@ -13,10 +14,11 @@ import { pushSearchEngines } from "@/lib/search-push";
 import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
 import { scheduleAdvisorProductSync } from "@/lib/advisor-product-sync";
 import { filterDeletableProductImageUrls } from "@/lib/product-media";
+import { cuidSchema } from "@/lib/validation";
 
 // 批量操作 Schema
 const BatchActionSchema = z.object({
-  ids: z.array(z.string().cuid()).min(1, "请选择至少一个产品").max(100, "一次最多操作 100 个产品"),
+  ids: z.array(cuidSchema).min(1, "请选择至少一个产品").max(100, "一次最多操作 100 个产品"),
   action: z.enum(["publish", "unpublish", "delete"]),
 });
 
@@ -143,7 +145,7 @@ export async function POST(request: NextRequest) {
         ? ["/products", ...affectedProducts.map((p) => `/products/${p.slug}`)]
         : ["/products"]
     );
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
 

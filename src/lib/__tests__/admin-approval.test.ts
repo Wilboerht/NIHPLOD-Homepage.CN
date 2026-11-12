@@ -181,6 +181,8 @@ describe("createApprovalRequest", () => {
     });
 
     expect(result.id).toBe("approval-1");
+    // 一次 payloadHash 锁 + 一次「目标 + 金额」锁
+    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(2);
     expect(prismaMock.adminApprovalRequest.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -197,6 +199,21 @@ describe("createApprovalRequest", () => {
     expect(createAuditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: "admin_approval_requested" })
     );
+  });
+
+  it("同用户同金额但备注不同（payloadHash 不同）时仍拒绝重复申请", async () => {
+    prismaMock.adminApprovalRequest.findMany.mockResolvedValue([
+      { payload: { amount: 1000, note: "另一条备注" }, status: "PENDING" },
+    ]);
+
+    await expect(
+      createApprovalRequest({
+        admin: OPS,
+        policyKey: "points.adjust",
+        payload: { userId: "cjld2cjxh0000qzrmn831i7rn", amount: 1000, note: "test" },
+        reason: "test reason",
+      })
+    ).rejects.toMatchObject({ code: "DUPLICATE_REQUEST" });
   });
 
   it("不支持的策略拒绝", async () => {

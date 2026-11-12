@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { parseUtc8DateBoundary } from "@/lib/timezone";
+import { cuidSchema } from "@/lib/validation";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
@@ -21,7 +22,7 @@ const querySchema = z.object({
   cursor: z.string().max(500).optional(),
   action: z.enum(AUDIT_ACTIONS).optional(),
   targetType: z.enum(AUDIT_TARGET_TYPES).optional(),
-  adminId: z.string().cuid().optional(),
+  adminId: cuidSchema.optional(),
   userId: z.string().max(64).optional(),
   actorType: z.enum(["ADMIN", "USER", "SYSTEM", "INTEGRATION", "ALL"]).default("ADMIN"),
   outcome: z.enum(["PENDING", "SUCCESS", "FAILURE", "PARTIAL"]).optional(),
@@ -139,23 +140,24 @@ export async function GET(request: NextRequest) {
     // 列表不返回完整 detail；详情由 /api/admin/audit-logs/[id] 提供并单独留痕。
     type AuditLogRow = (typeof result.items)[number];
     const sanitize = (log: AuditLogRow) => {
-      const { detail, ...rest } = log;
-      const actionLabel = getAuditActionLabel(
-        log.action,
-        (detail ?? null) as Record<string, unknown> | null
-      );
+      const actionLabel = getAuditActionLabel(log.action, null);
+      // 即使上游查询未来重新带上 detail/userAgent，也在这里兜底移除。
+      const safe = { ...log } as Record<string, unknown>;
+      delete safe.detail;
+      delete safe.userAgent;
       return {
-        ...rest,
+        ...safe,
         actionLabel,
-        targetLabel: rest.targetLabel ? maskAuditText(rest.targetLabel) : null,
-        actorName: rest.actorName ? maskAuditText(rest.actorName) : null,
-        actorEmail: rest.actorEmail ? maskIdentifier(rest.actorEmail) : null,
-        ipAddress: rest.ipAddress ? maskIp(rest.ipAddress) : null,
+        targetLabel: log.targetLabel ? maskAuditText(log.targetLabel) : null,
+        reason: log.reason ? maskAuditText(log.reason) : null,
+        actorName: log.actorName ? maskAuditText(log.actorName) : null,
+        actorEmail: log.actorEmail ? maskIdentifier(log.actorEmail) : null,
+        ipAddress: log.ipAddress ? maskIp(log.ipAddress) : null,
         userAgent: null,
-        admin: rest.admin
+        admin: log.admin
           ? {
-              ...rest.admin,
-              email: maskIdentifier(rest.admin.email) ?? "-",
+              ...log.admin,
+              email: maskIdentifier(log.admin.email) ?? "-",
             }
           : null,
       };

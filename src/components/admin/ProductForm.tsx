@@ -13,7 +13,7 @@ import { TagInput } from "@/components/ui/TagInput";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { FormActions } from "@/components/admin/FormActions";
 import { GeoFaqEditor } from "@/components/admin/GeoFaqEditor";
-import { ProductFormSection } from "@/components/admin/ProductFormSection";
+import { FormSection } from "@/components/admin/FormSection";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -553,7 +553,8 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
         <div className="flex min-w-0 flex-col gap-5">
           {/* 基本信息 */}
-          <ProductFormSection
+          <FormSection
+            density="compact"
             title="基本信息"
             description="产品名称、分类与价格等基础属性，用于前台展示和筛选"
           >
@@ -652,20 +653,25 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 placeholder="输入功效后按回车添加，如：保湿、抗皱"
               />
             </div>
-          </ProductFormSection>
+          </FormSection>
 
           {/* 产品图片 */}
-          <ProductFormSection title="产品图片" description="最多 10 张，首图将作为产品列表封面">
+          <FormSection
+            density="compact"
+            title="产品图片"
+            description="最多 10 张，首图将作为产品列表封面"
+          >
             <ImageUploader
               value={formData.images}
               onChange={(images) => updateField("images", images)}
               error={errors.images}
               maxImages={10}
             />
-          </ProductFormSection>
+          </FormSection>
 
           {/* 详情内容 */}
-          <ProductFormSection
+          <FormSection
+            density="compact"
             title="详情内容"
             description="支持富文本编辑，前台按简介、成分说明、使用方法的顺序展示"
           >
@@ -695,10 +701,11 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 minHeight="110px"
               />
             </div>
-          </ProductFormSection>
+          </FormSection>
 
           {/* 购买渠道 */}
-          <ProductFormSection
+          <FormSection
+            density="compact"
             title="购买渠道"
             description="网页链接用于官网点击打开，微信小店请填官方商品 H5 短链；小程序短链与路径仅用于小程序端跳转。"
             action={<Badge variant="primary">固定四类</Badge>}
@@ -848,7 +855,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 <p className="mt-2 text-sm text-red-500">{errors.purchaseLinks}</p>
               )}
             </div>
-          </ProductFormSection>
+          </FormSection>
 
           {/* GEO FAQ 设置 */}
           <GeoFaqEditor value={formData.geoFaqs} onChange={updateGeoFaqs} errors={errors} />

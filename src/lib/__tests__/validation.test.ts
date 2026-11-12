@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import {
+  adminPageSchema,
+  adminPageSizeSchema,
+  validateCUID,
+  invalidIdResponse,
+} from "@/lib/validation";
 
 describe("validation", () => {
   it("应验证合法 CUID v1 格式（c + 24 位 base36）", () => {
@@ -21,6 +26,17 @@ describe("validation", () => {
     // 含大写或符号
     expect(validateCUID("A".repeat(24))).toBe(false);
     expect(validateCUID("a-b".repeat(8))).toBe(false);
+  });
+
+  it("管理端分页参数应限制上限并保留默认值", () => {
+    expect(adminPageSchema.parse(undefined)).toBe(1);
+    expect(adminPageSchema.parse("")).toBe(1);
+    expect(adminPageSchema.parse("1000")).toBe(1000);
+    expect(adminPageSchema.safeParse("1001").success).toBe(false);
+    expect(adminPageSizeSchema.parse(undefined)).toBe(20);
+    expect(adminPageSizeSchema.parse("100")).toBe(100);
+    expect(adminPageSizeSchema.safeParse("101").success).toBe(false);
+    expect(adminPageSizeSchema.safeParse("0").success).toBe(false);
   });
 
   it("invalidIdResponse 应返回 400 JSON", async () => {

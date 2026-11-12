@@ -26,6 +26,7 @@ import {
   MAX_DELETION_ATTEMPTS,
 } from "@/lib/account-deletion";
 import { apiConsole } from "@/lib/logger";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -294,6 +295,7 @@ export async function POST(request: NextRequest) {
           ? "申请状态已变化（可能被并发执行或撤回），请刷新查看最新状态"
           : "重试仍失败，请查看失败原因或稍后再试";
 
+    invalidateAdminStats();
     return NextResponse.json({ success: true, data: { status: result, message } });
   } catch (error) {
     apiConsole.error("[AdminAccountDeletions] 重试异常:", error);

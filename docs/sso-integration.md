@@ -784,23 +784,26 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 | 方法 | 端点 | 说明 |
 | --- | --- | --- |
-| GET | `/api/oauth/points` | 积分余额（含物化过期处理）与最近 20 条流水（`frozen`/`nextReleaseAt` 为废弃兼容字段） |
-| GET | `/api/oauth/points/gifts` | 可兑换礼品（按当前等级兑礼率折算所需积分 + 产品详情） |
-| POST | `/api/oauth/points/redeem` | 兑换礼品，body `{ productId, addressId, requestId }`（requestId 幂等，不重复扣分） |
-| GET | `/api/oauth/points/redemptions?offset=10` | 我的兑换记录（offset 分页，每页 10 条） |
+| GET | `/api/oauth/points` | 积分余额（含物化过期处理）、`expiringSoon` 30 天过期汇总与最近 20 条流水（`frozen`/`nextReleaseAt` 为废弃兼容字段） |
+| GET | `/api/oauth/points/ledger?offset=` | 近一年积分流水（offset 分页每页 20 条，含业务流水号 `reference`） |
+| GET | `/api/oauth/points/rules` | 积分获取比例、有效期、等级门槛、兑礼率、生日积分（全站统一规则） |
+| GET | `/api/oauth/points/gifts` | 可兑换礼品（按当前等级兑礼率折算所需积分 + 产品详情 + `stock` 库存） |
+| POST | `/api/oauth/points/redeem` | 兑换礼品，body `{ productId, addressId, requestId, expectedPoints? }`（requestId 永久幂等，不重复扣分；expectedPoints 用于检测价格/等级变化） |
+| GET | `/api/oauth/points/redemptions?offset=10` | 我的兑换记录（offset 分页，每页 10 条；含 `productId`、售后/退款字段） |
+| GET | `/api/oauth/points/redemptions/{id}` | 兑换详情（状态、售后、退货、退款、状态事件；客户端应优先使用） |
 | GET | `/api/oauth/points/redemptions/{id}/tracking` | 兑换物流轨迹（未录运单号 400 `NO_WAYBILL`；丰桥未配置 `supported=false`） |
 | GET/POST | `/api/oauth/addresses` | 收货地址列表 / 新增（第一条自动默认，上限 20 条） |
 | PATCH（兼容 PUT）/DELETE | `/api/oauth/addresses/{id}` | 编辑 / 删除地址（删除或取消默认后自动顺延一条默认） |
 
-礼品 `detail` 额外包含 `origin`（可能为空，客户端按“法国”兜底）与 `purchaseLinks[].jump`（固定四类渠道：天猫国际/小红书/抖音/微信小店；短链优先，其次 appId+path，最后复制网页链接）。
+礼品 `detail` 额外包含 `origin`（服务端按“空则法国”兜底，客户端可保留同一兜底）与 `purchaseLinks[].jump`（固定四类渠道：天猫国际/小红书/抖音/微信小店；短链优先，其次 appId+path，最后复制网页链接；`jump` 为权威字段）。礼品另返回 `stock`（null=不限，0=已兑完），`affordable` 不包含库存/限购判断。
 
 消费补录（凭证含个人信息，私有 bucket 优先存储）：
 
 | 方法 | 端点 | 说明 |
 | --- | --- | --- |
-| GET/POST | `/api/oauth/spent-adjustments` | 我的补录申请列表 / 提交申请（渠道 + 订单号必填；待审上限 2 条；订单号唯一） |
-| POST | `/api/oauth/spent-adjustments/upload` | 凭证图片上传（multipart 字段名 `file`，仅图片 ≤10MB，返回 objectName） |
-| GET | `/api/oauth/spent-adjustments/image?key=` | 本人凭证图片（302 到私有 bucket 短时签名地址） |
+| GET/POST | `/api/oauth/spent-adjustments` | 我的补录申请列表（`applications` + `pendingCount` + `canSubmit` + `maxPending`）/ 提交申请（渠道 + 订单号必填；待审上限 2 条；订单号唯一） |
+| POST | `/api/oauth/spent-adjustments/upload` | 凭证图片上传（multipart 字段名 `file`，仅图片 ≤10MB，返回 `{ url, private }`，`url` 为私有存储 key） |
+| GET | `/api/oauth/spent-adjustments/image?key=` | 本人凭证图片（私有 OSS 返回 302 短时签名地址；本地私有存储直接返回 200 图片流） |
 
 统一约定：
 
@@ -897,8 +900,9 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
    - 刷新：`POST /api/oauth/token`，`grant_type=refresh_token` + `client_id` + `refresh_token`（public client 免 secret，30 天有效）。
 2. **需绑定**：`data: { needBinding: true, bindToken }`（微信占位号或未关联的老账号）
    - 一键：`POST /api/auth/wechat/bind`，body `{ bindToken, phoneCode }`；
-   - 短信：`POST /api/auth/send-code`（`type: "bind"`；子站 BFF 代理发码需携带用户 Bearer token）→ `POST /api/auth/wechat/bind`，body `{ bindToken, phone, code }`；
-   - 绑定成功时在 body 返回 `accessToken/refreshToken`（无 Cookie 环境专用通道）。
+   - 短信：`POST /api/auth/send-code`（`type: "bind"`；子站 BFF 代理发码需携带用户 Bearer token）→ `POST /api/auth/wechat/bind`，body `{ bindToken, phone, code, allowAutoPassword: true }`（短信通道无 wxVerifiedPhone，不传 `allowAutoPassword` 会返回 `PASSWORD_REQUIRED`）；
+   - bindToken 有效期 1 小时；`send-code type=bind` 对无效 bindToken 可能返回假成功，客户端应在临近过期时主动刷新；
+   - 绑定成功时在 body 返回内部 HS256 `accessToken/refreshToken`（无 Cookie 环境专用通道）；小程序不能用于 OAuth 资源端点，应重新 `miniprogram-login` 换取 RS256 OAuth 双 Token。
 3. **账号异常**：403 `ACCOUNT_DISABLED`。
 
 ### 可用的业务端点（`Authorization: Bearer <accessToken>`）
@@ -910,9 +914,11 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | GET | `/api/oauth/points` | 积分余额（含物化过期处理）与最近 20 条流水 |
 | GET | `/api/oauth/points/ledger?offset=` | 近一年积分流水（offset 分页每页 20 条，含业务流水号 `reference`） |
 | GET | `/api/oauth/points/gifts` | 可兑换礼品（按等级兑礼率折算所需积分） |
-| POST | `/api/oauth/points/redeem` | 兑换礼品（`requestId` 幂等） |
-| GET | `/api/oauth/points/redemptions` | 兑换记录（offset 分页） |
+| POST | `/api/oauth/points/redeem` | 兑换礼品（`requestId` 永久幂等；可传 `expectedPoints` 检测价格/等级变化） |
+| GET | `/api/oauth/points/redemptions` | 兑换记录（offset 分页，含 `productId`） |
+| GET | `/api/oauth/points/redemptions/{id}` | 兑换详情（状态/售后/事件） |
 | GET | `/api/oauth/points/redemptions/{id}/tracking` | 顺丰物流轨迹 |
+| GET | `/api/oauth/points/rules` | 积分规则（获取比例/有效期/等级/兑礼率） |
 | GET/POST | `/api/oauth/addresses` | 收货地址簿 |
 | PATCH（兼容 PUT）/DELETE | `/api/oauth/addresses/{id}` | 编辑 / 删除地址 |
 | GET | `/api/oauth/userinfo` | 用户信息（membership scope 含会员等级/累计消费/兑礼率） |
@@ -925,7 +931,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 | DELETE | `/api/oauth/account/deletion` | 撤回注销申请（需 `account:delete`；无进行中申请返回 409 `NO_PENDING_REQUEST`） |
 | GET/DELETE | `/api/oauth/security/devices[/{id}]` | 安全中心 · 设备管理：活跃设备列表（脱敏 IP；OAuth 无 Cookie 场景优先把当前 client 最近活跃会话标记为当前）/ 强制下线（当前设备与当前小程序自身设备不可下线，写操作需 `security:manage`） |
 | GET/DELETE | `/api/oauth/security/authorizations[/{clientId}]` | 安全中心 · 授权管理：已授权应用列表（`isCurrentClient` 标记当前小程序）/ 撤销授权（禁止撤销当前小程序自身，写操作需 `security:manage`） |
-| GET/DELETE | `/api/oauth/security/identities[/{id}]` | 安全中心 · 账号绑定：第三方绑定列表 / 解绑（服务端要求账号已绑定真实手机号，写操作需 `security:manage`） |
+| GET/DELETE | `/api/oauth/security/identities[/{id}]` | 安全中心 · 账号绑定：第三方绑定列表（返回 `mpClientId`、`isCurrentLogin`、`canUnbind`）/ 解绑（服务端要求账号已绑定真实手机号，写操作需 `security:manage`） |
 | GET | `/api/oauth/security/login-history` | 安全中心 · 登录历史（最近 50 条登录尝试，脱敏 IP） |
 
 ### 错误码
@@ -977,6 +983,11 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 - 会话管理：登录签发会创建 OAuth 会话，用户可在官网「安全中心 → 授权管理」查看/撤销，撤销后 access token 立即失效（`introspect` 口径）；
 - 账号注销：小程序端可自助提交/撤回（`/api/oauth/account/deletion`，冷静期默认 7 天、期间账号可用且可随时撤回）；与官网安全中心自助注销共用同一申请记录与频控桶（申请 3 次/天、撤回 5 次/天）；到期统一由官网执行任务匿名化；
 - 换绑手机号不影响 `userId` 与积分数据；商城/对账请使用 `userId` 定位（详见「会员套餐/等级/积分同步」章节），不要依赖手机号。
+- 兑换幂等：`requestId` 为**永久**唯一键（`userId + requestId`），重放返回原兑换结果且不比较新 payload；客户端应持久化未决 key，成功后再清除，避免页面重载后重复扣分。
+- 即将过期积分：优先使用 `/api/oauth/points` 的 `expiringSoon`（服务端全量计算、按可用余额封顶），不要用最近 20 条流水自行推算。
+- 规则展示：使用 `/api/oauth/points/rules`，不要在客户端写死等级门槛/兑礼率/有效期。
+- 安全中心：四个端点均需 `security:manage`；未在 `MINIPROGRAM_CLIENTS.oauthScopes` 与 OAuth Client scopes 同时开通时返回 403 `insufficient_scope`。
+- 订阅消息：官网 env 的 `MP_POINTS_TEMPLATE_SHIPPED` / `MP_POINTS_TEMPLATE_SPENT_REVIEW` 必须与小程序 `SUBSCRIBE_TMPL_SHIPPED` / `SUBSCRIBE_TMPL_SPENT_REVIEW` 完全一致，否则服务端静默跳过。
 
 ---
 

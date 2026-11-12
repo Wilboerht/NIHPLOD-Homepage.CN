@@ -458,7 +458,11 @@ function summarizeApprovalPayload(payload: unknown): Record<string, unknown> | n
   return clone;
 }
 
-function approvalSummary(request: AdminApprovalRequest) {
+type ApprovalSummarySource = Omit<AdminApprovalRequest, "payload"> & {
+  payload?: AdminApprovalRequest["payload"] | null;
+};
+
+function approvalSummary(request: ApprovalSummarySource) {
   return {
     id: request.id,
     policyKey: request.policyKey,
@@ -468,7 +472,7 @@ function approvalSummary(request: AdminApprovalRequest) {
     targetId: request.targetId,
     targetLabel: request.targetLabel,
     targetSnapshot: request.targetSnapshot,
-    payload: summarizeApprovalPayload(request.payload),
+    payload: request.payload ? summarizeApprovalPayload(request.payload) : null,
     reason: request.reason,
     requesterId: request.requesterId,
     requesterEmail: request.requesterEmail,
@@ -566,6 +570,9 @@ export async function createApprovalRequest(input: CreateApprovalRequestInput) {
     if (policy.key === "points.adjust" && target.targetId) {
       const amount = (payload as { amount?: unknown }).amount;
       if (typeof amount === "number") {
+        // 不同备注会改变 payloadHash，因此必须再按「目标 + 金额」加锁，
+        // 否则两个并发申请会各自跳过下面的活跃申请检查并重复创建。
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`approval-points:${target.targetId}:${amount}`}))`;
         const active =
           (await tx.adminApprovalRequest.findMany({
             where: {
@@ -667,12 +674,35 @@ export async function listApprovalRequests(admin: AdminUser, options: ApprovalLi
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
+      // 列表不读取完整 payload：spent.import.execute 的 previewToken 最大 2MB。
+      omit: { payload: true },
     }),
     prisma.adminApprovalRequest.count({ where }),
   ]);
 
+  // 非导入类审批的 payload 很小，按需补齐；导入类只返回占位，详情接口再读完整值。
+  const lightweightIds = items
+    .filter((item) => item.policyKey !== "spent.import.execute")
+    .map((item) => item.id);
+  const payloadRows =
+    lightweightIds.length > 0
+      ? await prisma.adminApprovalRequest.findMany({
+          where: { id: { in: lightweightIds } },
+          select: { id: true, payload: true },
+        })
+      : [];
+  const payloadById = new Map(payloadRows.map((row) => [row.id, row.payload]));
+
   return {
-    items: items.map(approvalSummary),
+    items: items.map((item) =>
+      approvalSummary({
+        ...item,
+        payload:
+          item.policyKey === "spent.import.execute"
+            ? { previewToken: "[已在列表隐藏，请打开详情查看]" }
+            : (payloadById.get(item.id) ?? null),
+      })
+    ),
     pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
   };
 }

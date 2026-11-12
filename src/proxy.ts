@@ -53,6 +53,9 @@ const ADMIN_SSO_API_PATHS = new Set(["/api/admin/sso/token", "/api/admin/sso/sta
 
 const PUBLIC_API_PREFIXES = [
   "/api/admin/login",
+  // 登出必须允许在 token 过期/被撤销/账号禁用时清理 Cookie；
+  // route 内仍自行校验 CSRF 与限流。
+  "/api/admin/logout",
   "/api/admin/totp/recovery/",
   "/api/admin/sso/token",
   "/api/admin/sso/status",

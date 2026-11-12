@@ -47,6 +47,8 @@ import {
 import { apiConsole } from "@/lib/logger";
 import { prisma } from "./prisma";
 import { acquireCronLock, releaseCronLock, startCronLockHeartbeat } from "./cron-lock";
+import { runWithTimeout, TaskTimeoutError } from "./task-timeout";
+import { processResumeDeletionTasks } from "./resume-deletion";
 import {
   notifyAuditIntegrityFailure,
   notifyCronFailure,
@@ -927,6 +929,18 @@ const tasks: ScheduledTask[] = [
     },
   },
   {
+    name: "Process Resume Deletion Tasks",
+    cronExpression: "*/10 * * * *",
+    isCleanup: true,
+    timeoutMs: 5 * 60 * 1000,
+    handler: async () => {
+      const count = await processResumeDeletionTasks();
+      if (count > 0) {
+        apiConsole.info(`[Cron] 简历文件删除任务完成: ${count} 条`);
+      }
+    },
+  },
+  {
     name: "Reap Stale Cron Runs",
     cronExpression: "*/5 * * * *",
     isCleanup: true,
@@ -1107,7 +1121,10 @@ export async function runCronTask(
   }, 60 * 1000);
   runHeartbeat.unref();
 
-  const finish = async (status: "SUCCESS" | "FAILED", error?: string): Promise<boolean> => {
+  const finish = async (
+    status: "SUCCESS" | "FAILED" | "TIMEOUT",
+    error?: string
+  ): Promise<boolean> => {
     const finishedAt = new Date();
     const updated = await prisma.cronTaskRun
       .updateMany({
@@ -1127,8 +1144,9 @@ export async function runCronTask(
     return updated.count > 0;
   };
 
+  let timedOut = false;
   try {
-    await task.handler();
+    await runWithTimeout(() => task.handler(), timeoutMs);
     if (lockHeartbeat.hasLostLock()) throw new Error("任务执行期间锁已丢失，请核查执行结果");
     const finalized = await finish("SUCCESS");
     if (!finalized) {
@@ -1147,14 +1165,20 @@ export async function runCronTask(
       durationMs: Date.now() - startedAt.getTime(),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const finalized = await finish("FAILED", message);
+    const isTimeout = error instanceof TaskTimeoutError;
+    if (isTimeout) timedOut = true;
+    const message = isTimeout
+      ? `任务执行超过 ${timeoutMs}ms 上限，已标记 TIMEOUT；handler 可能仍在运行`
+      : error instanceof Error
+        ? error.message
+        : String(error);
+    const finalized = await finish(isTimeout ? "TIMEOUT" : "FAILED", message);
     if (finalized && !task.suppressFailureAlert) {
-      notifyCronFailure(task.name, trigger, message, "FAILED");
+      notifyCronFailure(task.name, trigger, message, isTimeout ? "TIMEOUT" : "FAILED");
     }
     return {
       ok: false,
-      status: finalized ? "FAILED" : "TIMEOUT",
+      status: finalized ? (isTimeout ? "TIMEOUT" : "FAILED") : "TIMEOUT",
       runId,
       error: message,
       durationMs: Date.now() - startedAt.getTime(),
@@ -1162,7 +1186,14 @@ export async function runCronTask(
   } finally {
     clearInterval(runHeartbeat);
     await lockHeartbeat.stop();
-    await releaseCronLock(task.name, lockOwner);
+    if (timedOut) {
+      // handler 可能仍在执行：不主动释放锁，等待 TTL 过期，避免另一实例并发重入。
+      apiConsole.error(
+        `[Cron] 任务 ${task.name} 超时 ${timeoutMs}ms，锁将等待 TTL 过期后由 reaper 回收`
+      );
+    } else {
+      await releaseCronLock(task.name, lockOwner);
+    }
     await pruneCronRuns();
   }
 }
@@ -1288,11 +1319,16 @@ export function initializeCronTasks(): void {
         task.cronExpression,
         () => {
           // 失败不能静默：runCronTask 已落库 CronTaskRun，这里补一条错误日志便于告警采集
-          void runCronTask(task.name, "cron").then((result) => {
-            if (!result.ok) {
-              apiConsole.error(`[Cron] 任务执行失败: ${task.name}`, result.error);
-            }
-          });
+          void runCronTask(task.name, "cron")
+            .then((result) => {
+              if (!result.ok) {
+                apiConsole.error(`[Cron] 任务执行失败: ${task.name}`, result.error);
+              }
+            })
+            .catch((error) => {
+              // 取锁失败等异常不能被静默丢弃（否则会产生未处理 Promise rejection）
+              apiConsole.error(`[Cron] 任务调度异常: ${task.name}`, error);
+            });
         },
         {
           runOnInit: false,

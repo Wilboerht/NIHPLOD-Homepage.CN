@@ -7,6 +7,16 @@ import { z } from "zod";
 // 注：Prisma 6 起 @default(cuid()) 生成 CUID2，若只校验 v1 会导致新数据全部 400
 export const cuidSchema = z.string().regex(/^(c[a-z0-9]{24}|[a-z][a-z0-9]{23})$/);
 
+/** 管理端列表分页上限：page ≤ 1000，pageSize ≤ 100。 */
+export const adminPageSchema = z.preprocess(
+  (val) => (val ? Number(val) : 1),
+  z.number().int().min(1).max(1000)
+);
+export const adminPageSizeSchema = z.preprocess(
+  (val) => (val ? Number(val) : 20),
+  z.number().int().min(1).max(100)
+);
+
 export function validateCUID(id: string): boolean {
   return cuidSchema.safeParse(id).success;
 }

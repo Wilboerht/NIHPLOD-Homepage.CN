@@ -782,6 +782,7 @@ export async function getRedemptionTimeline(redemptionId: string, userId?: strin
     select: {
       id: true,
       userId: true,
+      productId: true,
       productName: true,
       priceYuan: true,
       points: true,
@@ -810,6 +811,15 @@ export async function getRedemptionTimeline(redemptionId: string, userId?: strin
       inspectionNote: true,
       refundedPoints: true,
       refundedAt: true,
+      product: {
+        select: {
+          images: {
+            orderBy: { order: "asc" },
+            take: 1,
+            select: { url: true },
+          },
+        },
+      },
       events: {
         orderBy: { createdAt: "asc" },
         select: {

@@ -11,10 +11,14 @@ vi.mock("@/lib/csrf", () => ({
   csrfForbiddenResponse: () => new Response(null, { status: 403 }),
 }));
 
-vi.mock("@/lib/validation", () => ({
-  validateCUID: vi.fn().mockReturnValue(true),
-  invalidIdResponse: () => new Response(null, { status: 400 }),
-}));
+vi.mock("@/lib/validation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/validation")>();
+  return {
+    ...actual,
+    validateCUID: vi.fn().mockReturnValue(true),
+    invalidIdResponse: () => new Response(null, { status: 400 }),
+  };
+});
 
 vi.mock("@/lib/audit", () => ({
   beginAuditLog: vi.fn().mockResolvedValue("audit-1"),

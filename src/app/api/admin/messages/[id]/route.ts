@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
-import { createAuditLog, createAuditLogStrict } from "@/lib/audit";
+import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { maskPhone } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
@@ -162,7 +162,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
 
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
 
     createAuditLog({
       action: "update_message",
@@ -250,11 +250,12 @@ export async function DELETE(
     }
 
     // 审计写失败则拒绝删除（高危操作不可无痕）。
-    await createAuditLogStrict({
+    const auditDetail = { phone: maskPhone(existing.phone) };
+    const auditId = await beginAuditLog({
       action: "delete_message",
       targetType: "message",
       targetId: id,
-      detail: { phone: maskPhone(existing.phone) },
+      detail: auditDetail,
       actorType: "ADMIN",
       actorEmail: admin.email,
       actorName: admin.name,
@@ -265,11 +266,31 @@ export async function DELETE(
       adminId: admin.id,
       request,
     });
+    if (!auditId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: "AUDIT_UNAVAILABLE", message: "审计服务不可用，已拒绝操作" },
+        },
+        { status: 503 }
+      );
+    }
 
-    // 删除留言
-    await prisma.contactMessage.delete({ where: { id } });
+    try {
+      await prisma.contactMessage.delete({ where: { id } });
+    } catch (error) {
+      await finishAuditLog(auditId, "FAILURE", auditDetail);
+      if ((error as { code?: string }).code === "P2025") {
+        return NextResponse.json(
+          { success: false, error: { code: "NOT_FOUND", message: "留言不存在" } },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
 
-    revalidateTag("admin-stats", "max");
+    await finishAuditLog(auditId, "SUCCESS", auditDetail);
+    invalidateAdminStats();
 
     return NextResponse.json({
       success: true,

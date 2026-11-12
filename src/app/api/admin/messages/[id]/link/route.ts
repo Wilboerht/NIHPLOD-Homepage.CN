@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminSupportAccess, supportError, supportReasonSchema } from "@/lib/admin-support";
 import { linkRecordToUser, RecordLinkError } from "@/lib/record-account-links";
-import { invalidIdResponse, validateCUID } from "@/lib/validation";
+import { cuidSchema, invalidIdResponse, validateCUID } from "@/lib/validation";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 const schema = z.object({
-  userId: z.string().cuid().nullable(),
-  expectedUserId: z.string().cuid().nullable().optional(),
+  userId: cuidSchema.nullable(),
+  expectedUserId: cuidSchema.nullable().optional(),
   reason: supportReasonSchema,
 });
 

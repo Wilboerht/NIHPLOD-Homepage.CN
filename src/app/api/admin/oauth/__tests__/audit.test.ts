@@ -63,6 +63,10 @@ vi.mock("@/lib/admin-totp", () => ({
   requireAdminStepUp: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("@/lib/admin-step-up", () => ({
+  verifyAdminStepUpGrant: vi.fn().mockResolvedValue(true),
+}));
+
 vi.mock("@/lib/audit", () => ({
   createAuditLog: (...args: unknown[]) => mockCreateAuditLog(...args),
   createAuditLogStrict: (...args: unknown[]) => mockCreateAuditLog(...args),

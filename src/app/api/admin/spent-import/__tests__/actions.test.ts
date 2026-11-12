@@ -14,13 +14,17 @@ vi.mock("@/lib/csrf", () => ({
     }),
 }));
 
-vi.mock("@/lib/validation", () => ({
-  validateCUID: vi.fn().mockReturnValue(true),
-  invalidIdResponse: () =>
-    new Response(JSON.stringify({ success: false, error: { code: "INVALID_ID" } }), {
-      status: 400,
-    }),
-}));
+vi.mock("@/lib/validation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/validation")>();
+  return {
+    ...actual,
+    validateCUID: vi.fn().mockReturnValue(true),
+    invalidIdResponse: () =>
+      new Response(JSON.stringify({ success: false, error: { code: "INVALID_ID" } }), {
+        status: 400,
+      }),
+  };
+});
 
 vi.mock("@/lib/admin-totp", () => ({
   requireMoneyOperationTotp: vi.fn().mockResolvedValue(null),

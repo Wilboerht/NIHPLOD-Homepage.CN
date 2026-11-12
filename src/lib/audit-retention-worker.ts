@@ -71,7 +71,7 @@ function toDayRanges(days: readonly string[]): RetentionDayRange[] {
 async function deleteAuditStream(
   client: pg.Client,
   ranges: readonly RetentionDayRange[],
-  onProgress: (deleted: number) => Promise<void>
+  onBatch: (batchCount: number) => Promise<void>
 ): Promise<number> {
   let deleted = 0;
   for (const range of ranges) {
@@ -89,7 +89,7 @@ async function deleteAuditStream(
       );
       const count = result.rowCount ?? 0;
       deleted += count;
-      await onProgress(deleted);
+      await onBatch(count);
       if (count < BATCH_SIZE) break;
     }
   }
@@ -99,7 +99,7 @@ async function deleteAuditStream(
 async function deleteSsoStream(
   client: pg.Client,
   ranges: readonly RetentionDayRange[],
-  onProgress: (deleted: number) => Promise<void>
+  onBatch: (batchCount: number) => Promise<void>
 ): Promise<number> {
   let deleted = 0;
   for (const range of ranges) {
@@ -117,7 +117,7 @@ async function deleteSsoStream(
       );
       const count = result.rowCount ?? 0;
       deleted += count;
-      await onProgress(deleted);
+      await onBatch(count);
       if (count < BATCH_SIZE) break;
     }
   }
@@ -125,6 +125,29 @@ async function deleteSsoStream(
 }
 
 async function insertRetentionSummary(
+  client: pg.Client,
+  job: {
+    id: string;
+    requestedBy: string;
+    reason: string;
+    deletedCount: number;
+    deletedBytes: number;
+    holdsExcluded: number;
+    cutoffs: RetentionStreamCutoff[];
+  }
+): Promise<void> {
+  // 独立事务：即使外部分批删除已提交，摘要审计也必须在链锁内原子追加。
+  await client.query("BEGIN");
+  try {
+    await insertRetentionSummaryRows(client, job);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  }
+}
+
+async function insertRetentionSummaryRows(
   client: pg.Client,
   job: {
     id: string;
@@ -304,22 +327,25 @@ async function processOne(jobId: string): Promise<void> {
     });
     await client.connect();
     try {
-      await client.query("BEGIN");
-      await client.query("SET LOCAL statement_timeout = '300000'");
-      await client.query(`SELECT pg_advisory_xact_lock(hashtext('AuditRetention:worker'))`);
+      // 会话级锁跨多个分批事务持有，防止其他 worker 并发清理同一批日期桶。
+      await client.query("SET statement_timeout = '300000'");
+      await client.query(`SELECT pg_advisory_lock(hashtext('AuditRetention:worker'))`);
 
       let deleted = 0;
-      const updateProgress = async (next: number) => {
-        const total = deleted + next;
-        const bytes = Math.round(job.expectedBytes * (total / Math.max(1, job.expectedCount)));
-        await client.query(
-          `UPDATE "AuditRetentionJob" SET "deletedCount" = $1, "deletedBytes" = $2 WHERE "id" = $3`,
-          [total, bytes, job.id]
+      const updateProgress = async () => {
+        const bytes = Math.round(job.expectedBytes * (deleted / Math.max(1, job.expectedCount)));
+        const updated = await client.query(
+          `UPDATE "AuditRetentionJob"
+           SET "deletedCount" = $1, "deletedBytes" = $2, "heartbeatAt" = (now() AT TIME ZONE 'UTC')
+           WHERE "id" = $3 AND "status" = 'RUNNING' AND "leaseToken" = $4`,
+          [deleted, bytes, job.id, leaseToken]
         );
+        if (updated.rowCount === 0) {
+          throw new Error("执行租约已丢失，停止清理");
+        }
       };
 
       for (const entry of cutoffs) {
-        const before = deleted;
         // 只删除通过归档 + 备份校验的日期桶；未验证日期在预览中 eligible=0，
         // 不会被这里选中，从而避免一条坏数据阻断全部清理。
         const eligibleDays = preview.buckets
@@ -334,14 +360,14 @@ async function processOne(jobId: string): Promise<void> {
           .sort();
         if (eligibleDays.length === 0) continue;
         const ranges = toDayRanges(eligibleDays);
+        const onBatch = async (batchCount: number) => {
+          deleted += batchCount;
+          await updateProgress();
+        };
         if (entry.stream === "audit") {
-          deleted += await deleteAuditStream(client, ranges, async (n) => {
-            await updateProgress(n - (deleted - before));
-          });
+          await deleteAuditStream(client, ranges, onBatch);
         } else {
-          deleted += await deleteSsoStream(client, ranges, async (n) => {
-            await updateProgress(n - (deleted - before));
-          });
+          await deleteSsoStream(client, ranges, onBatch);
         }
       }
 
@@ -367,6 +393,7 @@ async function processOne(jobId: string): Promise<void> {
         cutoffs,
       });
 
+      await client.query("BEGIN");
       const completed = await client.query(
         `UPDATE "AuditRetentionJob"
          SET "status" = 'SUCCEEDED', "deletedCount" = $1, "deletedBytes" = $2,
@@ -377,17 +404,18 @@ async function processOne(jobId: string): Promise<void> {
         [deleted, deletedBytes, holdsExcluded, JSON.stringify(archiveManifests), job.id, leaseToken]
       );
       if (completed.rowCount === 0) {
-        throw new Error("执行租约已丢失，已回滚清理结果");
+        await client.query("ROLLBACK").catch(() => {});
+        throw new Error("执行租约已丢失，清理结果未提交");
       }
       await client.query("COMMIT");
       apiConsole.info(
         `[AuditRetention] job ${job.id} 完成: 删除 ${deleted} 条，hold 排除 ${holdsExcluded} 条`
       );
       notifyAuditRetentionResult({ jobId: job.id, status: "SUCCEEDED", deletedCount: deleted });
-    } catch (error) {
-      await client.query("ROLLBACK").catch(() => {});
-      throw error;
     } finally {
+      await client
+        .query(`SELECT pg_advisory_unlock(hashtext('AuditRetention:worker'))`)
+        .catch(() => {});
       await client.end().catch(() => {});
     }
   } catch (error) {

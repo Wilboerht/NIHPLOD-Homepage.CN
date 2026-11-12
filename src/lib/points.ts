@@ -17,7 +17,11 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { creditSpendPoints, refundSpendPoints, withPointTxRetry } from "@/lib/points-ledger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
-import { LEVEL_THRESHOLDS, MEMBERSHIP_LEVELS } from "@/lib/membership";
+import {
+  LEVEL_THRESHOLDS,
+  MEMBERSHIP_LEVELS,
+  POINT_EARN_YUAN_PER_POINT,
+} from "@/lib/membership";
 import {
   claimSpentOrder,
   normalizeOptionalOrderNo,
@@ -39,6 +43,11 @@ export class SpentReversalExceedsBalanceError extends Error {
 /** 严格模式下目标用户必须为 ACTIVE（导入/补录审核等正向入账使用）。 */
 export class SpentUserNotActiveError extends Error {
   readonly code = "SPENT_USER_NOT_ACTIVE";
+}
+
+/** 撤销/冲正时目标用户已注销：禁止再写入余额或等级变化。 */
+export class SpentUserDeletedError extends Error {
+  readonly code = "SPENT_USER_DELETED";
 }
 
 /**
@@ -90,6 +99,8 @@ export async function applyExternalSpentSync(
     allowNegativeClamp?: boolean;
     /** 正向入账时可要求用户当前仍为 ACTIVE，防止注销/封禁与导入并发。 */
     requireActiveUser?: boolean;
+    /** 撤销/冲正时禁止对已注销用户写入（事务内二次校验，避免预检后并发注销）。 */
+    requireNotDeleted?: boolean;
     /** 外层事务内调用时延后缓存失效与 webhook，由调用方在事务提交后执行。 */
     suppressWebhook?: boolean;
     /** Excel 导入退款行：要求绑定原始订单并受累计退款上限约束。 */
@@ -107,6 +118,7 @@ export async function applyExternalSpentSync(
   const source = params.source ?? "MALL_SYNC";
   const allowNegativeClamp = params.allowNegativeClamp ?? true;
   const requireActiveUser = params.requireActiveUser ?? false;
+  const requireNotDeleted = params.requireNotDeleted ?? false;
   // 商城退款也必须绑定原消费订单并受原单可退额度约束，避免负向同步任意冲减消费额
   const enforceRefundClaim =
     params.enforceRefundClaim ?? (source === "MALL_SYNC" && spentDelta < 0);
@@ -179,6 +191,9 @@ export async function applyExternalSpentSync(
         if (requireActiveUser && user.status !== "ACTIVE") {
           throw new SpentUserNotActiveError();
         }
+        if (requireNotDeleted && user.status === "DELETED") {
+          throw new SpentUserDeletedError();
+        }
 
         // 钳制下限 0：退款累计不得超过历史消费。
         // 撤销/冲正场景必须严格相等，否则“只冲回一部分但批次/审核被标记已撤销”，
@@ -248,7 +263,7 @@ export async function applyExternalSpentSync(
         if (appliedDelta > 0) {
           const credited = await creditSpendPoints(tx, {
             userId,
-            amount: appliedDelta,
+            amount: Math.floor(appliedDelta / POINT_EARN_YUAN_PER_POINT),
             reference: `points:${reference}`,
             note: note ?? "消费发放积分",
           });
@@ -258,7 +273,7 @@ export async function applyExternalSpentSync(
         } else if (appliedDelta < 0) {
           const refunded = await refundSpendPoints(tx, {
             userId,
-            amount: -appliedDelta,
+            amount: Math.floor(-appliedDelta / POINT_EARN_YUAN_PER_POINT),
             reference: `points:${reference}`,
             note: note ?? "退款冲正积分",
           });

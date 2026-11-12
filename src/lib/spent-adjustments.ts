@@ -11,6 +11,7 @@ import {
   invalidateProfileCache,
   pushMembershipUpdateWebhook,
   SpentReversalExceedsBalanceError,
+  SpentUserDeletedError,
 } from "@/lib/points";
 import {
   normalizeOrderNo,
@@ -366,6 +367,7 @@ export async function undoApplication(params: {
           spentDelta: -(application.reviewAmount ?? 0),
           reference: `manual-undo:${applicationId}:${Date.now()}`,
           allowNegativeClamp: false,
+          requireNotDeleted: true,
           suppressWebhook: true,
           note: `撤销消费补录审核：${applicationId}（管理员 ${adminId}）`,
         },
@@ -416,6 +418,13 @@ export async function undoApplication(params: {
         ok: false,
         code: "REVERSAL_EXCEEDS_BALANCE",
         message: "用户当前累计消费不足以完整冲正，已取消撤销；请核对退款/导入记录后人工处理",
+      };
+    }
+    if (error instanceof SpentUserDeletedError) {
+      return {
+        ok: false,
+        code: "USER_DELETED",
+        message: "用户已注销，不能撤销补录审核并回写积分/等级",
       };
     }
     apiConsole.error("[SpentAdjustment] 撤销审核异常:", error);

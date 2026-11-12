@@ -8,14 +8,16 @@ import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import { LLMS_DOCS_TAG, PRODUCTS_TAG } from "@/lib/cache-tags";
+import { cuidSchema } from "@/lib/validation";
 
 // 排序更新 Schema
 const OrderUpdateSchema = z.object({
   items: z
     .array(
       z.object({
-        id: z.string().cuid(),
+        id: cuidSchema,
         order: z.number().int().min(0),
       })
     )
@@ -80,7 +82,7 @@ export async function PUT(request: NextRequest) {
     revalidatePath("/products");
     revalidatePath("/sitemap.xml");
     revalidatePath("/guide");
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
 

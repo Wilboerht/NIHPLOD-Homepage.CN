@@ -17,6 +17,8 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { undoApplication, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
+import { parseAdminJsonBody } from "@/lib/request-body";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 const undoBodySchema = z.object({
   totpCode: z.string().max(20).optional(),
@@ -54,7 +56,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return invalidIdResponse();
     }
 
-    const parsedBody = undoBodySchema.safeParse(await request.json().catch(() => ({})));
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok && bodyResult.response.status === 413) return bodyResult.response;
+    const parsedBody = undoBodySchema.safeParse(bodyResult.ok ? bodyResult.data : {});
     if (!parsedBody.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
@@ -134,6 +138,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     await finishAuditLog(auditId, "SUCCESS", { decision: "undo", status: result.status });
+    invalidateAdminStats();
 
     return NextResponse.json({
       success: true,

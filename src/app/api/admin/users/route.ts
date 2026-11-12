@@ -15,6 +15,7 @@ import { requireAdminStepUp } from "@/lib/admin-totp";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { buildUserWhere, userListQuerySchema } from "@/lib/user-query";
 import { enqueueSecurityActionNotification } from "@/lib/security-notify";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 // 强制动态渲染，禁止静态预渲染
 export const dynamic = "force-dynamic";
@@ -156,7 +157,9 @@ export async function POST(request: NextRequest) {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = z
       .object({
         ids: z.array(z.string().min(1)).min(1).max(200),

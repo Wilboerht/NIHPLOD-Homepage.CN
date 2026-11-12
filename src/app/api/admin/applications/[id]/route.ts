@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import prisma from "@/lib/prisma";
-import { deleteUploadedFile } from "@/lib/upload";
-import { deleteResumeFile, isPrivateResumeKey } from "@/lib/resume-files";
+import { deleteResumeNow, enqueueResumeDeletion } from "@/lib/resume-deletion";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
@@ -11,6 +10,8 @@ import { beginAuditLog, createAuditLogStrict, finishAuditLog } from "@/lib/audit
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { maskPhone } from "@/lib/mask-phone";
+import { parseAdminJsonBody } from "@/lib/request-body";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -44,6 +45,13 @@ const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
   rejected: ["pending", "reviewed"],
   hired: [],
 };
+
+/** 反向索引：允许流转到目标状态的来源状态，用于原子条件更新。 */
+function statusesThatCanTransitionTo(target: string): string[] {
+  return Object.entries(ALLOWED_TRANSITIONS)
+    .filter(([, targets]) => targets.includes(target))
+    .map(([source]) => source);
+}
 
 const patchSchema = z
   .object({
@@ -201,7 +209,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (!validateCSRFToken(request)) return csrfForbiddenResponse();
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -290,7 +300,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           ...(expectedStatus
             ? { status: expectedStatus }
             : status
-              ? { status: { in: [...(ALLOWED_TRANSITIONS[status] ?? [])] } }
+              ? { status: { in: statusesThatCanTransitionTo(status) } }
               : {}),
           updatedAt: new Date(expectedUpdatedAt),
         },
@@ -315,7 +325,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         );
       }
       const invalidTransition =
-        status && !expectedStatus && !(ALLOWED_TRANSITIONS[status] ?? []).includes(current.status);
+        status && !expectedStatus && !(ALLOWED_TRANSITIONS[current.status] ?? []).includes(status);
       const statusConflict = expectedStatus && current.status !== expectedStatus;
       return NextResponse.json(
         {
@@ -384,6 +394,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     await finishAuditLog(auditId, "SUCCESS", auditDetail);
+    invalidateAdminStats();
 
     return NextResponse.json({ success: true, data: application }, { headers: NO_STORE_HEADERS });
   } catch (error) {
@@ -474,33 +485,27 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    await prisma.jobApplication.delete({ where: { id } }).catch(async (error) => {
-      await finishAuditLog(auditId, "FAILURE", auditDetail);
-      throw error;
-    });
+    const resumePath = application.resumePath;
+    // 删除申请与“待删文件”入队必须同事务：申请删除失败时不能留下孤立删除任务。
+    await prisma
+      .$transaction(async (tx) => {
+        await enqueueResumeDeletion(tx, resumePath);
+        await tx.jobApplication.delete({ where: { id } });
+      })
+      .catch(async (error) => {
+        await finishAuditLog(auditId, "FAILURE", auditDetail);
+        throw error;
+      });
 
     let resumeFileDeleted = true;
-    const resumePath = application.resumePath;
     if (resumePath) {
-      if (isPrivateResumeKey(resumePath)) {
-        try {
-          await withFileDeleteRetry(() => deleteResumeFile(resumePath));
-        } catch (error) {
-          resumeFileDeleted = false;
-          apiConsole.error("[AdminApplicationDelete] 私有简历文件删除失败，需人工清理:", {
-            applicationId: id,
-            error,
-          });
-        }
-      } else {
-        resumeFileDeleted = await withFileDeleteRetry(() => deleteUploadedFile(resumePath)).catch(
-          (error) => {
-            apiConsole.error("[AdminApplicationDelete] 旧公开简历删除失败:", {
-              applicationId: id,
-              error,
-            });
-            return false;
-          }
+      try {
+        await withFileDeleteRetry(() => deleteResumeNow(resumePath));
+      } catch (error) {
+        resumeFileDeleted = false;
+        apiConsole.error(
+          "[AdminApplicationDelete] 简历文件删除失败，已保留 outbox 任务等待 cron 重试:",
+          { applicationId: id, error }
         );
       }
     }
@@ -509,6 +514,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       ...auditDetail,
       resumeFileDeleted,
     });
+    invalidateAdminStats();
 
     return NextResponse.json({ success: true, message: "删除成功" });
   } catch (error) {

@@ -34,6 +34,7 @@ const {
     create: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     upsert: vi.fn(),
     count: vi.fn(),
   });
@@ -50,6 +51,7 @@ const {
     prismaMock: {
       userConsent: createMockModel(),
       oAuthSession: createMockModel(),
+      oAuthAuthorizationCode: createMockModel(),
       user: createMockModel(),
       oAuthClient: createMockModel(),
     } as Record<string, Record<string, ReturnType<typeof vi.fn>>>,
@@ -385,6 +387,9 @@ describe("管理端用户授权 /api/admin/oauth/consents", () => {
         "client-abc",
         "admin_revoke"
       );
+      expect(prismaMock.oAuthAuthorizationCode.deleteMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", clientId: "client-abc", used: false },
+      });
       expect(mockBlacklistUserTokens).not.toHaveBeenCalled();
       expect(mockSendBackchannelLogout).toHaveBeenCalledWith("user-1", ["client-abc"], {
         omitSid: true,

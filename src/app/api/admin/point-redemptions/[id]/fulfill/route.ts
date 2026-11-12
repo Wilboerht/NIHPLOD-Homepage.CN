@@ -14,6 +14,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { fulfillRedemption } from "@/lib/point-gifts";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     await finishAuditLog(auditId, "SUCCESS", { waybillNo: waybillNo ?? null });
+    invalidateAdminStats();
 
     return NextResponse.json({ success: true, data: { message: "已标记履约" } });
   } catch (error) {

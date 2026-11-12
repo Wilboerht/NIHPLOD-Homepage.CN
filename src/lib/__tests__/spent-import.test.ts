@@ -31,6 +31,9 @@ vi.mock("@/lib/points", () => ({
   invalidateProfileCache: vi.fn(),
   pushMembershipUpdateWebhook: vi.fn().mockResolvedValue(undefined),
   SpentReversalExceedsBalanceError: class SpentReversalExceedsBalanceError extends Error {},
+  SpentUserDeletedError: class SpentUserDeletedError extends Error {
+    readonly code = "SPENT_USER_DELETED";
+  },
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -38,7 +41,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { applyExternalSpentSync } from "@/lib/points";
+import { applyExternalSpentSync, SpentReversalExceedsBalanceError } from "@/lib/points";
 import {
   parseImportWorkbook,
   parseImportWorkbookIsolated,
@@ -433,6 +436,30 @@ describe("executeImportBatch", () => {
     expect(mockApplySync).not.toHaveBeenCalled();
   });
 
+  it("负数退款行累计消费不足时整行失败，不标记 SUCCESS", async () => {
+    mockApplySync.mockRejectedValue(new SpentReversalExceedsBalanceError());
+
+    const result = await executeImportBatch({
+      rows: [{ ...okInput, amount: -200, orderNo: "TM002" }],
+      fileName: "refund.xlsx",
+      fileHash: "refund123",
+      reason: "退款导入",
+      adminId: "admin-1",
+    });
+
+    expect(result.successRows).toBe(0);
+    expect(result.errorRows).toBe(1);
+    expect(result.rows[0]).toMatchObject({
+      status: "ERROR",
+      error: expect.stringContaining("累计消费不足"),
+    });
+    expect(mockApplySync.mock.calls[0][0]).toMatchObject({
+      spentDelta: -200,
+      allowNegativeClamp: false,
+      enforceRefundClaim: true,
+    });
+  });
+
   it("成功行入账：reference 内容哈希且幂等稳定", async () => {
     mockApplySync.mockResolvedValue({
       totalSpent: 1000,
@@ -660,6 +687,7 @@ describe("undoImportBatch", () => {
         spentDelta: -1000,
         reference: "import-undo:batch-1:row-1",
         allowNegativeClamp: false,
+        requireNotDeleted: true,
         suppressWebhook: true,
         note: expect.stringContaining("batch-1"),
       },

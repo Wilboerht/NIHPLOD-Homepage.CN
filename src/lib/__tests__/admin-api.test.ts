@@ -187,15 +187,19 @@ vi.mock("@/lib/profile-webhook", () => ({
   normalizeGender: (value: string | null) => value,
 }));
 
-vi.mock("@/lib/validation", () => ({
-  validateCUID: (id: string) => typeof id === "string" && id.length > 0,
-  invalidIdResponse: () => {
-    return NextResponse.json(
-      { success: false, error: { code: "INVALID_ID", message: "非法 ID 格式" } },
-      { status: 400 }
-    );
-  },
-}));
+vi.mock("@/lib/validation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/validation")>();
+  return {
+    ...actual,
+    validateCUID: (id: string) => typeof id === "string" && id.length > 0,
+    invalidIdResponse: () => {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_ID", message: "非法 ID 格式" } },
+        { status: 400 }
+      );
+    },
+  };
+});
 
 // Mock token-blacklist
 vi.mock("@/lib/token-blacklist", () => ({
@@ -1026,7 +1030,7 @@ describe("管理端 API 集成测试", () => {
     it("封禁用户应级联撤销 Token 并写入 SSO 审计事件", async () => {
       const req = createRequest("/api/admin/users/user-1", {
         method: "PATCH",
-        body: { status: "BANNED" },
+        body: { status: "BANNED", reason: "test-ban" },
       });
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({
@@ -1068,7 +1072,7 @@ describe("管理端 API 集成测试", () => {
     it("解冻用户应写入 SSO 审计事件（user_unbanned）", async () => {
       const req = createRequest("/api/admin/users/user-1", {
         method: "PATCH",
-        body: { status: "ACTIVE" },
+        body: { status: "ACTIVE", reason: "test-unban" },
       });
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({
@@ -1102,7 +1106,10 @@ describe("管理端 API 集成测试", () => {
     });
 
     it("删除用户应走注销执行器并写入 SSO 审计事件（user_deleted）", async () => {
-      const req = createRequest("/api/admin/users/user-1", { method: "DELETE" });
+      const req = createRequest("/api/admin/users/user-1", {
+        method: "DELETE",
+        body: { reason: "test-delete" },
+      });
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({
         id: "user-1",
@@ -1157,7 +1164,7 @@ describe("管理端 API 集成测试", () => {
     it("状态未变化应直接返回原数据", async () => {
       const req = createRequest("/api/admin/users/user-1", {
         method: "PATCH",
-        body: { status: "ACTIVE" },
+        body: { status: "ACTIVE", reason: "test-noop" },
       });
       mockAdminAuth({ id: "admin-1", email: "admin@test.com", name: "Admin", role: "owner" }, req);
       mockPrisma.user.findUnique.mockResolvedValue({

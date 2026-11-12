@@ -84,6 +84,7 @@ export function TagInput({
             <button
               type="button"
               onClick={() => removeTag(index)}
+              aria-label={`删除标签 ${tag}`}
               className="rounded-full p-0.5 hover:bg-brand-primary/20"
             >
               <X className="h-3 w-3" />
@@ -110,6 +111,7 @@ export function TagInput({
               <button
                 type="button"
                 onClick={addTag}
+                aria-label="添加标签"
                 className="rounded p-1 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
               >
                 <Plus className="h-4 w-4" />

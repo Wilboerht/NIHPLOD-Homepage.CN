@@ -1640,3 +1640,16 @@ model LegalDocumentVersion {
 
   @@unique([documentId, version])
 }
+
+/// 简历文件异步删除任务：删除申请后即使文件删除失败也可由 cron 重试，避免 PII 残留。
+model ResumeDeletionTask {
+  id            String   @id @default(cuid())
+  objectKey     String   @unique
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  lastError     String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  @@index([nextAttemptAt])
+}

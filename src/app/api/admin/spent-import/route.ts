@@ -8,10 +8,11 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { adminPageSchema, adminPageSizeSchema } from "@/lib/validation";
 
 const querySchema = z.object({
-  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
-  pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
+  page: adminPageSchema,
+  pageSize: adminPageSizeSchema,
 });
 
 export const dynamic = "force-dynamic";

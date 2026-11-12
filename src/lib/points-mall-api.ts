@@ -403,6 +403,7 @@ export async function redeemPointsResponse(
         INVALID_REQUEST: 400,
         PRICE_CHANGED: 409,
         REDEMPTION_LIMIT_REACHED: 409,
+        ACCOUNT_DISABLED: 403,
       };
       return NextResponse.json(
         {
@@ -472,6 +473,7 @@ export async function getRedemptionsResponse(
         take: REDEMPTION_PAGE_SIZE + 1,
         select: {
           id: true,
+          productId: true,
           productName: true,
           priceYuan: true,
           points: true,
@@ -514,6 +516,7 @@ export async function getRedemptionsResponse(
     const hasMore = rows.length > REDEMPTION_PAGE_SIZE;
     const redemptions = rows.slice(0, REDEMPTION_PAGE_SIZE).map((r) => ({
       id: r.id,
+      productId: r.productId,
       productName: r.productName,
       image: r.product?.images[0]?.url ?? null,
       priceYuan: Number(r.priceYuan),
@@ -727,11 +730,13 @@ export async function getRedemptionDetailResponse(
       { status: 404 }
     );
   }
+  const { product, ...detailData } = detail;
   return NextResponse.json(
     {
       success: true,
       data: {
-        ...detail,
+        ...detailData,
+        image: product?.images[0]?.url ?? null,
         priceYuan: Number(detail.priceYuan),
         createdAt: detail.createdAt.toISOString(),
         fulfilledAt: detail.fulfilledAt?.toISOString() ?? null,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { toGeoFaqsJson } from "@/lib/prisma-json";
@@ -23,6 +24,7 @@ import {
   findReusedProductImageUrl,
   isManagedProductImageUrl,
 } from "@/lib/product-media";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 // PATCH 产品状态/排序 Schema（严格模式，只允许白名单字段）
 const patchProductSchema = z
@@ -124,7 +126,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       );
     }
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
 
     const parsed = patchProductSchema.safeParse(body);
     if (!parsed.success) {
@@ -173,6 +177,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     revalidatePath("/sitemap.xml");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
+    invalidateAdminStats();
     if (product.published) {
       revalidatePath(`/products/${product.slug}`);
       if (validated.published !== undefined || validated.order !== undefined) {
@@ -244,7 +249,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const validated = ProductSchema.parse(body);
 
     // 对 HTML 字段入库前消毒
@@ -474,6 +481,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     revalidatePath("/sitemap.xml");
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
+    invalidateAdminStats();
     if (fullProduct?.slug) {
       revalidatePath(`/products/${fullProduct.slug}`);
     }
@@ -584,7 +592,7 @@ export async function DELETE(
     revalidatePath("/products");
     revalidatePath("/sitemap.xml");
     revalidatePath(`/products/${existing.slug}`);
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
     // 已删除的 URL 不再推送，仅刷新并推送列表页

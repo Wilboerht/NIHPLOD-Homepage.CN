@@ -3,16 +3,18 @@ import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import { apiConsole } from "@/lib/logger";
 import { createAuditLog } from "@/lib/audit";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { pushSearchEngines } from "@/lib/search-push";
+import { cuidSchema } from "@/lib/validation";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
-  ids: z.array(z.string().cuid()).min(1).max(100, "一次最多操作 100 个职位"),
+  ids: z.array(cuidSchema).min(1).max(100, "一次最多操作 100 个职位"),
   action: z.enum(["publish", "unpublish", "delete"]),
 });
 
@@ -99,6 +101,7 @@ export async function POST(request: NextRequest) {
     // 清除前端缓存并推送搜索引擎
     if (count > 0) {
       revalidatePath("/careers");
+      invalidateAdminStats();
       pushSearchEngines(["/careers"]);
     }
 

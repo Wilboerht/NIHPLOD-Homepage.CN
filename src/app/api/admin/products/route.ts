@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
@@ -20,6 +21,7 @@ import {
   findReusedProductImageUrl,
   isManagedProductImageUrl,
 } from "@/lib/product-media";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 // 查询参数 Schema
 const QuerySchema = z.object({
@@ -184,7 +186,9 @@ export async function POST(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const validated = ProductSchema.parse(body);
 
     // 图片 URL 归属校验：只允许产品上传目录/自有 OSS，且不能占用其他产品的图片 URL
@@ -295,7 +299,7 @@ export async function POST(request: NextRequest) {
     // 重新验证前台页面缓存 & 管理后台统计缓存
     revalidatePath("/products");
     revalidatePath("/sitemap.xml");
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
     if (product.published) {

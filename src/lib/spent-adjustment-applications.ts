@@ -65,6 +65,13 @@ export const createSpentApplicationSchema = z
 
 export type CreateSpentApplicationInput = z.infer<typeof createSpentApplicationSchema>;
 
+/** 当前用户待审核申请数（全量，不受列表 50 条上限影响） */
+export async function countPendingSpentApplications(userId: string): Promise<number> {
+  return prisma.spentAdjustmentApplication.count({
+    where: { userId, status: "PENDING" },
+  });
+}
+
 /** 我的补录申请列表（按创建时间倒序，最多 50 条） */
 export async function listSpentApplications(userId: string) {
   return prisma.spentAdjustmentApplication.findMany({

@@ -15,6 +15,8 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { isRedemptionRefundApprovalRequired } from "@/lib/admin-approval-policy";
 import { refundAfterSales } from "@/lib/redemption-state-machine";
+import { parseAdminJsonBody } from "@/lib/request-body";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +46,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
     const { id } = await context.params;
     if (!validateCUID(id)) return invalidIdResponse();
-    const parsed = schema.safeParse(await request.json().catch(() => ({})));
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok && bodyResult.response.status === 413) return bodyResult.response;
+    const parsed = schema.safeParse(bodyResult.ok ? bodyResult.data : {});
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
@@ -121,6 +125,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         { status: result.code === "NOT_FOUND" ? 404 : 409 }
       );
     }
+    invalidateAdminStats();
     return NextResponse.json({
       success: true,
       data: { status: result.status, refundedPoints: result.points },

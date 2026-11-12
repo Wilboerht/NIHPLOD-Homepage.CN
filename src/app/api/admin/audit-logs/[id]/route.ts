@@ -73,6 +73,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           ...log,
           detail: maskAuditDetail(log.detail),
           targetLabel: log.targetLabel ? maskAuditText(log.targetLabel) : null,
+          reason: log.reason ? maskAuditText(log.reason) : null,
           actorEmail: log.actorEmail ? maskIdentifier(log.actorEmail) : null,
           ipAddress: log.ipAddress ? maskIp(log.ipAddress) : null,
           userAgent: null,

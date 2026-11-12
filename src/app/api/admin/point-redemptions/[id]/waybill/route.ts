@@ -14,6 +14,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { updateRedemptionWaybill } from "@/lib/point-gifts";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +122,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     await finishAuditLog(auditId, "SUCCESS", { waybillNo });
+    invalidateAdminStats();
 
     return NextResponse.json({ success: true, data: { message: "运单号已更新" } });
   } catch (error) {

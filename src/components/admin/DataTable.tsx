@@ -37,6 +37,9 @@ interface DataTableProps<T> {
   columns: Column<T>[];
   data: T[];
   loading?: boolean;
+  /** 查询失败时的内联错误；提供 onRetry 时展示重试按钮。 */
+  error?: string | null;
+  onRetry?: () => void;
   pagination?: PaginationConfig;
   rowKey?: keyof T | ((record: T) => string);
   onRowClick?: (record: T) => void;
@@ -68,6 +71,8 @@ export function DataTable<T extends object>({
   columns,
   data,
   loading = false,
+  error,
+  onRetry,
   pagination,
   rowKey,
   onRowClick,
@@ -162,6 +167,7 @@ export function DataTable<T extends object>({
 
   return (
     <div
+      aria-busy={loading}
       className={cn(
         "relative overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white",
         className
@@ -177,6 +183,18 @@ export function DataTable<T extends object>({
                   className="h-28 animate-pulse rounded-xl bg-brand-charcoal/[0.04]"
                 />
               ))}
+            </div>
+          ) : error ? (
+            <div
+              role="alert"
+              className="flex flex-col items-center gap-3 px-4 py-12 text-center text-red-600"
+            >
+              <span>{error}</span>
+              {onRetry && (
+                <Button variant="outline" size="sm" onClick={onRetry}>
+                  重试
+                </Button>
+              )}
             </div>
           ) : data.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-4 py-12 text-center text-brand-charcoal/65">
@@ -265,6 +283,19 @@ export function DataTable<T extends object>({
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={columns.length} density={density} />
               ))
+            ) : error ? (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-12 text-center text-red-600">
+                  <div role="alert" className="flex flex-col items-center gap-3">
+                    <span>{error}</span>
+                    {onRetry && (
+                      <Button variant="outline" size="sm" onClick={onRetry}>
+                        重试
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
             ) : data.length === 0 ? (
               // 空状态
               <tr>

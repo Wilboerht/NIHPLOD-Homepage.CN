@@ -9,6 +9,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     oAuthSession: { findMany: vi.fn(), updateMany: vi.fn() },
     refreshToken: { updateMany: vi.fn() },
+    oAuthAuthorizationCode: { deleteMany: vi.fn() },
     oAuthClient: { findUnique: vi.fn() },
   },
 }));
@@ -33,6 +34,7 @@ import {
 const mockFindMany = prisma.oAuthSession.findMany as ReturnType<typeof vi.fn>;
 const mockUpdateMany = prisma.oAuthSession.updateMany as ReturnType<typeof vi.fn>;
 const mockRefreshTokenUpdateMany = prisma.refreshToken.updateMany as ReturnType<typeof vi.fn>;
+const mockCodeDeleteMany = prisma.oAuthAuthorizationCode.deleteMany as ReturnType<typeof vi.fn>;
 const mockClientFindUnique = prisma.oAuthClient.findUnique as ReturnType<typeof vi.fn>;
 const mockRevokeRefreshToken = revokeRefreshToken as ReturnType<typeof vi.fn>;
 const mockEnqueueBackchannel = enqueueBackchannelLogoutNotifications as ReturnType<typeof vi.fn>;
@@ -67,16 +69,14 @@ describe("revokeOAuthClientSessions", () => {
       data: { revokedAt: expect.any(Date) },
     });
     expect(mockRevokeRefreshToken).toHaveBeenCalledWith("user-1", undefined, "client-1", "logout");
-    expect(mockEnqueueBackchannel).toHaveBeenCalledWith(
-      [
-        {
-          userId: "user-1",
-          clientId: "client-1",
-          sid: null,
-          logoutUri: "https://rp.example.com/slo",
-        },
-      ]
-    );
+    expect(mockEnqueueBackchannel).toHaveBeenCalledWith([
+      {
+        userId: "user-1",
+        clientId: "client-1",
+        sid: null,
+        logoutUri: "https://rp.example.com/slo",
+      },
+    ]);
     expect(mockScheduleRedelivery).toHaveBeenCalled();
   });
 
@@ -119,6 +119,9 @@ describe("revokeOAuthClientSessions", () => {
       data: { revokedAt: expect.any(Date), revokedReason: "logout" },
     });
     expect(mockRevokeRefreshToken).not.toHaveBeenCalled();
+    expect(mockCodeDeleteMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", clientId: "client-1", used: false },
+    });
     expect(mockEnqueueBackchannel).toHaveBeenCalledWith(
       [
         {

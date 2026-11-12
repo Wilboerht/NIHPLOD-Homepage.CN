@@ -22,10 +22,15 @@ export interface SecurityIdentityView {
   avatar: string | null;
   createdAt: string;
   lastSyncAt: string;
+  /** 是否为当前 OAuth 客户端对应的微信小程序登录身份 */
+  isCurrentLogin: boolean;
   canUnbind: boolean;
 }
 
-export async function listSecurityIdentities(userId: string): Promise<SecurityIdentityView[]> {
+export async function listSecurityIdentities(
+  userId: string,
+  currentClientId?: string | null
+): Promise<SecurityIdentityView[]> {
   const [identities, account] = await Promise.all([
     prisma.externalIdentity.findMany({
       where: { userId },
@@ -48,14 +53,19 @@ export async function listSecurityIdentities(userId: string): Promise<SecurityId
       avatar?: string | null;
       mpClientId?: string | null;
     } | null;
+    const mpClientId = meta?.mpClientId ?? null;
     return {
       id: i.id,
       provider: i.provider,
-      mpClientId: meta?.mpClientId ?? null,
+      mpClientId,
       nickname: meta?.nickname ?? null,
       avatar: meta?.avatar ?? null,
       createdAt: i.createdAt.toISOString(),
       lastSyncAt: i.updatedAt.toISOString(),
+      isCurrentLogin:
+        i.provider === "wechat_miniprogram" &&
+        !!currentClientId &&
+        mpClientId === currentClientId,
       canUnbind: hasRealPhone,
     };
   });

@@ -300,6 +300,9 @@ export async function checkAdminRateLimit(
   const result = await rateLimit(identifier, "default", {
     maxRequests: 30,
     windowMs: 60 * 1000,
+    // 管理端包含删除、导出、审批执行等敏感操作：DB 故障时 fail-closed，
+    // 不能退化为单实例内存限流导致多实例下配额被放大。
+    storageFailureMode: "fail_closed",
   });
   if (!result.success) {
     return NextResponse.json(

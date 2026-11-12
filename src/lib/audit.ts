@@ -848,6 +848,8 @@ export async function listAuditLogs(options: AuditLogQueryOptions) {
     ...(cursor ? {} : { skip: (page - 1) * pageSize }),
     take: pageSize,
     include,
+    // detail 最大 64KB、userAgent 为 Text：列表不读取，详情接口再按需返回。
+    omit: { detail: true, userAgent: true },
   });
 
   const total = cursor ? null : await prisma.auditLog.count({ where: baseWhere });

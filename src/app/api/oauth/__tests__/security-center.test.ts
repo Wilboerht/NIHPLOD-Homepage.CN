@@ -345,6 +345,7 @@ describe("/api/oauth/security/*", () => {
       expect.objectContaining({
         provider: "wechat_miniprogram",
         mpClientId: "wechat-mp-points",
+        isCurrentLogin: true,
         canUnbind: true,
       })
     );

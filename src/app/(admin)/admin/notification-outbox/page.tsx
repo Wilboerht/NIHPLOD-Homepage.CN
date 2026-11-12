@@ -4,16 +4,17 @@
  * 事务通知 Outbox 管理页
  * 查看短信/微信模板/小程序/WeCom 通知的发送状态，支持重试与丢弃。
  */
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Pagination } from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
-import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { apiPost, ApiError } from "@/lib/api-client";
 import { formatDateTimeSeconds } from "@/lib/format";
-import { deferInEffect } from "@/hooks/deferInEffect";
+import { useAdminListQuery } from "@/hooks/useAdminListQuery";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import {
@@ -152,40 +153,44 @@ function NotificationOutboxContent() {
   const { can } = useAdminPermissions();
   const canWrite = can("notifications:write");
   const { requireTotp, totpModal } = useTotpConfirm();
-  const [data, setData] = useState<ListData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<"" | NotificationStatus>("");
-  const [channelFilter, setChannelFilter] = useState<"" | NotificationChannel>("");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [page, setPage] = useState(() => {
+    const value = Number(searchParams.get("page"));
+    return Number.isFinite(value) && value >= 1 ? Math.floor(value) : 1;
+  });
+  const [statusFilter, setStatusFilter] = useState<"" | NotificationStatus>(
+    () => (searchParams.get("status") as NotificationStatus | null) ?? ""
+  );
+  const [channelFilter, setChannelFilter] = useState<"" | NotificationChannel>(
+    () => (searchParams.get("channel") as NotificationChannel | null) ?? ""
+  );
   const [actionTarget, setActionTarget] = useState<{
     id: string;
     action: "retry" | "discard";
   } | null>(null);
   const [acting, setActing] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await apiGet<ListData>("/api/admin/notification-outbox", {
-        page,
-        pageSize: 30,
-        status: statusFilter || undefined,
-        channel: channelFilter || undefined,
-      });
-      setData(result);
-      setLoadError(false);
-    } catch {
-      setLoadError(true);
-      toast.error("加载通知队列失败");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, channelFilter, toast]);
+  const { data, loading, error, refresh } = useAdminListQuery<ListData>({
+    path: "/api/admin/notification-outbox",
+    params: {
+      page,
+      pageSize: 30,
+      status: statusFilter || undefined,
+      channel: channelFilter || undefined,
+    },
+    onError: () => toast.error("加载通知队列失败"),
+  });
 
   useEffect(() => {
-    deferInEffect(load);
-  }, [load]);
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    if (statusFilter) params.set("status", statusFilter);
+    if (channelFilter) params.set("channel", channelFilter);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [page, statusFilter, channelFilter, pathname, router]);
 
   const submit = async (id: string, action: "retry" | "discard") => {
     setActing(true);
@@ -202,7 +207,7 @@ function NotificationOutboxContent() {
       }
       toast.success(action === "retry" ? "已重新入队" : "已丢弃");
       setActionTarget(null);
-      await load();
+      await refresh();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "操作失败");
     } finally {
@@ -223,7 +228,7 @@ function NotificationOutboxContent() {
             size="sm"
             leftIcon={<RefreshCw className="h-4 w-4" />}
             loading={loading}
-            onClick={load}
+            onClick={refresh}
           >
             刷新
           </Button>
@@ -275,95 +280,88 @@ function NotificationOutboxContent() {
         </select>
       </div>
 
-      {loadError && !data ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-brand-charcoal/10 bg-white py-12">
-          <p className="text-sm text-red-500">加载失败，请稍后重试</p>
-          <Button variant="outline" size="sm" onClick={load}>
-            重新加载
-          </Button>
-        </div>
-      ) : (
-        <DataTable
-          columns={[
-            ...columns,
-            ...(canWrite
-              ? [
-                  {
-                    key: "actions",
-                    title: "操作",
-                    width: "140px",
-                    align: "right" as const,
-                    render: (_: unknown, row: OutboxItem) => (
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
-                          disabled={row.status !== "DEAD" && row.status !== "SKIPPED"}
-                          onClick={() => setActionTarget({ id: row.id, action: "retry" })}
-                        >
-                          重试
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                          disabled={row.status === "SENT" || row.status === "SENDING"}
-                          onClick={() => setActionTarget({ id: row.id, action: "discard" })}
-                        >
-                          丢弃
-                        </Button>
-                      </div>
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-          data={data?.items ?? []}
-          loading={loading}
-          rowKey="id"
-          density="compact"
-          emptyText="暂无通知记录"
-          minWidth="1180px"
-          mobileCard={(row) => (
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{row.eventType}</span>
-                <Badge variant={STATUS_META[row.status].variant}>
-                  {STATUS_META[row.status].label}
-                </Badge>
-              </div>
-              <p className="text-xs text-brand-charcoal/65">
-                {CHANNEL_LABELS[row.channel]} · {row.attempts}/{row.maxAttempts} 次
-              </p>
-              <p className="break-all font-mono text-xs text-brand-charcoal/55">
-                {row.idempotencyKey}
-              </p>
-              {row.lastError && <p className="text-xs text-red-500">{row.lastError}</p>}
-              <div className="flex justify-end gap-1 pt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
-                  disabled={row.status !== "DEAD" && row.status !== "SKIPPED"}
-                  onClick={() => setActionTarget({ id: row.id, action: "retry" })}
-                >
-                  重试
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                  disabled={row.status === "SENT" || row.status === "SENDING"}
-                  onClick={() => setActionTarget({ id: row.id, action: "discard" })}
-                >
-                  丢弃
-                </Button>
-              </div>
+      <DataTable
+        error={error ? "加载失败，请稍后重试" : null}
+        onRetry={refresh}
+        columns={[
+          ...columns,
+          ...(canWrite
+            ? [
+                {
+                  key: "actions",
+                  title: "操作",
+                  width: "140px",
+                  align: "right" as const,
+                  render: (_: unknown, row: OutboxItem) => (
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                        disabled={row.status !== "DEAD" && row.status !== "SKIPPED"}
+                        onClick={() => setActionTarget({ id: row.id, action: "retry" })}
+                      >
+                        重试
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                        disabled={row.status === "SENT" || row.status === "SENDING"}
+                        onClick={() => setActionTarget({ id: row.id, action: "discard" })}
+                      >
+                        丢弃
+                      </Button>
+                    </div>
+                  ),
+                },
+              ]
+            : []),
+        ]}
+        data={data?.items ?? []}
+        loading={loading}
+        rowKey="id"
+        density="compact"
+        emptyText="暂无通知记录"
+        minWidth="1180px"
+        mobileCard={(row) => (
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">{row.eventType}</span>
+              <Badge variant={STATUS_META[row.status].variant}>
+                {STATUS_META[row.status].label}
+              </Badge>
             </div>
-          )}
-        />
-      )}
+            <p className="text-xs text-brand-charcoal/65">
+              {CHANNEL_LABELS[row.channel]} · {row.attempts}/{row.maxAttempts} 次
+            </p>
+            <p className="break-all font-mono text-xs text-brand-charcoal/55">
+              {row.idempotencyKey}
+            </p>
+            {row.lastError && <p className="text-xs text-red-500">{row.lastError}</p>}
+            <div className="flex justify-end gap-1 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                disabled={row.status !== "DEAD" && row.status !== "SKIPPED"}
+                onClick={() => setActionTarget({ id: row.id, action: "retry" })}
+              >
+                重试
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                disabled={row.status === "SENT" || row.status === "SENDING"}
+                onClick={() => setActionTarget({ id: row.id, action: "discard" })}
+              >
+                丢弃
+              </Button>
+            </div>
+          </div>
+        )}
+      />
 
       {data && data.pagination.totalPages > 1 && (
         <Pagination
@@ -398,7 +396,11 @@ function NotificationOutboxContent() {
 export default function NotificationOutboxPage() {
   return (
     <RequirePermission permission="notifications:read">
-      <NotificationOutboxContent />
+      <Suspense
+        fallback={<div className="py-12 text-center text-sm text-brand-charcoal/65">加载中…</div>}
+      >
+        <NotificationOutboxContent />
+      </Suspense>
     </RequirePermission>
   );
 }

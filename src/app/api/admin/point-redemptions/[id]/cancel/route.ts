@@ -18,6 +18,8 @@ import { isRedemptionCancelApprovalRequired } from "@/lib/admin-approval-policy"
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { prisma } from "@/lib/prisma";
 import { cancelRedemption } from "@/lib/point-gifts";
+import { parseAdminJsonBody } from "@/lib/request-body";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +57,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return invalidIdResponse();
     }
 
-    const parsed = cancelSchema.safeParse(await request.json().catch(() => ({})));
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok && bodyResult.response.status === 413) return bodyResult.response;
+    const parsed = cancelSchema.safeParse(bodyResult.ok ? bodyResult.data : {});
     if (!parsed.success) {
       return NextResponse.json(
         {
@@ -168,6 +172,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       refundedPoints: result.points,
       note: parsed.data.note ?? null,
     });
+    invalidateAdminStats();
 
     const message =
       result.points && result.points > 0

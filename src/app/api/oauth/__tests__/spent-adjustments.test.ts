@@ -141,12 +141,16 @@ describe("/api/oauth/spent-adjustments", () => {
     prismaMock.spentAdjustmentApplication.findMany.mockResolvedValue([
       { id: "app-1", channel: "TMALL", orderNo: "ORDER123", status: "PENDING" },
     ]);
+    prismaMock.spentAdjustmentApplication.count.mockResolvedValue(1);
 
     const res = await GET(makeRequest("GET"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.data.applications).toHaveLength(1);
+    expect(body.data.pendingCount).toBe(1);
+    expect(body.data.maxPending).toBe(2);
+    expect(body.data.canSubmit).toBe(true);
   });
 
   it("POST 提交成功（事务内待审上限校验 + 审计）", async () => {

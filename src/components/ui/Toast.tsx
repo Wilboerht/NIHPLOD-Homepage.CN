@@ -208,7 +208,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   "flex w-[min(280px,calc(100vw-2rem))] max-w-[400px] items-center gap-3 rounded-xl border px-4 py-3 shadow-lg",
                   typeStyles[toast.type]
                 )}
-                role="alert"
+                role={toast.type === "error" ? "alert" : "status"}
+                aria-live={toast.type === "error" ? "assertive" : "polite"}
               >
                 <Icon className={cn("h-5 w-5 flex-shrink-0", iconStyles[toast.type])} />
                 <span className="flex-1 text-sm font-medium">{toast.message}</span>

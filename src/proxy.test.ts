@@ -79,9 +79,7 @@ describe("proxy", () => {
     );
 
     expect(res.status).toBe(308);
-    expect(res.headers.get("location")).toBe(
-      "https://nihplod.cn/products/serum?utm_source=x"
-    );
+    expect(res.headers.get("location")).toBe("https://nihplod.cn/products/serum?utm_source=x");
   });
 
   it("产品昵称尾斜杠同样返回 308", async () => {
@@ -152,5 +150,30 @@ describe("proxy", () => {
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/admin-login");
     expect(res.headers.get(`x-middleware-request-${ADMIN_PAGE_PATH_HEADER}`)).toBeNull();
+  });
+
+  it("登出端点即使没有有效 token 也放行到 route，由 route 清理 Cookie", async () => {
+    const csrf = "a".repeat(64);
+    const req = new NextRequest("https://nihplod.cn/api/admin/logout", {
+      method: "POST",
+      headers: {
+        cookie: `__Host-csrf_token=${csrf}`,
+        "x-csrf-token": csrf,
+      },
+    });
+
+    const res = await proxy(req);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("登出端点仍保留 CSRF 前置校验", async () => {
+    const res = await proxy(
+      new NextRequest("https://nihplod.cn/api/admin/logout", { method: "POST" })
+    );
+
+    expect(res.status).toBe(403);
+    expect(res.headers.get("x-middleware-next")).toBeNull();
   });
 });

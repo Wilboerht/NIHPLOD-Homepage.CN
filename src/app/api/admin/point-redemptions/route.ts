@@ -13,10 +13,11 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { createAuditLogStrict } from "@/lib/audit";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { getRedemptionProtectionView } from "@/lib/redemption-protection";
+import { adminPageSchema, adminPageSizeSchema } from "@/lib/validation";
 
 const querySchema = z.object({
-  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
-  pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
+  page: adminPageSchema,
+  pageSize: adminPageSizeSchema,
   status: z
     .enum([
       "PENDING",

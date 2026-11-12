@@ -59,6 +59,9 @@ export const LEVEL_THRESHOLDS: Record<MembershipLevel, number> = {
 // 积分规则（所有等级累积积分；兑礼仅银卡及以上，账本在官网，兑礼在商城）
 // ============================================
 
+/** 消费积分比例：每消费多少元发放 1 积分（当前 1:1） */
+export const POINT_EARN_YUAN_PER_POINT = 1;
+
 /** 积分兑礼率（1 积分可兑价值）：普通档不开放兑礼（null），仅累积积分 */
 export const POINT_REDEEM_RATES: Record<MembershipLevel, number | null> = {
   REGULAR: null,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cuidSchema } from "./validation";
 import type { AdminPermission } from "./admin-permissions";
 
 export const APPROVAL_POLICY_KEYS = [
@@ -50,7 +51,7 @@ export const SPENT_REVIEW_CUMULATIVE_LIMITS = {
 } as const;
 
 export const pointsAdjustPayloadSchema = z.object({
-  userId: z.string().cuid(),
+  userId: cuidSchema,
   amount: z
     .number()
     .int()
@@ -60,23 +61,23 @@ export const pointsAdjustPayloadSchema = z.object({
 });
 
 export const redemptionCancelPayloadSchema = z.object({
-  redemptionId: z.string().cuid(),
+  redemptionId: cuidSchema,
   note: z.string().trim().max(200, "取消原因过长").optional(),
 });
 
 export const redemptionRefundPayloadSchema = z.object({
-  redemptionId: z.string().cuid(),
+  redemptionId: cuidSchema,
   note: z.string().trim().max(200, "退款备注过长").optional(),
 });
 
 export const spentReviewApprovePayloadSchema = z.object({
-  applicationId: z.string().cuid(),
+  applicationId: cuidSchema,
   reviewAmount: z.number().int().min(1).max(1_000_000, "核实金额不能超过 1,000,000"),
   reviewNote: z.string().trim().max(500, "备注过长").optional(),
 });
 
 export const spentReviewUndoPayloadSchema = z.object({
-  applicationId: z.string().cuid(),
+  applicationId: cuidSchema,
 });
 
 /** Excel 导入预览令牌由服务端加密签发，内含行快照；审批单只保存密文 */
@@ -87,39 +88,39 @@ export const spentImportExecutePayloadSchema = z.object({
 });
 
 export const spentImportUndoPayloadSchema = z.object({
-  batchId: z.string().cuid(),
+  batchId: cuidSchema,
   reason: z.string().trim().min(2, "请填写撤销原因或工单号").max(200),
 });
 
 export const adminDeletePayloadSchema = z.object({
-  adminId: z.string().cuid(),
+  adminId: cuidSchema,
 });
 
 export const userStatusPayloadSchema = z.object({
-  userId: z.string().cuid(),
+  userId: cuidSchema,
   status: z.enum(["ACTIVE", "SUSPENDED", "BANNED"]),
 });
 
 export const userDeletePayloadSchema = z.object({
-  userId: z.string().cuid(),
+  userId: cuidSchema,
 });
 
 export const userPhoneChangePayloadSchema = z.object({
-  userId: z.string().cuid(),
+  userId: cuidSchema,
   newPhone: z.string().regex(/^1[3-9]\d{9}$/),
   expectedPhoneHash: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
 export const userAccountMergePayloadSchema = z.object({
-  sourceUserId: z.string().cuid(),
-  targetUserId: z.string().cuid(),
+  sourceUserId: cuidSchema,
+  targetUserId: cuidSchema,
   expectedSourceUpdatedAt: z.string().datetime(),
   expectedTargetUpdatedAt: z.string().datetime(),
   confirmation: z.literal("MERGE"),
 });
 
 export const totpRecoveryPayloadSchema = z.object({
-  adminId: z.string().cuid(),
+  adminId: cuidSchema,
   reason: z.string().trim().min(5, "请填写至少 5 个字符的原因").max(500, "原因过长"),
 });
 

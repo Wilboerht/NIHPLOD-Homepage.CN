@@ -247,9 +247,10 @@ export async function apiRequest<T = unknown>(
  */
 export function apiGet<T = unknown>(
   path: string,
-  params?: Record<string, string | number | undefined>
+  params?: Record<string, string | number | undefined>,
+  options?: { signal?: AbortSignal; timeoutMs?: number }
 ): Promise<T> {
-  return apiRequest<T>(path, { method: "GET", params });
+  return apiRequest<T>(path, { method: "GET", params, ...options });
 }
 
 /**

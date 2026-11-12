@@ -329,7 +329,11 @@ for (const name of ["JWT_ACCESS_PUBLIC_KEY", "JWT_ID_TOKEN_PUBLIC_KEY"] as const
 // RSA 密钥不能只做存在性检查：PEM 损坏、公私钥不匹配或 kid 冲突会让线上验签失败。
 const rsaPairs = [
   { name: "ACCESS", privateKey: "JWT_ACCESS_PRIVATE_KEY", publicKey: "JWT_ACCESS_PUBLIC_KEY" },
-  { name: "ID_TOKEN", privateKey: "JWT_ID_TOKEN_PRIVATE_KEY", publicKey: "JWT_ID_TOKEN_PUBLIC_KEY" },
+  {
+    name: "ID_TOKEN",
+    privateKey: "JWT_ID_TOKEN_PRIVATE_KEY",
+    publicKey: "JWT_ID_TOKEN_PUBLIC_KEY",
+  },
   {
     name: "LOGOUT_TOKEN",
     privateKey: "JWT_LOGOUT_TOKEN_PRIVATE_KEY",
@@ -401,9 +405,7 @@ check({
     duplicateKids.length > 0
       ? `存在重复 kid：${duplicateKids.join(", ")}，验证方可能选错公钥`
       : "当前及上一代 JWKS kid 均唯一",
-  ...(duplicateKids.length > 0
-    ? { fix: "为每把当前/历史公钥配置互不相同的 kid 后重启" }
-    : {}),
+  ...(duplicateKids.length > 0 ? { fix: "为每把当前/历史公钥配置互不相同的 kid 后重启" } : {}),
 });
 
 // TOTP_ENCRYPTION_KEY：admin TOTP setup/verify/资金操作运行期强依赖
@@ -448,8 +450,7 @@ if (privateBucket) {
   check({
     status: "PASS",
     name: "ALI_OSS_PRIVATE_BUCKET",
-    message:
-      "未配置私有 OSS，使用本地 private/spent-adjustments（单实例 + 持久盘 + 已备份）",
+    message: "未配置私有 OSS，使用本地 private/spent-adjustments（单实例 + 持久盘 + 已备份）",
   });
 } else if (allowPublicProof) {
   check({
@@ -883,7 +884,10 @@ if (archiveDir.replace(/\\/g, "/").includes("/public/")) {
   check({ status: "PASS", name: "AUDIT_ARCHIVE_DIR", message: `使用 ${archiveDir}` });
 }
 
-if (process.env.AUDIT_RETENTION_ENABLED === "true" && process.env.AUDIT_RETENTION_ALLOW_LOCAL_ONLY !== "true") {
+if (
+  process.env.AUDIT_RETENTION_ENABLED === "true" &&
+  process.env.AUDIT_RETENTION_ALLOW_LOCAL_ONLY !== "true"
+) {
   check({
     status: "FAIL",
     name: "AUDIT_RETENTION_ALLOW_LOCAL_ONLY",
@@ -910,9 +914,7 @@ for (const name of advisorSsoVars) {
       status: enabled ? "FAIL" : "SKIP",
       name,
       message: enabled ? "已启用管理员 SSO，但该项未配置" : "未配置（管理员 SSO 未启用，无需配置）",
-      ...(enabled
-        ? { fix: "按 docs 配置主站 -> Skin-Advisor 管理员 SSO 变量后重启" }
-        : {}),
+      ...(enabled ? { fix: "按 docs 配置主站 -> Skin-Advisor 管理员 SSO 变量后重启" } : {}),
     });
   } else if (name === "ADVISOR_ADMIN_SSO_CLIENT_SECRET" && value.length < MIN_SECRET_LENGTH) {
     check({
@@ -964,15 +966,12 @@ if (advisorSsoEnabled === "true") {
 }
 
 // 管理员 SSO 断言必须使用 RS256；HS256 共享密钥仅用于迁移回退，生产不得长期保留。
-const advisorSigningAlgRaw = (process.env.ADVISOR_ADMIN_SSO_SIGNING_ALG || "")
-  .trim()
-  .toUpperCase();
+const advisorSigningAlgRaw = (process.env.ADVISOR_ADMIN_SSO_SIGNING_ALG || "").trim().toUpperCase();
 const advisorHasPrivateKey = !!process.env.ADVISOR_ADMIN_SSO_PRIVATE_KEY;
 const advisorHasPublicKey = !!process.env.ADVISOR_ADMIN_SSO_PUBLIC_KEY;
 const advisorHasLegacySecret = !!process.env.ADVISOR_ADMIN_SSO_SECRET;
 const advisorSigningAlg =
-  advisorSigningAlgRaw ||
-  (advisorHasPrivateKey ? "RS256" : advisorHasLegacySecret ? "HS256" : "");
+  advisorSigningAlgRaw || (advisorHasPrivateKey ? "RS256" : advisorHasLegacySecret ? "HS256" : "");
 
 if (advisorSsoEnabled === "true") {
   if (advisorSigningAlgRaw && !["RS256", "HS256"].includes(advisorSigningAlgRaw)) {
@@ -1024,9 +1023,7 @@ if (advisorSsoEnabled === "true") {
       status: advisorHasLegacySecret ? "PASS" : "FAIL",
       name: "ADVISOR_ADMIN_SSO_SECRET",
       message: advisorHasLegacySecret ? "已配置（迁移回退模式）" : "未配置，HS256 无法签发",
-      ...(advisorHasLegacySecret
-        ? {}
-        : { fix: "临时配置共享密钥，或直接切换 RS256" }),
+      ...(advisorHasLegacySecret ? {} : { fix: "临时配置共享密钥，或直接切换 RS256" }),
     });
   } else {
     check({
@@ -1091,15 +1088,13 @@ if (baSsoEnabled) {
   });
 
   const baRedirect = process.env.BA_ADMIN_SSO_REDIRECT_URI;
-  if (baRedirect) {    try {
+  if (baRedirect) {
+    try {
       const parsed = new URL(baRedirect);
       check({
         status: parsed.protocol === "https:" ? "PASS" : "FAIL",
         name: "BA_ADMIN_SSO_REDIRECT_URI",
-        message:
-          parsed.protocol === "https:"
-            ? "HTTPS 回调地址合法"
-            : "必须是 https 地址",
+        message: parsed.protocol === "https:" ? "HTTPS 回调地址合法" : "必须是 https 地址",
         ...(parsed.protocol === "https:"
           ? {}
           : { fix: "改为 https://ba.nihplod.cn/api/admin/auth/sso/callback" }),
@@ -1138,12 +1133,72 @@ if (process.env.ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL) {
     status: "FAIL",
     name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
     message: "TOTP 宽限期已移除，该变量不再生效",
-    fix: "从部署环境中删除 ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL；所有子站管理员必须先启用 TOTP",  });
+    fix: "从部署环境中删除 ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL；所有子站管理员必须先启用 TOTP",
+  });
 } else {
   check({
     status: "PASS",
     name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
     message: "未配置（强制 TOTP，无宽限期）",
+  });
+}
+
+// ============================================
+// 测肤子站 break-glass 应急账号
+// ============================================
+
+if (process.env.ADMIN_BREAK_GLASS_ENABLED !== undefined) {
+  check({
+    status: "FAIL",
+    name: "ADMIN_BREAK_GLASS_ENABLED",
+    message: "变量名错误且不会生效，代码读取的是 ADVISOR_BREAK_GLASS_ENABLED",
+    fix: "删除 ADMIN_BREAK_GLASS_ENABLED，改用 ADVISOR_BREAK_GLASS_ENABLED",
+  });
+}
+
+const breakGlassEnabled = process.env.ADVISOR_BREAK_GLASS_ENABLED === "true";
+const breakGlassUsername = process.env.ADVISOR_BREAK_GLASS_USERNAME;
+const breakGlassPassword = process.env.ADVISOR_BREAK_GLASS_PASSWORD;
+const breakGlassTotp = process.env.ADVISOR_BREAK_GLASS_TOTP_SECRET;
+const breakGlassHasPlaceholder =
+  breakGlassPassword === "CHANGE_ME" || breakGlassTotp === "CHANGE_ME";
+const breakGlassHasCredentials = Boolean(
+  breakGlassUsername && breakGlassPassword && breakGlassTotp
+);
+
+if (breakGlassEnabled) {
+  if (!breakGlassHasCredentials) {
+    check({
+      status: "FAIL",
+      name: "ADVISOR_BREAK_GLASS_ENABLED",
+      message: "已启用应急账号，但用户名/密码/TOTP secret 不完整",
+      fix: "补齐 ADVISOR_BREAK_GLASS_USERNAME/PASSWORD/TOTP_SECRET，或关闭该开关",
+    });
+  } else if (breakGlassHasPlaceholder) {
+    check({
+      status: "FAIL",
+      name: "ADVISOR_BREAK_GLASS_ENABLED",
+      message: "已启用应急账号，但凭据仍为示例值 CHANGE_ME",
+      fix: "轮换为真实强密码与独立 TOTP secret",
+    });
+  } else {
+    check({
+      status: "PASS",
+      name: "ADVISOR_BREAK_GLASS_ENABLED",
+      message: "已显式启用，凭据已配置（请确认轮换周期与使用审计）",
+    });
+  }
+} else if (breakGlassHasCredentials && !breakGlassHasPlaceholder) {
+  check({
+    status: "PASS",
+    name: "ADVISOR_BREAK_GLASS_ENABLED",
+    message: "已配置应急凭据但开关关闭（默认安全状态）",
+  });
+} else {
+  check({
+    status: "PASS",
+    name: "ADVISOR_BREAK_GLASS_ENABLED",
+    message: "未启用（默认安全状态）",
   });
 }
 

@@ -15,6 +15,7 @@ import { scheduleSsoEvent } from "@/lib/sso-audit";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
 import {
   listSpentApplications,
+  countPendingSpentApplications,
   createSpentApplication,
   createSpentApplicationSchema,
 } from "@/lib/spent-adjustment-applications";
@@ -65,8 +66,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const applications = await listSpentApplications(payload.id);
-    return resJson({ success: true, data: { applications } });
+    const [applications, pendingCount] = await Promise.all([
+      listSpentApplications(payload.id),
+      countPendingSpentApplications(payload.id),
+    ]);
+    return resJson({
+      success: true,
+      data: {
+        applications,
+        pendingCount,
+        maxPending: MAX_PENDING_PER_USER,
+        canSubmit: pendingCount < MAX_PENDING_PER_USER,
+      },
+    });
   } catch (error) {
     apiConsole.error("[OAuth SpentAdjustments] 查询异常:", error);
     return NextResponse.json(

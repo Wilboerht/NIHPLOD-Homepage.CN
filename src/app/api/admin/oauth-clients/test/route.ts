@@ -18,6 +18,7 @@ import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 /** 测试请求超时（10 秒） */
 const TEST_TIMEOUT_MS = 10_000;
@@ -82,7 +83,9 @@ export async function POST(request: NextRequest) {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

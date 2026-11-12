@@ -21,6 +21,8 @@ import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { isSpentReviewApprovalRequired } from "@/lib/admin-approval-policy";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
 import { reviewApplication, MAX_REVIEW_AMOUNT, SPENT_STATUS_LABELS } from "@/lib/spent-adjustments";
+import { parseAdminJsonBody } from "@/lib/request-body";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 const reviewSchema = z
   .object({
@@ -78,7 +80,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return invalidIdResponse();
     }
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = reviewSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -226,6 +230,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       reviewNote,
       status: result.status,
     });
+    invalidateAdminStats();
 
     return NextResponse.json({
       success: true,

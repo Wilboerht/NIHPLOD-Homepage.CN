@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // 分页参数：parseInt 可能得到 NaN（Math.max/min 对 NaN 仍返回 NaN），
     // 必须先经 Number.isFinite 校验再钳制到合法范围
     const rawPage = parseInt(searchParams.get("page") || "1", 10);
-    const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
+    const page = Number.isFinite(rawPage) ? Math.min(Math.max(1, rawPage), 1000) : 1;
     const rawPageSize = parseInt(searchParams.get("pageSize") || "20", 10);
     const pageSize = Number.isFinite(rawPageSize) ? Math.min(Math.max(1, rawPageSize), 100) : 20;
     const userId = searchParams.get("userId") || undefined;
@@ -72,7 +72,8 @@ export async function GET(request: NextRequest) {
         prisma.user.findMany({
           where: {
             OR: [
-              { phone: { contains: search } },
+              // 手机号只做精确匹配，避免逐位 contains 搜索被用于枚举用户
+              { phone: { equals: search } },
               { nickname: { contains: search, mode: "insensitive" } },
             ],
           },

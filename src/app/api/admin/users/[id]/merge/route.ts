@@ -3,13 +3,13 @@ import { z } from "zod";
 import { requireAdminSupportAccess, supportError, supportReasonSchema } from "@/lib/admin-support";
 import { AccountSecurityError } from "@/lib/admin-account-security";
 import { getAccountMergePreflight, mergeUserAccounts } from "@/lib/admin-account-merge";
-import { invalidIdResponse, validateCUID } from "@/lib/validation";
+import { cuidSchema, invalidIdResponse, validateCUID } from "@/lib/validation";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ id: string }> };
-const idSchema = z.string().cuid();
+const idSchema = cuidSchema;
 const mergeSchema = z.object({
   sourceUserId: idSchema,
   expectedSourceUpdatedAt: z.string().datetime(),

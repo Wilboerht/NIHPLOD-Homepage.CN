@@ -6,6 +6,7 @@
  * 缺失 Content-Length 的请求提供硬上限，避免一次性把超大 body 缓冲进内存。
  */
 import { NextResponse } from "next/server";
+import { BODY_LIMITS } from "./body-limits";
 
 export class BodyTooLargeError extends Error {
   readonly code = "PAYLOAD_TOO_LARGE";
@@ -92,6 +93,34 @@ export function readInternalApiBody(request: Request): Promise<string> {
 export async function readJsonBody<T = unknown>(request: Request, maxBytes: number): Promise<T> {
   const text = await readTextBody(request, maxBytes);
   return JSON.parse(text) as T;
+}
+
+export type AdminJsonBodyResult<T> = { ok: true; data: T } | { ok: false; response: NextResponse };
+
+/**
+ * 管理端 JSON body 统一入口：流式硬上限 + 统一 413/400 映射。
+ * 路由只需判断 ok 并直接返回 response。
+ */
+export async function parseAdminJsonBody<T = unknown>(
+  request: Request
+): Promise<AdminJsonBodyResult<T>> {
+  try {
+    return { ok: true, data: await readJsonBody<T>(request, BODY_LIMITS.adminJson) };
+  } catch (error) {
+    if (isBodyTooLargeError(error)) {
+      return { ok: false, response: payloadTooLargeResponse(error.limit) };
+    }
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          success: false,
+          error: { code: "INVALID_JSON", message: "请求体不是合法的 JSON" },
+        },
+        { status: 400 }
+      ),
+    };
+  }
 }
 
 /**

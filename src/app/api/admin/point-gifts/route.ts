@@ -12,6 +12,8 @@ import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { cuidSchema } from "@/lib/validation";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
@@ -21,7 +23,7 @@ const querySchema = z.object({
 });
 
 const updateSchema = z.object({
-  productId: z.string().cuid(),
+  productId: cuidSchema,
   // 不传则保持当前值（库存保存不改开关，避免覆盖他人刚修改的状态）
   pointRedeemable: z.boolean().optional(),
   // 兑换库存：null = 不限量；不传则保持不变
@@ -171,8 +173,9 @@ export async function PATCH(request: NextRequest) {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    const body = await request.json();
-    const parsed = updateSchema.safeParse(body);
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const parsed = updateSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
       return NextResponse.json(
         {
@@ -183,15 +186,14 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const {
-      productId,
-      pointRedeemable,
-      redeemStock,
-      redeemLimitPerUser,
-      redeemLimitWindowDays,
-    } = parsed.data;
+    const { productId, pointRedeemable, redeemStock, redeemLimitPerUser, redeemLimitWindowDays } =
+      parsed.data;
 
-    if (redeemLimitPerUser === null && redeemLimitWindowDays !== undefined && redeemLimitWindowDays !== null) {
+    if (
+      redeemLimitPerUser === null &&
+      redeemLimitWindowDays !== undefined &&
+      redeemLimitWindowDays !== null
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -260,28 +262,58 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const product = await prisma.product
-      .update({
-        where: { id: productId },
+    // 库存使用 CAS：仅当库存仍等于读取时的快照才写入，避免管理员页面上的旧值
+    // 覆盖用户侧并发兑换的递减（超卖/账实不符）。
+    const updateResult = await prisma.product
+      .updateMany({
+        where: {
+          id: productId,
+          ...(redeemStock !== undefined ? { redeemStock: existing.redeemStock } : {}),
+        },
         data: {
           ...(pointRedeemable !== undefined ? { pointRedeemable } : {}),
           ...(redeemStock !== undefined ? { redeemStock } : {}),
           ...(redeemLimitPerUser !== undefined ? { redeemLimitPerUser } : {}),
           ...(redeemLimitWindowDays !== undefined ? { redeemLimitWindowDays } : {}),
         },
-        select: {
-          id: true,
-          name: true,
-          pointRedeemable: true,
-          redeemStock: true,
-          redeemLimitPerUser: true,
-          redeemLimitWindowDays: true,
-        },
       })
       .catch(async (error) => {
         await finishAuditLog(auditId, "FAILURE", auditDetail);
         throw error;
       });
+
+    if (updateResult.count === 0) {
+      await finishAuditLog(auditId, "FAILURE", { ...auditDetail, reason: "STOCK_CONFLICT" });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "STOCK_CONFLICT",
+            message: "库存已被其他操作修改，请刷新后重试",
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        id: true,
+        name: true,
+        pointRedeemable: true,
+        redeemStock: true,
+        redeemLimitPerUser: true,
+        redeemLimitWindowDays: true,
+      },
+    });
+    if (!product) {
+      await finishAuditLog(auditId, "FAILURE", { ...auditDetail, reason: "NOT_FOUND" });
+      return NextResponse.json(
+        { success: false, error: { code: "NOT_FOUND", message: "产品不存在" } },
+        { status: 404 }
+      );
+    }
 
     await finishAuditLog(auditId, "SUCCESS", {
       ...auditDetail,

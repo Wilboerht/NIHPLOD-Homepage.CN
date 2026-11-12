@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { ProductFormSection } from "@/components/admin/ProductFormSection";
+import { FormSection } from "@/components/admin/FormSection";
 import { cn } from "@/lib/utils";
 import {
   MAX_GEO_FAQS,
@@ -39,7 +39,8 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
   };
 
   return (
-    <ProductFormSection
+    <FormSection
+      density="compact"
       title="GEO FAQ 优化"
       description="手动维护产品问答；为空时前台使用规则兜底。建议 4-8 组，问题使用用户真实问法，答案先给结论再补充。"
       action={
@@ -142,6 +143,6 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
       {atLimit && (
         <p className="mt-3 text-xs text-brand-charcoal/65">最多添加 {MAX_GEO_FAQS} 组问答</p>
       )}
-    </ProductFormSection>
+    </FormSection>
   );
 }

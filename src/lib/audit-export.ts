@@ -18,10 +18,7 @@ import {
   getActiveAuditLegalHolds,
   type AuditLogQueryOptions,
 } from "./audit";
-import {
-  AUDIT_TARGET_TYPE_LABELS,
-  getAuditActionLabel,
-} from "./audit-labels";
+import { AUDIT_TARGET_TYPE_LABELS, getAuditActionLabel } from "./audit-labels";
 import { maskAuditDetail, maskAuditText, redactSensitiveAuditDetail } from "./audit-sanitize";
 import { maskIdentifier, maskIp } from "./mask-phone";
 import { escapeCSV } from "./csv";
@@ -122,6 +119,7 @@ function sanitizeAuditRow(
   return {
     ...scrubbed,
     targetLabel: scrubbed.targetLabel ? maskAuditText(String(scrubbed.targetLabel)) : null,
+    reason: scrubbed.reason ? maskAuditText(String(scrubbed.reason)) : null,
     detail: maskAuditDetail(scrubbed.detail),
     ipAddress: scrubbed.ipAddress ? maskIp(String(scrubbed.ipAddress)) : null,
     userAgent: null,
@@ -149,9 +147,7 @@ function toAuditQuery(filters: AuditExportFilters): AuditLogQueryOptions {
   const rawLegalHold = (filters as { legalHold?: unknown }).legalHold;
   // 与列表接口保持同一口径：YYYY-MM-DD 按 UTC+8 自然日解析，
   // 结束日包含当天 23:59:59.999，避免导出与页面筛选相差 8 小时。
-  const startDate = filters.startDate
-    ? parseUtc8DateBoundary(filters.startDate, false)
-    : undefined;
+  const startDate = filters.startDate ? parseUtc8DateBoundary(filters.startDate, false) : undefined;
   const endDate = filters.endDate ? parseUtc8DateBoundary(filters.endDate, true) : undefined;
   if ((filters.startDate && !startDate) || (filters.endDate && !endDate)) {
     throw new Error("INVALID_EXPORT_DATE");
@@ -174,8 +170,7 @@ async function writeAuditCsv(
 ): Promise<{ count: number; total: number }> {
   const out = createWriteStream(filePath, { flags: "wx", mode: 0o600 });
   const query = toAuditQuery(filters);
-  const legalHolds =
-    query.legalHold !== undefined ? await getActiveAuditLegalHolds() : [];
+  const legalHolds = query.legalHold !== undefined ? await getActiveAuditLegalHolds() : [];
   const where = buildAuditWhere(query, legalHolds);
   const total = await prisma.auditLog.count({ where });
   let processed = 0;
@@ -211,10 +206,7 @@ async function writeAuditCsv(
           row.actorType,
           actor,
           safe.actorEmail,
-          getAuditActionLabel(
-            row.action,
-            (safe.detail ?? null) as Record<string, unknown> | null
-          ),
+          getAuditActionLabel(row.action, (safe.detail ?? null) as Record<string, unknown> | null),
           row.outcome,
           row.riskLevel,
           row.category,
@@ -251,8 +243,7 @@ async function writeAuditJsonl(
 ): Promise<{ count: number; total: number }> {
   const out = createWriteStream(filePath, { flags: "wx", mode: 0o600 });
   const query = toAuditQuery(filters);
-  const legalHolds =
-    query.legalHold !== undefined ? await getActiveAuditLegalHolds() : [];
+  const legalHolds = query.legalHold !== undefined ? await getActiveAuditLegalHolds() : [];
   const where = buildAuditWhere(query, legalHolds);
   const total = await prisma.auditLog.count({ where });
   let processed = 0;

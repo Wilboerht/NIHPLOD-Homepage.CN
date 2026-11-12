@@ -33,6 +33,11 @@ vi.mock("@/hooks/useTotpConfirm", () => ({
 vi.mock("@/components/ui/Toast", () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn() }),
 }));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: vi.fn() }),
+  usePathname: () => "/admin/notification-outbox",
+}));
 
 import NotificationOutboxPage from "../notification-outbox/page";
 

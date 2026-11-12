@@ -173,20 +173,20 @@ describe("POST /api/admin/account-deletions（人工重试）", () => {
 
   it("未登录返回 401", async () => {
     vi.mocked(verifyAuth).mockResolvedValue(null as never);
-    const res = await POST(postRequest({ id: failedItem.id }));
+    const res = await POST(postRequest({ id: failedItem.id, reason: "test-retry" }));
     expect(res.status).toBe(401);
   });
 
   it("无 users:security:write 权限（support 角色）返回 403", async () => {
     vi.mocked(verifyAuth).mockResolvedValue(SUPPORT as never);
-    const res = await POST(postRequest({ id: failedItem.id }));
+    const res = await POST(postRequest({ id: failedItem.id, reason: "test-retry" }));
     expect(res.status).toBe(403);
     expect(executeAccountDeletion).not.toHaveBeenCalled();
   });
 
   it("申请不存在返回 404", async () => {
     mockFindUnique.mockResolvedValue(null);
-    const res = await POST(postRequest({ id: failedItem.id }));
+    const res = await POST(postRequest({ id: failedItem.id, reason: "test-retry" }));
     expect(res.status).toBe(404);
   });
 
@@ -197,7 +197,7 @@ describe("POST /api/admin/account-deletions（人工重试）", () => {
       status: "PENDING",
       attempts: 0,
     });
-    const res = await POST(postRequest({ id: failedItem.id }));
+    const res = await POST(postRequest({ id: failedItem.id, reason: "test-retry" }));
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.error.code).toBe("RETRY_NOT_ALLOWED");
@@ -205,7 +205,7 @@ describe("POST /api/admin/account-deletions（人工重试）", () => {
   });
 
   it("重试成功：同步执行 + 写审计（含 adminId，不落明文手机号）", async () => {
-    const res = await POST(postRequest({ id: failedItem.id }));
+    const res = await POST(postRequest({ id: failedItem.id, reason: "test-retry" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.status).toBe("completed");
@@ -232,7 +232,7 @@ describe("POST /api/admin/account-deletions（人工重试）", () => {
 
   it("重试仍失败：返回 failed 状态与提示文案", async () => {
     vi.mocked(executeAccountDeletion).mockResolvedValue("failed");
-    const res = await POST(postRequest({ id: failedItem.id }));
+    const res = await POST(postRequest({ id: failedItem.id, reason: "test-retry" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.status).toBe("failed");

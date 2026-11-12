@@ -10,7 +10,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-import { validateCUID, invalidIdResponse } from "@/lib/validation";
+import {
+  adminPageSchema,
+  adminPageSizeSchema,
+  validateCUID,
+  invalidIdResponse,
+} from "@/lib/validation";
 import { maskPhone } from "@/lib/mask-phone";
 import { SPENT_CHANNEL_LABELS } from "@/lib/spent-adjustment-meta";
 import { apiConsole } from "@/lib/logger";
@@ -18,8 +23,8 @@ import { apiConsole } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
-  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
-  pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(1000)),
+  page: adminPageSchema,
+  pageSize: adminPageSizeSchema,
   status: z.enum(["ALL", "PENDING", "SUCCESS", "DUPLICATE", "ERROR"]).default("ALL"),
 });
 

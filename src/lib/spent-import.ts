@@ -22,6 +22,7 @@ import {
   invalidateProfileCache,
   pushMembershipUpdateWebhook,
   SpentReversalExceedsBalanceError,
+  SpentUserDeletedError,
 } from "@/lib/points";
 import {
   SPENT_CHANNEL_LABELS,
@@ -1328,6 +1329,9 @@ export async function executeImportBatch(params: {
                 orderNo: row.orderNo,
                 source: "SPENT_IMPORT",
                 requireActiveUser: true,
+                // 负数（退款）行禁止 0 下限钳制：累计消费不足时必须整行失败，
+                // 不能“部分退款成功”却把导入行标记为 SUCCESS，导致退款占用与账实不符。
+                allowNegativeClamp: row.amount! >= 0,
                 enforceRefundClaim: row.amount! < 0,
                 suppressWebhook: true,
                 note: `Excel导入：${row.channel ? SPENT_CHANNEL_LABELS[row.channel] : "未填渠道"}${
@@ -1338,6 +1342,10 @@ export async function executeImportBatch(params: {
               IMPORT_DAILY_LIMIT_YUAN
             );
             if (!result) throw new Error("SPENT_IMPORT_USER_MISSING");
+            if (!result.duplicated && row.amount! < 0 && result.appliedDelta !== row.amount!) {
+              // 防御式校验：即使上游误开启钳制，也不允许退款行部分生效。
+              throw new SpentReversalExceedsBalanceError();
+            }
             completedSync.push(result);
 
             const appliedDelta = result.duplicated ? 0 : result.appliedDelta;
@@ -1382,6 +1390,9 @@ export async function executeImportBatch(params: {
           }
           if (error instanceof SpentRefundReservationConflictError) {
             return markError("退款占用发生并发冲突，请重试该行");
+          }
+          if (error instanceof SpentReversalExceedsBalanceError) {
+            return markError("用户当前累计消费不足以完成退款，请核对后退款或调整金额");
           }
           return markError("入账失败，请重试");
         }
@@ -1673,6 +1684,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
                 spentDelta: -appliedDelta,
                 reference,
                 allowNegativeClamp: false,
+                requireNotDeleted: true,
                 suppressWebhook: true,
                 note: `撤销Excel导入批次 ${batch.id}`,
               },
@@ -1736,6 +1748,13 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
         ok: false,
         code: "REVERSAL_EXCEEDS_BALANCE",
         message: "撤销已整体回滚：存在用户当前累计消费不足以完整冲正的行，请核对后人工处理",
+      };
+    }
+    if (error instanceof SpentUserDeletedError) {
+      return {
+        ok: false,
+        code: "USER_DELETED",
+        message: "批次中有用户已注销，不能自动冲正；请人工核对后处理",
       };
     }
     if (error instanceof Error && error.message === "IMPORT_ALREADY_UNDONE") {

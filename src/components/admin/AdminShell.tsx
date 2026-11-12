@@ -3,7 +3,7 @@
 import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, Suspense } from "react";
 import { ChevronLeft, ChevronRight, Globe, KeyRound, Loader2, LogOut, Menu, X } from "lucide-react";
 import {
   getBreadcrumbs,
@@ -84,6 +84,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
     setLastPathname(pathname);
     setDrawerOpen(false);
   }
+  const mainRef = useRef<HTMLElement>(null);
+  const initialPathRef = useRef(true);
+  useEffect(() => {
+    if (initialPathRef.current) {
+      initialPathRef.current = false;
+      return;
+    }
+    mainRef.current?.focus();
+  }, [pathname]);
 
   // 抽屉打开时锁定背景滚动
   useScrollLock(drawerOpen);
@@ -222,6 +231,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-white font-sans">
+      <a href="#admin-main" className="skip-link">
+        跳到主内容
+      </a>
       {/* 桌面端侧边栏 */}
       <aside
         className={cn(
@@ -288,9 +300,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
       {/* 主内容区：页面边距只由壳提供 */}
       <main
+        id="admin-main"
+        ref={mainRef}
+        tabIndex={-1}
         inert={drawerOpen || undefined}
         aria-hidden={drawerOpen || undefined}
         className={cn(
+          "outline-none",
           "flex min-h-dvh flex-col px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-300 sm:px-6 lg:pb-8 lg:pr-8 lg:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
           collapsed ? "lg:pl-24" : "lg:pl-[17rem]"
         )}
@@ -403,7 +419,7 @@ function SidebarContent({
       </div>
 
       {/* 导航（配置驱动 + 分组 + 权限过滤） */}
-      <nav className="scrollbar-hide flex-1 overflow-y-auto px-3 py-2">
+      <nav aria-label="管理后台导航" className="scrollbar-hide flex-1 overflow-y-auto px-3 py-2">
         {!permissions ? (
           // 权限加载中：显示骨架屏，避免权限菜单闪烁
           <div className="flex flex-col gap-0.5">

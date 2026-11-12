@@ -22,9 +22,11 @@ import { maskPhone, maskAddress, maskIdentifier } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { hashIdentifier } from "@/lib/auth-security";
 import { executeAccountDeletion, DELETION_STATUS, DELETION_LEASE_MS } from "@/lib/account-deletion";
 import { enqueueSecurityActionNotification } from "@/lib/security-notify";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -542,7 +544,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return invalidIdResponse();
     }
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsedUpdate = updateUserSchema.safeParse(body);
     if (!parsedUpdate.success) {
       return NextResponse.json(
@@ -866,7 +870,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    const parsed = deleteUserSchema.safeParse(await request.json().catch(() => ({})));
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok && bodyResult.response.status === 413) return bodyResult.response;
+    const parsed = deleteUserSchema.safeParse(bodyResult.ok ? bodyResult.data : {});
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "请填写删除原因或工单号" } },
@@ -1028,6 +1034,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       requestId: deletionRequest.id,
       previousStatus: user.status,
     });
+    invalidateAdminStats();
 
     // SSO 审计：用户删除（合规敏感，同步等待写入）
     await recordSsoEvent({

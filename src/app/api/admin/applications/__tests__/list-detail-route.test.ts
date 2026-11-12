@@ -224,6 +224,46 @@ describe("管理端简历列表/详情/更新", () => {
     );
   });
 
+  it("未传 expectedStatus 时不允许 hired 回退到 pending", async () => {
+    mocks.updateMany.mockResolvedValue({ count: 0 });
+    mocks.findUnique.mockResolvedValue({
+      status: "hired",
+      updatedAt: new Date("2026-10-02T00:00:00.000Z"),
+    });
+
+    const response = await detailPATCH(
+      patchRequest({ status: "pending", expectedUpdatedAt: "2026-10-01T00:00:00.000Z" }),
+      context
+    );
+
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error.code).toBe("INVALID_TRANSITION");
+    expect(mocks.updateMany.mock.calls[0][0].where.status).toEqual({
+      in: expect.arrayContaining(["reviewed", "rejected"]),
+    });
+    expect(mocks.updateMany.mock.calls[0][0].where.status.in).not.toContain("hired");
+  });
+
+  it("未传 expectedStatus 时允许 interviewed 流转到 rejected", async () => {
+    mocks.updateMany.mockResolvedValue({ count: 1 });
+    mocks.findUnique.mockResolvedValue({
+      ...APPLICATION,
+      status: "rejected",
+      updatedAt: new Date("2026-10-03T00:00:00.000Z"),
+    });
+
+    const response = await detailPATCH(
+      patchRequest({ status: "rejected", expectedUpdatedAt: "2026-10-02T00:00:00.000Z" }),
+      context
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.updateMany.mock.calls[0][0].where.status.in).toContain("interviewed");
+    const body = await response.json();
+    expect(body.data.status).toBe("rejected");
+  });
+
   it("并发成功时更新 updatedAt 并写 SUCCESS 审计", async () => {
     mocks.updateMany.mockResolvedValue({ count: 1 });
     mocks.findUnique.mockResolvedValue({

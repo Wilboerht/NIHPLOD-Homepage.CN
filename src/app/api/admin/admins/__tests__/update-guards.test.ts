@@ -333,6 +333,47 @@ describe("owner 账号保护（委派管理员越权防护）", () => {
     expect(res.status).toBe(200);
   });
 
+  it("支持 CUID2 目标 ID（Prisma 新版 ID）", async () => {
+    const cuid2 = "tz4a98xxat96iws9zmbrgj3a";
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: cuid2,
+      role: "ops",
+      permissions: [],
+      status: "ACTIVE",
+    });
+
+    const res = await PUT(createRequest({ id: cuid2, name: "Cuid2" }), DELEGATED as never);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("委派管理员停用权限更高的管理员被拒", async () => {
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "admin",
+      permissions: [],
+      status: "ACTIVE",
+    });
+
+    const res = await PUT(createRequest({ id: TARGET_ID, status: "DISABLED" }), DELEGATED as never);
+
+    expect(res.status).toBe(403);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
+  it("委派管理员停用同权限范围的管理员允许", async () => {
+    (prisma.admin.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: TARGET_ID,
+      role: "ops",
+      permissions: [],
+      status: "ACTIVE",
+    });
+
+    const res = await PUT(createRequest({ id: TARGET_ID, status: "DISABLED" }), DELEGATED as never);
+
+    expect(res.status).toBe(200);
+  });
+
   it("owner 批量删除其他 owner（仍有 owner 保留）允许", async () => {
     (prisma.admin.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
       { id: TARGET_ID, role: "owner" },

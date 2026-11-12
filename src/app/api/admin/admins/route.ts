@@ -21,12 +21,11 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { hashPassword, passwordSchema } from "@/lib/password";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { deleteAdminsSafely } from "@/lib/admin-safety";
-import {
-  adminEmailReuseCutoff,
-  getAdminEmailReuseCooldownDays,
-} from "@/lib/admin-email";
+import { adminEmailReuseCutoff, getAdminEmailReuseCooldownDays } from "@/lib/admin-email";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
+import { cuidSchema } from "@/lib/validation";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 
@@ -54,13 +53,13 @@ const createSchema = z.object({
 });
 
 const batchSchema = z.object({
-  ids: z.array(z.string().cuid()).min(1).max(100),
+  ids: z.array(cuidSchema).min(1).max(100),
   action: z.enum(["delete"]),
   reason: z.string().trim().max(500).optional(),
 });
 
 const updateSchema = z.object({
-  id: z.string().cuid(),
+  id: cuidSchema,
   email: z.string().email().optional(),
   name: z.string().min(1).optional(),
   role: roleSchema.optional(),
@@ -182,7 +181,9 @@ export const POST = withAuth(async (request, admin) => {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody<Record<string, unknown>>(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
 
     // 批量操作
     if (body.ids && body.action) {
@@ -435,7 +436,9 @@ export const PUT = withAuth(async (request, admin) => {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody<Record<string, unknown>>(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const data = updateSchema.parse(body);
 
     // 自锁保护：不允许通过本接口修改自己的角色/密码/权限（防最后 owner 自降级或误删权限导致锁死）
@@ -518,10 +521,27 @@ export const PUT = withAuth(async (request, admin) => {
     //    在操作者有效权限内。移除 `!撤销` 条目等价于授予模板权限，撤销他人权限
     //    属于削权，两者都必须拦截（此前只扫新增正向条目，可被"移除撤销"绕过）。
     //    既有且未变化的超范围授权（可能由 owner 授予）允许保留，避免改名被误拦。
-    if (admin.role !== "owner" && (data.role !== undefined || permissionOverrides !== undefined)) {
+    // 3) 状态变更：停用高权限账号同样是权限操作，必须满足目标权限 ⊆ 操作者权限。
+    const requestsStatusChange = data.status !== undefined && data.status !== targetAdmin.status;
+    if (
+      admin.role !== "owner" &&
+      (data.role !== undefined || permissionOverrides !== undefined || requestsStatusChange)
+    ) {
       const actorPerms = new Set<string>(
         resolveAdminPermissions(admin.role, admin.permissionOverrides)
       );
+      if (requestsStatusChange) {
+        const targetPerms = resolveAdminPermissions(targetAdmin.role, targetAdmin.permissions);
+        if (!targetPerms.every((permission) => actorPerms.has(permission))) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: { code: "FORBIDDEN", message: "不能操作超出自身权限范围的管理员账号" },
+            },
+            { status: 403 }
+          );
+        }
+      }
       if (data.role !== undefined && data.role !== targetAdmin.role) {
         const template =
           data.role === "owner"
@@ -702,11 +722,7 @@ export const PUT = withAuth(async (request, admin) => {
             throw new AdminUpdateError("NOT_FOUND", "管理员不存在", 404);
           }
           if (current.role === "owner" && ownerCount <= 1) {
-            throw new AdminUpdateError(
-              "LAST_OWNER",
-              "不能降级或禁用最后一个 owner 账号",
-              409
-            );
+            throw new AdminUpdateError("LAST_OWNER", "不能降级或禁用最后一个 owner 账号", 409);
           }
         }
         return tx.admin.update({

@@ -12,6 +12,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { enqueueSecurityActionNotification } from "@/lib/security-notify";
 
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     await finishAuditLog(auditId, "SUCCESS", { requestId: id });
+    invalidateAdminStats();
     await enqueueSecurityActionNotification({
       userId: deletionRequest.userId,
       phone: deletionRequest.user.phone,

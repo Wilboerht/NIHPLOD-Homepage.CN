@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
@@ -174,7 +175,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       request,
     }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
 
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
     revalidatePath("/products");
@@ -293,7 +294,7 @@ export async function DELETE(
       throw error;
     }
 
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
     revalidatePath("/products");

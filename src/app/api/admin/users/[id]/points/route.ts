@@ -16,6 +16,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { isPointsAdjustApprovalRequired } from "@/lib/admin-approval-policy";
 import { isAdminApprovalEnforced } from "@/lib/admin-approval-guard";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 export const dynamic = "force-dynamic";
 
@@ -158,7 +159,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const rateLimitResponse = await checkAdminRateLimit(request, "admin-user-points:adjust");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = adjustSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

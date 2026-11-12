@@ -27,6 +27,7 @@
     "check:production-env": "tsx scripts/check-production-env.ts",
     "check:sso-config": "tsx scripts/check-sso-production-config.ts",
     "check:audit-coverage": "tsx scripts/check-audit-coverage.ts",
+    "check:admin-cuid": "tsx scripts/check-admin-cuid.ts",
     "generate:oauth-rs256-keys": "tsx scripts/generate-oauth-rs256-keys.ts",
     "generate:admin-sso-keys": "tsx scripts/generate-admin-sso-keys.ts",
     "generate:internal-api-keys": "tsx scripts/generate-internal-api-keys.ts",

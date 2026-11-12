@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -8,10 +8,11 @@ import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
 import { requireAdminStepUp } from "@/lib/admin-totp";
+import { cuidSchema } from "@/lib/validation";
 
 // 批量操作 Schema
 const BatchSchema = z.object({
-  ids: z.array(z.string().cuid()).min(1, "请选择至少一条留言").max(100, "一次最多操作 100 条留言"),
+  ids: z.array(cuidSchema).min(1, "请选择至少一条留言").max(100, "一次最多操作 100 条留言"),
   action: z.enum(["read", "unread", "delete"]),
 });
 
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
       }).catch((error) => apiConsole.error("[AuditLog] 审计写入失败:", error));
     }
 
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
 
     return NextResponse.json({
       success: true,

@@ -7,7 +7,7 @@ import type {
   SecurityMonitorGroup,
 } from "@/lib/admin-dashboard-governance";
 import { formatDateTimeSeconds, formatRelativeTime } from "@/lib/format";
-import { Badge } from "./Badge";
+import { Badge } from "@/components/ui/Badge";
 import { DashboardModalCard } from "./DashboardModalCard";
 
 function riskBadge(risk: string | null) {

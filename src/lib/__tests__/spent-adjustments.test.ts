@@ -30,6 +30,9 @@ vi.mock("@/lib/points", () => ({
   invalidateProfileCache: vi.fn(),
   pushMembershipUpdateWebhook: vi.fn().mockResolvedValue(undefined),
   SpentReversalExceedsBalanceError: class SpentReversalExceedsBalanceError extends Error {},
+  SpentUserDeletedError: class SpentUserDeletedError extends Error {
+    readonly code = "SPENT_USER_DELETED";
+  },
 }));
 
 vi.mock("@/lib/sms", () => ({
@@ -343,6 +346,7 @@ describe("undoApplication", () => {
         spentDelta: -1280,
         reference: expect.stringContaining("manual-undo:app-1:"),
         allowNegativeClamp: false,
+        requireNotDeleted: true,
         suppressWebhook: true,
         note: expect.stringContaining("撤销"),
       },

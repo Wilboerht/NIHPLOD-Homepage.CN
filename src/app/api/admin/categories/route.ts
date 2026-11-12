@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const categories = await prisma.category.findMany({
-        orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }, { id: "asc" }],
       include: {
         _count: {
           select: { products: true },
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    revalidateTag("admin-stats", "max");
+    invalidateAdminStats();
     revalidateTag(LLMS_DOCS_TAG, { expire: 0 });
     revalidateTag(PRODUCTS_TAG, { expire: 0 });
     revalidatePath("/products");

@@ -55,11 +55,15 @@ vi.mock("@/lib/admin-totp", () => ({
   isMoneyOperationTotpEnforced: vi.fn().mockReturnValue(true),
 }));
 
-vi.mock("@/lib/validation", () => ({
-  validateCUID: vi.fn().mockReturnValue(true),
-  invalidIdResponse: () =>
-    NextResponse.json({ success: false, error: { code: "INVALID_ID" } }, { status: 400 }),
-}));
+vi.mock("@/lib/validation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/validation")>();
+  return {
+    ...actual,
+    validateCUID: vi.fn().mockReturnValue(true),
+    invalidIdResponse: () =>
+      NextResponse.json({ success: false, error: { code: "INVALID_ID" } }, { status: 400 }),
+  };
+});
 
 vi.mock("@/lib/points-ledger", () => ({
   adjustPoints: vi.fn().mockResolvedValue({ duplicated: false }),

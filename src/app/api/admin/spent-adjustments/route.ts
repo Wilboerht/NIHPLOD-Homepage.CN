@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
-import { validateCUID } from "@/lib/validation";
+import { adminPageSchema, adminPageSizeSchema, validateCUID } from "@/lib/validation";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
@@ -28,8 +28,8 @@ import {
 import { MAX_PENDING_PER_USER } from "@/lib/spent-adjustment-meta";
 
 const querySchema = z.object({
-  page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1)),
-  pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
+  page: adminPageSchema,
+  pageSize: adminPageSizeSchema,
   status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
   search: z.string().max(100).optional(),
 });

@@ -6,7 +6,6 @@ export { SystemAlertIndicator, type SystemAlert } from "./SystemAlertIndicator";
 export { MobileList, MobileListCard } from "./MobileList";
 export { FormSection } from "./FormSection";
 export { FormActions } from "./FormActions";
-export { Badge } from "./Badge";
 export { UserAvatar } from "./UserAvatar";
 export { IconButton } from "./IconButton";
 export { DataTable, type Column } from "./DataTable";

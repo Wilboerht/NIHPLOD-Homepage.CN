@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import type { AdminUser } from "@/types/auth";
 import { prisma } from "./prisma";
 import {
@@ -305,16 +306,7 @@ export interface SecurityMonitorData {
   funds: SecurityMonitorGroup;
 }
 
-export async function getSecurityMonitorData(
-  admin: AdminUser
-): Promise<SecurityMonitorData | null> {
-  if (
-    !hasAdminPermission(admin, "audit:read") ||
-    !hasAdminPermission(admin, "audit:sensitive:read")
-  ) {
-    return null;
-  }
-
+async function loadSecurityMonitorData(): Promise<SecurityMonitorData> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const sensitiveWhere = {
     action: { in: SENSITIVE_ACTIONS },
@@ -429,6 +421,24 @@ export async function getSecurityMonitorData(
   };
 }
 
+const getCachedSecurityMonitorData = unstable_cache(
+  loadSecurityMonitorData,
+  ["admin-security-monitor-v1"],
+  { revalidate: 60, tags: ["admin-security-monitor"] }
+);
+
+export async function getSecurityMonitorData(
+  admin: AdminUser
+): Promise<SecurityMonitorData | null> {
+  if (
+    !hasAdminPermission(admin, "audit:read") ||
+    !hasAdminPermission(admin, "audit:sensitive:read")
+  ) {
+    return null;
+  }
+  return getCachedSecurityMonitorData();
+}
+
 export interface OwnerPermissionHolder {
   id: string;
   name: string;
@@ -453,11 +463,7 @@ export interface OwnerGovernanceData {
 
 const UNENFORCED_OWNER_ACTIONS: string[] = [];
 
-export async function getOwnerGovernanceData(
-  admin: AdminUser
-): Promise<OwnerGovernanceData | null> {
-  if (admin.role !== "owner") return null;
-
+async function loadOwnerGovernanceData(): Promise<OwnerGovernanceData> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [approvals, admins, ownerOnlyTotal, ownerOnlyNonOwner, ownerOnlyEvents] = await Promise.all(
     [
@@ -548,4 +554,17 @@ export async function getOwnerGovernanceData(
     ],
     unenforcedActions: UNENFORCED_OWNER_ACTIONS,
   };
+}
+
+const getCachedOwnerGovernanceData = unstable_cache(
+  loadOwnerGovernanceData,
+  ["admin-owner-governance-v1"],
+  { revalidate: 60, tags: ["admin-owner-governance"] }
+);
+
+export async function getOwnerGovernanceData(
+  admin: AdminUser
+): Promise<OwnerGovernanceData | null> {
+  if (admin.role !== "owner") return null;
+  return getCachedOwnerGovernanceData();
 }

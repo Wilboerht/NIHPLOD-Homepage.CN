@@ -162,6 +162,47 @@ function validateProductionRuntimeConfig(): void {
   }
 }
 
+/**
+ * 管理端安全配置校验：
+ * - 生产环境禁止关闭 owner 审批（ADMIN_APPROVAL_ENABLED=false）
+ * - 审计哈希链必须配置 HMAC key（单 key 或 keyring 当前版本）
+ * - 启用 TOTP 强制时必须有加密密钥
+ */
+function validateAdminSecurityConfig(): void {
+  if (!isProduction()) return;
+
+  if (process.env.ADMIN_APPROVAL_ENABLED === "false") {
+    throw new Error(
+      "[Server] 生产环境禁止设置 ADMIN_APPROVAL_ENABLED=false：这会关闭 owner 对管理员删除、积分调整、退款等高风险操作的审批。"
+    );
+  }
+
+  const version = process.env.AUDIT_INTEGRITY_HMAC_KEY_VERSION ?? "1";
+  let hasAuditKey = false;
+  const keyring = process.env.AUDIT_INTEGRITY_HMAC_KEYS;
+  if (keyring) {
+    try {
+      const parsed = JSON.parse(keyring) as Record<string, unknown>;
+      const current = parsed[version];
+      hasAuditKey = typeof current === "string" && current.length >= MIN_SECRET_LENGTH;
+    } catch {
+      throw new Error("[Server] AUDIT_INTEGRITY_HMAC_KEYS 不是合法 JSON");
+    }
+  }
+  const singleKey = process.env.AUDIT_INTEGRITY_HMAC_KEY;
+  if (!hasAuditKey && !(singleKey && singleKey.length >= MIN_SECRET_LENGTH)) {
+    throw new Error(
+      "[Server] 生产环境必须配置 AUDIT_INTEGRITY_HMAC_KEY（至少 32 字符）或 AUDIT_INTEGRITY_HMAC_KEYS 当前版本，否则审计哈希链无法生成。"
+    );
+  }
+
+  if (process.env.ADMIN_TOTP_ENFORCE !== "false" && !process.env.TOTP_ENCRYPTION_KEY) {
+    throw new Error(
+      "[Server] 生产环境强制 TOTP 时必须配置 TOTP_ENCRYPTION_KEY，否则管理员无法启用/验证 TOTP。"
+    );
+  }
+}
+
 export async function initializeApp(): Promise<void> {
   // 构建阶段跳过初始化（防止 worker 进程重复执行）
   if (process.env.NEXT_PHASE === "phase-production-build") {
@@ -191,6 +232,7 @@ export async function initializeApp(): Promise<void> {
       validateRS256Keys();
       apiConsole.info("✅ RS256 密钥配置已就绪");
       validateProductionRuntimeConfig();
+      validateAdminSecurityConfig();
       apiConsole.info("✅ 生产运行时配置已校验");
     }
 
