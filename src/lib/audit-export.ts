@@ -18,7 +18,10 @@ import {
   getActiveAuditLegalHolds,
   type AuditLogQueryOptions,
 } from "./audit";
-import { AUDIT_ACTION_LABELS, AUDIT_TARGET_TYPE_LABELS } from "./audit-labels";
+import {
+  AUDIT_TARGET_TYPE_LABELS,
+  getAuditActionLabel,
+} from "./audit-labels";
 import { maskAuditDetail, maskAuditText, redactSensitiveAuditDetail } from "./audit-sanitize";
 import { maskIdentifier, maskIp } from "./mask-phone";
 import { escapeCSV } from "./csv";
@@ -208,7 +211,10 @@ async function writeAuditCsv(
           row.actorType,
           actor,
           safe.actorEmail,
-          AUDIT_ACTION_LABELS[row.action] ?? row.action,
+          getAuditActionLabel(
+            row.action,
+            (safe.detail ?? null) as Record<string, unknown> | null
+          ),
           row.outcome,
           row.riskLevel,
           row.category,

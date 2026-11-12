@@ -8,7 +8,7 @@ import {
   hasAdminPermission,
   type AdminPermission,
 } from "./admin-permissions";
-import { AUDIT_ACTION_LABELS } from "./audit-labels";
+import { getAuditActionLabel } from "./audit-labels";
 import { getOwnerApprovalOverview } from "./admin-approval";
 
 const SENSITIVE_ACTIONS = [
@@ -201,7 +201,7 @@ function actionLabel(row: AuditRow): string {
   if (row.action === "webhook_failure_retry") return "重投失败 Webhook";
   if (row.action === "webhook_failure_delete") return "删除失败 Webhook";
   if (row.action === "amap_config_view") return "查看高德地图密钥";
-  return AUDIT_ACTION_LABELS[row.action] ?? row.action;
+  return getAuditActionLabel(row.action, toRecord(row.detail));
 }
 
 function amountText(row: AuditRow): string | null {

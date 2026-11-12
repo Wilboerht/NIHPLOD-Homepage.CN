@@ -211,3 +211,25 @@ export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
   ba_complaint: "BA 举报",
   ba_emergency_account: "BA 应急账号",
 };
+
+const BA_SSO_ACTION_ALIASES: Record<string, string> = {
+  admin_sso_authorize: "ba_admin_sso_authorize",
+  admin_sso_token: "ba_admin_sso_token",
+  admin_sso_status_sync: "ba_admin_sso_status_sync",
+  admin_sso_denied: "ba_admin_sso_denied",
+};
+
+/**
+ * 历史日志兼容：BA 管理员 SSO 在拆分 action 前复用了 admin_sso_*。
+ * 列表/导出按 detail.clientId 或 detail.baRole 显示为 BA 专用标签。
+ */
+export function getAuditActionLabel(
+  action: string,
+  detail?: Record<string, unknown> | null
+): string {
+  const alias = BA_SSO_ACTION_ALIASES[action];
+  if (alias && (detail?.clientId === "ba-admin" || typeof detail?.baRole === "string")) {
+    return AUDIT_ACTION_LABELS[alias] ?? AUDIT_ACTION_LABELS[action] ?? action;
+  }
+  return AUDIT_ACTION_LABELS[action] ?? action;
+}

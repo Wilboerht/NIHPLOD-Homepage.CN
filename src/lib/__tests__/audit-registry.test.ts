@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { AUDIT_ACTIONS, AUDIT_TARGET_TYPES } from "@/lib/audit";
-import { AUDIT_ACTION_LABELS, AUDIT_TARGET_TYPE_LABELS } from "@/lib/audit-labels";
+import {
+  AUDIT_ACTION_LABELS,
+  AUDIT_TARGET_TYPE_LABELS,
+  getAuditActionLabel,
+} from "@/lib/audit-labels";
 import { getAuditActionMeta } from "@/lib/audit-registry";
 
 describe("audit action/target registry", () => {
@@ -22,5 +26,17 @@ describe("audit action/target registry", () => {
 
   it("treats admin creation as a critical action", () => {
     expect(getAuditActionMeta("create_admin").riskLevel).toBe("CRITICAL");
+  });
+
+  it("labels historical BA SSO audit actions as BA", () => {
+    expect(getAuditActionLabel("admin_sso_token", { clientId: "ba-admin" })).toBe(
+      "签发 BA 子站断言"
+    );
+    expect(getAuditActionLabel("admin_sso_token", { baRole: "super_admin" })).toBe(
+      "签发 BA 子站断言"
+    );
+    expect(getAuditActionLabel("admin_sso_token", { clientId: "advisor-admin" })).toBe(
+      "签发测肤子站断言"
+    );
   });
 });

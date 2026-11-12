@@ -86,6 +86,7 @@ export function ContactContent({ content }: ContactContentProps) {
   });
   const [status, setStatus] = useState<FormStatus>("idle");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [consent, setConsent] = useState(false);
   const { success: toastSuccess, error: toastError } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
@@ -184,6 +185,7 @@ export function ContactContent({ content }: ContactContentProps) {
     if (!formData.content.trim()) newErrors.content = "请输入留言内容";
     else if (formData.content.length < 10) newErrors.content = "留言内容至少10个字符";
     else if (formData.content.length > 2000) newErrors.content = "留言内容最多2000个字符";
+    if (!consent) newErrors.consent = "请阅读并同意隐私政策";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -199,10 +201,12 @@ export function ContactContent({ content }: ContactContentProps) {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         content: formData.content.trim(),
+        consent,
       });
       setStatus("success");
       toastSuccess(data.message || "留言已提交");
       setFormData({ name: "", phone: "", type: "", content: "", website: "" });
+      setConsent(false);
     } catch (error) {
       setStatus("error");
       toastError(error instanceof ApiError ? error.message : "网络错误，请检查您的网络连接");
@@ -590,6 +594,39 @@ export function ContactContent({ content }: ContactContentProps) {
                   style={{ maxHeight: "200px" }}
                 />
                 {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
+              </div>
+
+              {/* 隐私政策同意（与加入我们页投递表单保持一致） */}
+              <div>
+                <label className="flex items-start gap-2 text-[13px] font-light leading-5 text-brand-charcoal/70">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => {
+                      setConsent(e.target.checked);
+                      if (errors.consent) setErrors((prev) => ({ ...prev, consent: "" }));
+                    }}
+                    aria-invalid={Boolean(errors.consent)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-300 text-[#00263E] focus:ring-[#00263E]/30"
+                  />
+                  <span>
+                    我已阅读并同意{" "}
+                    <Link
+                      href="/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-brand-charcoal"
+                    >
+                      《隐私政策》
+                    </Link>
+                    ，同意公司为处理我的留言使用我的姓名和电话信息。
+                  </span>
+                </label>
+                {errors.consent && (
+                  <p className="mt-1 text-xs text-red-500" role="alert">
+                    {errors.consent}
+                  </p>
+                )}
               </div>
 
               {/* Submit */}

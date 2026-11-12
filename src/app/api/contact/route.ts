@@ -18,6 +18,8 @@ const ContactFormSchema = z.object({
     .enum(["consultation", "cooperation", "feedback", "complaint", "application", "other"])
     .optional(),
   location: z.string().max(100, "所在地最多100个字符").optional(),
+  // 隐私政策同意
+  consent: z.literal(true, { message: "请阅读并同意隐私政策" }),
   // 蜜罐字段 - 如果有值说明是机器人
   website: z.string().max(200).optional(),
 });
@@ -36,7 +38,10 @@ export async function POST(request: NextRequest) {
     const ip = getClientIP(request);
     const limitResult = await rateLimit(ip, "form");
     if (!limitResult.success) {
-      return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+      return NextResponse.json(
+        { success: false, error: { code: "RATE_LIMITED", message: "请求过于频繁，请稍后再试" } },
+        { status: 429 }
+      );
     }
     const body = await readJsonBody(request, BODY_LIMITS.authJson);
 
@@ -44,7 +49,14 @@ export async function POST(request: NextRequest) {
     const result = ContactFormSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
-        { error: "表单验证失败", details: result.error.flatten().fieldErrors },
+        {
+          success: false,
+          error: {
+            code: "INVALID_PARAMS",
+            message: "表单验证失败",
+            details: result.error.flatten().fieldErrors,
+          },
+        },
         { status: 400 }
       );
     }
@@ -53,7 +65,7 @@ export async function POST(request: NextRequest) {
 
     // 蜜罐检测
     if (website) {
-      return NextResponse.json({ success: true, message: "留言已提交" });
+      return NextResponse.json({ success: true, data: { message: "留言已提交" } });
     }
 
     // 映射咨询类型为中文
@@ -102,10 +114,16 @@ export async function POST(request: NextRequest) {
       apiConsole.error("❌ [Contact API] Notification failed:", notifError);
     }
 
-    return NextResponse.json({ success: true, message: "感谢您的留言，我们会尽快回复！" });
+    return NextResponse.json({
+      success: true,
+      data: { message: "感谢您的留言，我们会尽快回复！" },
+    });
   } catch (error) {
     if (isBodyTooLargeError(error)) return payloadTooLargeResponse(error.limit);
     apiConsole.error("Contact form error:", error);
-    return NextResponse.json({ error: "提交失败，请稍后重试" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: { code: "INTERNAL_ERROR", message: "提交失败，请稍后重试" } },
+      { status: 500 }
+    );
   }
 }

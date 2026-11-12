@@ -32,8 +32,8 @@ export function ProductFaq({ faqs, title = "常见问题", className }: ProductF
         className
       )}
     >
-      <div className="mb-4 flex justify-start border-b border-brand-beige/80 pb-4">
-        <h2 className="text-[20px] font-normal tracking-[0.05em] text-brand-charcoal sm:text-[22px]">
+      <div className="mb-4 flex justify-center border-b border-brand-beige/80 pb-4">
+        <h2 className="text-center text-[19px] font-normal tracking-[0.15em] text-brand-charcoal lg:text-[24px] lg:font-light">
           {title}
         </h2>
       </div>

@@ -120,7 +120,7 @@ export type AdminRoleValue = (typeof ADMIN_ROLES)[number];
 
 export const ROLE_LABELS: Record<AdminRoleValue, string> = {
   owner: "超级管理员",
-  admin: "通用管理员（历史）",
+  admin: "管理员",
   ops: "运营",
   support: "客服",
   hr: "招聘",

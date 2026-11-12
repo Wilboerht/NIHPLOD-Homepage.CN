@@ -15,6 +15,7 @@ import { apiGet } from "@/lib/api-client";
 import {
   AUDIT_ACTION_LABELS as ACTION_LABELS,
   AUDIT_TARGET_TYPE_LABELS as TARGET_TYPE_LABELS,
+  getAuditActionLabel,
 } from "@/lib/audit-labels";
 import { AUDIT_CATEGORIES, AUDIT_RISK_LEVELS } from "@/lib/audit-registry";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
@@ -161,15 +162,22 @@ function RiskBadge({ risk }: { risk?: string | null }) {
   return <Badge variant={meta.variant}>{meta.label}</Badge>;
 }
 
-function ActionBadge({ action }: { action: string }) {
+function ActionBadge({
+  action,
+  detail,
+}: {
+  action: string;
+  detail?: Record<string, unknown> | null;
+}) {
+  const label = getAuditActionLabel(action, detail);
   return (
     <span
-      title={ACTION_LABELS[action] || action}
+      title={label}
       className={`inline-flex max-w-full items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
         ACTION_COLORS[action] || "bg-brand-charcoal/8 text-brand-charcoal/80"
       }`}
     >
-      {ACTION_LABELS[action] || action}
+      {label}
     </span>
   );
 }
@@ -439,7 +447,7 @@ function AuditLogsContent() {
       key: "action",
       title: "操作类型",
       width: "150px",
-      render: (_, log) => <ActionBadge action={log.action} />,
+      render: (_, log) => <ActionBadge action={log.action} detail={log.detail} />,
     },
     {
       key: "outcome",
@@ -491,7 +499,7 @@ function AuditLogsContent() {
       render: (_, log) => (
         <Tooltip content="查看详情" side="top">
           <IconButton
-            label={`查看 ${ACTION_LABELS[log.action] || log.action} 详情`}
+            label={`查看 ${getAuditActionLabel(log.action, log.detail)} 详情`}
             onClick={() => openDetail(log)}
           >
             <Eye className="h-4 w-4" />
@@ -733,7 +741,7 @@ function AuditLogsContent() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <ActionBadge action={log.action} />
+                    <ActionBadge action={log.action} detail={log.detail} />
                     <OutcomeBadge outcome={log.outcome} />
                     <RiskBadge risk={log.riskLevel} />
                   </div>
@@ -785,7 +793,7 @@ function AuditLogsContent() {
         {detail ? (
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-3">
-              <ActionBadge action={detail.action} />
+              <ActionBadge action={detail.action} detail={detail.detail} />
               <OutcomeBadge outcome={detail.outcome} />
               <RiskBadge risk={detail.riskLevel} />
               <span className="text-sm text-brand-charcoal/65">
