@@ -62,6 +62,9 @@ export async function POST(request: NextRequest) {
     return jsonError("INVALID_CLIENT", "客户端认证失败", 401);
   }
 
+  const statusAction =
+    client.roleResolver === "ba" ? "ba_admin_sso_status_sync" : "admin_sso_status_sync";
+
   const ids = Array.from(new Set(adminIds));
   try {
     const admins = await prisma.admin.findMany({
@@ -117,7 +120,7 @@ export async function POST(request: NextRequest) {
     ];
 
     await createAuditLog({
-      action: "admin_sso_status_sync",
+      action: statusAction,
       targetType: "admin",
       targetLabel: client_id,
       actorType: "INTEGRATION",

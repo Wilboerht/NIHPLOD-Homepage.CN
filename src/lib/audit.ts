@@ -151,6 +151,10 @@ export type AuditAction =
   | "admin_sso_token"
   | "admin_sso_status_sync"
   | "admin_sso_denied"
+  | "ba_admin_sso_authorize"
+  | "ba_admin_sso_token"
+  | "ba_admin_sso_status_sync"
+  | "ba_admin_sso_denied"
   | "ba_complaint_status_update"
   | "ba_complaint_delete"
   | "ba_emergency_password_reset"
@@ -355,6 +359,10 @@ export const AUDIT_ACTIONS = [
   "admin_sso_token",
   "admin_sso_status_sync",
   "admin_sso_denied",
+  "ba_admin_sso_authorize",
+  "ba_admin_sso_token",
+  "ba_admin_sso_status_sync",
+  "ba_admin_sso_denied",
   "ba_complaint_status_update",
   "ba_complaint_delete",
   "ba_emergency_password_reset",

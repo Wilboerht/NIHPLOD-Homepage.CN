@@ -84,9 +84,14 @@ export async function POST(request: NextRequest) {
     }
   })();
 
+  const deniedAction =
+    client?.roleResolver === "ba" ? "ba_admin_sso_denied" : "admin_sso_denied";
+  const tokenAction =
+    client?.roleResolver === "ba" ? "ba_admin_sso_token" : "admin_sso_token";
+
   if (!client || !safeSecretEqual(client_secret, client.clientSecret)) {
     await createAuditLog({
-      action: "admin_sso_denied",
+      action: deniedAction,
       targetType: "admin",
       detail: { reason: "invalid_client", clientId: client_id },
       request,
@@ -103,7 +108,7 @@ export async function POST(request: NextRequest) {
   }
   if (!consumed) {
     await createAuditLog({
-      action: "admin_sso_denied",
+      action: deniedAction,
       targetType: "admin",
       detail: { reason: "invalid_or_expired_code", clientId: client_id },
       request,
@@ -113,7 +118,7 @@ export async function POST(request: NextRequest) {
 
   const deny = async (reason: string, message: string, status = 400) => {
     await createAuditLog({
-      action: "admin_sso_denied",
+      action: deniedAction,
       targetType: "admin",
       targetId: consumed.adminId,
       detail: { reason, clientId: client_id },
@@ -181,7 +186,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const auditId = await beginAuditLog({
-      action: "admin_sso_token",
+      action: tokenAction,
       targetType: "admin",
       targetId: admin.id,
       detail: {

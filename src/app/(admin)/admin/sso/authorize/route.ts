@@ -65,6 +65,11 @@ export async function GET(request: NextRequest) {
     return badRequest("Admin SSO is disabled or invalid client_id");
   }
 
+  const deniedAction =
+    client.roleResolver === "ba" ? "ba_admin_sso_denied" : "admin_sso_denied";
+  const authorizeAction =
+    client.roleResolver === "ba" ? "ba_admin_sso_authorize" : "admin_sso_authorize";
+
   if (responseType !== "code") return badRequest("response_type must be code");
   if (redirectUri !== client.redirectUri) return badRequest("invalid redirect_uri");
   if (!state || !STATE_PATTERN.test(state)) return badRequest("invalid state");
@@ -87,7 +92,7 @@ export async function GET(request: NextRequest) {
   const clientRole = resolveClientRole(client, admin.role, admin.permissionOverrides);
   if (!clientRole) {
     await createAuditLog({
-      action: "admin_sso_denied",
+      action: deniedAction,
       targetType: "admin",
       targetId: admin.id,
       detail: { reason: "no_client_access", clientId: client.clientId },
@@ -122,7 +127,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const auditId = await beginAuditLog({
-      action: "admin_sso_authorize",
+      action: authorizeAction,
       targetType: "admin",
       targetId: admin.id,
       detail: {
