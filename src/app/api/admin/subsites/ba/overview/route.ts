@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 const DASHBOARD_PATH = "/api/internal/admin/dashboard";
 const DASHBOARD_TIMEOUT_MS = 4000;
+const NO_STORE_HEADERS = { "Cache-Control": "no-store" } as const;
 
 function mapDegradedReason(code: string, status: number): BaDashboardDegradedReason {
   if (code === "NOT_CONFIGURED") return "not_configured";
@@ -65,7 +66,10 @@ export async function GET(request: NextRequest) {
       canReadComplaints,
       canManageEmergencyAccount,
     };
-    return NextResponse.json({ success: true, data: payload });
+    return NextResponse.json(
+      { success: true, data: payload },
+      { headers: NO_STORE_HEADERS }
+    );
   }
 
   const payload: BaDashboardPayload = {
@@ -74,5 +78,8 @@ export async function GET(request: NextRequest) {
     canReadComplaints,
     canManageEmergencyAccount,
   };
-  return NextResponse.json({ success: true, data: payload });
+  return NextResponse.json(
+    { success: true, data: payload },
+    { headers: NO_STORE_HEADERS }
+  );
 }

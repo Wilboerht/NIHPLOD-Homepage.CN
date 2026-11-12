@@ -9,6 +9,7 @@ import { AUDIT_RISK_LEVELS, AUDIT_CATEGORIES } from "@/lib/audit-registry";
 import { maskAuditText } from "@/lib/audit-sanitize";
 import { maskIdentifier, maskIp } from "@/lib/mask-phone";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { getAuditActionLabel } from "@/lib/audit-labels";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
@@ -139,9 +140,13 @@ export async function GET(request: NextRequest) {
     type AuditLogRow = (typeof result.items)[number];
     const sanitize = (log: AuditLogRow) => {
       const { detail, ...rest } = log;
-      void detail;
+      const actionLabel = getAuditActionLabel(
+        log.action,
+        (detail ?? null) as Record<string, unknown> | null
+      );
       return {
         ...rest,
+        actionLabel,
         targetLabel: rest.targetLabel ? maskAuditText(rest.targetLabel) : null,
         actorName: rest.actorName ? maskAuditText(rest.actorName) : null,
         actorEmail: rest.actorEmail ? maskIdentifier(rest.actorEmail) : null,

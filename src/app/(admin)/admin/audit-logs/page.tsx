@@ -37,6 +37,7 @@ import {
 interface AuditLogItem {
   id: string;
   action: string;
+  actionLabel?: string | null;
   targetType: string;
   targetId: string | null;
   targetLabel?: string | null;
@@ -165,11 +166,13 @@ function RiskBadge({ risk }: { risk?: string | null }) {
 function ActionBadge({
   action,
   detail,
+  actionLabel,
 }: {
   action: string;
   detail?: Record<string, unknown> | null;
+  actionLabel?: string | null;
 }) {
-  const label = getAuditActionLabel(action, detail);
+  const label = actionLabel || getAuditActionLabel(action, detail);
   return (
     <span
       title={label}
@@ -447,7 +450,7 @@ function AuditLogsContent() {
       key: "action",
       title: "操作类型",
       width: "150px",
-      render: (_, log) => <ActionBadge action={log.action} detail={log.detail} />,
+      render: (_, log) => <ActionBadge action={log.action} actionLabel={log.actionLabel} />,
     },
     {
       key: "outcome",
@@ -499,7 +502,7 @@ function AuditLogsContent() {
       render: (_, log) => (
         <Tooltip content="查看详情" side="top">
           <IconButton
-            label={`查看 ${getAuditActionLabel(log.action, log.detail)} 详情`}
+            label={`查看 ${log.actionLabel || getAuditActionLabel(log.action, log.detail)} 详情`}
             onClick={() => openDetail(log)}
           >
             <Eye className="h-4 w-4" />
@@ -741,7 +744,7 @@ function AuditLogsContent() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <ActionBadge action={log.action} detail={log.detail} />
+                    <ActionBadge action={log.action} actionLabel={log.actionLabel} />
                     <OutcomeBadge outcome={log.outcome} />
                     <RiskBadge risk={log.riskLevel} />
                   </div>
