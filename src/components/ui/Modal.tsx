@@ -4,7 +4,7 @@ import { ReactNode, RefObject, useEffect, useCallback, useId, useRef } from "rea
 import { useMounted } from "@/hooks/useMounted";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -323,7 +323,7 @@ export function Modal({
           )}
         >
           {/* Backdrop（仅栈顶弹窗响应点击） */}
-          <motion.div
+          <m.div
             data-modal-backdrop
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -341,7 +341,7 @@ export function Modal({
           />
 
           {variant === "drawer" ? (
-            <motion.div
+            <m.div
               ref={dialogRef}
               {...dialogAria}
               initial={{ x: "100%" }}
@@ -356,9 +356,9 @@ export function Modal({
               {header}
               <div className={bodyClassName}>{children}</div>
               {footerNode}
-            </motion.div>
+            </m.div>
           ) : (
-            <motion.div
+            <m.div
               ref={dialogRef}
               {...dialogAria}
               initial={{ opacity: 0, scale: 0.95, y: 8 }}
@@ -375,7 +375,7 @@ export function Modal({
               {header}
               <div className={bodyClassName}>{children}</div>
               {footerNode}
-            </motion.div>
+            </m.div>
           )}
         </div>
       )}
