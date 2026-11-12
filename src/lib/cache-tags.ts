@@ -7,3 +7,9 @@ export const LLMS_DOCS_TAG = "llms-docs";
  * 后台产品/分类变更时统一 revalidateTag 让数据立即失效。
  */
 export const PRODUCTS_TAG = "products";
+
+/**
+ * 法务文档（服务条款 / 隐私政策）前台缓存 tag。
+ * 发布新版本后统一失效，避免等待 300 秒数据缓存过期。
+ */
+export const LEGAL_DOCS_TAG = "legal-documents";

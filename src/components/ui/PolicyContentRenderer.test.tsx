@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 import { ContentParagraph } from "@/components/ui/PolicyContentRenderer";
 import { PolicyDocumentHeader } from "@/components/ui/PolicyDocumentHeader";
 import ScrollSpySidebar from "@/components/ui/ScrollSpySidebar";
-import { TermsArticle, buildTermsSections } from "@/components/ui/TermsArticle";
+import { TermsArticle } from "@/components/ui/TermsArticle";
+import { PrivacyArticle } from "@/components/ui/PrivacyArticle";
+import type { LegalDocumentContent } from "@/types/legal";
 
 describe("policy article typography and semantics", () => {
   it("连续正文分别渲染为段落，并使用统一文章排版容器", () => {
@@ -25,9 +27,7 @@ describe("policy article typography and semantics", () => {
   });
 
   it("无序符号项渲染为无序列表，不与编号项混排", () => {
-    const { container } = render(
-      <ContentParagraph text={"（1）第一项\n\n- 项目甲\n- 项目乙"} />
-    );
+    const { container } = render(<ContentParagraph text={"（1）第一项\n\n- 项目甲\n- 项目乙"} />);
     expect(container.querySelectorAll("ol.policy-list > li")).toHaveLength(1);
     const unordered = container.querySelectorAll("ul.policy-list--unordered > li");
     expect(unordered).toHaveLength(2);
@@ -97,12 +97,30 @@ describe("policy article typography and semantics", () => {
   });
 
   it("服务条款包含文档头、首章隐私链接，并移除重复章节标题", () => {
-    const sections = buildTermsSections(["1. 隐私权\n\n请阅读隐私政策。"]);
-    render(
-      <TermsArticle sections={sections} lastUpdated="2026年9月7日" description="使用前请阅读" />
-    );
+    const content: LegalDocumentContent = {
+      title: "服务条款",
+      description: "使用前请阅读",
+      lastUpdated: "2026年9月7日",
+      sections: [{ id: "terms-1", title: "1. 隐私权", body: "请阅读隐私政策。" }],
+    };
+    render(<TermsArticle content={content} />);
     expect(screen.getByRole("heading", { level: 1, name: "服务条款" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "1. 隐私权" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "隐私政策" })).toHaveAttribute("href", "/privacy");
+  });
+
+  it("隐私政策使用同一正文组件渲染章节与正文", () => {
+    const content: LegalDocumentContent = {
+      title: "隐私政策",
+      description: "了解我们如何收集、使用和保护您的个人信息。",
+      lastUpdated: "2026年11月11日",
+      sections: [{ id: "ch1", title: "一、个人信息处理者信息", body: "个人信息处理者信息正文。" }],
+    };
+    render(<PrivacyArticle content={content} />);
+    expect(screen.getByRole("heading", { level: 1, name: "隐私政策" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "一、个人信息处理者信息" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("个人信息处理者信息正文。")).toBeInTheDocument();
   });
 });

@@ -183,6 +183,12 @@ export const adminNavGroups: NavGroup[] = [
   {
     label: "系统与集成",
     items: [
+      {
+        title: "法务文档",
+        href: "/admin/legal",
+        icon: Scale,
+        permissionsAny: ["legal:read", "legal:write"],
+      },
       { title: "定时任务", href: "/admin/cron-tasks", icon: Timer, permission: "cron:read" },
       {
         title: "通知失败队列",
@@ -300,6 +306,10 @@ function parseDeepPath(pathname: string): { title: string; href: string } | null
   // OAuth 客户端向导: /admin/oauth-clients/wizard
   if (pathname === "/admin/oauth-clients/wizard") {
     return { title: "创建客户端", href: "/admin/oauth-clients/wizard" };
+  }
+  // 法务文档编辑: /admin/legal/terms | /admin/legal/privacy
+  if (/^\/admin\/legal\/(terms|privacy)\/?$/.test(pathname)) {
+    return { title: "编辑法务文档", href: pathname };
   }
   // 管理员安全中心: /admin/settings/totp
   if (pathname === "/admin/settings/totp") {

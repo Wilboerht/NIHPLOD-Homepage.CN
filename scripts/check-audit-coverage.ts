@@ -53,6 +53,18 @@ const ALLOWLIST = new Map<string, string>([
     "src/app/api/admin/users/[id]/profile/route.ts",
     "审计在 admin-user-corrections.ts 的资料事务内写入",
   ],
+  [
+    "src/app/api/admin/legal/[slug]/draft/route.ts",
+    "草稿保存不写审计（仅记录 draftUpdatedBy）；丢弃草稿的审计在 legal-document-service.ts 事务内完成",
+  ],
+  [
+    "src/app/api/admin/legal/[slug]/publish/route.ts",
+    "发布审计在 legal-document-service.ts 的发布事务内完成",
+  ],
+  [
+    "src/app/api/admin/legal/[slug]/restore/route.ts",
+    "恢复草稿审计在 legal-document-service.ts 的事务内完成",
+  ],
 ]);
 
 function walk(dir: string): string[] {

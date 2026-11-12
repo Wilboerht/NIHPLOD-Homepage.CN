@@ -37,6 +37,10 @@ function isJobEditPath(pathname: string): boolean {
   return /^\/admin\/jobs\/[^/]+\/edit\/?$/.test(pathname);
 }
 
+function isLegalDocumentPath(pathname: string): boolean {
+  return /^\/admin\/legal\/(terms|privacy)\/?$/.test(pathname);
+}
+
 /**
  * 规则按“具体 → 通用”顺序排列；所有页面都使用精确匹配（尾部斜杠由
  * getAdminPageRule 归一化），未知子路径不会继承父级页面的权限，必须显式注册。
@@ -65,6 +69,16 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
   },
   { match: (pathname) => pathname === "/admin/products", allOf: ["products:read"] },
   { match: (pathname) => pathname === "/admin/categories", allOf: ["categories:read"] },
+
+  // 法务文档
+  {
+    match: isLegalDocumentPath,
+    anyOf: ["legal:read", "legal:write"],
+  },
+  {
+    match: (pathname) => pathname === "/admin/legal",
+    anyOf: ["legal:read", "legal:write"],
+  },
 
   // 招聘
   {

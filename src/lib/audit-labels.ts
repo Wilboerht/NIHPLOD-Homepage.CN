@@ -168,6 +168,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   application_user_link: "调整简历账户关联",
   user_identity_bind: "管理员绑定外部身份",
   user_accounts_merge: "合并用户账户",
+  legal_document_published: "发布法务文档新版本",
+  legal_document_draft_discarded: "丢弃法务文档草稿",
+  legal_document_version_restored: "恢复法务文档历史版本为草稿",
+  legal_document_seeded: "导入法务文档初始内容",
 };
 
 export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
@@ -196,4 +200,5 @@ export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
   notification: "事务通知",
   audit_hold: "审计法律保留",
   audit_retention: "审计到期清理",
+  legal_document: "法务文档",
 };

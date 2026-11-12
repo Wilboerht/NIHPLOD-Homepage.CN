@@ -173,6 +173,10 @@ const CONTENT_ACTIONS = new Set([
   "update_coupon",
   "delete_coupon",
   "batch_coupon",
+  "legal_document_published",
+  "legal_document_draft_discarded",
+  "legal_document_version_restored",
+  "legal_document_seeded",
 ]);
 
 const CRITICAL_ACTIONS = new Set([
@@ -241,6 +245,7 @@ const HIGH_ACTIONS = new Set([
   "admin_approval_execution_failed",
   "admin_approval_stale",
   "admin_approval_result_unknown",
+  "legal_document_published",
 ]);
 
 const MEDIUM_ACTIONS = new Set([
@@ -286,6 +291,9 @@ const MEDIUM_ACTIONS = new Set([
   "admin_approval_requested",
   "admin_approval_rejected",
   "admin_approval_cancelled",
+  "legal_document_draft_discarded",
+  "legal_document_version_restored",
+  "legal_document_seeded",
 ]);
 
 const REASON_REQUIRED_ACTIONS = new Set([

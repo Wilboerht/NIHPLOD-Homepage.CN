@@ -182,7 +182,11 @@ export type AuditAction =
   | "admin_approval_executed"
   | "admin_approval_execution_failed"
   | "admin_approval_stale"
-  | "admin_approval_result_unknown";
+  | "admin_approval_result_unknown"
+  | "legal_document_published"
+  | "legal_document_draft_discarded"
+  | "legal_document_version_restored"
+  | "legal_document_seeded";
 
 export type AuditTargetType =
   | "order"
@@ -209,7 +213,8 @@ export type AuditTargetType =
   | "point_campaign"
   | "audit_hold"
   | "audit_retention"
-  | "notification";
+  | "notification"
+  | "legal_document";
 
 export const AUDIT_ACTIONS = [
   "login",
@@ -378,6 +383,10 @@ export const AUDIT_ACTIONS = [
   "admin_approval_execution_failed",
   "admin_approval_stale",
   "admin_approval_result_unknown",
+  "legal_document_published",
+  "legal_document_draft_discarded",
+  "legal_document_version_restored",
+  "legal_document_seeded",
 ] as const;
 
 export const AUDIT_TARGET_TYPES = [
@@ -405,6 +414,7 @@ export const AUDIT_TARGET_TYPES = [
   "point_campaign",
   "audit_hold",
   "audit_retention",
+  "legal_document",
 ] as const;
 
 export type AuditSource = "WEB" | "CRON" | "INTEGRATION" | "SYSTEM";

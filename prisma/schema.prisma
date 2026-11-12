@@ -1588,3 +1588,56 @@ model TokenBlacklist {
   @@index([type])
   @@index([expiresAt])
 }
+
+// ============================================
+// �����ĵ����������� / ��˽���ߣ�
+// ============================================
+
+model LegalDocument {
+  id     String @id @default(cuid())
+  slug   String @unique // "terms" | "privacy"
+
+  // �ݸ壺null ��ʾû��δ�����޸�
+  draftContent        Json?
+  draftRevision       Int       @default(0) // �ֹ���������д��������ƥ�� expectedRevision
+  draftUpdatedAt      DateTime?
+  draftUpdatedById    String?
+  draftUpdatedByEmail String?
+  draftUpdatedByName  String?
+
+  // �ѷ������գ�null ��ʾ��δ����������ҳ���˴�������Ĭ������
+  publishedContent    Json?
+  publishedVersion    Int       @default(0)
+  publishedAt         DateTime?
+  publishedById       String?
+  publishedByEmail    String?
+  publishedByName     String?
+
+  schemaVersion Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  versions LegalDocumentVersion[]
+}
+
+model LegalDocumentVersion {
+  id         String        @id @default(cuid())
+  documentId String
+  document   LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    Int
+  content    Json
+  contentHash String
+  sectionCount Int        @default(0)
+  note       String?       @db.Text
+  schemaVersion Int        @default(1)
+
+  // ����Ա���գ����� FK���������Աɾ��/����������ʷ�汾����
+  createdById    String?
+  createdByEmail String?
+  createdByName  String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([documentId, version])
+  @@index([documentId, createdAt(sort: Desc)])
+}

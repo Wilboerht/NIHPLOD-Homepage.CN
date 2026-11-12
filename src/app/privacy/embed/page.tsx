@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PrivacyArticle } from "@/components/ui/PrivacyArticle";
+import { getPublishedLegalDocument } from "@/lib/legal-document-content";
 
 /**
  * 隐私政策嵌入页（/privacy/embed）
@@ -10,8 +11,8 @@ import { PrivacyArticle } from "@/components/ui/PrivacyArticle";
  * CSP frame-ancestors 白名单见 src/proxy.ts（EMBED_ALLOWED_ORIGINS）。
  */
 
-// ISR: 与 /privacy 页面保持一致，每天重新验证一次
-export const revalidate = 86400; // 24小时
+// 与 /privacy 页面保持一致：动态读取数据库已发布内容
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "隐私政策",
@@ -21,10 +22,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyEmbedPage() {
+export default async function PrivacyEmbedPage() {
+  const content = await getPublishedLegalDocument("privacy");
+
   return (
     <div className="min-h-dvh bg-[#fefcf8] px-6 py-8 md:px-10 md:py-12">
-      <PrivacyArticle />
+      <PrivacyArticle content={content} />
     </div>
   );
 }

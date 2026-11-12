@@ -2,8 +2,13 @@ import { StandaloneNav } from "@/components/ui/StandaloneNav";
 import { PrivacyArticle } from "@/components/ui/PrivacyArticle";
 import Link from "next/link";
 import Image from "next/image";
+import type { LegalDocumentContent } from "@/types/legal";
 
-export function PrivacyContent() {
+interface PrivacyContentProps {
+  content: LegalDocumentContent;
+}
+
+export function PrivacyContent({ content }: PrivacyContentProps) {
   return (
     <div className="policy-page-shell mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32 lg:mb-[-6rem]">
       <StandaloneNav
@@ -16,7 +21,7 @@ export function PrivacyContent() {
 
       <div className="policy-print-main flex-1 px-6 md:px-10">
         <div className="mx-auto flex w-full max-w-3xl flex-col">
-          <PrivacyArticle />
+          <PrivacyArticle content={content} />
         </div>
       </div>
 

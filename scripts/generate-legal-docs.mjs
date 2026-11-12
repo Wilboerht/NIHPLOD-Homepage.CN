@@ -1,4 +1,8 @@
 /**
+ * @deprecated 该脚本早于法务文档管理端迁移，解析路径已过期，且 docx 未在依赖中安装。
+ * 现有内容来源：src/lib/legal-default-content.ts；初始化数据库请使用 npm run legal:seed。
+ * 如仍需导出 Word，请按新结构重写后再使用。
+ *
  * 生成隐私政策和服务条款的 Word 文档
  * 用法: node scripts/generate-legal-docs.mjs
  */

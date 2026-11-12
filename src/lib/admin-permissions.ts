@@ -98,6 +98,9 @@ export const ADMIN_PERMISSIONS = [
   "advisor:stats:read",
   // 主站控制中台内查看用户完整测肤报告
   "advisor:report:read",
+
+  "legal:read",
+  "legal:write",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -208,6 +211,10 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
       "advisor:report:read",
     ],
   },
+  {
+    group: "法务文档",
+    permissions: ["legal:read", "legal:write"],
+  },
 ];
 
 export const PERMISSION_LABELS: Record<AdminPermission, string> = {
@@ -278,6 +285,8 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "advisor:users:write": "调整测肤配额/禁用启用子站账号",
   "advisor:stats:read": "测肤子站全局概览/AI 健康",
   "advisor:report:read": "查看用户完整测肤报告",
+  "legal:read": "法务文档查看（服务条款/隐私政策）",
+  "legal:write": "法务文档编辑与发布（高风险）",
 };
 
 /**
@@ -340,6 +349,7 @@ export const ROLE_TEMPLATES: Record<
     "advisor:stats:read",
     "advisor:report:read",
     "audit:read",
+    "legal:read",
     "notifications:read",
     "notifications:write",
     "redemptions:after-sales",
@@ -369,6 +379,7 @@ export const ROLE_TEMPLATES: Record<
     "advisor:users:write",
     "advisor:stats:read",
     "advisor:report:read",
+    "legal:read",
     "notifications:read",
     "notifications:write",
     "redemptions:after-sales",

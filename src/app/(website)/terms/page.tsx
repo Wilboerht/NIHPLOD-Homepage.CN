@@ -1,10 +1,11 @@
 import { Metadata } from "next";
 
 import { TermsContent } from "./TermsContent";
-import { defaultTermsContent } from "@/lib/terms-default-content";
+import { getPublishedLegalDocument } from "@/lib/legal-document-content";
 
-// ISR: 服务条款页面每天重新验证一次
-export const revalidate = 86400; // 24小时
+// 法务内容来自数据库，需要保证发布/初始化填充后立即可见。
+// 页面本身低频且 noindex，使用动态渲染 + 读取层 300 秒数据缓存。
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "服务条款",
@@ -26,6 +27,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function TermsPage() {
-  return <TermsContent content={defaultTermsContent} />;
+export default async function TermsPage() {
+  const content = await getPublishedLegalDocument("terms");
+  return <TermsContent content={content} />;
 }

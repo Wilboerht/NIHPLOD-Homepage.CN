@@ -1,17 +1,14 @@
 import { StandaloneNav } from "@/components/ui/StandaloneNav";
-import { TermsArticle, buildTermsSections } from "@/components/ui/TermsArticle";
+import { TermsArticle } from "@/components/ui/TermsArticle";
 import Link from "next/link";
 import Image from "next/image";
-import type { TermsPageContent } from "@/types/page-content";
+import type { LegalDocumentContent } from "@/types/legal";
 
 interface TermsContentProps {
-  content: TermsPageContent;
+  content: LegalDocumentContent;
 }
 
 export function TermsContent({ content }: TermsContentProps) {
-  const flatContent = content.tabs?.general?.content || [];
-  const sections = buildTermsSections(flatContent);
-
   return (
     <div className="policy-page-shell mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32 lg:mb-[-6rem]">
       <StandaloneNav
@@ -24,11 +21,7 @@ export function TermsContent({ content }: TermsContentProps) {
 
       <div className="policy-print-main flex-1 px-6 md:px-10">
         <div className="mx-auto flex w-full max-w-3xl flex-col">
-          <TermsArticle
-            sections={sections}
-            lastUpdated={content.lastUpdated}
-            description={content.description}
-          />
+          <TermsArticle content={content} />
         </div>
       </div>
 

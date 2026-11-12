@@ -1,9 +1,11 @@
 import { Metadata } from "next";
 import { PrivacyContent } from "./PrivacyContent";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
+import { getPublishedLegalDocument } from "@/lib/legal-document-content";
 
-// ISR: 隐私政策页面每天重新验证一次
-export const revalidate = 86400; // 24小时
+// 法务内容来自数据库，需要保证发布/初始化填充后立即可见。
+// 页面本身低频且 noindex，使用动态渲染 + 读取层 300 秒数据缓存。
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "隐私政策",
@@ -25,16 +27,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
   const breadcrumbs = [
     { name: "首页", url: "/" },
     { name: "隐私政策", url: "/privacy" },
   ];
+  const content = await getPublishedLegalDocument("privacy");
 
   return (
     <>
       <BreadcrumbJsonLd items={breadcrumbs} />
-      <PrivacyContent />
+      <PrivacyContent content={content} />
     </>
   );
 }
