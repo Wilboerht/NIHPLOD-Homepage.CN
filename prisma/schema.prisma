@@ -1590,22 +1590,22 @@ model TokenBlacklist {
 }
 
 // ============================================
-// �����ĵ����������� / ��˽���ߣ�
+// 法务文档（服务条款 / 隐私政策）
 // ============================================
 
 model LegalDocument {
   id     String @id @default(cuid())
   slug   String @unique // "terms" | "privacy"
 
-  // �ݸ壺null ��ʾû��δ�����޸�
+  // 草稿：null 表示没有未发布修改
   draftContent        Json?
-  draftRevision       Int       @default(0) // �ֹ���������д��������ƥ�� expectedRevision
+  draftRevision       Int       @default(0) // 乐观锁：所有写操作必须匹配 expectedRevision
   draftUpdatedAt      DateTime?
   draftUpdatedById    String?
   draftUpdatedByEmail String?
   draftUpdatedByName  String?
 
-  // �ѷ������գ�null ��ʾ��δ����������ҳ���˴�������Ĭ������
+  // 已发布快照：null 表示从未发布，公开页回退代码内置默认内容
   publishedContent    Json?
   publishedVersion    Int       @default(0)
   publishedAt         DateTime?
@@ -1631,7 +1631,7 @@ model LegalDocumentVersion {
   note       String?       @db.Text
   schemaVersion Int        @default(1)
 
-  // ����Ա���գ����� FK���������Աɾ��/����������ʷ�汾����
+  // 管理员快照：不建 FK，避免管理员删除/匿名化被历史版本阻塞
   createdById    String?
   createdByEmail String?
   createdByName  String?
