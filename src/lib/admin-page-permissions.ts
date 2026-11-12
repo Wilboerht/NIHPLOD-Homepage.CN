@@ -93,7 +93,7 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
   { match: (pathname) => pathname === "/admin/applications", allOf: ["applications:read"] },
 
   // 会员运营
-  { match: (pathname) => pathname === "/admin/messages", allOf: ["messages:read"] },
+  { match: (pathname) => pathname === "/admin/messages", anyOf: ["messages:read", "ba:complaints:read", "ba:complaints:write", "ba:complaints:delete", "ba:complaints:sensitive:read"] },
   {
     match: (pathname) => pathname === "/admin/spent-adjustments",
     anyOf: ["spent:read", "spent:import", "spent:create", "spent:review"],
@@ -158,6 +158,10 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
   {
     match: (pathname) => pathname === "/admin/subsites/advisor",
     anyOf: ["advisor:stats:read", "advisor:access", "advisor:admin"],
+  },
+  {
+    match: (pathname) => pathname === "/admin/subsites/ba",
+    anyOf: ["ba:access", "ba:admin"],
   },
 ];
 

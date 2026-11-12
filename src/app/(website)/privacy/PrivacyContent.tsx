@@ -27,7 +27,7 @@ export function PrivacyContent({ content }: PrivacyContentProps) {
 
       <footer className="mt-12 md:mt-24 md:border-t md:border-brand-charcoal/10">
         <div className="container mx-auto px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
-          <p className="text-xs font-light tracking-[0.08em] text-brand-charcoal/70 md:tracking-[0.12em]">
+          <p className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/70 md:text-xs md:tracking-[0.12em]">
             &copy; {new Date().getFullYear()} 旎柏（上海）商贸有限公司 版权所有
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-light text-brand-charcoal/70">

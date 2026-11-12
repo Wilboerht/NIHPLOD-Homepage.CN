@@ -1044,13 +1044,101 @@ if (advisorSsoEnabled === "true") {
   });
 }
 
+// BA 管理员 SSO 客户端（共用同一把管理员断言密钥）
+const baSsoEnabled = process.env.BA_ADMIN_SSO_ENABLED === "true";
+if (baSsoEnabled) {
+  const baVars = [
+    "BA_ADMIN_SSO_CLIENT_ID",
+    "BA_ADMIN_SSO_CLIENT_SECRET",
+    "BA_ADMIN_SSO_REDIRECT_URI",
+  ] as const;
+  for (const name of baVars) {
+    const value = process.env[name];
+    if (!value) {
+      check({
+        status: "FAIL",
+        name,
+        message: "已启用 BA 管理员 SSO，但该项未配置",
+        fix: "按 docs/sso-deployment.md 配置 BA 管理员 SSO 变量后重启",
+      });
+    } else if (name === "BA_ADMIN_SSO_CLIENT_SECRET" && value.length < MIN_SECRET_LENGTH) {
+      check({
+        status: "FAIL",
+        name,
+        message: `长度不足（当前 ${value.length} 字符，要求 ≥ ${MIN_SECRET_LENGTH}）`,
+        fix: "使用 openssl rand -hex 32 生成不少于 32 字符的随机串",
+      });
+    } else {
+      check({ status: "PASS", name, message: "已配置" });
+    }
+  }
+
+  const baClientId = process.env.BA_ADMIN_SSO_CLIENT_ID || "ba-admin";
+  const advisorClientId = process.env.ADVISOR_ADMIN_SSO_CLIENT_ID;
+  check({
+    status:
+      process.env.ADVISOR_ADMIN_SSO_ENABLED === "true" && advisorClientId === baClientId
+        ? "FAIL"
+        : "PASS",
+    name: "ADMIN_SSO_CLIENT_ID_UNIQUENESS",
+    message:
+      process.env.ADVISOR_ADMIN_SSO_ENABLED === "true" && advisorClientId === baClientId
+        ? "BA 与测肤子站的 client_id 不能相同"
+        : "管理员 SSO 客户端 ID 唯一",
+    ...(process.env.ADVISOR_ADMIN_SSO_ENABLED === "true" && advisorClientId === baClientId
+      ? { fix: "为 BA 使用独立的 BA_ADMIN_SSO_CLIENT_ID（默认 ba-admin）" }
+      : {}),
+  });
+
+  const baRedirect = process.env.BA_ADMIN_SSO_REDIRECT_URI;
+  if (baRedirect) {    try {
+      const parsed = new URL(baRedirect);
+      check({
+        status: parsed.protocol === "https:" ? "PASS" : "FAIL",
+        name: "BA_ADMIN_SSO_REDIRECT_URI",
+        message:
+          parsed.protocol === "https:"
+            ? "HTTPS 回调地址合法"
+            : "必须是 https 地址",
+        ...(parsed.protocol === "https:"
+          ? {}
+          : { fix: "改为 https://ba.nihplod.cn/api/admin/auth/sso/callback" }),
+      });
+    } catch {
+      check({
+        status: "FAIL",
+        name: "BA_ADMIN_SSO_REDIRECT_URI",
+        message: "不是合法 URL",
+        fix: "改为 https://ba.nihplod.cn/api/admin/auth/sso/callback",
+      });
+    }
+  }
+
+  check({
+    status: advisorSigningAlg === "RS256" ? "PASS" : "FAIL",
+    name: "BA_ADMIN_SSO_SIGNING",
+    message:
+      advisorSigningAlg === "RS256"
+        ? "BA 断言使用共用管理员 RS256 密钥"
+        : "BA 断言必须使用 RS256；当前管理员 SSO 未启用 RS256",
+    ...(advisorSigningAlg === "RS256"
+      ? {}
+      : { fix: "配置 ADVISOR_ADMIN_SSO_PRIVATE_KEY / _PUBLIC_KEY 并切换 RS256" }),
+  });
+} else {
+  check({
+    status: "SKIP",
+    name: "BA_ADMIN_SSO_SIGNING",
+    message: "BA 管理员 SSO 未启用，跳过检查",
+  });
+}
+
 if (process.env.ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL) {
   check({
     status: "FAIL",
     name: "ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL",
     message: "TOTP 宽限期已移除，该变量不再生效",
-    fix: "从部署环境中删除 ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL；所有子站管理员必须先启用 TOTP",
-  });
+    fix: "从部署环境中删除 ADVISOR_ADMIN_SSO_TOTP_GRACE_UNTIL；所有子站管理员必须先启用 TOTP",  });
 } else {
   check({
     status: "PASS",

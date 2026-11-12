@@ -127,23 +127,38 @@ function normalizeContent(
   return content;
 }
 
+interface ParsedLegalRow {
+  published: LegalDocumentContent | null;
+  draft: LegalDocumentContent | null;
+}
+
+function parseLegalRow(
+  row: {
+    draftContent: unknown;
+    publishedContent: unknown;
+  } | null
+): ParsedLegalRow {
+  return {
+    published: row ? parsePublishedContent(row.publishedContent) : null,
+    draft: row ? parseDraftContent(row.draftContent) : null,
+  };
+}
+
 function buildSummary(
   slug: LegalDocumentSlug,
   row: {
-    draftContent: unknown;
     draftRevision: number;
     draftUpdatedAt: Date | null;
     draftUpdatedByEmail: string | null;
     draftUpdatedByName: string | null;
-    publishedContent: unknown;
     publishedVersion: number;
     publishedAt: Date | null;
     publishedByEmail: string | null;
     publishedByName: string | null;
-  } | null
+  } | null,
+  parsed: ParsedLegalRow
 ): LegalAdminDocumentSummary {
-  const published = row ? parsePublishedContent(row.publishedContent) : null;
-  const draft = row ? parseDraftContent(row.draftContent) : null;
+  const { published, draft } = parsed;
   const fallback = getDefaultLegalDocument(slug);
 
   return {
@@ -163,22 +178,24 @@ function buildSummary(
 export async function listAdminLegalDocuments(): Promise<LegalAdminDocumentSummary[]> {
   const rows = await prisma.legalDocument.findMany();
   const bySlug = new Map(rows.map((row) => [row.slug, row]));
-  return LEGAL_DOCUMENT_SLUGS.map((slug) => buildSummary(slug, bySlug.get(slug) ?? null));
+  return LEGAL_DOCUMENT_SLUGS.map((slug) => {
+    const row = bySlug.get(slug) ?? null;
+    return buildSummary(slug, row, parseLegalRow(row));
+  });
 }
 
 export async function getAdminLegalDocument(
   slug: LegalDocumentSlug
 ): Promise<LegalAdminDocumentDetail> {
   const row = await prisma.legalDocument.findUnique({ where: { slug } });
-  const summary = buildSummary(slug, row);
-  const published = row ? parsePublishedContent(row.publishedContent) : null;
-  const draft = row ? parseDraftContent(row.draftContent) : null;
+  const parsed = parseLegalRow(row);
+  const summary = buildSummary(slug, row, parsed);
 
   return {
     ...summary,
-    content: draft ?? published ?? getDefaultLegalDocument(slug),
-    publishedContent: published,
-    draftContent: draft,
+    content: parsed.draft ?? parsed.published ?? getDefaultLegalDocument(slug),
+    publishedContent: parsed.published,
+    draftContent: parsed.draft,
   };
 }
 

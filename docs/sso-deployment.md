@@ -1,4 +1,4 @@
-# SSO 生产部署 Runbook
+﻿# SSO 生产部署 Runbook
 
 NIHPLOD 统一认证中心（nihplod.cn）生产部署操作手册。按本文档顺序执行即可完成一次完整的 SSO 上线或升级。
 
@@ -314,6 +314,87 @@ curl -s https://nihplod.cn/api/oauth/jwks | grep -o 'advisor-admin-rs256-v1'
 
 # 配置检查：管理员 SSO 启用时应无 FAIL
 npm run check:sso-config
+```
+
+### 2.11 BA 证书平台管理员 SSO + 举报整合
+
+BA（ba.nihplod.cn）复用同一把管理员 RS256 断言密钥，新增 `ba-admin` 客户端；BA 只通过 JWKS 验签，不持有私钥。
+
+**主站配置**：
+
+> 首次部署先设 `BA_ADMIN_SSO_ENABLED=false`，完成 BA 数据库/构建/环境变量后再切换为 `true`。
+
+```bash
+BA_ADMIN_SSO_ENABLED=true
+BA_ADMIN_SSO_CLIENT_ID=ba-admin
+BA_ADMIN_SSO_CLIENT_SECRET=<≥32 字符强随机串>
+BA_ADMIN_SSO_REDIRECT_URI=https://ba.nihplod.cn/api/admin/auth/sso/callback
+BA_ADMIN_SSO_AUDIENCE=ba-admin
+BA_ADMIN_SSO_NAME="BA 证书平台"
+BA_INTERNAL_API_BASE=http://127.0.0.1:3001
+```
+
+- BA 面板角色：`owner` / `ba:admin` → `super_admin`；`ba:access` → `auditor`。
+- 迁移映射前，先在主站管理员权限中给 Candy 勾选 `ba:access`；Walter/Hank 为 owner，自动拥有 `ba:admin`。
+- BA 举报处理权限独立：`ba:complaints:read` / `write` / `delete` / `sensitive:read`；`write`、`delete`、`sensitive:read` 隐含 `read`。
+- 只有 `ba:complaints:*` 的管理员可在主站留言页处理举报，**不能进入 BA 面板**（BA 面板仍需 `ba:access` / `ba:admin`）。
+- 主站 `INTERNAL_API_KEYS` 必须增加 `project=ba` 条目，并把同一份 key/secret 写入 BA `.env.local` 的 `INTERNAL_API_KEYS`。
+
+**BA 配置**（`/var/www/BA-NIHPLOD/.env.local`）：
+
+```bash
+ADMIN_SSO_ENABLED=true
+ADMIN_SSO_AUTHORIZE_URL=https://nihplod.cn/admin/sso/authorize
+ADMIN_SSO_TOKEN_URL=http://127.0.0.1:3000/api/admin/sso/token
+ADMIN_SSO_STATUS_URL=http://127.0.0.1:3000/api/admin/sso/status
+ADMIN_SSO_CLIENT_ID=ba-admin
+ADMIN_SSO_CLIENT_SECRET=<与主站 BA_ADMIN_SSO_CLIENT_SECRET 同值>
+ADMIN_SSO_REDIRECT_URI=https://ba.nihplod.cn/api/admin/auth/sso/callback
+ADMIN_SSO_AUDIENCE=ba-admin
+ADMIN_SSO_LOCAL_LOGIN_MODE=all   # 迁移期；最终改 break-glass
+ADMIN_SSO_EMAIL_FALLBACK=false
+ADMIN_SSO_SESSION_TTL_MINUTES=480
+INTERNAL_API_KEYS='[{"project":"ba","key":"...","secret":"..."}]'
+MAIN_SITE_INTERNAL_BASE=http://127.0.0.1:3000
+BA_EVIDENCE_TOKEN_SECRET=<≥32 字符强随机串>
+```
+
+- 本地应急账号：`npm run init:break-glass` 创建 `ba-emergency` 并输出 TOTP secret；将输出的 `BA_BREAK_GLASS_ENABLED/USERNAME/TOTP_SECRET` 写入 env。
+- 迁移映射（在 BA 执行）：
+  ```bash
+  cp scripts/admin-sso-mapping.example.json scripts/admin-sso-mapping.json
+  # 1) 先只绑定 external_admin_id，保留本地登录，避免锁死
+  node scripts/admin-sso-migrate.mjs --mapping scripts/admin-sso-mapping.json
+  node scripts/admin-sso-migrate.mjs --mapping scripts/admin-sso-mapping.json --apply
+  # 2) 开启 SSO 并逐个验证管理员；确认后可强制切换并撤销旧会话
+  node scripts/admin-sso-migrate.mjs --mapping scripts/admin-sso-mapping.json --apply --cutover
+  ```
+- 最终态：`ADMIN_SSO_LOCAL_LOGIN_MODE=break-glass`，SSO 账号拒绝本地密码登录。
+- BA 举报通知：提交后调主站 `/api/internal/ba/complaint-submitted` 发企业微信 ops；失败由 `retry-complaint-alerts` cron 重试。
+- BA cron（每 5 分钟）：
+
+```cron
+*/5 * * * * cd /var/www/BA-NIHPLOD && /usr/local/bin/node scripts/run-cron.mjs /api/cron/admin-sso-sync >> /var/log/ba-admin-sso-sync.log 2>&1
+*/5 * * * * cd /var/www/BA-NIHPLOD && /usr/local/bin/node scripts/run-cron.mjs /api/cron/retry-complaint-alerts >> /var/log/ba-complaint-alerts.log 2>&1
+```
+
+- Nginx：BA `/api/internal/` 仅允许 127.0.0.1，`/api/evidence/` 保持公开但必须带短时签名 Token。
+- BA 运行时使用 Node 24（PM2 `interpreter=/usr/local/bin/node`）。
+- 数据库变更执行 `db/schema.sql` 或 `db/migrate-20261112-01-ba-admin-sso-complaints.sql`，再 `npx prisma generate`。
+
+**验收**：
+
+```bash
+# 主站 JWKS 仍含管理员公钥
+curl -s https://nihplod.cn/api/oauth/jwks | jq -r '.keys[]?.kid'
+
+# BA 面板 SSO 登录
+open https://ba.nihplod.cn/api/admin/auth/sso/start?return_to=/workbench
+
+# 举报同步
+cd /var/www/BA-NIHPLOD
+/usr/local/bin/node scripts/run-cron.mjs /api/cron/admin-sso-sync
+/usr/local/bin/node scripts/run-cron.mjs /api/cron/retry-complaint-alerts
 ```
 
 ---

@@ -8,6 +8,14 @@ export function legalContentSignature(content: LegalDocumentContent): string {
   return JSON.stringify(content);
 }
 
+/**
+ * 比较是否“实质变更”时忽略 lastUpdated：
+ * 服务端发布时会自动把该字段改成当天，不能因此把相同内容当成新版本。
+ */
+export function legalContentComparableSignature(content: LegalDocumentContent): string {
+  return JSON.stringify({ ...content, lastUpdated: "" });
+}
+
 export function validatePublishableContent(content: LegalDocumentContent): {
   ok: boolean;
   emptySectionIds: string[];

@@ -99,6 +99,16 @@ export const ADMIN_PERMISSIONS = [
   // 主站控制中台内查看用户完整测肤报告
   "advisor:report:read",
 
+  // BA 证书平台访问授权：
+  // ba:access / ba:admin 控制 BA 面板登录；
+  // ba:complaints:* 控制主站留言页内的举报查看/处理，不要求能进 BA 面板。
+  "ba:access",
+  "ba:admin",
+  "ba:complaints:read",
+  "ba:complaints:write",
+  "ba:complaints:delete",
+  "ba:complaints:sensitive:read",
+
   "legal:read",
   "legal:write",
 ] as const;
@@ -212,6 +222,17 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
     ],
   },
   {
+    group: "BA 证书平台",
+    permissions: [
+      "ba:access",
+      "ba:admin",
+      "ba:complaints:read",
+      "ba:complaints:write",
+      "ba:complaints:delete",
+      "ba:complaints:sensitive:read",
+    ],
+  },
+  {
     group: "法务文档",
     permissions: ["legal:read", "legal:write"],
   },
@@ -285,6 +306,12 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "advisor:users:write": "调整测肤配额/禁用启用子站账号",
   "advisor:stats:read": "测肤子站全局概览/AI 健康",
   "advisor:report:read": "查看用户完整测肤报告",
+  "ba:access": "BA 证书平台访问（BA 面板登录）",
+  "ba:admin": "BA 证书平台超级管理员",
+  "ba:complaints:read": "BA 举报查看",
+  "ba:complaints:write": "BA 举报处理（状态/审核备注）",
+  "ba:complaints:delete": "BA 举报删除（软删除）",
+  "ba:complaints:sensitive:read": "查看 BA 举报完整联系方式与证据",
   "legal:read": "法务文档查看（服务条款/隐私政策）",
   "legal:write": "法务文档编辑与发布（高风险）",
 };
@@ -305,6 +332,47 @@ export function resolveAdvisorRole(
   if (permissions.includes("advisor:admin")) return "super_admin";
   if (permissions.includes("advisor:access")) return "admin";
   return null;
+}
+
+/**
+ * 解析管理员在 BA 证书平台的有效角色。
+ * - owner 恒为 BA 超级管理员
+ * - ba:admin -> super_admin
+ * - ba:access -> auditor
+ * - 其他 -> null（禁止进入 BA 面板）
+ *
+ * 注意：ba:complaints:* 只控制主站留言页内的举报处理，不授予 BA 面板访问。
+ */
+export function resolveBaRole(
+  role: string,
+  overrides?: string[] | null
+): "super_admin" | "auditor" | null {
+  if (role === "owner") return "super_admin";
+  const permissions = resolveAdminPermissions(role, overrides);
+  if (permissions.includes("ba:admin")) return "super_admin";
+  if (permissions.includes("ba:access")) return "auditor";
+  return null;
+}
+
+const BA_COMPLAINT_READ_PERMISSIONS = [
+  "ba:complaints:read",
+  "ba:complaints:write",
+  "ba:complaints:delete",
+  "ba:complaints:sensitive:read",
+] as const satisfies readonly AdminPermission[];
+
+/**
+ * 读取 BA 举报的权限判定。
+ * write/delete/sensitive:read 按设计隐含 read。
+ */
+export function canReadBaComplaints(admin: {
+  role: string;
+  permissions?: string[] | null;
+  permissionOverrides?: string[] | null;
+}): boolean {
+  return BA_COMPLAINT_READ_PERMISSIONS.some((permission) =>
+    hasAdminPermission(admin, permission)
+  );
 }
 
 /**

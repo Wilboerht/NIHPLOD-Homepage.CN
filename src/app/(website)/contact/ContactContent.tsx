@@ -435,7 +435,7 @@ export function ContactContent({ content }: ContactContentProps) {
           {title.zh}
         </h1>
         <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
-        <p className="mx-auto max-w-md px-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">
+        <p className="mx-auto max-w-md px-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/70 md:px-0 md:text-[15px] md:tracking-[0.12em]">
           {description}
         </p>
       </div>

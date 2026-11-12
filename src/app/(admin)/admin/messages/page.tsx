@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, Mail, MailOpen, Trash2, Clock, Copy, X, Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -27,6 +28,8 @@ import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { IconButton } from "@/components/admin/IconButton";
 import { RecordAccountLinkControl } from "@/components/admin/RecordAccountLinkControl";
+import { BaComplaintsContent } from "@/components/admin/BaComplaintsContent";
+import { MessagesSourceTabs } from "@/components/admin/MessagesSourceTabs";
 
 interface Message {
   id: string;
@@ -62,7 +65,7 @@ const MESSAGE_TYPE_OPTIONS = [
   ...Object.entries(MESSAGE_TYPE_LABELS).map(([value, label]) => ({ value, label })),
 ];
 
-function AdminMessagesContent() {
+function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
   const { get, getNumber, update } = useListQuery();
   const { success, error: showError } = useToast();
   const { can: canAdmin } = useAdminPermissions();
@@ -399,10 +402,13 @@ function AdminMessagesContent() {
           </>
         }
         actions={
-          <Button variant="outline" size="sm" onClick={fetchMessages}>
-            <RefreshCw className="mr-1.5 h-4 w-4" />
-            刷新
-          </Button>
+          <>
+            {sourceTabs}
+            <Button variant="outline" size="sm" onClick={fetchMessages}>
+              <RefreshCw className="mr-1.5 h-4 w-4" />
+              刷新
+            </Button>
+          </>
         }
       />
 
@@ -1062,8 +1068,34 @@ function AdminMessagesContent() {
 
 export default function AdminMessagesPage() {
   return (
-    <RequirePermission permission="messages:read">
-      <AdminMessagesContent />
+    <RequirePermission
+      permissions={[
+        "messages:read",
+        "ba:complaints:read",
+        "ba:complaints:write",
+        "ba:complaints:delete",
+        "ba:complaints:sensitive:read",
+      ]}
+    >
+      <AdminMessagesRouter />
     </RequirePermission>
   );
+}
+
+function AdminMessagesRouter() {
+  const { can } = useAdminPermissions();
+  const searchParams = useSearchParams();
+  const canMain = can("messages:read");
+  const canBa =
+    can("ba:complaints:read") ||
+    can("ba:complaints:write") ||
+    can("ba:complaints:delete") ||
+    can("ba:complaints:sensitive:read");
+  const source = searchParams.get("source");
+  const sourceTabs = <MessagesSourceTabs showMain={canMain} showBa={canBa} />;
+
+  if (canBa && (!canMain || source === "ba")) {
+    return <BaComplaintsContent sourceTabs={sourceTabs} />;
+  }
+  return <AdminMessagesContent sourceTabs={sourceTabs} />;
 }

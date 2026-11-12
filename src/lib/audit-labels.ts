@@ -116,6 +116,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   admin_sso_token: "签发测肤子站断言",
   admin_sso_status_sync: "同步测肤子站管理员状态",
   admin_sso_denied: "拒绝测肤子站登录",
+  ba_complaint_status_update: "处理 BA 举报状态",
+  ba_complaint_delete: "删除 BA 举报（软删除）",
   break_glass_view: "查看测肤子站应急账号",
   device_force_logout: "强制下线设备",
   admin_login_failed: "管理员登录失败",
@@ -201,4 +203,5 @@ export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
   audit_hold: "审计法律保留",
   audit_retention: "审计到期清理",
   legal_document: "法务文档",
+  ba_complaint: "BA 举报",
 };

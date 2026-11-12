@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   consumeAdminSsoCode,
-  getAdminSsoConfig,
-  isAdminSsoEnabled,
   isTotpSatisfied,
   safeSecretEqual,
   signAdminSsoAssertion,
 } from "@/lib/admin-sso";
-import { resolveAdvisorRole } from "@/lib/admin-permissions";
+import {
+  filterClientPermissions,
+  getAdminSsoClient,
+  resolveClientRole,
+} from "@/lib/admin-sso-clients";
 import { verifyPKCE } from "@/lib/oauth-code";
 import { prisma } from "@/lib/prisma";
 import { beginAuditLog, createAuditLog, finishAuditLog } from "@/lib/audit";
@@ -52,18 +54,6 @@ async function parseBody(request: NextRequest): Promise<unknown> {
 // POST /api/admin/sso/token
 // 子站服务端用 client_secret + 一次性 code 换取 60 秒管理员断言。
 export async function POST(request: NextRequest) {
-  if (!isAdminSsoEnabled()) {
-    return jsonError("NOT_FOUND", "Admin SSO is disabled", 404);
-  }
-
-  let config: ReturnType<typeof getAdminSsoConfig>;
-  try {
-    config = getAdminSsoConfig();
-  } catch (error) {
-    logger.error("[AdminSSO] 配置缺失", { error: String(error) });
-    return jsonError("INTERNAL_ERROR", "Admin SSO is not configured", 500);
-  }
-
   const ip = getClientIP(request);
   const limit = await rateLimit(`admin-sso-token-${ip}`, "default", {
     maxRequests: 30,
@@ -85,8 +75,16 @@ export async function POST(request: NextRequest) {
   }
 
   const { client_id, client_secret, code, redirect_uri, code_verifier } = parsed.data;
+  const client = (() => {
+    try {
+      return getAdminSsoClient(client_id);
+    } catch (error) {
+      logger.error("[AdminSSO] 配置缺失", { error: String(error) });
+      return null;
+    }
+  })();
 
-  if (client_id !== config.clientId || !safeSecretEqual(client_secret, config.clientSecret)) {
+  if (!client || !safeSecretEqual(client_secret, client.clientSecret)) {
     await createAuditLog({
       action: "admin_sso_denied",
       targetType: "admin",
@@ -171,13 +169,15 @@ export async function POST(request: NextRequest) {
     return deny("token_version_changed", "管理员会话已变更，请重新登录", 401);
   }
 
-  const advisorRole = resolveAdvisorRole(admin.role, admin.permissions);
-  if (!advisorRole) {
-    return deny("no_advisor_access", "无测肤子站访问权限", 403);
+  const clientRole = resolveClientRole(client, admin.role, admin.permissions);
+  if (!clientRole) {
+    return deny("no_client_access", "无该子站访问权限", 403);
   }
   if (!isTotpSatisfied(admin.totpEnabled)) {
     return deny("totp_required", "请先开启二次验证", 403);
   }
+
+  const clientPermissions = filterClientPermissions(client, admin.role, admin.permissions);
 
   try {
     const auditId = await beginAuditLog({
@@ -185,8 +185,10 @@ export async function POST(request: NextRequest) {
       targetType: "admin",
       targetId: admin.id,
       detail: {
-        clientId: config.clientId,
-        advisorRole,
+        clientId: client.clientId,
+        clientRole,
+        advisorRole: client.roleResolver === "advisor" ? clientRole : undefined,
+        baRole: client.roleResolver === "ba" ? clientRole : undefined,
         totpEnabled: admin.totpEnabled,
       },
       actorType: "ADMIN",
@@ -209,31 +211,35 @@ export async function POST(request: NextRequest) {
           email: admin.email,
           name: admin.name,
           role: admin.role,
-          permissionOverrides: admin.permissions,
+          clientId: client.clientId,
+          audience: client.audience,
+          clientRole,
+          roleResolver: client.roleResolver,
+          permissions: clientPermissions,
           tokenVersion: admin.tokenVersion,
           totpEnabled: admin.totpEnabled,
           mainSessionExp: consumed.mainSessionExp,
         },
-        config
+        client.signing
       );
     } catch (error) {
-      await finishAuditLog(auditId, "FAILURE", { clientId: config.clientId });
+      await finishAuditLog(auditId, "FAILURE", { clientId: client.clientId });
       throw error;
     }
 
     await finishAuditLog(auditId, "SUCCESS", {
-      clientId: config.clientId,
-      advisorRole,
+      clientId: client.clientId,
+      clientRole,
       totpEnabled: admin.totpEnabled,
     });
     void recordSsoEvent({
       event: "token",
       userId: admin.id,
-      clientId: config.clientId,
-      clientName: "测肤子站",
+      clientId: client.clientId,
+      clientName: client.name,
       ip: getClientIP(request),
       success: true,
-      detail: { admin_sso: true, advisorRole },
+      detail: { admin_sso: true, clientRole },
     });
 
     return NextResponse.json(

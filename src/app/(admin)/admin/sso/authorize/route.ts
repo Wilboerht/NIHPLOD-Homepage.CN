@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAdminSession } from "@/lib/auth";
-import { resolveAdvisorRole } from "@/lib/admin-permissions";
+import { getAdminSsoClient, resolveClientRole } from "@/lib/admin-sso-clients";
 import {
   createAdminSsoCode,
-  getAdminSsoConfig,
-  isAdminSsoEnabled,
   isTotpSatisfied,
 } from "@/lib/admin-sso";
 import { prisma } from "@/lib/prisma";
@@ -33,20 +31,8 @@ function redirectToDenied(reason: string): NextResponse {
 }
 
 // GET /admin/sso/authorize
-// 主站管理员已登录 + 有测肤子站权限 + 满足 TOTP 要求后，签发一次性 code。
+// 主站管理员已登录 + 有目标客户端权限 + 满足 TOTP 要求后，签发一次性 code。
 export async function GET(request: NextRequest) {
-  if (!isAdminSsoEnabled()) {
-    return badRequest("Admin SSO is disabled");
-  }
-
-  let config: ReturnType<typeof getAdminSsoConfig>;
-  try {
-    config = getAdminSsoConfig();
-  } catch (error) {
-    logger.error("[AdminSSO] 配置缺失", { error: String(error) });
-    return badRequest("Admin SSO is not configured");
-  }
-
   const ip = getClientIP(request);
   const limit = await rateLimit(`admin-sso-authorize-${ip}`, "default", {
     maxRequests: 30,
@@ -67,9 +53,20 @@ export async function GET(request: NextRequest) {
   const codeChallenge = params.get("code_challenge");
   const codeChallengeMethod = params.get("code_challenge_method");
 
+  const client = (() => {
+    try {
+      return getAdminSsoClient(clientId);
+    } catch (error) {
+      logger.error("[AdminSSO] 配置缺失", { error: String(error) });
+      return null;
+    }
+  })();
+  if (!client) {
+    return badRequest("Admin SSO is disabled or invalid client_id");
+  }
+
   if (responseType !== "code") return badRequest("response_type must be code");
-  if (clientId !== config.clientId) return badRequest("invalid client_id");
-  if (redirectUri !== config.redirectUri) return badRequest("invalid redirect_uri");
+  if (redirectUri !== client.redirectUri) return badRequest("invalid redirect_uri");
   if (!state || !STATE_PATTERN.test(state)) return badRequest("invalid state");
   if (!codeChallenge || !PKCE_CHALLENGE_PATTERN.test(codeChallenge)) {
     return badRequest("invalid code_challenge");
@@ -87,23 +84,24 @@ export async function GET(request: NextRequest) {
   }
 
   const { admin, exp } = session;
-  const advisorRole = resolveAdvisorRole(admin.role, admin.permissionOverrides);
-  if (!advisorRole) {
+  const clientRole = resolveClientRole(client, admin.role, admin.permissionOverrides);
+  if (!clientRole) {
     await createAuditLog({
       action: "admin_sso_denied",
       targetType: "admin",
       targetId: admin.id,
-      detail: { reason: "no_advisor_access", clientId },
+      detail: { reason: "no_client_access", clientId: client.clientId },
       adminId: admin.id,
       request,
     }).catch(() => {});
     void recordSsoEvent({
       event: "authorize",
       userId: admin.id,
-      clientId,
+      clientId: client.clientId,
+      clientName: client.name,
       ip: getClientIP(request),
       success: false,
-      detail: { admin_sso: true, reason: "no_advisor_access" },
+      detail: { admin_sso: true, reason: "no_client_access" },
     });
     return redirectToDenied("forbidden");
   }
@@ -128,9 +126,11 @@ export async function GET(request: NextRequest) {
       targetType: "admin",
       targetId: admin.id,
       detail: {
-        clientId: config.clientId,
-        redirectUri: config.redirectUri,
-        advisorRole,
+        clientId: client.clientId,
+        redirectUri: client.redirectUri,
+        clientRole,
+        advisorRole: client.roleResolver === "advisor" ? clientRole : undefined,
+        baRole: client.roleResolver === "ba" ? clientRole : undefined,
         totpEnabled: adminSecurity.totpEnabled,
         ip: getClientIP(request),
       },
@@ -156,34 +156,34 @@ export async function GET(request: NextRequest) {
     try {
       ({ code } = await createAdminSsoCode({
         adminId: admin.id,
-        clientId: config.clientId,
-        redirectUri: config.redirectUri,
+        clientId: client.clientId,
+        redirectUri: client.redirectUri,
         codeChallenge,
         codeChallengeMethod,
         adminTokenVersion: adminSecurity.tokenVersion,
         mainSessionExp: exp,
       }));
     } catch (error) {
-      await finishAuditLog(auditId, "FAILURE", { clientId: config.clientId });
+      await finishAuditLog(auditId, "FAILURE", { clientId: client.clientId });
       throw error;
     }
 
     await finishAuditLog(auditId, "SUCCESS", {
-      clientId: config.clientId,
-      redirectUri: config.redirectUri,
-      advisorRole,
+      clientId: client.clientId,
+      redirectUri: client.redirectUri,
+      clientRole,
     });
     void recordSsoEvent({
       event: "authorize",
       userId: admin.id,
-      clientId: config.clientId,
-      clientName: "测肤子站",
+      clientId: client.clientId,
+      clientName: client.name,
       ip: getClientIP(request),
       success: true,
-      detail: { admin_sso: true, advisorRole },
+      detail: { admin_sso: true, clientRole },
     });
 
-    const target = new URL(config.redirectUri);
+    const target = new URL(client.redirectUri);
     target.searchParams.set("code", code);
     target.searchParams.set("state", state);
     return NextResponse.redirect(target, {

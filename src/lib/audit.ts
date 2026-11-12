@@ -151,6 +151,8 @@ export type AuditAction =
   | "admin_sso_token"
   | "admin_sso_status_sync"
   | "admin_sso_denied"
+  | "ba_complaint_status_update"
+  | "ba_complaint_delete"
   | "break_glass_view"
   | "admin_login_failed"
   | "admin_totp_failed"
@@ -209,6 +211,7 @@ export type AuditTargetType =
   | "point_ledger"
   | "point_gift"
   | "point_redemption"
+  | "ba_complaint"
   | "oauth_session"
   | "point_campaign"
   | "audit_hold"
@@ -350,6 +353,8 @@ export const AUDIT_ACTIONS = [
   "admin_sso_token",
   "admin_sso_status_sync",
   "admin_sso_denied",
+  "ba_complaint_status_update",
+  "ba_complaint_delete",
   "break_glass_view",
   "device_force_logout",
   "admin_login_failed",
@@ -411,6 +416,7 @@ export const AUDIT_TARGET_TYPES = [
   "point_ledger",
   "point_gift",
   "point_redemption",
+  "ba_complaint",
   "point_campaign",
   "audit_hold",
   "audit_retention",

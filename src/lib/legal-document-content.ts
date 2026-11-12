@@ -37,6 +37,8 @@ export async function resolvePublishedLegalDocument(
   return defaultLegalDocuments[slug];
 }
 
+// Next 16 仍支持 unstable_cache；迁移到 use cache 需要全局开启 cacheComponents，
+// 并迁移全站 route segment config，属于独立的升级事项。
 const getCachedPublishedLegalDocument = unstable_cache(
   resolvePublishedLegalDocument,
   ["legal-document"],

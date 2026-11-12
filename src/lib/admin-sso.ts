@@ -10,11 +10,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import { SignJWT } from "jose";
 import { prisma } from "./prisma";
 import { getIssuer } from "./oauth-constants";
-import {
-  resolveAdminPermissions,
-  resolveAdvisorRole,
-  type AdminRoleValue,
-} from "./admin-permissions";
+import type { AdminRoleValue } from "./admin-permissions";
 import { getAdminSsoKeyId, importAdminSsoPrivateKey } from "./admin-sso-keys";
 
 export const ADMIN_SSO_AUDIENCE = "advisor-admin";
@@ -25,66 +21,35 @@ export type AdminSsoSigningConfig =
   | { alg: "RS256"; keyId: string; privateKey: string }
   | { alg: "HS256"; secret: string };
 
-export interface AdminSsoConfig {
-  clientId: string;
-  clientSecret: string;
-  redirectUri: string;
-  signing: AdminSsoSigningConfig;
-}
-
-function readRequired(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`[AdminSSO] ${name} 未配置`);
-  }
-  return value;
-}
-
 /**
- * 默认使用 RS256。仅在显式设置 ADVISOR_ADMIN_SSO_SIGNING_ALG=HS256 时
+ * 管理员 SSO 共用同一把签名密钥（测肤子站与 BA 共用）。
+ * 默认 RS256；仅在显式设置 ADVISOR_ADMIN_SSO_SIGNING_ALG=HS256 时
  * 保留共享密钥回退（迁移窗口/紧急回滚），生产最终必须删除该配置。
  */
-export function getAdminSsoConfig(): AdminSsoConfig {
-  const clientSecret = readRequired("ADVISOR_ADMIN_SSO_CLIENT_SECRET");
-  if (clientSecret.length < 32) {
-    throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_CLIENT_SECRET 至少需要 32 位");
-  }
-
+export function getAdminSsoSigningConfig(): AdminSsoSigningConfig {
   const requestedAlg = process.env.ADVISOR_ADMIN_SSO_SIGNING_ALG?.trim().toUpperCase();
   const privateKey = process.env.ADVISOR_ADMIN_SSO_PRIVATE_KEY;
   const legacySecret = process.env.ADVISOR_ADMIN_SSO_SECRET;
   const signingAlg = requestedAlg || (privateKey ? "RS256" : legacySecret ? "HS256" : "");
 
-  let signing: AdminSsoSigningConfig;
   if (signingAlg === "RS256") {
     if (!privateKey) {
       throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_PRIVATE_KEY 未配置");
     }
-    signing = { alg: "RS256", keyId: getAdminSsoKeyId(), privateKey };
-  } else if (signingAlg === "HS256") {
+    return { alg: "RS256", keyId: getAdminSsoKeyId(), privateKey };
+  }
+  if (signingAlg === "HS256") {
     if (!legacySecret) {
       throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_SECRET 未配置");
     }
     if (legacySecret.length < 32) {
       throw new Error("[AdminSSO] ADVISOR_ADMIN_SSO_SECRET 至少需要 32 位");
     }
-    signing = { alg: "HS256", secret: legacySecret };
-  } else {
-    throw new Error(
-      "[AdminSSO] 未配置签名密钥：请配置 ADVISOR_ADMIN_SSO_PRIVATE_KEY（RS256）"
-    );
+    return { alg: "HS256", secret: legacySecret };
   }
-
-  return {
-    clientId: readRequired("ADVISOR_ADMIN_SSO_CLIENT_ID"),
-    clientSecret,
-    redirectUri: readRequired("ADVISOR_ADMIN_SSO_REDIRECT_URI"),
-    signing,
-  };
-}
-
-export function isAdminSsoEnabled(): boolean {
-  return process.env.ADVISOR_ADMIN_SSO_ENABLED === "true";
+  throw new Error(
+    "[AdminSSO] 未配置签名密钥：请配置 ADVISOR_ADMIN_SSO_PRIVATE_KEY（RS256）"
+  );
 }
 
 /** 子站访问必须已开启 TOTP，不再接受任何宽限期。 */
@@ -203,7 +168,11 @@ export interface AdminSsoAssertionInput {
   email: string;
   name: string;
   role: AdminRoleValue | string;
-  permissionOverrides: string[] | null;
+  clientId: string;
+  audience: string;
+  clientRole: string;
+  roleResolver: "advisor" | "ba";
+  permissions: string[];
   tokenVersion: number;
   totpEnabled: boolean;
   mainSessionExp: number;
@@ -217,46 +186,40 @@ export interface AdminSsoAssertionInput {
  */
 export async function signAdminSsoAssertion(
   admin: AdminSsoAssertionInput,
-  config: AdminSsoConfig
+  signing: AdminSsoSigningConfig
 ): Promise<string> {
-  const advisorRole = resolveAdvisorRole(admin.role, admin.permissionOverrides);
-  if (!advisorRole) {
-    throw new Error("[AdminSSO] admin has no advisor access");
-  }
-
-  // 只下发子站需要的权限，避免把主站全量权限（users:delete/admins:write 等）
-  // 暴露给子站；子站 resolveLocalAdminRole 仍依赖 advisor:access / advisor:admin。
-  const permissions = resolveAdminPermissions(
-    admin.role,
-    admin.permissionOverrides
-  ).filter((permission) => permission.startsWith("advisor:"));
-
-  const assertion = new SignJWT({
+  const payload: Record<string, unknown> = {
     email: admin.email,
     name: admin.name,
     role: admin.role,
-    permissions,
-    advisorRole,
+    permissions: admin.permissions,
+    client_id: admin.clientId,
+    clientRole: admin.clientRole,
     ver: admin.tokenVersion,
     totp: admin.totpEnabled,
     mainSessionExp: admin.mainSessionExp,
     token_use: "admin_sso",
-  })
+  };
+  // 保持测肤子站现有 claim 兼容；BA 额外提供 baRole。
+  if (admin.roleResolver === "advisor") payload.advisorRole = admin.clientRole;
+  if (admin.roleResolver === "ba") payload.baRole = admin.clientRole;
+
+  const assertion = new SignJWT(payload)
     .setIssuer(getIssuer())
-    .setAudience(ADMIN_SSO_AUDIENCE)
+    .setAudience(admin.audience)
     .setSubject(admin.id)
     .setJti(randomUUID())
     .setIssuedAt()
     .setExpirationTime(`${ADMIN_SSO_ASSERTION_TTL_SECONDS}s`);
 
-  if (config.signing.alg === "RS256") {
-    const privateKey = await importAdminSsoPrivateKey(config.signing.privateKey);
+  if (signing.alg === "RS256") {
+    const privateKey = await importAdminSsoPrivateKey(signing.privateKey);
     return assertion
-      .setProtectedHeader({ alg: "RS256", typ: "JWT", kid: config.signing.keyId })
+      .setProtectedHeader({ alg: "RS256", typ: "JWT", kid: signing.keyId })
       .sign(privateKey);
   }
 
   return assertion
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-    .sign(new TextEncoder().encode(config.signing.secret));
+    .sign(new TextEncoder().encode(signing.secret));
 }

@@ -25,7 +25,6 @@ describe("管理端页面权限映射", () => {
       ["/admin/categories", "categories:read"],
       ["/admin/cron-tasks", "cron:read"],
       ["/admin/jobs", "jobs:read"],
-      ["/admin/messages", "messages:read"],
       ["/admin/oauth/audit", "sso:read"],
       ["/admin/oauth/consents", "sso:read"],
       ["/admin/oauth/sessions", "sso:read"],
@@ -66,7 +65,9 @@ describe("管理端页面权限映射", () => {
       "/admin/approvals",
       "/admin/point-gifts",
       "/admin/spent-adjustments",
+      "/admin/messages",
       "/admin/subsites/advisor",
+      "/admin/subsites/ba",
     ]) {
       expect(getAdminPageRule(pathname)?.anyOf, `${pathname} 应使用 anyOf`).toBeTruthy();
     }
@@ -112,9 +113,20 @@ describe("管理端页面权限映射", () => {
       "/admin/audit-retention",
       "/admin/sso/audit",
       "/admin/subsites/advisor",
+      "/admin/subsites/ba",
     ]) {
       expect(canAccessAdminPage(noPermissions, pathname), pathname).toBe(false);
     }
+  });
+
+  it("BA 举报处理权限可进入留言页但不能进入 BA 面板", () => {
+    const complaintOnly = admin("unknown-role", ["ba:complaints:write"]);
+    expect(canAccessAdminPage(complaintOnly, "/admin/messages")).toBe(true);
+    expect(canAccessAdminPage(complaintOnly, "/admin/subsites/ba")).toBe(false);
+
+    const panelOnly = admin("unknown-role", ["ba:access"]);
+    expect(canAccessAdminPage(panelOnly, "/admin/subsites/ba")).toBe(true);
+    expect(canAccessAdminPage(panelOnly, "/admin/messages")).toBe(false);
   });
 
   it("anyOf 页面满足任一权限即可", () => {

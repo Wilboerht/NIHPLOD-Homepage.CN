@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { History, Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +28,21 @@ interface LegalVersionHistoryProps {
   onRestored: (document: LegalAdminDocumentDetail) => void;
 }
 
+interface DiffState {
+  baseContent: LegalDocumentContent;
+  targetContent: LegalDocumentContent;
+  baseLabel: string;
+  targetLabel: string;
+  baseMeta: LegalVersionDetail | null;
+  targetMeta: LegalVersionDetail | null;
+}
+
+interface ResolvedSelection {
+  content: LegalDocumentContent;
+  label: string;
+  meta: LegalVersionDetail | null;
+}
+
 export function LegalVersionHistory({
   open,
   onClose,
@@ -43,10 +58,14 @@ export function LegalVersionHistory({
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [diffVersion, setDiffVersion] = useState<LegalVersionDetail | null>(null);
+  const [diffState, setDiffState] = useState<DiffState | null>(null);
   const [diffLoadingId, setDiffLoadingId] = useState<string | null>(null);
+  const [baseSelection, setBaseSelection] = useState("current");
+  const [targetSelection, setTargetSelection] = useState("");
+  const [comparing, setComparing] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<LegalVersionSummary | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const versionCacheRef = useRef(new Map<string, LegalVersionDetail>());
 
   const fetchVersions = useCallback(async () => {
     setLoading(true);
@@ -58,6 +77,11 @@ export function LegalVersionHistory({
       }>(`/api/admin/legal/${slug}/versions`, { limit: 20 });
       setVersions(data.versions);
       setNextCursor(data.nextCursor);
+      setTargetSelection((previous) =>
+        previous === "current" || data.versions.some((version) => version.id === previous)
+          ? previous
+          : (data.versions[0]?.id ?? "")
+      );
     } catch (error) {
       setLoadError(getApiErrorMessage(error, "加载历史版本失败"));
     } finally {
@@ -87,17 +111,63 @@ export function LegalVersionHistory({
     }
   };
 
+  const getVersionDetail = async (versionId: string): Promise<LegalVersionDetail> => {
+    const cached = versionCacheRef.current.get(versionId);
+    if (cached) return cached;
+    const detail = await apiGet<LegalVersionDetail>(
+      `/api/admin/legal/${slug}/versions/${versionId}`
+    );
+    versionCacheRef.current.set(versionId, detail);
+    return detail;
+  };
+
+  const resolveSelection = async (selection: string): Promise<ResolvedSelection> => {
+    if (selection === "current") {
+      return { content: currentContent, label: "当前编辑内容", meta: null };
+    }
+    const detail = await getVersionDetail(selection);
+    return { content: detail.content, label: `v${detail.version}`, meta: detail };
+  };
+
   const openDiff = async (version: LegalVersionSummary) => {
     setDiffLoadingId(version.id);
     try {
-      const detail = await apiGet<LegalVersionDetail>(
-        `/api/admin/legal/${slug}/versions/${version.id}`
-      );
-      setDiffVersion(detail);
+      const detail = await getVersionDetail(version.id);
+      setDiffState({
+        baseContent: detail.content,
+        targetContent: currentContent,
+        baseLabel: `v${detail.version}`,
+        targetLabel: "当前编辑内容",
+        baseMeta: detail,
+        targetMeta: null,
+      });
     } catch (error) {
       toast.error(getApiErrorMessage(error, "加载版本内容失败"));
     } finally {
       setDiffLoadingId(null);
+    }
+  };
+
+  const handleCompare = async () => {
+    if (!baseSelection || !targetSelection || baseSelection === targetSelection) return;
+    setComparing(true);
+    try {
+      const [base, target] = await Promise.all([
+        resolveSelection(baseSelection),
+        resolveSelection(targetSelection),
+      ]);
+      setDiffState({
+        baseContent: base.content,
+        targetContent: target.content,
+        baseLabel: base.label,
+        targetLabel: target.label,
+        baseMeta: base.meta,
+        targetMeta: target.meta,
+      });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "加载对比内容失败"));
+    } finally {
+      setComparing(false);
     }
   };
 
@@ -120,6 +190,20 @@ export function LegalVersionHistory({
     }
   };
 
+  const selectionOptions = [
+    { value: "current", label: "当前编辑内容" },
+    ...versions.map((version) => ({
+      value: version.id,
+      label: `v${version.version}${version.isCurrentPublished ? "（当前线上）" : ""}`,
+    })),
+  ];
+  const compareDisabled =
+    comparing ||
+    !baseSelection ||
+    !targetSelection ||
+    baseSelection === targetSelection ||
+    versions.length === 0;
+
   return (
     <>
       <Modal open={open} onClose={onClose} title="版本历史" size="lg">
@@ -127,6 +211,45 @@ export function LegalVersionHistory({
           <p className="text-xs text-brand-charcoal/50">
             版本永久保留。恢复旧版只会写入草稿，不会直接修改线上内容。
           </p>
+
+          {versions.length > 0 ? (
+            <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3">
+              <p className="text-xs font-medium text-brand-charcoal/70">对比任意两个版本</p>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="text-[11px] text-brand-charcoal/55">
+                  基准
+                  <select
+                    value={baseSelection}
+                    onChange={(event) => setBaseSelection(event.target.value)}
+                    className="mt-1 block h-9 min-w-[9rem] rounded-lg border border-brand-charcoal/20 bg-white px-2 text-xs text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                  >
+                    {selectionOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-[11px] text-brand-charcoal/55">
+                  对比
+                  <select
+                    value={targetSelection}
+                    onChange={(event) => setTargetSelection(event.target.value)}
+                    className="mt-1 block h-9 min-w-[9rem] rounded-lg border border-brand-charcoal/20 bg-white px-2 text-xs text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                  >
+                    {selectionOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Button size="sm" onClick={() => void handleCompare()} disabled={compareDisabled}>
+                  {comparing ? "加载中..." : "对比"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           {loading ? (
             <div className="flex items-center justify-center py-10 text-brand-charcoal/50">
@@ -215,10 +338,14 @@ export function LegalVersionHistory({
       </Modal>
 
       <LegalVersionDiff
-        open={Boolean(diffVersion)}
-        onClose={() => setDiffVersion(null)}
-        version={diffVersion}
-        currentContent={currentContent}
+        open={Boolean(diffState)}
+        onClose={() => setDiffState(null)}
+        baseContent={diffState?.baseContent ?? null}
+        targetContent={diffState?.targetContent ?? null}
+        baseLabel={diffState?.baseLabel ?? ""}
+        targetLabel={diffState?.targetLabel ?? ""}
+        baseMeta={diffState?.baseMeta ?? null}
+        targetMeta={diffState?.targetMeta ?? null}
       />
 
       <ConfirmDialog

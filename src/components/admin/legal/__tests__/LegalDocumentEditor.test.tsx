@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ToastProvider } from "@/components/ui/Toast";
+import { writeLegalLocalDraft } from "@/lib/legal-local-draft";
 
 const mocks = vi.hoisted(() => {
   class MockApiError extends Error {
@@ -67,6 +68,7 @@ import { LegalDocumentEditor } from "../LegalDocumentEditor";
 describe("LegalDocumentEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     mocks.apiGet.mockResolvedValue(mocks.document);
     mocks.can.mockReturnValue(true);
   });
@@ -91,6 +93,29 @@ describe("LegalDocumentEditor", () => {
     fireEvent.change(screen.getByLabelText("页面描述"), {
       target: { value: "修改后的描述" },
     });
+    expect(publishButton).toBeEnabled();
+  });
+
+  it("存在与线上不同的服务端草稿时允许发布", async () => {
+    const draftContent = {
+      ...mocks.document.content,
+      description: "服务端草稿描述",
+    };
+    mocks.apiGet.mockResolvedValue({
+      ...mocks.document,
+      hasDraft: true,
+      draftRevision: 2,
+      contentSource: "draft",
+      content: draftContent,
+      draftContent,
+    });
+    render(
+      <ToastProvider>
+        <LegalDocumentEditor slug="terms" />
+      </ToastProvider>
+    );
+
+    const publishButton = await screen.findByRole("button", { name: /^发布$/ });
     expect(publishButton).toBeEnabled();
   });
 
@@ -138,6 +163,24 @@ describe("LegalDocumentEditor", () => {
 
     expect(await screen.findByText("草稿已被其他管理员修改，正在刷新最新内容")).toBeInTheDocument();
     expect(mocks.apiGet.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("发现本地未提交草稿时提示并可恢复", async () => {
+    writeLegalLocalDraft("terms", {
+      ...mocks.document.content,
+      description: "本地未提交描述",
+    });
+    render(
+      <ToastProvider>
+        <LegalDocumentEditor slug="terms" />
+      </ToastProvider>
+    );
+
+    expect(await screen.findByText("检测到本浏览器中未提交的法务草稿")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "恢复本地修改" }));
+    expect(screen.getByLabelText("页面描述")).toHaveValue("本地未提交描述");
+    expect(screen.queryByText("检测到本浏览器中未提交的法务草稿")).toBeNull();
+    expect(screen.getByRole("button", { name: /^发布$/ })).toBeEnabled();
   });
 
   it("无写权限时隐藏编辑与发布操作", async () => {

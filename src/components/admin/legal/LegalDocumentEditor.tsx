@@ -14,6 +14,12 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { useLegalDraftAutosave } from "@/hooks/useLegalDraftAutosave";
+import {
+  clearLegalLocalDraft,
+  readLegalLocalDraft,
+  type LegalLocalDraft,
+} from "@/lib/legal-local-draft";
 import { createLegalSectionId } from "@/lib/legal-content";
 import { cn } from "@/lib/utils";
 import { LegalSectionEditor } from "./LegalSectionEditor";
@@ -22,6 +28,7 @@ import { LegalPublishDialog } from "./LegalPublishDialog";
 import { LegalVersionHistory } from "./LegalVersionHistory";
 import {
   cloneLegalContent,
+  legalContentComparableSignature,
   legalContentSignature,
   validatePublishableContent,
 } from "./legal-utils";
@@ -56,9 +63,11 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   const [publishOpen, setPublishOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [removeSectionId, setRemoveSectionId] = useState<string | null>(null);
+  const [localDraft, setLocalDraft] = useState<LegalLocalDraft | null>(null);
 
   const isDirty = content ? legalContentSignature(content) !== baseline : false;
   const { confirmClose } = useUnsavedChanges(isDirty);
+  useLegalDraftAutosave({ slug, content, isDirty, enabled: canWrite });
 
   const applyDocument = useCallback(
     (next: LegalAdminDocumentDetail, options?: { resetExpanded?: boolean }) => {
@@ -78,6 +87,18 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     try {
       const data = await apiGet<LegalAdminDocumentDetail>(`/api/admin/legal/${slug}`);
       applyDocument(data, { resetExpanded: true });
+
+      const stored = readLegalLocalDraft(slug);
+      if (
+        stored &&
+        legalContentComparableSignature(stored.content) !==
+          legalContentComparableSignature(data.content)
+      ) {
+        setLocalDraft(stored);
+      } else {
+        if (stored) clearLegalLocalDraft(slug);
+        setLocalDraft(null);
+      }
     } catch (error) {
       setLoadError(getApiErrorMessage(error, "加载法务文档失败"));
     } finally {
@@ -93,6 +114,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     id: string,
     patch: Partial<Pick<LegalDocumentContent["sections"][number], "title" | "body">>
   ) => {
+    setLocalDraft(null);
     setContent((previous) => {
       if (!previous) return previous;
       return {
@@ -105,6 +127,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   };
 
   const moveSection = (index: number, direction: -1 | 1) => {
+    setLocalDraft(null);
     setContent((previous) => {
       if (!previous) return previous;
       const target = index + direction;
@@ -116,6 +139,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   };
 
   const addSection = () => {
+    setLocalDraft(null);
     const section = { id: createLegalSectionId(), title: "新章节", body: "" };
     setContent((previous) =>
       previous ? { ...previous, sections: [...previous.sections, section] } : previous
@@ -125,6 +149,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
 
   const removeSection = () => {
     if (!removeSectionId) return;
+    setLocalDraft(null);
     setContent((previous) =>
       previous
         ? {
@@ -149,6 +174,8 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
         expectedRevision: document.draftRevision,
       });
       applyDocument(data);
+      clearLegalLocalDraft(slug);
+      setLocalDraft(null);
       toast.success("草稿已保存");
     } catch (error) {
       if (error instanceof ApiError && error.code === "STALE_UPDATE") {
@@ -208,6 +235,8 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
       }
 
       applyDocument(data);
+      clearLegalLocalDraft(slug);
+      setLocalDraft(null);
       setPublishOpen(false);
       toast.success(`已发布 v${data.publishedVersion}`);
     } catch (error) {
@@ -233,6 +262,8 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
         expectedRevision: document.draftRevision,
       });
       applyDocument(data);
+      clearLegalLocalDraft(slug);
+      setLocalDraft(null);
       setDiscardOpen(false);
       toast.success("草稿已丢弃");
     } catch (error) {
@@ -294,9 +325,23 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     .filter(Boolean)
     .join("，");
 
-  const publishDisabled =
-    publishing ||
-    (!isDirty && document.publishedVersion > 0 && document.contentSource !== "default");
+  const contentMatchesPublished =
+    document.publishedContent !== null &&
+    legalContentComparableSignature(content) ===
+      legalContentComparableSignature(document.publishedContent);
+  const publishDisabled = publishing || (document.publishedVersion > 0 && contentMatchesPublished);
+
+  const restoreLocalDraft = () => {
+    if (!localDraft) return;
+    setContent(cloneLegalContent(localDraft.content));
+    setLocalDraft(null);
+    toast.info("已恢复本地修改，请确认后保存或发布");
+  };
+
+  const discardLocalDraft = () => {
+    clearLegalLocalDraft(slug);
+    setLocalDraft(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -361,6 +406,25 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
         }
       />
 
+      {canWrite && localDraft ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <p className="font-medium">检测到本浏览器中未提交的法务草稿</p>
+          <p className="mt-1 text-xs leading-5 text-amber-700">
+            保存于{" "}
+            {localDraft.savedAt ? new Date(localDraft.savedAt).toLocaleString("zh-CN") : "未知时间"}
+            ，可能是上次关闭页面时尚未保存的内容。恢复前请确认是否仍需要这些修改。
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={restoreLocalDraft}>
+              恢复本地修改
+            </Button>
+            <Button size="sm" variant="outline" onClick={discardLocalDraft}>
+              忽略本地修改
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div
         className={cn(
           "rounded-xl border p-4 text-sm",
@@ -407,11 +471,12 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
                 readOnly={!canWrite}
                 maxLength={500}
                 rows={2}
-                onChange={(event) =>
+                onChange={(event) => {
+                  setLocalDraft(null);
                   setContent((previous) =>
                     previous ? { ...previous, description: event.target.value } : previous
-                  )
-                }
+                  );
+                }}
                 hint={`${content.description.length}/500`}
               />
             </div>
@@ -529,6 +594,8 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
         readOnly={!canWrite}
         onRestored={(next) => {
           applyDocument(next);
+          clearLegalLocalDraft(slug);
+          setLocalDraft(null);
         }}
       />
 

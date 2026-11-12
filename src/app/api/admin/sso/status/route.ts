@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getAdminSsoConfig, isAdminSsoEnabled, safeSecretEqual } from "@/lib/admin-sso";
+import { safeSecretEqual } from "@/lib/admin-sso";
 import {
-  resolveAdminPermissions,
-  resolveAdvisorRole,
-} from "@/lib/admin-permissions";
+  filterClientPermissions,
+  getAdminSsoClient,
+  resolveClientRole,
+} from "@/lib/admin-sso-clients";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { createAuditLog } from "@/lib/audit";
-import { apiConsole, logger } from "@/lib/logger";
+import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -28,18 +29,6 @@ function jsonError(code: string, message: string, status: number): NextResponse 
 // POST /api/admin/sso/status
 // 子站定时同步影子账号状态/角色/权限版本；仅返回必要字段，不含密码/TOTP 密钥。
 export async function POST(request: NextRequest) {
-  if (!isAdminSsoEnabled()) {
-    return jsonError("NOT_FOUND", "Admin SSO is disabled", 404);
-  }
-
-  let config: ReturnType<typeof getAdminSsoConfig>;
-  try {
-    config = getAdminSsoConfig();
-  } catch (error) {
-    logger.error("[AdminSSO] 配置缺失", { error: String(error) });
-    return jsonError("INTERNAL_ERROR", "Admin SSO is not configured", 500);
-  }
-
   const ip = getClientIP(request);
   const limit = await rateLimit(`admin-sso-status-${ip}`, "default", {
     maxRequests: 120,
@@ -60,7 +49,16 @@ export async function POST(request: NextRequest) {
   }
 
   const { client_id, client_secret, adminIds } = parsed.data;
-  if (client_id !== config.clientId || !safeSecretEqual(client_secret, config.clientSecret)) {
+  const client = (() => {
+    try {
+      return getAdminSsoClient(client_id);
+    } catch (error) {
+      apiConsole.error("[AdminSSO] 配置缺失", error);
+      return null;
+    }
+  })();
+
+  if (!client || !safeSecretEqual(client_secret, client.clientSecret)) {
     return jsonError("INVALID_CLIENT", "客户端认证失败", 401);
   }
 
@@ -81,6 +79,43 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const foundIds = new Set(admins.map((admin) => admin.id));
+    const missingIds = ids.filter((id) => !foundIds.has(id));
+    const responseAdmins = [
+      ...admins.map((admin) => {
+        const clientRole = resolveClientRole(client, admin.role, admin.permissions);
+        return {
+          id: admin.id,
+          email: admin.email,
+          name: admin.name,
+          role: admin.role,
+          permissions: filterClientPermissions(client, admin.role, admin.permissions),
+          clientRole,
+          advisorRole: client.roleResolver === "advisor" ? clientRole : undefined,
+          baRole: client.roleResolver === "ba" ? clientRole : undefined,
+          totpEnabled: admin.totpEnabled,
+          ver: admin.tokenVersion,
+          status: admin.status,
+          deletedAt: admin.deletedAt,
+        };
+      }),
+      // 主站已删除的管理员也必须出现在响应中，子站才能撤销影子账号会话。
+      ...missingIds.map((id) => ({
+        id,
+        email: null,
+        name: null,
+        role: "unknown",
+        permissions: [],
+        clientRole: null,
+        advisorRole: null,
+        baRole: null,
+        totpEnabled: false,
+        ver: 0,
+        status: "DELETED",
+        deletedAt: new Date().toISOString(),
+      })),
+    ];
+
     await createAuditLog({
       action: "admin_sso_status_sync",
       targetType: "admin",
@@ -92,7 +127,8 @@ export async function POST(request: NextRequest) {
       detail: {
         clientId: client_id,
         requestedIds: ids.length,
-        returnedCount: admins.length,
+        returnedCount: responseAdmins.length,
+        missingIds: missingIds.length,
       },
       request,
     });
@@ -101,22 +137,9 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         data: {
-          // 只返回影子账号同步所需的最小字段：advisor 相关权限 + TOTP 状态，
+          // 只返回影子账号同步所需的最小字段：客户端相关权限 + TOTP 状态，
           // 不下发主站全量权限集合。
-          admins: admins.map((admin) => ({
-            id: admin.id,
-            email: admin.email,
-            name: admin.name,
-            role: admin.role,
-            permissions: resolveAdminPermissions(admin.role, admin.permissions).filter(
-              (permission) => permission.startsWith("advisor:")
-            ),
-            advisorRole: resolveAdvisorRole(admin.role, admin.permissions),
-            totpEnabled: admin.totpEnabled,
-            ver: admin.tokenVersion,
-            status: admin.status,
-            deletedAt: admin.deletedAt,
-          })),
+          admins: responseAdmins,
         },
       },
       { headers: { "Cache-Control": "no-store", Pragma: "no-cache" } }

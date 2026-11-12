@@ -11,8 +11,12 @@ import type { LegalDocumentContent, LegalVersionDetail } from "@/types/legal";
 interface LegalVersionDiffProps {
   open: boolean;
   onClose: () => void;
-  version: LegalVersionDetail | null;
-  currentContent: LegalDocumentContent;
+  baseContent: LegalDocumentContent | null;
+  targetContent: LegalDocumentContent | null;
+  baseLabel: string;
+  targetLabel: string;
+  baseMeta?: LegalVersionDetail | null;
+  targetMeta?: LegalVersionDetail | null;
 }
 
 type SectionChange = "added" | "removed" | "modified" | "unchanged";
@@ -26,15 +30,15 @@ interface SectionDiffItem {
 }
 
 function buildSectionDiffs(
-  current: LegalDocumentContent,
-  version: LegalDocumentContent
+  target: LegalDocumentContent,
+  base: LegalDocumentContent
 ): SectionDiffItem[] {
-  const versionMap = new Map(version.sections.map((section) => [section.id, section]));
-  const currentIds = new Set(current.sections.map((section) => section.id));
+  const baseMap = new Map(base.sections.map((section) => [section.id, section]));
+  const targetIds = new Set(target.sections.map((section) => section.id));
   const items: SectionDiffItem[] = [];
 
-  for (const section of current.sections) {
-    const old = versionMap.get(section.id);
+  for (const section of target.sections) {
+    const old = baseMap.get(section.id);
     if (!old) {
       items.push({
         id: section.id,
@@ -62,8 +66,8 @@ function buildSectionDiffs(
     }
   }
 
-  for (const section of version.sections) {
-    if (!currentIds.has(section.id)) {
+  for (const section of base.sections) {
+    if (!targetIds.has(section.id)) {
       items.push({
         id: section.id,
         change: "removed",
@@ -91,12 +95,17 @@ const CHANGE_BADGE: Record<SectionChange, "success" | "danger" | "warning" | "se
   unchanged: "secondary",
 };
 
+function formatVersionMeta(meta: LegalVersionDetail): string {
+  const author = meta.createdBy ?? "系统导入";
+  return `${new Date(meta.createdAt).toLocaleString("zh-CN")} · ${author}`;
+}
+
 function DiffBody({ oldBody, newBody }: { oldBody: string; newBody: string }) {
   const lines = useMemo(() => diffLines(oldBody, newBody), [oldBody, newBody]);
   if (!lines) {
     return (
       <p className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-xs text-brand-charcoal/55">
-        章节内容过长，已省略逐行对比。可分别查看版本内容与当前草稿。
+        章节内容过长，已省略逐行对比。可分别查看版本内容。
       </p>
     );
   }
@@ -125,23 +134,27 @@ function DiffBody({ oldBody, newBody }: { oldBody: string; newBody: string }) {
 export function LegalVersionDiff({
   open,
   onClose,
-  version,
-  currentContent,
+  baseContent,
+  targetContent,
+  baseLabel,
+  targetLabel,
+  baseMeta,
+  targetMeta,
 }: LegalVersionDiffProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const items = useMemo(
-    () => (version ? buildSectionDiffs(currentContent, version.content) : []),
-    [currentContent, version]
+    () => (baseContent && targetContent ? buildSectionDiffs(targetContent, baseContent) : []),
+    [baseContent, targetContent]
   );
   const changedCount = items.filter((item) => item.change !== "unchanged").length;
   const orderChanged = useMemo(() => {
-    if (!version) return false;
-    const versionIds = version.content.sections.map((section) => section.id);
-    const currentIds = currentContent.sections.map((section) => section.id);
-    const currentCommon = currentIds.filter((id) => versionIds.includes(id));
-    const versionCommon = versionIds.filter((id) => currentIds.includes(id));
-    return currentCommon.join("|") !== versionCommon.join("|");
-  }, [currentContent, version]);
+    if (!baseContent || !targetContent) return false;
+    const baseIds = baseContent.sections.map((section) => section.id);
+    const targetIds = targetContent.sections.map((section) => section.id);
+    const baseCommon = baseIds.filter((id) => targetIds.includes(id));
+    const targetCommon = targetIds.filter((id) => baseIds.includes(id));
+    return baseCommon.join("|") !== targetCommon.join("|");
+  }, [baseContent, targetContent]);
 
   const toggle = (id: string) => {
     setExpanded((previous) => {
@@ -153,17 +166,26 @@ export function LegalVersionDiff({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={`版本对比 · v${version?.version ?? ""}`} size="xl">
-      {!version ? null : (
+    <Modal open={open} onClose={onClose} title="版本对比" size="xl">
+      {!baseContent || !targetContent ? null : (
         <div className="space-y-5">
           <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-4 text-sm text-brand-charcoal/70">
-            <p>版本时间：{new Date(version.createdAt).toLocaleString("zh-CN")}</p>
-            <p>发布人：{version.createdBy ?? "系统导入"}</p>
-            {version.note ? <p>发布说明：{version.note}</p> : null}
+            <p>
+              <span className="text-brand-charcoal/50">基准：</span>
+              {baseLabel}
+              {baseMeta ? ` · ${formatVersionMeta(baseMeta)}` : ""}
+            </p>
+            <p>
+              <span className="text-brand-charcoal/50">对比：</span>
+              {targetLabel}
+              {targetMeta ? ` · ${formatVersionMeta(targetMeta)}` : ""}
+            </p>
+            {baseMeta?.note ? <p>基准发布说明：{baseMeta.note}</p> : null}
+            {targetMeta?.note ? <p>对比发布说明：{targetMeta.note}</p> : null}
             <p>
               对比结果：{changedCount} 个章节有变化
               {orderChanged ? "，章节顺序已调整" : ""}
-              （颜色标记为相对历史版本的增删）
+              （颜色标记为相对基准版本的增删）
             </p>
           </div>
 

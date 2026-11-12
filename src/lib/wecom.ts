@@ -170,7 +170,31 @@ ${escapeWecomMarkdown(data.content)}`;
 }
 
 /**
- * 格式化职位申请消息为 WeCom Markdown 格式
+ * 格式化 BA 打假举报为 WeCom Markdown 格式
+ */
+export function formatBaComplaintToWecom(data: {
+  id: string;
+  channel?: string | null;
+  contactInfo?: string | null;
+  description: string;
+  createdAt?: string | null;
+  link: string;
+}) {
+  const lines = [
+    `> **举报编号**: ${escapeWecomMarkdown(data.id.slice(0, 8))}`,
+    `> **违规渠道**: ${escapeWecomMarkdown(data.channel || "未填写")}`,
+    `> **联系方式**: ${escapeWecomMarkdown(data.contactInfo || "未填写")}`,
+    `> **提交时间**: ${data.createdAt ? new Date(data.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
+    "",
+    `**摘要**: ${escapeWecomMarkdown(data.description.slice(0, 100))}`,
+    "",
+    `[查看并处理](${data.link})`,
+  ];
+  return `### 新打假举报\n${lines.join("\n")}`;
+}
+
+/**
+ * 格式化职位申请信息为 WeCom Markdown 格式
  */
 export function formatJobApplicationToWecom(data: {
   name: string;

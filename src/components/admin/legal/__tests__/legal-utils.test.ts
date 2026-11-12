@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cloneLegalContent,
+  legalContentComparableSignature,
   legalContentSignature,
   validatePublishableContent,
 } from "../legal-utils";
@@ -19,6 +20,15 @@ describe("legal-utils", () => {
     expect(cloned).toEqual(content);
     expect(cloned).not.toBe(content);
     expect(legalContentSignature(cloned)).toBe(legalContentSignature(content));
+  });
+
+  it("实质变更签名忽略 lastUpdated", () => {
+    expect(legalContentComparableSignature(content)).toBe(
+      legalContentComparableSignature({ ...content, lastUpdated: "2099年1月1日" })
+    );
+    expect(legalContentComparableSignature(content)).not.toBe(
+      legalContentComparableSignature({ ...content, description: "新描述" })
+    );
   });
 
   it("发布校验要求描述、标题和正文非空", () => {
