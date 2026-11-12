@@ -1,5 +1,17 @@
 import type { BaComplaintListItem } from "@/lib/ba-complaints";
 
+export interface BaEmergencyAccount {
+  username: string;
+  exists: boolean;
+  enabled: boolean;
+  totpConfigured: boolean;
+  authSource: string | null;
+  role: string | null;
+  isBanned: boolean;
+  lastLoginAt: string | null;
+  tokenVersion: number | null;
+}
+
 export interface BaDashboardData {
   certificates: {
     total: number;
@@ -27,6 +39,7 @@ export interface BaDashboardData {
     actorName: string | null;
     createdAt: string;
   }[];
+  emergencyAccount?: BaEmergencyAccount | null;
   generatedAt: string;
 }
 
@@ -41,4 +54,5 @@ export interface BaDashboardPayload {
   degraded: boolean;
   reason?: BaDashboardDegradedReason;
   canReadComplaints?: boolean;
+  canManageEmergencyAccount?: boolean;
 }

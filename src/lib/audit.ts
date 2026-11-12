@@ -153,6 +153,7 @@ export type AuditAction =
   | "admin_sso_denied"
   | "ba_complaint_status_update"
   | "ba_complaint_delete"
+  | "ba_emergency_password_reset"
   | "break_glass_view"
   | "admin_login_failed"
   | "admin_totp_failed"
@@ -212,6 +213,7 @@ export type AuditTargetType =
   | "point_gift"
   | "point_redemption"
   | "ba_complaint"
+  | "ba_emergency_account"
   | "oauth_session"
   | "point_campaign"
   | "audit_hold"
@@ -355,6 +357,7 @@ export const AUDIT_ACTIONS = [
   "admin_sso_denied",
   "ba_complaint_status_update",
   "ba_complaint_delete",
+  "ba_emergency_password_reset",
   "break_glass_view",
   "device_force_logout",
   "admin_login_failed",
@@ -417,6 +420,7 @@ export const AUDIT_TARGET_TYPES = [
   "point_gift",
   "point_redemption",
   "ba_complaint",
+  "ba_emergency_account",
   "point_campaign",
   "audit_hold",
   "audit_retention",

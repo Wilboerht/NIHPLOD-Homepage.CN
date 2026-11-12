@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
   if (rateLimitResponse) return rateLimitResponse;
 
   const canReadComplaints = canReadBaComplaints(admin);
+  const canManageEmergencyAccount = hasAdminPermission(admin, "ba:admin");
   const result = await baInternalRequest<BaDashboardData>(DASHBOARD_PATH, {
     query: { includeComplaints: canReadComplaints ? "true" : "false" },
     timeoutMs: DASHBOARD_TIMEOUT_MS,
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest) {
       degraded: true,
       reason: mapDegradedReason(result.code, result.status),
       canReadComplaints,
+      canManageEmergencyAccount,
     };
     return NextResponse.json({ success: true, data: payload });
   }
@@ -70,6 +72,7 @@ export async function GET(request: NextRequest) {
     dashboard: result.data,
     degraded: false,
     canReadComplaints,
+    canManageEmergencyAccount,
   };
   return NextResponse.json({ success: true, data: payload });
 }
