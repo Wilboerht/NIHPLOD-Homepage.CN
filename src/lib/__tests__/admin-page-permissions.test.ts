@@ -19,6 +19,7 @@ describe("管理端页面权限映射", () => {
       ["/admin/account-deletions", "users:read"],
       ["/admin/admins", "admins:read"],
       ["/admin/applications", "applications:read"],
+      ["/admin/subsites/ba/certificates", "ba:certificates:read"],
       ["/admin/audit-integrity", "audit:read"],
       ["/admin/audit-logs", "audit:read"],
       ["/admin/audit-retention", "audit:retention:read"],
@@ -97,6 +98,7 @@ describe("管理端页面权限映射", () => {
     expect(getAdminPageRule("/admin/oauth-clients/abc")).toBeNull();
     expect(getAdminPageRule("/admin/products/abc")).toBeNull();
     expect(getAdminPageRule("/admin/jobs/abc")).toBeNull();
+    expect(getAdminPageRule("/admin/subsites/ba/certificates/abc")).toBeNull();
     expect(canAccessAdminPage(admin("support"), "/admin/users/export")).toBe(false);
   });
 
@@ -114,9 +116,19 @@ describe("管理端页面权限映射", () => {
       "/admin/sso/audit",
       "/admin/subsites/advisor",
       "/admin/subsites/ba",
+      "/admin/subsites/ba/certificates",
     ]) {
       expect(canAccessAdminPage(noPermissions, pathname), pathname).toBe(false);
     }
+  });
+
+  it("BA 证书权限只允许进入证书页，不带入 BA 面板", () => {
+    const certificateOnly = admin("unknown-role", ["ba:certificates:read"]);
+    expect(canAccessAdminPage(certificateOnly, "/admin/subsites/ba/certificates")).toBe(true);
+    expect(canAccessAdminPage(certificateOnly, "/admin/subsites/ba")).toBe(false);
+    expect(
+      canAccessAdminPage(admin("unknown-role", ["ba:access"]), "/admin/subsites/ba/certificates")
+    ).toBe(false);
   });
 
   it("BA 举报处理权限可进入留言页但不能进入 BA 面板", () => {

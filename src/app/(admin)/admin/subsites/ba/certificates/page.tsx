@@ -51,7 +51,10 @@ const EMPTY_DRAFT: BaCertificateDraft = {
 };
 
 function dateToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 function CertificatesContent() {
@@ -195,6 +198,30 @@ function CertificatesContent() {
     }
   };
 
+  const downloadCertificate = async (id: string, format: "png" | "pdf", certNumber: string) => {
+    try {
+      const response = await fetch(
+        `/api/admin/subsites/ba/certificates/${encodeURIComponent(id)}/download?format=${format}`,
+        { credentials: "include" }
+      );
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error?.message || "下载失败");
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `${certNumber}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "下载失败"));
+    }
+  };
+
   const submitDraft = async () => {
     setActionLoading(true);
     try {
@@ -256,7 +283,7 @@ function CertificatesContent() {
     }
     setActionLoading(true);
     try {
-      await withStepUp(() =>
+      const result = await withStepUp(() =>
         apiPost(
           `/api/admin/subsites/ba/certificates/${encodeURIComponent(detail.certificate.id)}/${action}`,
           {
@@ -265,6 +292,7 @@ function CertificatesContent() {
           }
         )
       );
+      if (result === null) return;
       toast.success("操作成功");
       setDetailOpen(false);
       await load();
@@ -397,10 +425,9 @@ function CertificatesContent() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
-                              // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                              window.location.href = `/api/admin/subsites/ba/certificates/${item.id}/download?format=png`;
-                            }}
+                            onClick={() =>
+                              void downloadCertificate(item.id, "png", item.certNumber)
+                            }
                           >
                             <Download className="mr-1 h-3.5 w-3.5" />
                             PNG
@@ -662,10 +689,13 @@ function CertificatesContent() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => {
-                    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                    window.location.href = `/api/admin/subsites/ba/certificates/${detail.certificate.id}/download?format=png`;
-                  }}
+                  onClick={() =>
+                    void downloadCertificate(
+                      detail.certificate.id,
+                      "png",
+                      detail.certificate.certNumber
+                    )
+                  }
                 >
                   <Download className="mr-2 h-4 w-4" />
                   下载 PNG
@@ -675,10 +705,13 @@ function CertificatesContent() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => {
-                    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-                    window.location.href = `/api/admin/subsites/ba/certificates/${detail.certificate.id}/download?format=pdf`;
-                  }}
+                  onClick={() =>
+                    void downloadCertificate(
+                      detail.certificate.id,
+                      "pdf",
+                      detail.certificate.certNumber
+                    )
+                  }
                 >
                   <Download className="mr-2 h-4 w-4" />
                   下载 PDF

@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     adminId: admin.id,
     detail: { size: file.size, type: file.type },
     request,
-  });
+  }).catch(() => {});
   return NextResponse.json(
     { success: true, data: result.data },
     { headers: { "Cache-Control": "no-store" } }

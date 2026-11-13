@@ -51,8 +51,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       timeoutMs: 30000,
     });
   } else {
+    const previewAdmin = hasAdminPermission(admin, "ba:certificates:download")
+      ? admin
+      : {
+          ...admin,
+          permissions: [
+            ...((admin.permissions as string[] | null | undefined) ?? []),
+            "ba:certificates:download",
+          ],
+        };
     result = await baCertificateStream(
-      admin,
+      previewAdmin,
       `/api/internal/admin/certificates/${encodeURIComponent(id)}/artifact`,
       { query: { format: "png" }, timeoutMs: 30000 }
     );

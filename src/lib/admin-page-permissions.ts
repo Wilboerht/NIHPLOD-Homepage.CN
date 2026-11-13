@@ -172,6 +172,10 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
     match: (pathname) => pathname === "/admin/subsites/ba",
     anyOf: ["ba:access", "ba:admin"],
   },
+  {
+    match: (pathname) => pathname === "/admin/subsites/ba/certificates",
+    anyOf: ["ba:certificates:read"],
+  },
 ];
 
 export function getAdminPageRule(pathname: string): AdminPageRule | null {
