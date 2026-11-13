@@ -159,13 +159,16 @@ async function insertRetentionSummaryRows(
     cutoffs: RetentionStreamCutoff[];
   }
 ): Promise<void> {
-  await client.query(`SELECT pg_advisory_xact_lock(hashtext('AuditLog:chain'))`);
-  const last = await client.query<{ chainSeq: number | null; entryHash: string | null }>(
-    `SELECT "chainSeq", "entryHash" FROM "AuditLog"
-     WHERE "chainSeq" IS NOT NULL ORDER BY "chainSeq" DESC LIMIT 1`
+  await client.query(
+    `INSERT INTO "AuditChainCursor" ("stream", "seq", "lastHash", "updatedAt")
+     VALUES ('audit', 0, NULL, (now() AT TIME ZONE 'UTC'))
+     ON CONFLICT ("stream") DO NOTHING`
   );
-  const chainSeq = (last.rows[0]?.chainSeq ?? 0) + 1;
-  const prevHash = last.rows[0]?.entryHash ?? null;
+  const cursor = await client.query<{ seq: string | number; lastHash: string | null }>(
+    `SELECT "seq", "lastHash" FROM "AuditChainCursor" WHERE "stream" = 'audit' FOR UPDATE`
+  );
+  const chainSeq = BigInt(cursor.rows[0]?.seq ?? 0) + BigInt(1);
+  const prevHash = cursor.rows[0]?.lastHash ?? null;
   const id = randomUUID();
   const createdAt = new Date();
   const keyVersion = getAuditIntegrityKeyVersion();
@@ -242,30 +245,85 @@ async function insertRetentionSummaryRows(
       2,
       1,
       keyVersion,
-      chainSeq,
+      chainSeq.toString(),
       prevHash,
       entryHash,
       now.toISOString(),
       now.toISOString(),
     ]
   );
+  await client.query(
+    `UPDATE "AuditChainCursor"
+     SET "seq" = $1, "lastHash" = $2, "updatedAt" = (now() AT TIME ZONE 'UTC')
+     WHERE "stream" = 'audit'`,
+    [chainSeq.toString(), entryHash]
+  );
+}
+
+interface RetentionProgress {
+  completedBuckets: string[];
+  deletedCount: number;
+  deletedBytes: number;
+  holdsExcluded: number;
+}
+
+function readRetentionProgress(value: unknown): RetentionProgress {
+  if (!value || typeof value !== "object") {
+    return { completedBuckets: [], deletedCount: 0, deletedBytes: 0, holdsExcluded: 0 };
+  }
+  const record = value as Record<string, unknown>;
+  return {
+    completedBuckets: Array.isArray(record.completedBuckets)
+      ? record.completedBuckets.filter((item): item is string => typeof item === "string")
+      : [],
+    deletedCount:
+      typeof record.deletedCount === "number" && Number.isFinite(record.deletedCount)
+        ? Math.max(0, Math.floor(record.deletedCount))
+        : 0,
+    deletedBytes:
+      typeof record.deletedBytes === "number" && Number.isFinite(record.deletedBytes)
+        ? Math.max(0, Math.floor(record.deletedBytes))
+        : 0,
+    holdsExcluded:
+      typeof record.holdsExcluded === "number" && Number.isFinite(record.holdsExcluded)
+        ? Math.max(0, Math.floor(record.holdsExcluded))
+        : 0,
+  };
+}
+
+function retryDelayMs(attempts: number): number {
+  return Math.min(60, 2 ** Math.max(0, attempts - 1)) * 60 * 1000;
 }
 
 async function processOne(jobId: string): Promise<void> {
+  const job = await prisma.auditRetentionJob.findUnique({ where: { id: jobId } });
+  if (!job) return;
+  const now = new Date();
+  const canClaim =
+    (job.status === "PENDING" && job.expiresAt > now) ||
+    (job.status === "FAILED" &&
+      job.nextRetryAt !== null &&
+      job.nextRetryAt <= now &&
+      job.attempts < job.maxAttempts);
+  if (!canClaim) return;
+
   const leaseToken = randomUUID();
   const claimed = await prisma.auditRetentionJob.updateMany({
-    where: { id: jobId, status: "PENDING" },
+    where:
+      job.status === "FAILED"
+        ? { id: job.id, status: "FAILED", nextRetryAt: { lte: now } }
+        : { id: job.id, status: "PENDING" },
     data: {
       status: "RUNNING",
-      startedAt: new Date(),
+      startedAt: job.startedAt ?? now,
       leaseToken,
-      heartbeatAt: new Date(),
+      heartbeatAt: now,
+      attempts: { increment: 1 },
+      nextRetryAt: null,
+      error: null,
     },
   });
   if (claimed.count === 0) return;
-
-  const job = await prisma.auditRetentionJob.findUnique({ where: { id: jobId } });
-  if (!job) return;
 
   const heartbeatTimer = setInterval(() => {
     void prisma.auditRetentionJob
@@ -278,8 +336,12 @@ async function processOne(jobId: string): Promise<void> {
   heartbeatTimer.unref?.();
 
   const finish = async (
-    status: "FAILED" | "EXPIRED",
-    data: { error?: string; finishedAt: Date }
+    status: "PENDING" | "FAILED" | "EXPIRED" | "SUCCEEDED",
+    data: {
+      error?: string | null;
+      finishedAt?: Date | null;
+      nextRetryAt?: Date | null;
+    }
   ): Promise<boolean> => {
     const updated = await prisma.auditRetentionJob.updateMany({
       where: { id: job.id, status: "RUNNING", leaseToken },
@@ -289,9 +351,21 @@ async function processOne(jobId: string): Promise<void> {
   };
 
   const fail = async (error: string) => {
-    await finish("FAILED", { error: error.slice(0, 2000), finishedAt: new Date() });
-    apiConsole.error(`[AuditRetention] job ${job.id} 失败:`, error);
-    notifyAuditRetentionResult({ jobId: job.id, status: "FAILED", error });
+    const attempts = job.attempts + 1;
+    const retryable = attempts < job.maxAttempts;
+    const nextRetryAt = retryable ? new Date(Date.now() + retryDelayMs(attempts)) : null;
+    await finish(retryable ? "PENDING" : "FAILED", {
+      error: error.slice(0, 2000),
+      finishedAt: retryable ? null : new Date(),
+      nextRetryAt,
+    });
+    apiConsole.error(
+      `[AuditRetention] job ${job.id} ${retryable ? "失败，将重试" : "最终失败"}:`,
+      error
+    );
+    if (!retryable) {
+      notifyAuditRetentionResult({ jobId: job.id, status: "FAILED", error });
+    }
   };
 
   try {
@@ -317,28 +391,53 @@ async function processOne(jobId: string): Promise<void> {
 
     const cutoffs = parseRetentionCutoffs(job.streams);
     const preview = await buildRetentionPreview({ cutoffs });
-    if (preview.previewHash !== job.previewHash) return fail("预览已变化，请重新预览");
-    if (!preview.ready) return fail(`预览未就绪: ${preview.warnings.join("; ")}`);
-    if (preview.expectedCount !== job.expectedCount) return fail("可删数量变化");
+    const progress = readRetentionProgress(job.progress);
+    const resuming = progress.deletedCount > 0 || progress.completedBuckets.length > 0;
 
+    if (!resuming) {
+      if (preview.previewHash !== job.previewHash) return fail("预览已变化，请重新预览");
+      if (!preview.ready) return fail(`预览未就绪: ${preview.warnings.join("; ")}`);
+      if (preview.expectedCount !== job.expectedCount) return fail("可删数量变化");
+      progress.holdsExcluded = preview.holdsExcluded;
+    } else {
+      if (!preview.ready) return fail(`预览未就绪: ${preview.warnings.join("; ")}`);
+      if (preview.holdsExcluded !== progress.holdsExcluded) {
+        return fail("冻结保留数量已变化，请重新预览");
+      }
+      const remaining = job.expectedCount - progress.deletedCount;
+      if (preview.expectedCount > remaining + BATCH_SIZE * 2) {
+        return fail("可删数量增加，请重新预览");
+      }
+      // 进程可能在提交删除后、写入进度前崩溃；以数据库实际剩余量为准修正进度。
+      progress.deletedCount = Math.max(
+        progress.deletedCount,
+        job.expectedCount - preview.expectedCount
+      );
+    }
+
+    const completed = new Set(progress.completedBuckets);
     const client = new pg.Client({
       connectionString: retentionConnectionString(),
       options: "-c timezone=UTC",
     });
     await client.connect();
     try {
-      // 会话级锁跨多个分批事务持有，防止其他 worker 并发清理同一批日期桶。
       await client.query("SET statement_timeout = '300000'");
       await client.query(`SELECT pg_advisory_lock(hashtext('AuditRetention:worker'))`);
 
-      let deleted = 0;
+      let deleted = progress.deletedCount;
       const updateProgress = async () => {
-        const bytes = Math.round(job.expectedBytes * (deleted / Math.max(1, job.expectedCount)));
+        progress.deletedCount = deleted;
+        progress.deletedBytes = Math.round(
+          job.expectedBytes * (deleted / Math.max(1, job.expectedCount))
+        );
+        progress.completedBuckets = [...completed].sort();
         const updated = await client.query(
           `UPDATE "AuditRetentionJob"
-           SET "deletedCount" = $1, "deletedBytes" = $2, "heartbeatAt" = (now() AT TIME ZONE 'UTC')
-           WHERE "id" = $3 AND "status" = 'RUNNING' AND "leaseToken" = $4`,
-          [deleted, bytes, job.id, leaseToken]
+           SET "deletedCount" = $1, "deletedBytes" = $2, "progress" = $3::jsonb,
+               "heartbeatAt" = (now() AT TIME ZONE 'UTC')
+           WHERE "id" = $4 AND "status" = 'RUNNING' AND "leaseToken" = $5`,
+          [deleted, progress.deletedBytes, JSON.stringify(progress), job.id, leaseToken]
         );
         if (updated.rowCount === 0) {
           throw new Error("执行租约已丢失，停止清理");
@@ -346,9 +445,7 @@ async function processOne(jobId: string): Promise<void> {
       };
 
       for (const entry of cutoffs) {
-        // 只删除通过归档 + 备份校验的日期桶；未验证日期在预览中 eligible=0，
-        // 不会被这里选中，从而避免一条坏数据阻断全部清理。
-        const eligibleDays = preview.buckets
+        const buckets = preview.buckets
           .filter(
             (bucket) =>
               bucket.stream === entry.stream &&
@@ -356,18 +453,23 @@ async function processOne(jobId: string): Promise<void> {
               bucket.archiveVerified &&
               bucket.backupVerified
           )
-          .map((bucket) => bucket.day)
-          .sort();
-        if (eligibleDays.length === 0) continue;
-        const ranges = toDayRanges(eligibleDays);
-        const onBatch = async (batchCount: number) => {
-          deleted += batchCount;
+          .sort((a, b) => a.day.localeCompare(b.day));
+        for (const bucket of buckets) {
+          const key = `${bucket.stream}:${bucket.day}`;
+          if (completed.has(key)) continue;
+          const [range] = toDayRanges([bucket.day]);
+          if (!range) continue;
+          const onBatch = async (batchCount: number) => {
+            deleted += batchCount;
+            await updateProgress();
+          };
+          if (entry.stream === "audit") {
+            await deleteAuditStream(client, [range], onBatch);
+          } else {
+            await deleteSsoStream(client, [range], onBatch);
+          }
+          completed.add(key);
           await updateProgress();
-        };
-        if (entry.stream === "audit") {
-          await deleteAuditStream(client, ranges, onBatch);
-        } else {
-          await deleteSsoStream(client, ranges, onBatch);
         }
       }
 
@@ -383,27 +485,41 @@ async function processOne(jobId: string): Promise<void> {
         backupVerified: bucket.backupVerified,
       }));
 
-      await insertRetentionSummary(client, {
-        id: job.id,
-        requestedBy: job.requestedBy,
-        reason: job.reason,
-        deletedCount: deleted,
-        deletedBytes,
-        holdsExcluded,
-        cutoffs,
+      const existingSummary = await prisma.auditLog.findFirst({
+        where: { action: "audit_retention_execute", targetId: job.id },
+        select: { id: true },
       });
+      if (!existingSummary) {
+        await insertRetentionSummary(client, {
+          id: job.id,
+          requestedBy: job.requestedBy,
+          reason: job.reason,
+          deletedCount: deleted,
+          deletedBytes,
+          holdsExcluded,
+          cutoffs,
+        });
+      }
 
       await client.query("BEGIN");
-      const completed = await client.query(
+      const completedJob = await client.query(
         `UPDATE "AuditRetentionJob"
          SET "status" = 'SUCCEEDED', "deletedCount" = $1, "deletedBytes" = $2,
              "holdsExcluded" = $3, "archiveManifests" = $4::jsonb,
-             "finishedAt" = (now() AT TIME ZONE 'UTC'),
-             "leaseToken" = NULL, "heartbeatAt" = NULL
-         WHERE "id" = $5 AND "status" = 'RUNNING' AND "leaseToken" = $6`,
-        [deleted, deletedBytes, holdsExcluded, JSON.stringify(archiveManifests), job.id, leaseToken]
+             "progress" = $5::jsonb, "finishedAt" = (now() AT TIME ZONE 'UTC'),
+             "leaseToken" = NULL, "heartbeatAt" = NULL, "nextRetryAt" = NULL
+         WHERE "id" = $6 AND "status" = 'RUNNING' AND "leaseToken" = $7`,
+        [
+          deleted,
+          deletedBytes,
+          holdsExcluded,
+          JSON.stringify(archiveManifests),
+          JSON.stringify(progress),
+          job.id,
+          leaseToken,
+        ]
       );
-      if (completed.rowCount === 0) {
+      if (completedJob.rowCount === 0) {
         await client.query("ROLLBACK").catch(() => {});
         throw new Error("执行租约已丢失，清理结果未提交");
       }
@@ -428,8 +544,7 @@ async function processOne(jobId: string): Promise<void> {
 export async function processAuditRetentionJobs(): Promise<number> {
   const now = new Date();
   const staleBefore = new Date(now.getTime() - 30 * 60 * 1000);
-  // 回收崩溃/卡死的 RUNNING 任务，避免永久停留在执行中。
-  await prisma.auditRetentionJob.updateMany({
+  const stale = await prisma.auditRetentionJob.findMany({
     where: {
       status: "RUNNING",
       OR: [
@@ -437,24 +552,61 @@ export async function processAuditRetentionJobs(): Promise<number> {
         { heartbeatAt: null, startedAt: { lt: staleBefore } },
       ],
     },
-    data: {
-      status: "FAILED",
-      error: "执行超时或进程中断，任务已回收",
-      finishedAt: now,
-      leaseToken: null,
-      heartbeatAt: null,
-    },
+    select: { id: true, attempts: true, maxAttempts: true },
   });
+  for (const job of stale) {
+    const retryable = job.attempts < job.maxAttempts;
+    await prisma.auditRetentionJob.updateMany({
+      where: { id: job.id, status: "RUNNING" },
+      data: retryable
+        ? {
+            status: "PENDING",
+            error: "执行超时或进程中断，任务将自动重试",
+            nextRetryAt: now,
+            leaseToken: null,
+            heartbeatAt: null,
+            finishedAt: null,
+          }
+        : {
+            status: "FAILED",
+            error: "执行超时或进程中断，已达到最大重试次数",
+            finishedAt: now,
+            nextRetryAt: null,
+            leaseToken: null,
+            heartbeatAt: null,
+          },
+    });
+    if (!retryable) {
+      notifyAuditRetentionResult({
+        jobId: job.id,
+        status: "FAILED",
+        error: "执行超时或进程中断，已达到最大重试次数",
+      });
+    }
+  }
+
   await prisma.auditRetentionJob.updateMany({
-    where: { status: "PENDING", expiresAt: { lt: now } },
+    where: {
+      OR: [
+        { status: "PENDING", expiresAt: { lt: now } },
+        { status: "FAILED", expiresAt: { lt: now } },
+      ],
+    },
     data: { status: "EXPIRED", finishedAt: now, leaseToken: null, heartbeatAt: null },
   });
-  const jobs = await prisma.auditRetentionJob.findMany({
-    where: { status: "PENDING", expiresAt: { gt: now } },
+
+  const candidates = await prisma.auditRetentionJob.findMany({
+    where: {
+      expiresAt: { gt: now },
+      OR: [{ status: "PENDING" }, { status: "FAILED", nextRetryAt: { lte: now } }],
+    },
     orderBy: { createdAt: "asc" },
-    take: JOB_LIMIT,
-    select: { id: true },
+    take: JOB_LIMIT * 3,
+    select: { id: true, status: true, attempts: true, maxAttempts: true },
   });
+  const jobs = candidates
+    .filter((job) => job.status === "PENDING" || job.attempts < job.maxAttempts)
+    .slice(0, JOB_LIMIT);
   for (const job of jobs) {
     await processOne(job.id);
   }

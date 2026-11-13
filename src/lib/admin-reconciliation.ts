@@ -55,7 +55,9 @@ export interface SpentClaimIssue {
   source: string;
   originalAmount: number | null;
   refundedAmount: number;
+  syncedRefunded: number;
   importRefunded: number;
+  drift: number;
   kind: "OVER_REFUNDED" | "UNLINKED_REFUND" | "REFUND_MISMATCH";
 }
 
@@ -82,7 +84,10 @@ export interface ReconciliationReport {
     totalIssueCount: number;
     pointIssueCount: number;
     spentIssueCount: number;
+    actionableIssueCount: number;
+    warningCount: number;
     hasIssues: boolean;
+    hasActionableIssues: boolean;
     truncated: boolean;
   };
   points: {
@@ -349,7 +354,17 @@ export async function findSpentTotalMismatches(
 export async function findSpentClaimIssues(limit = 100): Promise<CappedResult<SpentClaimIssue>> {
   const take = normalizeLimit(limit);
   const rows = await prisma.$queryRaw<SpentClaimIssue[]>`
-    WITH refunds AS (
+    WITH synced_refunds AS (
+      SELECT
+        "orderNoKey",
+        COALESCE(SUM(-"spentDelta"), 0)::int AS refunded
+      FROM "SpentSyncRecord"
+      WHERE "spentDelta" < 0
+        AND "revertedAt" IS NULL
+        AND "orderNoKey" IS NOT NULL
+      GROUP BY "orderNoKey"
+    ),
+    import_refunds AS (
       SELECT
         "orderNoKey",
         COALESCE(SUM(-COALESCE("appliedDelta", "amount")), 0)::int AS refunded
@@ -366,20 +381,22 @@ export async function findSpentClaimIssues(limit = 100): Promise<CappedResult<Sp
       c."source"::text AS "source",
       c."originalAmount" AS "originalAmount",
       c."refundedAmount" AS "refundedAmount",
-      COALESCE(r.refunded, 0)::int AS "importRefunded",
+      COALESCE(s.refunded, 0)::int AS "syncedRefunded",
+      COALESCE(i.refunded, 0)::int AS "importRefunded",
+      (c."refundedAmount" - COALESCE(s.refunded, 0))::int AS "drift",
       CASE
         WHEN c."originalAmount" IS NULL AND c."refundedAmount" > 0 THEN 'UNLINKED_REFUND'
         WHEN c."originalAmount" IS NOT NULL AND c."refundedAmount" > c."originalAmount" THEN 'OVER_REFUNDED'
         ELSE 'REFUND_MISMATCH'
       END AS "kind"
     FROM "SpentOrderClaim" c
-    LEFT JOIN refunds r ON r."orderNoKey" = c."orderNoKey"
+    LEFT JOIN synced_refunds s ON s."orderNoKey" = c."orderNoKey"
+    LEFT JOIN import_refunds i ON i."orderNoKey" = c."orderNoKey"
     WHERE (c."originalAmount" IS NULL AND c."refundedAmount" > 0)
        OR (c."originalAmount" IS NOT NULL AND c."refundedAmount" > c."originalAmount")
        OR (
-         c."source" = 'SPENT_IMPORT'
-         AND c."originalAmount" IS NOT NULL
-         AND c."refundedAmount" <> COALESCE(r.refunded, 0)
+         c."originalAmount" IS NOT NULL
+         AND c."refundedAmount" <> COALESCE(s.refunded, 0)
        )
     ORDER BY c."orderNoKey"
     LIMIT ${take + 1}
@@ -473,10 +490,8 @@ export async function runAdminReconciliation(
   ]);
 
   const pointIssueCount =
-    invariants.issues.length +
-    invariants.negativeBalances +
-    invariants.deletedUsersWithRemaining +
-    redemptionLinks.count;
+    invariants.issues.length + invariants.deletedUsersWithRemaining + redemptionLinks.count;
+  const warningCount = invariants.negativeBalances;
   const spentIssueCount =
     totalMismatches.count +
     claimIssues.count +
@@ -500,7 +515,10 @@ export async function runAdminReconciliation(
       totalIssueCount,
       pointIssueCount,
       spentIssueCount,
+      actionableIssueCount: totalIssueCount,
+      warningCount,
       hasIssues: totalIssueCount > 0,
+      hasActionableIssues: totalIssueCount > 0,
       truncated,
     },
     points: {

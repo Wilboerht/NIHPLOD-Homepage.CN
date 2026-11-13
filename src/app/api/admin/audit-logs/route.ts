@@ -140,10 +140,14 @@ export async function GET(request: NextRequest) {
     // 列表不返回完整 detail；详情由 /api/admin/audit-logs/[id] 提供并单独留痕。
     type AuditLogRow = (typeof result.items)[number];
     const sanitize = (log: AuditLogRow) => {
-      const actionLabel = getAuditActionLabel(log.action, null);
+      const actionLabel = getAuditActionLabel(
+        log.action,
+        (log.actionDetail ?? null) as Record<string, unknown> | null
+      );
       // 即使上游查询未来重新带上 detail/userAgent，也在这里兜底移除。
       const safe = { ...log } as Record<string, unknown>;
       delete safe.detail;
+      delete safe.actionDetail;
       delete safe.userAgent;
       return {
         ...safe,

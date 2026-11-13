@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "crypto";
-import { createRemoteJWKSet, decodeJwt, decodeProtectedHeader, jwtVerify } from "jose";
+import { createRemoteJWKSet, customFetch, decodeJwt, decodeProtectedHeader, jwtVerify } from "jose";
 import { prisma } from "@/lib/prisma";
 import { getIssuer, SUPPORTED_SCOPES } from "@/lib/oauth-constants";
 import { buildOAuthProtectedResourceMetadata } from "@/lib/oauth-protected-resource";
@@ -132,13 +132,28 @@ export function getTrustedAgentIssuers(): TrustedAgentIssuer[] {
         typeof record.jwksUri === "string" && record.jwksUri
           ? record.jwksUri
           : `${issuer}/.well-known/jwks.json`;
-      new URL(jwksUri);
+      const jwksUrl = new URL(jwksUri);
+      // JWKS 是信任锚：生产环境必须 HTTPS 且与 issuer 同源，避免被重定向/替换公钥。
+      if (process.env.NODE_ENV === "production" && jwksUrl.protocol !== "https:") {
+        apiConsole.warn(`[AgentAuth] Ignoring ${issuer}: jwksUri must be HTTPS`);
+        continue;
+      }
+      if (jwksUrl.origin !== issuerUrl.origin) {
+        apiConsole.warn(`[AgentAuth] Ignoring ${issuer}: jwksUri must be same-origin`);
+        continue;
+      }
 
       const clientIds = Array.isArray(record.clientIds)
         ? record.clientIds.filter(
             (value): value is string => typeof value === "string" && value.length > 0
           )
         : [];
+      if (process.env.NODE_ENV === "production" && clientIds.length === 0) {
+        apiConsole.warn(
+          `[AgentAuth] Ignoring ${issuer}: clientIds must be non-empty in production`
+        );
+        continue;
+      }
 
       cachedTrustedIssuers.push({
         issuer,
@@ -352,7 +367,9 @@ async function getJwks(trustedIssuer: TrustedAgentIssuer) {
   const cacheKey = `${trustedIssuer.issuer}|${trustedIssuer.jwksUri}`;
   const cached = jwksCache.get(cacheKey);
   if (cached) return cached;
-  const jwks = createRemoteJWKSet(new URL(trustedIssuer.jwksUri));
+  const jwks = createRemoteJWKSet(new URL(trustedIssuer.jwksUri), {
+    [customFetch]: (url, options) => fetch(url, { ...options, redirect: "error" }),
+  });
   jwksCache.set(cacheKey, jwks);
   return jwks;
 }

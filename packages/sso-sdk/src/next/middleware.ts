@@ -159,8 +159,7 @@ export interface SsoMiddlewareConfig {
  * 拒绝采样法保证 charset 均匀分布
  */
 function generateRandomString(length: number): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
   const maxValid = Math.floor(256 / chars.length) * chars.length;
   let result = "";
 
@@ -298,6 +297,7 @@ async function introspectAccessToken(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
+      redirect: "error",
       signal: AbortSignal.timeout(INTROSPECT_TIMEOUT_MS),
     });
 
@@ -367,19 +367,19 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
   const secureCookies = !insecureLocalDev;
   const accessTokenCookieName = insecureLocalDev
     ? toInsecureCookieName(config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME)
-    : config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME;
+    : (config.accessTokenCookieName ?? DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
   const stateCookieName = insecureLocalDev
     ? toInsecureCookieName(config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME)
-    : config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME;
+    : (config.stateCookieName ?? DEFAULT_STATE_COOKIE_NAME);
   const nonceCookieName = insecureLocalDev
     ? toInsecureCookieName(config.nonceCookieName ?? DEFAULT_NONCE_COOKIE_NAME)
-    : config.nonceCookieName ?? DEFAULT_NONCE_COOKIE_NAME;
+    : (config.nonceCookieName ?? DEFAULT_NONCE_COOKIE_NAME);
   const returnUrlCookieName = insecureLocalDev
     ? toInsecureCookieName(config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME)
-    : config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME;
+    : (config.returnUrlCookieName ?? DEFAULT_RETURN_COOKIE_NAME);
   const verifierCookieName = insecureLocalDev
     ? toInsecureCookieName(config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME)
-    : config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME;
+    : (config.verifierCookieName ?? DEFAULT_VERIFIER_COOKIE_NAME);
 
   // 规范化 ssoBaseUrl
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
@@ -391,15 +391,15 @@ export function createSsoMiddleware(config: SsoMiddlewareConfig) {
   if (config.validateSsoCookie !== undefined || config.ssoCookieName !== undefined) {
     console.warn(
       "[SSO SDK] validateSsoCookie / ssoCookieName 已废弃：主站会话 Cookie（__Host-user_token）" +
-      "是主站内部 token（type=\"user\"），introspect 端点只接受 access_token，校验必然失败；" +
-      "且 __Host- Cookie 不会下发到子域。该快速通道从未生效，已移除。" +
-      "请删除这两个配置项；会话检测以本站 access_token Cookie 为准。"
+        '是主站内部 token（type="user"），introspect 端点只接受 access_token，校验必然失败；' +
+        "且 __Host- Cookie 不会下发到子域。该快速通道从未生效，已移除。" +
+        "请删除这两个配置项；会话检测以本站 access_token Cookie 为准。"
     );
   }
   if (!clientSecret) {
     console.warn(
       "[SSO SDK] 未配置 clientSecret（Public Client 模式）：introspection 无客户端认证，" +
-      "中间件判定结果仅作 UX 参考。Confidential Client（BFF）请配置 clientSecret。"
+        "中间件判定结果仅作 UX 参考。Confidential Client（BFF）请配置 clientSecret。"
     );
   }
 

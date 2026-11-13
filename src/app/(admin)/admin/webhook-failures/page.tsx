@@ -365,7 +365,7 @@ function AdminWebhookFailuresContent() {
                 <th className="px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-brand-charcoal/8 divide-y">
+            <tbody className="divide-y divide-brand-charcoal/10">
               {items.map((item) => (
                 <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
                   <td className="px-4 py-3">
@@ -390,10 +390,7 @@ function AdminWebhookFailuresContent() {
                       {item.hasPayload ? "已保存（含用户资料）" : "无"}
                     </p>
                     {item.lastError && (
-                      <p
-                        className="truncate text-xs text-red-600"
-                        title={item.lastError}
-                      >
+                      <p className="truncate text-xs text-red-600" title={item.lastError}>
                         {item.lastError}
                       </p>
                     )}

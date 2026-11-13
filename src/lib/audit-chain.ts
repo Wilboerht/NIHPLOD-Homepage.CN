@@ -44,6 +44,8 @@ export function stableStringify(value: unknown): string {
   if (value === null || value === undefined) return "null";
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
   if (value instanceof Date) return JSON.stringify(value.toISOString());
+  // chainSeq 从 Int 迁移为 BigInt 后必须与历史摘要保持一致：数字不带引号。
+  if (typeof value === "bigint") return value.toString();
   if (typeof value !== "object") return JSON.stringify(value);
   const record = value as Record<string, unknown>;
   return `{${Object.keys(record)
@@ -52,9 +54,33 @@ export function stableStringify(value: unknown): string {
     .join(",")}}`;
 }
 
+export interface AuditDigestHasher {
+  update(row: Record<string, unknown>): void;
+  digest(): string;
+}
+
+export function createAuditDigestHasher(): AuditDigestHasher {
+  const hash = createHash("sha256");
+  let first = true;
+  let finalized = false;
+  return {
+    update(row) {
+      if (finalized) throw new Error("AUDIT_DIGEST_ALREADY_FINALIZED");
+      if (!first) hash.update("\n");
+      hash.update(stableStringify(row));
+      first = false;
+    },
+    digest() {
+      finalized = true;
+      return hash.digest("hex");
+    },
+  };
+}
+
 export function computeAuditDigest(rows: Array<Record<string, unknown>>): string {
-  const payload = rows.map((row) => stableStringify(row)).join("\n");
-  return createHash("sha256").update(payload).digest("hex");
+  const hasher = createAuditDigestHasher();
+  for (const row of rows) hasher.update(row);
+  return hasher.digest();
 }
 
 export interface AuditChainEnvelope {
@@ -78,7 +104,7 @@ export interface AuditChainEnvelope {
   schemaVersion?: number;
   chainVersion?: number;
   integrityKeyVersion?: number;
-  chainSeq: number;
+  chainSeq: bigint;
   prevHash: string | null;
 }
 
@@ -111,25 +137,31 @@ export function computeAuditEntryHash(envelope: AuditChainEnvelope): string {
   return createHmac("sha256", getAuditIntegrityKey(keyVersion)).update(payload).digest("hex");
 }
 
-type ChainClient = Pick<Prisma.TransactionClient, "$queryRaw" | "auditLog">;
+type ChainClient = Pick<Prisma.TransactionClient, "$queryRaw" | "$executeRaw">;
 
-/** 必须在事务内调用：串行化链尾读取与插入。 */
+/** 必须在事务内调用：通过游标行锁串行分配链序号，避免全表链尾查询。 */
 export async function prepareAuditChain(
   tx: ChainClient,
   envelope: Omit<AuditChainEnvelope, "chainSeq" | "prevHash">
 ): Promise<Pick<AuditChainEnvelope, "chainSeq" | "prevHash"> & { entryHash: string }> {
-  // pg_advisory_xact_lock 返回 void；用常量包一层，避免 Prisma 反序列化 void 失败。
-  await tx.$queryRaw`
-    SELECT 1 AS locked
-    FROM (SELECT pg_advisory_xact_lock(hashtext('AuditLog:chain'))) AS audit_chain_lock
+  await tx.$executeRaw`
+    INSERT INTO "AuditChainCursor" ("stream", "seq", "lastHash", "updatedAt")
+    VALUES ('audit', 0, NULL, CURRENT_TIMESTAMP)
+    ON CONFLICT ("stream") DO NOTHING
   `;
-  const last = await tx.auditLog.findFirst({
-    where: { chainSeq: { not: null } },
-    orderBy: { chainSeq: "desc" },
-    select: { chainSeq: true, entryHash: true },
-  });
-  const chainSeq = (last?.chainSeq ?? 0) + 1;
-  const prevHash = last?.entryHash ?? null;
+  const rows = await tx.$queryRaw<Array<{ seq: bigint | number; lastHash: string | null }>>`
+    SELECT "seq", "lastHash"
+    FROM "AuditChainCursor"
+    WHERE "stream" = 'audit'
+    FOR UPDATE
+  `;
+  const chainSeq = BigInt(rows[0]?.seq ?? 0) + BigInt(1);
+  const prevHash = rows[0]?.lastHash ?? null;
   const entryHash = computeAuditEntryHash({ ...envelope, chainSeq, prevHash });
+  await tx.$executeRaw`
+    UPDATE "AuditChainCursor"
+    SET "seq" = ${chainSeq}, "lastHash" = ${entryHash}, "updatedAt" = CURRENT_TIMESTAMP
+    WHERE "stream" = 'audit'
+  `;
   return { chainSeq, prevHash, entryHash };
 }

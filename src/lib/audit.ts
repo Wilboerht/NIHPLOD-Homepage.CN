@@ -8,6 +8,7 @@ import { getClientIP } from "./client-ip";
 import { Prisma } from "@/generated/prisma/client";
 import type { AuditActorType, AuditOutcome } from "@/generated/prisma/client";
 import { apiConsole } from "@/lib/logger";
+import { BA_SSO_ACTION_ALIASES } from "./audit-labels";
 import { getAuditActionMeta, type AuditCategory, type AuditRiskLevel } from "./audit-registry";
 import { AUDIT_CHAIN_VERSION, getAuditIntegrityKeyVersion, prepareAuditChain } from "./audit-chain";
 
@@ -638,7 +639,7 @@ export async function finishAuditLog(
   targetId?: string
 ): Promise<boolean> {
   try {
-    await prisma.auditLog.update({
+    const result = await prisma.auditLog.updateMany({
       where: { id },
       data: {
         outcome,
@@ -647,7 +648,7 @@ export async function finishAuditLog(
         ...(detail ? { detail: prepareDetail(detail) } : {}),
       },
     });
-    return true;
+    return result.count > 0;
   } catch (error) {
     apiConsole.error("[AuditLog] 完成审计更新失败:", error);
     return false;
@@ -856,9 +857,25 @@ export async function listAuditLogs(options: AuditLogQueryOptions) {
   const last = items.at(-1);
   const nextCursor = last ? encodeAuditCursor(last.createdAt, last.id) : null;
 
+  // 仅对 BA 历史 SSO 动作回填最小 detail（clientId/baRole），用于兼容别名标签；
+  // 其余行仍不读取 detail。
+  const baActionIds = items
+    .filter((item) => Object.prototype.hasOwnProperty.call(BA_SSO_ACTION_ALIASES, item.action))
+    .map((item) => item.id);
+  const baDetails =
+    baActionIds.length > 0
+      ? await prisma.auditLog.findMany({
+          where: { id: { in: baActionIds } },
+          select: { id: true, detail: true },
+        })
+      : [];
+  const baDetailById = new Map(baDetails.map((row) => [row.id, row.detail]));
+
   return {
     items: items.map((log) => ({
       ...log,
+      chainSeq: log.chainSeq?.toString() ?? null,
+      actionDetail: baDetailById.get(log.id) ?? null,
       createdAt: log.createdAt.toISOString(),
       finalizedAt: log.finalizedAt?.toISOString() ?? null,
     })),
@@ -873,7 +890,7 @@ export async function listAuditLogs(options: AuditLogQueryOptions) {
 }
 
 export async function getAuditLogById(id: string) {
-  const log = await prisma.auditLog.findUnique({
+  const log = await prisma.auditLog.findFirst({
     where: { id },
     include: {
       admin: { select: { id: true, email: true, name: true } },
@@ -882,6 +899,7 @@ export async function getAuditLogById(id: string) {
   if (!log) return null;
   return {
     ...log,
+    chainSeq: log.chainSeq?.toString() ?? null,
     createdAt: log.createdAt.toISOString(),
     finalizedAt: log.finalizedAt?.toISOString() ?? null,
   };

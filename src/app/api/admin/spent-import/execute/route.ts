@@ -6,6 +6,7 @@
  * 权限：需要 spent:import 权限；资金类操作需 TOTP 二次验证；操作写入审计日志。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -72,7 +73,9 @@ export async function POST(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request, "spent-import:write");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = executeSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

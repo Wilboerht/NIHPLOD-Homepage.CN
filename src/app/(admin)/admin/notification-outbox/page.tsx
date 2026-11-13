@@ -14,6 +14,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, ApiError } from "@/lib/api-client";
 import { formatDateTimeSeconds } from "@/lib/format";
+import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminListQuery } from "@/hooks/useAdminListQuery";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
@@ -191,6 +192,22 @@ function NotificationOutboxContent() {
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [page, statusFilter, channelFilter, pathname, router]);
+
+  // 浏览器前进/后退或外部链接进入时，从 URL 回填筛选状态。
+  const searchParamsString = searchParams.toString();
+  useEffect(() => {
+    const params = new URLSearchParams(searchParamsString);
+    const nextPageValue = Number(params.get("page"));
+    const nextPage =
+      Number.isFinite(nextPageValue) && nextPageValue >= 1 ? Math.floor(nextPageValue) : 1;
+    const nextStatus = (params.get("status") as NotificationStatus | null) ?? "";
+    const nextChannel = (params.get("channel") as NotificationChannel | null) ?? "";
+    deferInEffect(() => {
+      setPage((prev) => (prev === nextPage ? prev : nextPage));
+      setStatusFilter((prev) => (prev === nextStatus ? prev : nextStatus));
+      setChannelFilter((prev) => (prev === nextChannel ? prev : nextChannel));
+    });
+  }, [searchParamsString]);
 
   const submit = async (id: string, action: "retry" | "discard") => {
     setActing(true);

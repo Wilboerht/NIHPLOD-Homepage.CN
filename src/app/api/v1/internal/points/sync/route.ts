@@ -34,6 +34,7 @@ import {
 import {
   applyExternalSpentSync,
   SpentDailyLimitError,
+  SpentSyncReferenceConflictError,
   SpentUserNotActiveError,
 } from "@/lib/points";
 import {
@@ -232,6 +233,18 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         );
       }
+      if (error instanceof SpentSyncReferenceConflictError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "REFERENCE_CONFLICT",
+              message: "同一单据号已用于不同方向或金额的消费同步，请使用独立退款单号",
+            },
+          },
+          { status: 409 }
+        );
+      }
       if (error instanceof SpentDailyLimitError) {
         return NextResponse.json(
           {
@@ -312,7 +325,10 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof SpentRefundExceedsOriginalError) {
       return NextResponse.json(
-        { success: false, error: { code: "REFUND_EXCEEDS_ORIGINAL", message: "累计退款超过原订单金额" } },
+        {
+          success: false,
+          error: { code: "REFUND_EXCEEDS_ORIGINAL", message: "累计退款超过原订单金额" },
+        },
         { status: 409 }
       );
     }

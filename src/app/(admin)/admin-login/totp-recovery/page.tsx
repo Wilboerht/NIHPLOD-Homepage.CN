@@ -163,7 +163,7 @@ export default function TOTPRecoveryPage() {
                     type="button"
                     onClick={() => copyText(code, `backup-${code}`)}
                     aria-label={`复制备用码 ${code}`}
-                    className="hover:bg-brand-charcoal/8 flex min-h-[32px] cursor-pointer items-center justify-between gap-1 rounded px-2 py-1 font-mono transition-colors"
+                    className="flex min-h-[32px] cursor-pointer items-center justify-between gap-1 rounded px-2 py-1 font-mono transition-colors hover:bg-brand-charcoal/10"
                   >
                     <span>{code}</span>
                     {copied === `backup-${code}` ? (

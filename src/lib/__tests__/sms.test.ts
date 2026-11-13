@@ -153,13 +153,13 @@ describe("mock 通道生产环境 DEBUG 守卫", () => {
       params: { code: TEST_CODE },
     });
 
-    expect(result.success).toBe(true);
-    // 所有 warn 输出均不得包含明文验证码
+    // 生产环境 mock 通道必须拒绝发送，不能把未发送消息标记为成功
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("SMS_PROVIDER_NOT_CONFIGURED");
     for (const call of mockWarn.mock.calls) {
       expect(String(call[0])).not.toContain(TEST_CODE);
     }
-    // 有且仅有"已忽略"提示
-    expect(mockWarn).toHaveBeenCalledWith(expect.stringContaining("SMS_DEBUG_LOG_CODE 已忽略"));
+    expect(mockError).toHaveBeenCalled();
   });
 
   it("非生产环境下 SMS_DEBUG_LOG_CODE=true 正常打印明文验证码（联调用）", async () => {

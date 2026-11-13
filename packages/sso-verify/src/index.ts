@@ -495,6 +495,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: params,
+          redirect: "error",
           signal: AbortSignal.timeout(introspectTimeoutMs),
         });
       } catch {
@@ -523,9 +524,13 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     // active 必须是严格布尔 true：非布尔（如字符串 "false"/1）一律视为不可用
     if (data.active !== true) {
       if (introspectNegativeCacheTtl > 0) {
-        introspectCache.set(token, { active: false, payload: null }, {
-          ttl: introspectNegativeCacheTtl,
-        });
+        introspectCache.set(
+          token,
+          { active: false, payload: null },
+          {
+            ttl: introspectNegativeCacheTtl,
+          }
+        );
       }
       return { active: false };
     }
@@ -533,9 +538,13 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
     // aud 归属不匹配（token 颁发给其他 client）视为无效，按负缓存处理
     if (!matchesAudience(data)) {
       if (introspectNegativeCacheTtl > 0) {
-        introspectCache.set(token, { active: false, payload: null }, {
-          ttl: introspectNegativeCacheTtl,
-        });
+        introspectCache.set(
+          token,
+          { active: false, payload: null },
+          {
+            ttl: introspectNegativeCacheTtl,
+          }
+        );
       }
       return { active: false };
     }
@@ -716,8 +725,7 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
      */
     async verify(rawToken: string): Promise<VerifiedTokenPayload | null> {
       const runLocal = async () => rejectM2mPayload(await verifyLocallyBoth(rawToken));
-      const runIntrospection = async () =>
-        rejectM2mPayload(await verifyViaIntrospection(rawToken));
+      const runIntrospection = async () => rejectM2mPayload(await verifyViaIntrospection(rawToken));
 
       if (verificationMode === "local") {
         return await runLocal();
@@ -784,14 +792,9 @@ export function createTokenVerifier(options: SsoVerifierOptions) {
           return null;
         }
         const events = (payload as { events?: Record<string, unknown> }).events;
-        const logoutEvent =
-          events?.["http://schemas.openid.net/event/backchannel-logout"];
+        const logoutEvent = events?.["http://schemas.openid.net/event/backchannel-logout"];
         // 事件值必须是对象（通常为空对象 {}）
-        if (
-          !logoutEvent ||
-          typeof logoutEvent !== "object" ||
-          Array.isArray(logoutEvent)
-        ) {
+        if (!logoutEvent || typeof logoutEvent !== "object" || Array.isArray(logoutEvent)) {
           return null;
         }
         const jti = (payload as { jti?: string }).jti;
@@ -960,7 +963,11 @@ export interface SsoMiddlewareResponse {
 export function ssoMiddleware(options: SsoVerifierOptions) {
   const verifier = createTokenVerifier(options);
 
-  return async (req: SsoMiddlewareRequest, res: SsoMiddlewareResponse, next: (err?: unknown) => void) => {
+  return async (
+    req: SsoMiddlewareRequest,
+    res: SsoMiddlewareResponse,
+    next: (err?: unknown) => void
+  ) => {
     const authHeader = req.headers?.authorization || req.headers?.Authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 

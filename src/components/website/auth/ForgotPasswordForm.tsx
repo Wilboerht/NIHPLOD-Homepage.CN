@@ -103,6 +103,7 @@ export function ForgotPasswordForm({
                 onChange={(e) => onResetCodeChange(e.target.value)}
                 className={errors?.code ? pcInputErrorClass : pcInputClass}
                 placeholder="6位验证码"
+                aria-label="6位验证码"
               />
               <AuthFieldError message={errors?.code} />
             </div>
@@ -118,11 +119,12 @@ export function ForgotPasswordForm({
                   maxLength={64}
                   autoComplete="new-password"
                   placeholder="新密码（8位且含大写/小写/数字）"
+                  aria-label="新密码（8位且含大写/小写/数字）"
                 />
                 <button
                   type="button"
                   onClick={onShowPasswordToggle}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -141,11 +143,12 @@ export function ForgotPasswordForm({
                   className={`${errors?.confirmPassword ? pcInputErrorClass : pcInputClass} pr-10`}
                   maxLength={64}
                   placeholder="确认密码"
+                  aria-label="确认密码"
                 />
                 <button
                   type="button"
                   onClick={onShowPasswordToggle}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -182,7 +185,7 @@ export function ForgotPasswordForm({
             </p>
             <div>
               <div className="relative">
-                <Phone className="absolute left-0 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-charcoal/40" />
+                <Phone className="absolute left-0 top-1/2 h-5 w-5 -translate-y-1/2 text-brand-charcoal/70" />
                 <input
                   type="tel"
                   required
@@ -191,6 +194,7 @@ export function ForgotPasswordForm({
                   className={`${errors?.phone ? pcInputErrorClass : pcInputClass} pl-8`}
                   maxLength={11}
                   placeholder="手机号"
+                  aria-label="手机号"
                 />
               </div>
               <AuthFieldError message={errors?.phone} />
@@ -247,6 +251,7 @@ export function ForgotPasswordForm({
                 }
                 maxLength={11}
                 placeholder="手机号"
+                aria-label="手机号"
                 className={errors?.phone ? mobileInputErrorClass : mobileInputClass}
               />
               <AuthFieldError message={errors?.phone} />
@@ -280,6 +285,7 @@ export function ForgotPasswordForm({
                     onResetCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6));
                   }}
                   placeholder="6位验证码"
+                  aria-label="6位验证码"
                   className={
                     errors?.code || codeStepError ? mobileInputErrorFlexClass : mobileInputFlexClass
                   }
@@ -291,7 +297,7 @@ export function ForgotPasswordForm({
               <button
                 type="button"
                 onClick={() => onMobileForgotStepChange("phone")}
-                className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
+                className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal/70 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
               >
                 修改手机号
               </button>
@@ -340,13 +346,14 @@ export function ForgotPasswordForm({
                   value={resetNewPassword}
                   onChange={(e) => onResetNewPasswordChange(e.target.value)}
                   placeholder="新密码（8位且含大写/小写/数字）"
+                  aria-label="新密码（8位且含大写/小写/数字）"
                   maxLength={64}
                   className={`${errors?.password ? mobileInputErrorClass : mobileInputClass} pr-10`}
                 />
                 <button
                   type="button"
                   onClick={onShowPasswordToggle}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -363,13 +370,14 @@ export function ForgotPasswordForm({
                   value={resetConfirmPassword}
                   onChange={(e) => onResetConfirmPasswordChange(e.target.value)}
                   placeholder="确认密码"
+                  aria-label="确认密码"
                   maxLength={64}
                   className={`${errors?.confirmPassword ? mobileInputErrorClass : mobileInputClass} pr-10`}
                 />
                 <button
                   type="button"
                   onClick={onShowPasswordToggle}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -381,7 +389,7 @@ export function ForgotPasswordForm({
               <button
                 type="button"
                 onClick={() => onMobileForgotStepChange("code")}
-                className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal/60 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
+                className="flex-1 border border-brand-charcoal/25 py-3 text-xs font-light tracking-[0.15em] text-brand-charcoal/70 transition-all hover:bg-brand-charcoal/[0.03] active:scale-[0.98]"
               >
                 返回上一步
               </button>

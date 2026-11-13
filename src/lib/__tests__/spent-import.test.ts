@@ -61,6 +61,7 @@ const mockBatchUpdateMany = prisma.spentImportBatch.updateMany as ReturnType<typ
 const mockRowUpdate = prisma.spentImportRow.update as ReturnType<typeof vi.fn>;
 const mockRowFindFirst = prisma.spentImportRow.findFirst as ReturnType<typeof vi.fn>;
 const mockRowFindMany = prisma.spentImportRow.findMany as ReturnType<typeof vi.fn>;
+const mockRowCount = prisma.spentImportRow.count as ReturnType<typeof vi.fn>;
 const mockSyncRecordUpdateMany = prisma.spentSyncRecord.updateMany as ReturnType<typeof vi.fn>;
 const mockApplySync = applyExternalSpentSync as ReturnType<typeof vi.fn>;
 
@@ -150,7 +151,7 @@ describe("parseImportWorkbook", () => {
     const buffer = buildWorkbook([
       HEADERS,
       ["12345", "abc", "2026-13-99", "拼多多", "", ""],
-      ["13800138000", -200, "", "微信小程序", "TM003", ""],
+      ["13800138000", -200, "2026-01-15", "微信小程序", "TM003", ""],
     ]);
     const result = parseImportWorkbook(buffer, "import.xlsx");
     expect(result.ok).toBe(true);
@@ -641,6 +642,8 @@ describe("executeImportBatch", () => {
 describe("undoImportBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserFindMany.mockResolvedValue([]);
+    mockRowCount.mockResolvedValue(0);
   });
 
   it("撤销成功：逐行反向冲正、清理原始幂等记录并标记 undoneAt", async () => {
@@ -702,13 +705,15 @@ describe("undoImportBatch", () => {
       where: { userId: "user-2", reference: "import:ref-2" },
       data: { revertedAt: expect.any(Date) },
     });
-    expect(mockBatchUpdateMany).toHaveBeenCalledWith({
-      where: { id: "batch-1", undoneAt: null },
-      data: { undoneAt: expect.any(Date) },
-    });
+    expect(mockBatchUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "batch-1", undoneAt: null }),
+        data: expect.objectContaining({ undoneAt: expect.any(Date), undoStatus: "DONE" }),
+      })
+    );
   });
 
-  it("任一冲正失败时整批回滚，不写 undoneAt", async () => {
+  it("任一块冲正失败时保留已提交进度，不写 undoneAt", async () => {
     mockBatchFindUnique.mockResolvedValue({
       id: "batch-1",
       undoneAt: null,
@@ -734,8 +739,8 @@ describe("undoImportBatch", () => {
 
     const result = await undoImportBatch("batch-1");
 
-    expect(result).toMatchObject({ ok: false, code: "INTERNAL_ERROR" });
-    expect(mockBatchUpdateMany).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, code: "PARTIAL", revertedRows: 0 });
+    expect(mockBatchUpdateMany).toHaveBeenCalled();
   });
 
   it("批次不存在：NOT_FOUND", async () => {
@@ -802,11 +807,11 @@ describe("undoImportBatch", () => {
 
     const result = await undoImportBatch("batch-1");
 
-    expect(result).toMatchObject({ ok: false, code: "INTERNAL_ERROR" });
+    expect(result).toMatchObject({ ok: false, code: "PARTIAL" });
     expect(mockBatchUpdate).not.toHaveBeenCalled();
   });
 
-  it("清理原始幂等记录失败：同样视为失败不标记 undoneAt", async () => {
+  it("清理原始幂等记录失败：同样保留可重试状态", async () => {
     mockBatchFindUnique.mockResolvedValue({
       id: "batch-1",
       undoneAt: null,
@@ -832,7 +837,7 @@ describe("undoImportBatch", () => {
 
     const result = await undoImportBatch("batch-1");
 
-    expect(result).toMatchObject({ ok: false, code: "INTERNAL_ERROR" });
+    expect(result).toMatchObject({ ok: false, code: "PARTIAL" });
     expect(mockBatchUpdate).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { z } from "zod";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
@@ -38,7 +39,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const rateLimitResponse = await checkAdminRateLimit(request, "approval:execute");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const parsed = bodySchema.safeParse(await request.json());
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const parsed = bodySchema.safeParse(bodyResult.data);
     if (!parsed.success) {
       return NextResponse.json(
         {

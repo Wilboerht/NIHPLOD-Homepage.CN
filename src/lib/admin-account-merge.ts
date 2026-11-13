@@ -4,7 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { advisorRequest, getSubsitePurgeTargets } from "@/lib/advisor-internal";
 import { createAuditLogTx } from "@/lib/audit";
-import { calculateLevel } from "@/lib/points";
+import { calculateLevel, invalidateProfileCache, pushMembershipUpdateWebhook } from "@/lib/points";
 import { enqueueSecurityActionNotification } from "@/lib/security-notify";
 import { maskPhone } from "@/lib/mask-phone";
 import { apiConsole } from "@/lib/logger";
@@ -390,6 +390,13 @@ export async function mergeUserAccounts(input: {
   const result = await prisma.$transaction(
     async (tx) => {
       const { source, target } = await lockedMergeUsers(tx, input.sourceUserId, input.targetUserId);
+      // 积分余额也必须锁定：签到/过期/退款只锁 PointBalance、不锁 User，
+      // 只用事务外快照做绝对值覆盖会丢更新或复活已过期积分。
+      await tx.$queryRaw`
+        SELECT "userId" FROM "PointBalance"
+        WHERE "userId" IN (${Prisma.join([source.id, target.id].sort())})
+        ORDER BY "userId" FOR UPDATE
+      `;
       if (source.status === "DELETED" || target.status !== "ACTIVE") {
         throw new AccountSecurityError("STALE", "账户状态已变化，请重新预检");
       }
@@ -664,6 +671,13 @@ export async function mergeUserAccounts(input: {
       reference: `account-merge-target:${operationId}`,
     }),
   ]).catch((error) => apiConsole.warn("[AdminAccountMerge] 通知入队失败:", error));
+
+  invalidateProfileCache();
+  pushMembershipUpdateWebhook(input.targetUserId, {
+    totalSpent: result.totalSpentAfter,
+    membershipLevel: result.levelAfter,
+  }).catch((error) => apiConsole.warn("[AdminAccountMerge] 会员 webhook 推送失败:", error));
+
   return {
     operationId,
     sourceUserId: input.sourceUserId,

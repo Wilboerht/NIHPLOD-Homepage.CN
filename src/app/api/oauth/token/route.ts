@@ -155,7 +155,10 @@ export async function POST(request: NextRequest) {
     // 限流（已认证阶段）：client 级桶仅对认证成功的请求计数。
     // 攻击者无法通过 client 认证，也就无法消耗受害 client 的配额；
     // 合法 client 的全局流量仍受此桶塑形（60 次/分钟）。
-    const clientLimitResult = await rateLimit(`client:${client_id}`, "oauth-token");
+    // Public Client 无 secret，任何人都能冒充其 client_id；桶必须绑定来源 IP，
+    // 否则攻击者可耗尽受害 client 的配额。
+    const clientBucket = client.isPublic ? `client:${client_id}:${ip}` : `client:${client_id}`;
+    const clientLimitResult = await rateLimit(clientBucket, "oauth-token");
     if (!clientLimitResult.success) {
       return resJson({ error: "rate_limited", error_description: "子项目请求过于频繁" }, 429);
     }
@@ -992,8 +995,9 @@ export async function POST(request: NextRequest) {
           avatar: true,
           membershipLevel: true,
           status: true,
-          // 改密即时失效：签发时间早于最近一次密码变更的 refresh token 一律拒绝
+          // 改密/全设备登出即时失效：签发时间早于失效时间点的 refresh token 一律拒绝
           passwordChangedAt: true,
+          sessionsInvalidatedAt: true,
         },
       });
 
@@ -1027,10 +1031,14 @@ export async function POST(request: NextRequest) {
 
       // 3.1 改密即时失效（纵深防御，与主站内部刷新口径一致）：
       // 授权码/刷新流程撤销会话后仍可能残留（如撤销失败），此处按签发时间兜底拒绝
+      const refreshCutoffMs = Math.max(
+        user.passwordChangedAt?.getTime() ?? 0,
+        user.sessionsInvalidatedAt?.getTime() ?? 0
+      );
       if (
-        user.passwordChangedAt &&
+        refreshCutoffMs > 0 &&
         typeof refreshPayload.iat === "number" &&
-        refreshPayload.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)
+        refreshPayload.iat < Math.floor(refreshCutoffMs / 1000)
       ) {
         scheduleSsoEvent({
           event: "token",

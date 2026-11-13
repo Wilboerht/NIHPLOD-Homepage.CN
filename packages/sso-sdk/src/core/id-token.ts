@@ -115,12 +115,17 @@ const FETCH_TIMEOUT_MS = 10000;
  */
 export async function fetchDiscoveryDoc(baseUrl: string): Promise<OidcDiscoveryDoc | null> {
   const now = Date.now();
-  if (cachedDiscovery && cachedDiscovery.baseUrl === baseUrl && now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS) {
+  if (
+    cachedDiscovery &&
+    cachedDiscovery.baseUrl === baseUrl &&
+    now - cachedDiscovery.fetchedAt < JWKS_CACHE_TTL_MS
+  ) {
     return cachedDiscovery.doc;
   }
 
   try {
     const res = await fetch(`${baseUrl}/api/oauth/.well-known/openid-configuration`, {
+      redirect: "error",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return null;
@@ -141,9 +146,17 @@ export interface FetchJwksOptions {
 }
 
 /** 从 SSO 中心拉取 JWKS（带内存缓存；优先 Discovery 的 jwks_uri，回退硬编码路径） */
-export async function fetchJwks(baseUrl: string, options: FetchJwksOptions = {}): Promise<Jwks | null> {
+export async function fetchJwks(
+  baseUrl: string,
+  options: FetchJwksOptions = {}
+): Promise<Jwks | null> {
   const now = Date.now();
-  if (!options.forceRefresh && cachedJwks && cachedJwks.baseUrl === baseUrl && now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS) {
+  if (
+    !options.forceRefresh &&
+    cachedJwks &&
+    cachedJwks.baseUrl === baseUrl &&
+    now - cachedJwks.fetchedAt < JWKS_CACHE_TTL_MS
+  ) {
     return cachedJwks.jwks;
   }
 
@@ -167,6 +180,7 @@ export async function fetchJwks(baseUrl: string, options: FetchJwksOptions = {})
 
   try {
     const res = await fetch(jwksUri, {
+      redirect: "error",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       ...(options.forceRefresh ? { cache: "no-cache" as RequestCache } : {}),
     });
@@ -265,10 +279,7 @@ export async function validateIdToken(
     const matchCandidates = (set: Jwks) =>
       set.keys.filter(
         (k) =>
-          k.kty === "RSA" &&
-          k.alg === "RS256" &&
-          k.use === "sig" &&
-          (kid ? k.kid === kid : true)
+          k.kty === "RSA" && k.alg === "RS256" && k.use === "sig" && (kid ? k.kid === kid : true)
       );
     const verifyAny = async (keys: JwksKey[]): Promise<boolean> => {
       for (const key of keys) {
@@ -311,7 +322,7 @@ export async function validateIdToken(
     throw new SsoError(
       "id_token_hs256_unsupported",
       "ID Token 使用 HS256 对称签名，SDK 无法安全验证。" +
-      "请联系管理员在 SSO 主站配置 RS256 密钥对（JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY）后重新签发。"
+        "请联系管理员在 SSO 主站配置 RS256 密钥对（JWT_ID_TOKEN_PRIVATE_KEY / JWT_ID_TOKEN_PUBLIC_KEY）后重新签发。"
     );
   }
 
@@ -332,7 +343,10 @@ export async function validateIdToken(
     throw new SsoError("id_token_audience_mismatch", "ID Token audience 不匹配");
   }
   if (audList.length > 1 && payload.azp !== expectedClientId) {
-    throw new SsoError("id_token_audience_mismatch", "ID Token 多 audience 时 azp 必须为当前 client");
+    throw new SsoError(
+      "id_token_audience_mismatch",
+      "ID Token 多 audience 时 azp 必须为当前 client"
+    );
   }
 
   // exp 必需且不得过期（允许 60s clock skew，与 iat 校验对称）

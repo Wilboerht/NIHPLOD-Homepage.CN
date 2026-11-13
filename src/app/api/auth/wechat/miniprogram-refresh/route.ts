@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     // （与浏览器端 /api/auth/refresh 及 logout 路由的既有做法一致）
     const tokenUser = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { phone: true },
+      select: { phone: true, passwordChangedAt: true, sessionsInvalidatedAt: true },
     });
     const userPhone = tokenUser?.phone;
 
@@ -119,6 +119,28 @@ export async function POST(request: NextRequest) {
           success: false,
           error: { code: "INVALID_TOKEN", message: "刷新令牌无效或已过期" },
         },
+        { status: 401 }
+      );
+    }
+
+    // 3.2 改密/全设备登出即时失效：拒绝签发时间早于失效时间点的旧 refresh token。
+    const issuedAtSec = typeof payload.iat === "number" ? payload.iat : null;
+    const invalidatedAt = tokenUser?.sessionsInvalidatedAt ?? null;
+    const passwordChangedAt = tokenUser?.passwordChangedAt ?? null;
+    if (
+      issuedAtSec !== null &&
+      ((invalidatedAt && issuedAtSec < Math.floor(invalidatedAt.getTime() / 1000)) ||
+        (passwordChangedAt && issuedAtSec < Math.floor(passwordChangedAt.getTime() / 1000)))
+    ) {
+      logAuthEvent("user_refresh_token", {
+        success: false,
+        reason: "sessions_invalidated",
+        userId: payload.id,
+        identifier: userPhone,
+        ip: clientIP,
+      });
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_TOKEN", message: "刷新令牌无效或已过期" } },
         { status: 401 }
       );
     }

@@ -213,7 +213,12 @@ describe("POST /api/v1/internal/points/redeem（商城积分兑礼扣减）", ()
   });
 
   it("重复单据：幂等返回成功，不重复扣减", async () => {
-    txClient.pointLedger.findUnique.mockResolvedValue({ id: "ledger-1" });
+    txClient.pointLedger.findUnique.mockResolvedValue({
+      id: "ledger-1",
+      type: "REDEEM",
+      amount: -300,
+      source: "MALL",
+    });
     txClient.pointBalance.findUnique.mockResolvedValue({ available: 700 });
 
     const res = await POST(createSignedRequest(VALID_BODY));

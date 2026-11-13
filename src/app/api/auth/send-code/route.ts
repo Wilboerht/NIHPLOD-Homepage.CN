@@ -200,6 +200,8 @@ export async function POST(request: NextRequest) {
         bindHasAuthContext = Boolean(await verifyWechatBindToken(bindToken));
       }
       if (!bindHasAuthContext) bindHasAuthContext = bearerOwnedPhone;
+      // 子站 BFF 已通过专用代理密钥认证，可代表子站绑定流程发送真实验证码。
+      if (subsiteProxiedIP !== null) bindHasAuthContext = true;
     }
 
     // 生产环境短信通道必须为真实 provider：SMS_PROVIDER 为 mock/未设置/未知值时短信
@@ -305,7 +307,9 @@ export async function POST(request: NextRequest) {
 
     // 绑定场景：有授权凭证时真实发码（含未注册号码，绑定流程需验证号码归属）；
     // 无凭证且号码未注册时假发送，保持防枚举口径；无凭证且已注册维持历史行为
-    if (type === "bind" && !bindHasAuthContext && !userExists) {
+    // 无有效绑定凭证时一律假发送（无论号码是否已注册），防止脚本无 PoW
+    // 向任意已注册手机号真实发送短信。
+    if (type === "bind" && !bindHasAuthContext) {
       await recordFakeSmsThrottleEntry(phone, type, ip, CODE_EXPIRE_MINUTES);
       await simulateSmsSendLatency();
       return fakeSendResponse();

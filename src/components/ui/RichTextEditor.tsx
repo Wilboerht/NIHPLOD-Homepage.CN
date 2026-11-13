@@ -146,7 +146,7 @@ export function RichTextEditor({
     return (
       <div className={cn("animate-pulse", className)}>
         {label && <div className="mb-1.5 h-5 w-20 rounded bg-brand-charcoal/10" />}
-        <div className="bg-brand-charcoal/8 h-32 rounded-lg" />
+        <div className="h-32 rounded-lg bg-brand-charcoal/10" />
       </div>
     );
   }

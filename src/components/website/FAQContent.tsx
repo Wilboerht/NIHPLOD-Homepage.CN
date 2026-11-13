@@ -47,7 +47,7 @@ function FaqAnswer({ paragraphs, links }: { paragraphs: string[]; links?: FaqLin
             className={cn(
               index > 0 && "mt-3",
               isNote &&
-                "text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/50"
+                "text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/70"
             )}
           >
             {link ? renderParagraphWithLink(paragraph, link) : paragraph}
@@ -98,6 +98,18 @@ export function FAQContent() {
       {/* Texture Overlay */}
       <div className="texture-overlay absolute inset-0" />
 
+      {/* 服务端可抓取的完整问答：移动端详情为交互态，保留一份静态语义内容 */}
+      <div className="sr-only" aria-hidden="true">
+        {faqData.map((faq, index) => (
+          <section key={`faq-seo-${index}`}>
+            <h2>{faq.question}</h2>
+            {faq.answer.map((paragraph, paragraphIndex) => (
+              <p key={paragraphIndex}>{paragraph}</p>
+            ))}
+          </section>
+        ))}
+      </div>
+
       {/* Scrollable Content */}
       <div
         className={cn(
@@ -116,7 +128,7 @@ export function FAQContent() {
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                 onClick={() => setMobileSelectedIndex(null)}
-                className="absolute left-4 flex items-center gap-0.5 text-[13px] font-light tracking-[0.04em] text-brand-charcoal/50 transition-colors active:text-brand-charcoal/80 sm:hidden"
+                className="absolute left-4 flex items-center gap-0.5 text-[13px] font-light tracking-[0.04em] text-brand-charcoal/70 transition-colors active:text-brand-charcoal/80 sm:hidden"
               >
                 <ChevronLeft className="h-4 w-4" />
                 返回
@@ -198,7 +210,7 @@ export function FAQContent() {
                         <h3 className="mb-3 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70">
                           没有找到想要的答案？
                         </h3>
-                        <p className="mb-6 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/50">
+                        <p className="mb-6 text-[13px] font-light tracking-[0.08em] text-brand-charcoal/70">
                           我们的支持团队随时候命，为您解答任何疑问。
                         </p>
                         <button
@@ -211,7 +223,7 @@ export function FAQContent() {
 
                       {/* Mobile Footer Copyright */}
                       <div className="mt-auto flex flex-col items-center justify-center pt-10">
-                        <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
+                        <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/70">
                           <FooterCopyright />
                         </p>
                       </div>
@@ -246,7 +258,7 @@ export function FAQContent() {
 
                       {/* Mobile Footer Copyright */}
                       <div className="mt-auto flex flex-col items-center justify-center pt-10">
-                        <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/[0.48]">
+                        <p className="text-[12px] font-light tracking-[0.08em] text-brand-charcoal/70">
                           <FooterCopyright />
                         </p>
                       </div>
@@ -277,7 +289,9 @@ export function FAQContent() {
                     >
                       <button
                         onClick={() => toggleFAQ(index)}
-                        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left lg:py-6"
+                        aria-expanded={openIndex === index}
+                        aria-controls={`faq-answer-${index}`}
+                        className="flex min-h-11 w-full items-center justify-between gap-4 px-6 py-5 text-left lg:py-6"
                       >
                         <span
                           className={cn(
@@ -291,10 +305,10 @@ export function FAQContent() {
                         </span>
                         <span
                           className={cn(
-                            "shrink-0 rounded-full p-1.5 text-brand-charcoal/30 transition-all duration-500",
+                            "shrink-0 rounded-full p-1.5 text-brand-charcoal/70 transition-all duration-500",
                             openIndex === index
                               ? "rotate-45 bg-brand-charcoal/10 text-brand-charcoal/80"
-                              : "group-hover:bg-brand-charcoal/[0.03] group-hover:text-brand-charcoal/50"
+                              : "group-hover:bg-brand-charcoal/[0.03] group-hover:text-brand-charcoal/70"
                           )}
                         >
                           <Plus className="h-5 w-5 stroke-[1.5]" />
@@ -308,6 +322,7 @@ export function FAQContent() {
                             exit={{ gridTemplateRows: "0fr", opacity: 0 }}
                             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                             style={{ display: "grid" }}
+                            id={`faq-answer-${index}`}
                           >
                             <div style={{ overflow: "hidden" }}>
                               <div className="pb-8 pl-6 pr-6 pt-0 text-[14px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/90 lg:pr-12 lg:text-[15px]">
@@ -326,7 +341,7 @@ export function FAQContent() {
                   <h3 className="mb-2 text-[15px] font-light tracking-[0.08em] text-brand-charcoal/70">
                     没有找到想要的答案？
                   </h3>
-                  <p className="mb-6 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/50">
+                  <p className="mb-6 text-[14px] font-light tracking-[0.08em] text-brand-charcoal/70">
                     我们的支持团队随时候命，为您解答任何疑问。
                   </p>
                   <button
@@ -342,7 +357,7 @@ export function FAQContent() {
 
           {/* Footer Info - Desktop 固定页脚 */}
           <div className="hidden shrink-0 flex-col items-center justify-center gap-2 pb-4 pt-10 sm:flex">
-            <p className="text-center text-[12px] font-light tracking-[0.1em] text-brand-charcoal/[0.48]">
+            <p className="text-center text-[12px] font-light tracking-[0.1em] text-brand-charcoal/70">
               <FooterCopyright />
             </p>
           </div>

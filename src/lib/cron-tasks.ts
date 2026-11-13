@@ -675,7 +675,7 @@ const tasks: ScheduledTask[] = [
         if (negativeBalances > 0) {
           apiConsole.warn(`[Cron] 存在 ${negativeBalances} 个负积分余额账户`);
         }
-        if (report.summary.hasIssues) notifyReconciliationIssues(report);
+        if (report.summary.hasActionableIssues) notifyReconciliationIssues(report);
         const actionableIssues = report.summary.totalIssueCount - negativeBalances;
         if (actionableIssues > 0) {
           throw new Error(`财务对账发现 ${actionableIssues} 个待处理异常`);

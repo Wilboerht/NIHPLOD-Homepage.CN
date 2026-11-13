@@ -31,14 +31,15 @@ import {
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { readInternalApiBody } from "@/lib/request-body";
+import { cuidSchema } from "@/lib/validation";
 
 // 本端点允许的 project 白名单：用户状态同步对所有已接入子站开放
 const ALLOWED_PROJECTS = ["advisor", "mall"] as const;
 
 const statusQuerySchema = z
   .object({
-    userId: z.string().cuid().optional(),
-    userIds: z.array(z.string().cuid()).max(100).optional(),
+    userId: cuidSchema.optional(),
+    userIds: z.array(cuidSchema).max(100).optional(),
   })
   .refine((data) => data.userId || (data.userIds && data.userIds.length > 0), {
     message: "至少提供 userId 或 userIds",

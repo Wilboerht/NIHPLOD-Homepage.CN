@@ -1,17 +1,7 @@
 "use client";
 
-/**
- * 退出登录确认框（分层退出：默认仅退出当前设备，勾选后全局退出所有平台）
- *
- * 卡片样式与子站（Skin-Advisor AccountModal）的退出确认框保持一致：
- * 圆角卡片 + 极简勾选行 + 取消/红色确认双按钮。
- *
- * 勾选状态放在仅在 open 时挂载的 Content 中：每次打开自动重置为“仅当前设备”，
- * 避免在 effect 内同步 setState。
- */
-import { useState } from "react";
-import { createPortal } from "react-dom";
-import { AnimatePresence, m } from "framer-motion";
+import { useRef, useState } from "react";
+import { Modal } from "./Modal";
 
 interface LogoutConfirmDialogProps {
   open: boolean;
@@ -20,91 +10,67 @@ interface LogoutConfirmDialogProps {
   loading?: boolean;
 }
 
-export function LogoutConfirmDialog(props: LogoutConfirmDialogProps) {
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
-    <AnimatePresence>
-      {props.open && (
-        <LogoutConfirmContent
-          onClose={props.onClose}
-          onConfirm={props.onConfirm}
-          loading={props.loading ?? false}
-        />
-      )}
-    </AnimatePresence>,
-    document.body
-  );
-}
-
-function LogoutConfirmContent({
+export function LogoutConfirmDialog({
+  open,
   onClose,
   onConfirm,
-  loading,
-}: {
-  onClose: () => void;
-  onConfirm: (allDevices: boolean) => void | Promise<void>;
-  loading: boolean;
-}) {
+  loading = false,
+}: LogoutConfirmDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const [allDevices, setAllDevices] = useState(false);
+  const close = () => {
+    setAllDevices(false);
+    onClose();
+  };
+  const confirm = () => {
+    const value = allDevices;
+    setAllDevices(false);
+    void onConfirm(value);
+  };
 
   return (
-    <div
+    <Modal
+      open={open}
+      onClose={close}
+      size="sm"
       role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="logout-confirm-title"
-      // 需高于用户中心弹窗（z-[9999]）
-      className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
-    >
-      <m.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-md"
-      />
-      <m.div
-        initial={{ opacity: 0, scale: 0.96, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 10 }}
-        transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="relative z-10 w-full max-w-xs rounded-[24px] bg-[#FDFBF7] px-6 pb-6 pt-6 shadow-[0_45px_80px_-16px_rgba(0,0,0,0.15)]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 id="logout-confirm-title" className="mb-2 text-base font-semibold text-brand-charcoal">
-          退出登录
-        </h3>
-        <p className="mb-4 text-[13px] font-light leading-relaxed text-brand-charcoal/70">
-          默认仅退出当前设备；勾选后将同时退出所有设备和已授权的平台。
-        </p>
-        <label className="mb-6 flex cursor-pointer select-none items-center gap-2 text-[13px] tracking-[0.03em] text-brand-charcoal/70">
-          <input
-            type="checkbox"
-            checked={allDevices}
-            onChange={(e) => setAllDevices(e.target.checked)}
-            className="h-4 w-4 accent-brand-primary"
-          />
-          同时退出所有设备和已授权的平台
-        </label>
+      title="退出登录"
+      description="默认仅退出当前设备；勾选后将同时退出所有设备和已授权的平台。"
+      showCloseButton={false}
+      closeOnBackdrop={!loading}
+      closeOnEscape={!loading}
+      initialFocusRef={cancelRef}
+      footer={
         <div className="flex gap-3">
           <button
+            ref={cancelRef}
             type="button"
-            onClick={onClose}
+            onClick={close}
             disabled={loading}
-            className="flex-1 cursor-pointer rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/5 px-4 py-2.5 text-[13px] tracking-[0.05em] text-brand-charcoal/70 transition-colors hover:bg-brand-charcoal/10 disabled:opacity-50"
+            className="min-h-11 flex-1 cursor-pointer rounded-xl border border-brand-charcoal/15 bg-brand-charcoal/5 px-4 text-[13px] tracking-[0.05em] text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-50"
           >
             取消
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(allDevices)}
+            onClick={confirm}
             disabled={loading}
-            className="flex-1 cursor-pointer rounded-xl bg-red-600 px-4 py-2.5 text-[13px] tracking-[0.05em] text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+            className="min-h-11 flex-1 cursor-pointer rounded-xl bg-red-600 px-4 text-[13px] tracking-[0.05em] text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
           >
             {allDevices ? "退出所有平台" : "退出登录"}
           </button>
         </div>
-      </m.div>
-    </div>
+      }
+    >
+      <label className="flex min-h-11 cursor-pointer select-none items-center gap-3 rounded-xl border border-brand-charcoal/10 px-3 text-[13px] tracking-[0.03em] text-brand-charcoal/80">
+        <input
+          type="checkbox"
+          checked={allDevices}
+          onChange={(event) => setAllDevices(event.target.checked)}
+          className="h-4 w-4 accent-brand-primary"
+        />
+        同时退出所有设备和已授权的平台
+      </label>
+    </Modal>
   );
 }

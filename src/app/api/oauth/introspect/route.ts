@@ -100,7 +100,8 @@ export async function POST(request: NextRequest) {
 
     // 已认证阶段：client 级桶。子站服务端通常共享出口 IP，IP 桶只防未认证滥用；
     // 认证通过后的正常 introspection 流量按 client 塑形，避免多个子站互相挤占。
-    const clientLimitResult = await rateLimit(`client:${client_id}`, "oauth-introspect");
+    const clientBucket = client.isPublic ? `client:${client_id}:${ip}` : `client:${client_id}`;
+    const clientLimitResult = await rateLimit(clientBucket, "oauth-introspect");
     if (!clientLimitResult.success) {
       return resJson({ error: "rate_limited", error_description: "子项目请求过于频繁" }, 429);
     }

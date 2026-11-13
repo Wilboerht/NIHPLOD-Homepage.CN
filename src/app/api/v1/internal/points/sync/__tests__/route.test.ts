@@ -210,7 +210,9 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
 
   it("成功入账：CAS 更新消费额、写幂等记录并按新消费额重算等级", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
-    txClient.user.findUnique.mockResolvedValue({ status: "ACTIVE", totalSpent: 850,
+    txClient.user.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+      totalSpent: 850,
       membershipLevel: "REGULAR",
     });
 
@@ -278,7 +280,11 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
   it("普通档消费（未达银卡门槛）：同样发放积分（仅累积，不可兑礼）", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
     // 500 + 400 = 900 < 1000，仍为普通档
-    txClient.user.findUnique.mockResolvedValue({ status: "ACTIVE", totalSpent: 500, membershipLevel: "REGULAR" });
+    txClient.user.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+      totalSpent: 500,
+      membershipLevel: "REGULAR",
+    });
 
     const res = await POST(
       createSignedRequest({ ...VALID_BODY, spentDelta: 400, reference: "mall-order-N3" })
@@ -310,7 +316,9 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
 
   it("退款扣减（负 spentDelta）应钳制到 0，不出现负消费额", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
-    txClient.user.findUnique.mockResolvedValue({ status: "ACTIVE", totalSpent: 50,
+    txClient.user.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+      totalSpent: 50,
       membershipLevel: "GOLD",
     });
     txClient.spentOrderClaim.findUnique.mockResolvedValue({
@@ -375,8 +383,15 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
 
   it("重复上报（幂等记录已存在）应返回当前权威消费额并标记 duplicated", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
-    txClient.spentSyncRecord.findUnique.mockResolvedValue({ id: "rec-1" });
-    txClient.user.findUnique.mockResolvedValue({ status: "ACTIVE", totalSpent: 1000,
+    txClient.spentSyncRecord.findUnique.mockResolvedValue({
+      id: "rec-1",
+      spentDelta: 150,
+      orderNoKey: "MALL-ORDER-N001",
+      source: "MALL_SYNC",
+    });
+    txClient.user.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+      totalSpent: 1000,
       membershipLevel: "SILVER",
     });
 
@@ -402,7 +417,9 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
       .mockResolvedValueOnce({ id: "user-1", status: "ACTIVE" })
       // 第二次：P2002 后回读权威消费额
       .mockResolvedValueOnce({ totalSpent: 1000, membershipLevel: "SILVER" });
-    txClient.user.findUnique.mockResolvedValue({ status: "ACTIVE", totalSpent: 850,
+    txClient.user.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+      totalSpent: 850,
       membershipLevel: "REGULAR",
     });
     txClient.spentSyncRecord.create.mockRejectedValue({ code: "P2002" });
@@ -423,7 +440,9 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
 
   it("订单已被其他来源占用时返回 409 ORDER_CONFLICT", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
-    txClient.user.findUnique.mockResolvedValue({ status: "ACTIVE", totalSpent: 850,
+    txClient.user.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+      totalSpent: 850,
       membershipLevel: "REGULAR",
     });
     txClient.spentOrderClaim.findUnique.mockResolvedValue({ source: "SPENT_IMPORT" });
@@ -438,7 +457,11 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
 
   it("userId 定位成功（微信占位号/换绑后账号场景），响应回传 userId", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "user-1", status: "ACTIVE" });
-    txClient.user.findUnique.mockResolvedValue({ status: "ACTIVE", totalSpent: 850, membershipLevel: "REGULAR" });
+    txClient.user.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+      totalSpent: 850,
+      membershipLevel: "REGULAR",
+    });
 
     const res = await POST(
       createSignedRequest({ ...VALID_BODY_USER_ID, reference: "mall-order-uid-1" })

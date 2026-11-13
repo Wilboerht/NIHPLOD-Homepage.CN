@@ -71,7 +71,7 @@ export function WechatBindForm({
         <h1 className="mb-10 text-center text-[2rem] font-light tracking-[0.15em] text-brand-charcoal">
           绑定手机号
         </h1>
-        <p className="mb-10 text-center text-sm tracking-wide text-brand-charcoal/50">
+        <p className="mb-10 text-center text-sm tracking-wide text-brand-charcoal/70">
           微信授权成功，请绑定手机号以完成登录。
         </p>
         <form onSubmit={onSubmit} className="space-y-8">
@@ -84,6 +84,7 @@ export function WechatBindForm({
               className={errors?.phone ? pcInputErrorClass : pcInputClass}
               maxLength={11}
               placeholder="手机号"
+              aria-label="手机号"
             />
             <AuthFieldError message={errors?.phone} />
           </div>
@@ -97,6 +98,7 @@ export function WechatBindForm({
                 onChange={(e) => onRegCodeChange(e.target.value)}
                 className={`${errors?.code ? pcInputErrorClass : pcInputClass} flex-1`}
                 placeholder="验证码"
+                aria-label="验证码"
               />
               <button
                 type="button"
@@ -109,7 +111,7 @@ export function WechatBindForm({
             </div>
             <AuthFieldError message={errors?.code} />
             {!errors?.code && regCountdown > 0 && (
-              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/70">
                 验证码已发送，请注意查收
               </p>
             )}
@@ -124,11 +126,12 @@ export function WechatBindForm({
                 maxLength={PASSWORD_MAX_LENGTH}
                 autoComplete="new-password"
                 placeholder="设置登录密码（可选，留空将自动生成）"
+                aria-label="设置登录密码（可选，留空将自动生成）"
               />
               <button
                 type="button"
                 onClick={onShowPasswordToggle}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -155,7 +158,7 @@ export function WechatBindForm({
             )}
           </button>
         </form>
-        <p className="mt-6 text-center text-xs text-brand-charcoal/50">
+        <p className="mt-6 text-center text-xs text-brand-charcoal/70">
           授权已过期或绑定失败？
           <a href="/api/auth/wechat" className="text-blue-600 hover:underline">
             重新扫码授权
@@ -171,7 +174,7 @@ export function WechatBindForm({
       <div className="pb-4 pt-[6px] text-center">
         <h2 className="text-[24px] font-light tracking-[0.15em] text-brand-charcoal">绑定手机号</h2>
         <div className="mx-auto mt-2 w-[70px] border-b border-brand-charcoal" />
-        <p className="mt-4 text-sm tracking-wide text-brand-charcoal/50">
+        <p className="mt-4 text-sm tracking-wide text-brand-charcoal/70">
           微信授权成功，请绑定手机号以完成登录。
         </p>
       </div>
@@ -187,6 +190,7 @@ export function WechatBindForm({
             onChange={(e) => onRegPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
             maxLength={11}
             placeholder="手机号"
+            aria-label="手机号"
             className={errors?.phone ? mobileInputErrorClass : mobileInputClass}
           />
           <AuthFieldError message={errors?.phone} />
@@ -200,6 +204,7 @@ export function WechatBindForm({
               value={regCode}
               onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
               placeholder="验证码"
+              aria-label="验证码"
               className={errors?.code ? mobileInputErrorFlexClass : mobileInputFlexClass}
             />
             <button
@@ -215,7 +220,7 @@ export function WechatBindForm({
           </div>
           <AuthFieldError message={errors?.code} />
           {!errors?.code && regCountdown > 0 && (
-            <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+            <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/70">
               验证码已发送，请注意查收
             </p>
           )}
@@ -227,6 +232,7 @@ export function WechatBindForm({
               value={regPassword}
               onChange={(e) => onRegPasswordChange(e.target.value)}
               placeholder="设置登录密码（可选，留空将自动生成）"
+              aria-label="设置登录密码（可选，留空将自动生成）"
               maxLength={PASSWORD_MAX_LENGTH}
               autoComplete="new-password"
               className={`${errors?.password ? mobileInputErrorClass : mobileInputClass} pr-10`}
@@ -234,7 +240,7 @@ export function WechatBindForm({
             <button
               type="button"
               onClick={onShowPasswordToggle}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -263,7 +269,7 @@ export function WechatBindForm({
           </button>
         </div>
       </form>
-      <p className="text-center text-xs text-brand-charcoal/50">
+      <p className="text-center text-xs text-brand-charcoal/70">
         授权已过期或绑定失败？
         <a href="/api/auth/wechat" className="text-blue-600 hover:underline">
           重新扫码授权

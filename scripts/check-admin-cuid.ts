@@ -7,7 +7,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const ADMIN_API_DIR = join(process.cwd(), "src", "app", "api", "admin");
+const API_DIR = join(process.cwd(), "src", "app", "api");
 const FORBIDDEN = /z\s*\.\s*string\s*\(\s*\)\s*\.\s*cuid\s*\(\s*\)/;
 
 function walk(dir: string): string[] {
@@ -24,7 +24,7 @@ function walk(dir: string): string[] {
 }
 
 const offenders: string[] = [];
-for (const file of walk(ADMIN_API_DIR)) {
+for (const file of walk(API_DIR)) {
   const lines = readFileSync(file, "utf8").split(/\r?\n/);
   lines.forEach((line, index) => {
     if (FORBIDDEN.test(line)) {
@@ -34,9 +34,9 @@ for (const file of walk(ADMIN_API_DIR)) {
 }
 
 if (offenders.length > 0) {
-  console.error("发现 admin 路由使用 z.string().cuid()，请改用 cuidSchema：");
+  console.error("发现 API 路由使用 z.string().cuid()，请改用 cuidSchema：");
   for (const item of offenders) console.error(` - ${item}`);
   process.exit(1);
 }
 
-console.log("管理端 CUID 校验检查通过");
+console.log("API CUID 校验检查通过");

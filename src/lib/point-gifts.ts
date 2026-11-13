@@ -76,6 +76,7 @@ export type RedeemGiftResult =
         | "ADDRESS_NOT_FOUND"
         | "OUT_OF_STOCK"
         | "INSUFFICIENT"
+        | "REFERENCE_CONFLICT"
         | "INVALID_REQUEST"
         | "PRICE_CHANGED"
         | "REDEMPTION_LIMIT_REACHED";
@@ -263,8 +264,17 @@ export async function redeemGiftForUser(params: {
           note: `兑换产品：${product.name}`,
         });
         if (!result.ok) {
-          // 预检通过但扣分 CAS 失败（并发扣光）：必须抛错回滚已扣库存
+          // 预检通过但扣分 CAS 失败（并发扣光）或 reference 与其它端冲突：
+          // 必须抛错回滚已扣库存。
+          if (result.code === "REFERENCE_CONFLICT") {
+            throw new RedeemRollback("REFERENCE_CONFLICT", "兑换请求号已被其他业务占用");
+          }
           throw new RedeemRollback("INSUFFICIENT", "可用积分不足");
+        }
+        if (result.spent !== points) {
+          // 幂等分支理论上已在上面 pointRedemption 查找中返回；走到这里说明
+          // 命中了其它端/类型的积分流水，不能创建免费兑换单。
+          throw new RedeemRollback("REFERENCE_CONFLICT", "兑换请求号已被其他业务占用");
         }
 
         const redemption = await tx.pointRedemption.create({

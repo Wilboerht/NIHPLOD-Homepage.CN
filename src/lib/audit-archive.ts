@@ -23,7 +23,7 @@ import readline from "readline";
 import { prisma } from "./prisma";
 import { apiConsole } from "./logger";
 import {
-  computeAuditDigest,
+  createAuditDigestHasher,
   getAuditIntegrityKey,
   getAuditIntegrityKeyVersion,
   stableStringify,
@@ -103,12 +103,19 @@ async function* auditRows(
   day: ArchiveDayRange,
   pageSize = 1000
 ): AsyncGenerator<Record<string, unknown>> {
-  let skip = 0;
+  let cursor: { createdAt: Date; id: string } | null = null;
   for (;;) {
-    const rows = await prisma.auditLog.findMany({
-      where: { createdAt: { gte: day.fromAt, lt: day.toAt } },
+    const rows = (await prisma.auditLog.findMany({
+      where: cursor
+        ? {
+            createdAt: { gte: day.fromAt, lt: day.toAt },
+            OR: [
+              { createdAt: { gt: cursor.createdAt } },
+              { createdAt: cursor.createdAt, id: { gt: cursor.id } },
+            ],
+          }
+        : { createdAt: { gte: day.fromAt, lt: day.toAt } },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      skip,
       take: pageSize,
       select: {
         id: true,
@@ -142,13 +149,14 @@ async function* auditRows(
         entryHash: true,
         finalizedAt: true,
       },
-    });
+    })) as Array<{ createdAt: Date; id: string } & Record<string, unknown>>;
     if (rows.length === 0) return;
     for (const row of rows) {
       yield row as unknown as Record<string, unknown>;
     }
     if (rows.length < pageSize) return;
-    skip += pageSize;
+    const last = rows[rows.length - 1];
+    cursor = { createdAt: last.createdAt, id: last.id };
   }
 }
 
@@ -156,20 +164,28 @@ async function* ssoRows(
   day: ArchiveDayRange,
   pageSize = 1000
 ): AsyncGenerator<Record<string, unknown>> {
-  let skip = 0;
+  let cursor: { createdAt: Date; id: string } | null = null;
   for (;;) {
-    const rows = await prisma.ssoAuditEvent.findMany({
-      where: { createdAt: { gte: day.fromAt, lt: day.toAt } },
+    const rows = (await prisma.ssoAuditEvent.findMany({
+      where: cursor
+        ? {
+            createdAt: { gte: day.fromAt, lt: day.toAt },
+            OR: [
+              { createdAt: { gt: cursor.createdAt } },
+              { createdAt: cursor.createdAt, id: { gt: cursor.id } },
+            ],
+          }
+        : { createdAt: { gte: day.fromAt, lt: day.toAt } },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      skip,
       take: pageSize,
-    });
+    })) as Array<{ createdAt: Date; id: string } & Record<string, unknown>>;
     if (rows.length === 0) return;
     for (const row of rows) {
       yield row as unknown as Record<string, unknown>;
     }
     if (rows.length < pageSize) return;
-    skip += pageSize;
+    const last = rows[rows.length - 1];
+    cursor = { createdAt: last.createdAt, id: last.id };
   }
 }
 
@@ -235,7 +251,10 @@ async function writeEventsFile(
       if (count > 0) digest.update("\n");
       digest.update(stableStringify(row));
       count += 1;
-      yield `${JSON.stringify(row)}\n`;
+      // BigInt 在 JSON 中必须落为数字，才能与 stableStringify(bigint) 的摘要保持一致。
+      yield `${JSON.stringify(row, (_key, value) =>
+        typeof value === "bigint" ? Number(value) : value
+      )}\n`;
     }
   }
   await pipeline(
@@ -248,15 +267,18 @@ async function writeEventsFile(
 }
 
 async function readEventsDigest(filePath: string): Promise<{ count: number; digest: string }> {
-  const rows: Record<string, unknown>[] = [];
+  const hasher = createAuditDigestHasher();
+  let count = 0;
   const reader = readline.createInterface({
     input: createReadStream(filePath).pipe(createGunzip()),
     crlfDelay: Infinity,
   });
   for await (const line of reader) {
-    if (line.trim()) rows.push(canonicalArchiveRow(JSON.parse(line) as Record<string, unknown>));
+    if (!line.trim()) continue;
+    hasher.update(canonicalArchiveRow(JSON.parse(line) as Record<string, unknown>));
+    count += 1;
   }
-  return { count: rows.length, digest: computeAuditDigest(rows) };
+  return { count, digest: hasher.digest() };
 }
 
 async function readManifest(
@@ -474,13 +496,41 @@ export async function verifyArchiveBackup(stream: AuditStream, day: string): Pro
 
 export async function getArchiveStatus(
   stream: AuditStream,
-  day: string
+  day: string,
+  options: { verify?: "cached" | "full" } = {}
 ): Promise<{
   archived: boolean;
   verified: boolean;
   backupVerified: boolean;
   sha256: string | null;
 }> {
+  const verify = options.verify ?? "cached";
+  if (verify === "cached") {
+    const anchor = await prisma.auditLogAnchor.findFirst({
+      where: { stream, day },
+      orderBy: [{ signatureVersion: "desc" }, { createdAt: "desc" }],
+      select: {
+        archivedAt: true,
+        archiveSha256: true,
+        verifyStatus: true,
+        verifiedAt: true,
+      },
+    });
+    if (!anchor?.archivedAt) {
+      return { archived: false, verified: false, backupVerified: false, sha256: null };
+    }
+    const verified =
+      anchor.verifyStatus === "VERIFIED" &&
+      anchor.verifiedAt !== null &&
+      anchor.archiveSha256 !== null;
+    return {
+      archived: true,
+      verified,
+      backupVerified: verified,
+      sha256: anchor.archiveSha256,
+    };
+  }
+
   const manifest = await readManifest(getAuditArchiveRoot(), stream, day);
   if (!manifest) return { archived: false, verified: false, backupVerified: false, sha256: null };
   return {

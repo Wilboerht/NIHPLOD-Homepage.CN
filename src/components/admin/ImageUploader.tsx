@@ -259,7 +259,7 @@ export function ImageUploader({
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
               className={cn(
-                "bg-brand-charcoal/8 group relative aspect-square overflow-hidden rounded-lg border-2",
+                "group relative aspect-square overflow-hidden rounded-lg border-2 bg-brand-charcoal/10",
                 dragOverIndex === index ? "border-brand-primary" : "border-transparent"
               )}
             >
@@ -351,7 +351,7 @@ export function ImageUploader({
             }}
             className="hidden"
           />
-          <div className="bg-brand-charcoal/8 mb-3 rounded-full p-3">
+          <div className="mb-3 rounded-full bg-brand-charcoal/10 p-3">
             {isCompressing ? (
               <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
             ) : dragActive ? (

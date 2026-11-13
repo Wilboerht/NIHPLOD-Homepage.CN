@@ -169,7 +169,7 @@ describe("POST /api/auth/wechat/miniprogram-refresh", () => {
     // 审计日志 identifier 来自按 id 查库的手机号，而非 payload
     expect(mockUserFindUnique).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      select: { phone: true },
+      select: { phone: true, passwordChangedAt: true, sessionsInvalidatedAt: true },
     });
     expect(mockLogAuthEvent).toHaveBeenCalledWith(
       "user_refresh_token",

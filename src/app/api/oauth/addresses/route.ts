@@ -11,7 +11,18 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
 import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { getAddressesResponse, createAddressResponse } from "@/lib/points-mall-api";
+import { isOAuthClientAllowed } from "@/lib/oauth-constants";
 import { apiConsole } from "@/lib/logger";
+
+function denyAddressClient(resJson: (body: unknown, status?: number) => Response): Response {
+  return resJson(
+    {
+      error: "insufficient_scope",
+      error_description: "该客户端未被允许访问收货地址",
+    },
+    403
+  );
+}
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +33,13 @@ export async function GET(request: NextRequest) {
       action: "addresses_list",
     });
     if (!auth.ok) return auth.response;
+    if (
+      !isOAuthClientAllowed("OAUTH_ADDRESS_ALLOWED_CLIENTS", auth.payload.client_id, [
+        "wechat-mp-points",
+      ])
+    ) {
+      return denyAddressClient(auth.resJson);
+    }
     return decorateOAuthResponse(await getAddressesResponse(auth.payload.id), auth.corsHeaders);
   } catch (error) {
     apiConsole.error("[OAuth Addresses] 查询异常:", error);
@@ -39,6 +57,13 @@ export async function POST(request: NextRequest) {
       action: "addresses_create",
     });
     if (!auth.ok) return auth.response;
+    if (
+      !isOAuthClientAllowed("OAUTH_ADDRESS_ALLOWED_CLIENTS", auth.payload.client_id, [
+        "wechat-mp-points",
+      ])
+    ) {
+      return denyAddressClient(auth.resJson);
+    }
     return decorateOAuthResponse(
       await createAddressResponse(auth.payload.id, request),
       auth.corsHeaders

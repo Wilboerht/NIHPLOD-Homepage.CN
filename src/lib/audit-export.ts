@@ -272,7 +272,12 @@ async function writeAuditJsonl(
       if (rows.length === 0) break;
       for (const row of rows) {
         const safe = sanitizeAuditRow(row as unknown as Record<string, unknown>, canViewSensitive);
-        if (!out.write(`${JSON.stringify(safe)}\n`)) await once(out, "drain");
+        if (
+          !out.write(
+            `${JSON.stringify(safe, (_key, value) => (typeof value === "bigint" ? value.toString() : value))}\n`
+          )
+        )
+          await once(out, "drain");
       }
       processed += rows.length;
       await onProgress(processed, total);
@@ -354,7 +359,11 @@ async function writeSsoFile(
             JSON.stringify(safe.detail ?? null),
           ]);
           if (!out.write(`${line}\n`)) await once(out, "drain");
-        } else if (!out.write(`${JSON.stringify(safe)}\n`)) {
+        } else if (
+          !out.write(
+            `${JSON.stringify(safe, (_key, value) => (typeof value === "bigint" ? value.toString() : value))}\n`
+          )
+        ) {
           await once(out, "drain");
         }
       }

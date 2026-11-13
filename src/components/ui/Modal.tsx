@@ -89,6 +89,8 @@ interface ModalProps {
   initialFocusRef?: RefObject<HTMLElement | null>;
   /** 手机端全屏显示（适合长表单/批量导入） */
   mobileFullScreen?: boolean;
+  /** 确认类不可逆操作使用 alertdialog */
+  role?: "dialog" | "alertdialog";
 }
 
 /**
@@ -115,6 +117,7 @@ export function Modal({
   closeGuard,
   initialFocusRef,
   mobileFullScreen = false,
+  role = "dialog",
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -258,7 +261,7 @@ export function Modal({
   };
 
   const dialogAria = {
-    role: "dialog" as const,
+    role,
     "aria-modal": true as const,
     "aria-labelledby": title ? titleId : undefined,
     "aria-describedby": description ? descriptionId : undefined,

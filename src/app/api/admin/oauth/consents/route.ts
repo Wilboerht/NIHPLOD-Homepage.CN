@@ -6,6 +6,7 @@
  * 权限：GET 需 sso:read，POST 需 sso:write
  */
 import { NextRequest, NextResponse } from "next/server";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -191,7 +192,9 @@ export async function POST(request: NextRequest) {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = revokeSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

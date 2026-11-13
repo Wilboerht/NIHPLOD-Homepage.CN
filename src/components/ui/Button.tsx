@@ -35,7 +35,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary: "bg-brand-primary text-white hover:bg-brand-primary/90",
-      secondary: "bg-brand-charcoal/8 text-brand-charcoal hover:bg-brand-charcoal/15",
+      secondary: "bg-brand-charcoal/10 text-brand-charcoal hover:bg-brand-charcoal/15",
       outline:
         "border border-brand-charcoal/20 text-brand-charcoal/80 bg-white hover:bg-brand-charcoal/[0.03]",
       ghost: "text-brand-charcoal/80 hover:bg-brand-charcoal/[0.06]",
@@ -43,7 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizeStyles = {
-      sm: "h-9 px-3 text-sm",
+      sm: "h-9 max-sm:min-h-11 px-3 text-sm",
       md: "h-11 px-4 text-sm",
       lg: "h-12 px-6 text-base",
     };

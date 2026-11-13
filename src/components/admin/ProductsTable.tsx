@@ -216,7 +216,7 @@ export function ProductsTable({
         width: "80px",
         align: "center",
         render: (_, record) => (
-          <div className="bg-brand-charcoal/8 h-12 w-12 overflow-hidden rounded-lg">
+          <div className="h-12 w-12 overflow-hidden rounded-lg bg-brand-charcoal/10">
             {record.image ? (
               <Image
                 src={record.image.url}
@@ -285,21 +285,17 @@ export function ProductsTable({
         width: "80px",
         align: "center",
         render: (_, record) => (
-                      <DotBadge
-                        color={
-                          record.effectivePublished === false
-                            ? "yellow"
-                            : record.published
-                              ? "green"
-                              : "gray"
-                        }
-                      >
-                        {record.effectivePublished === false
-                          ? "分类隐藏"
-                          : record.published
-                            ? "已发布"
-                            : "草稿"}
-                      </DotBadge>
+          <DotBadge
+            color={
+              record.effectivePublished === false ? "yellow" : record.published ? "green" : "gray"
+            }
+          >
+            {record.effectivePublished === false
+              ? "分类隐藏"
+              : record.published
+                ? "已发布"
+                : "草稿"}
+          </DotBadge>
         ),
       },
       {
@@ -439,7 +435,7 @@ export function ProductsTable({
                   />
                 </label>
               )}
-              <div className="bg-brand-charcoal/8 h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg">
+              <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-brand-charcoal/10">
                 {record.image ? (
                   <Image
                     src={record.image.url}

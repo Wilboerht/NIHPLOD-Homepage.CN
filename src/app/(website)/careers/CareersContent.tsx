@@ -55,6 +55,8 @@ interface CareersContentProps {
   jobs: Job[];
   content?: CareersPageContent;
   amapEnabled?: boolean;
+  amapKey?: string;
+  amapSecurityCode?: string;
 }
 
 // ============================================
@@ -92,7 +94,13 @@ function normalizeJobHtml(html: string): string {
 // Main Component
 // ============================================
 
-export function CareersContent({ jobs, content, amapEnabled = true }: CareersContentProps) {
+export function CareersContent({
+  jobs,
+  content,
+  amapEnabled = true,
+  amapKey,
+  amapSecurityCode,
+}: CareersContentProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -357,7 +365,7 @@ export function CareersContent({ jobs, content, amapEnabled = true }: CareersCon
             {title.zh}
           </h1>
           <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
-          <p className="mx-auto max-w-2xl px-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/60 md:px-0 md:text-base md:tracking-[0.12em]">
+          <p className="mx-auto max-w-2xl px-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/70 md:px-0 md:text-base md:tracking-[0.12em]">
             {descLine1}
             {descLine2 !== undefined && (
               <>
@@ -379,7 +387,7 @@ export function CareersContent({ jobs, content, amapEnabled = true }: CareersCon
                   className={`rounded-full px-3 py-1.5 text-[13px] font-light tracking-[0.08em] transition-colors md:px-4 md:py-2 md:text-[15px] md:tracking-[0.12em] ${
                     filterType === item.id
                       ? "bg-[#00263E]/10 text-brand-charcoal"
-                      : "text-brand-charcoal/50 hover:text-brand-charcoal/70"
+                      : "text-brand-charcoal/70 hover:text-brand-charcoal/70"
                   }`}
                 >
                   {item.label}
@@ -396,7 +404,7 @@ export function CareersContent({ jobs, content, amapEnabled = true }: CareersCon
             {filteredJobs.length === 0 ? (
               <div className="flex min-h-[30vh] flex-col items-center justify-center text-center">
                 <Briefcase className="mx-auto mb-3 h-10 w-10 text-[#E4DFD9]" />
-                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/40">
+                <p className="text-[15px] font-light tracking-[0.12em] text-brand-charcoal/70">
                   暂无开放职位，请稍后再来查看
                 </p>
               </div>
@@ -413,7 +421,7 @@ export function CareersContent({ jobs, content, amapEnabled = true }: CareersCon
         {/* Page Footer */}
         <footer className="md:border-t md:border-brand-charcoal/10">
           <div className="container mx-auto px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
-            <p className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
+            <p className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/70 md:tracking-[0.15em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </p>
           </div>
@@ -428,6 +436,8 @@ export function CareersContent({ jobs, content, amapEnabled = true }: CareersCon
             onClose={() => setSelectedJob(null)}
             submitTip={submitTip}
             amapEnabled={amapEnabled}
+            amapKey={amapKey}
+            amapSecurityCode={amapSecurityCode}
           />
         )}
       </AnimatePresence>
@@ -503,7 +513,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
         </svg>
       </div>
       <div className="mt-2.5 flex items-center gap-2.5 text-[13px] font-light text-brand-charcoal/70">
-        <span className="font-light text-brand-charcoal/60">{typeInfo.label}</span>
+        <span className="font-light text-brand-charcoal/70">{typeInfo.label}</span>
         <span className="text-zinc-300">|</span>
         {job.salary && (
           <>
@@ -517,7 +527,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
         </span>
       </div>
       {descriptionSummary && (
-        <p className="mt-2.5 line-clamp-1 text-[13px] leading-relaxed text-brand-charcoal/50">
+        <p className="mt-2.5 line-clamp-1 text-[13px] leading-relaxed text-brand-charcoal/70">
           {descriptionSummary}
         </p>
       )}
@@ -534,11 +544,15 @@ function JobModal({
   onClose,
   submitTip,
   amapEnabled,
+  amapKey,
+  amapSecurityCode,
 }: {
   job: Job;
   onClose: () => void;
   submitTip?: { title: string; content: string };
   amapEnabled?: boolean;
+  amapKey?: string;
+  amapSecurityCode?: string;
 }) {
   const [formData, setFormData] = useState({ name: "", phone: "" });
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -547,6 +561,7 @@ function JobModal({
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [mapError, setMapError] = useState(false);
   const [isDesktop, setIsDesktop] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
   );
@@ -599,25 +614,45 @@ function JobModal({
   }, []);
 
   useEffect(() => {
-    if (!amapEnabled) return;
-    let retryCount = 0;
-    const maxRetries = 20;
+    if (!amapEnabled || !amapKey || !job.location) return;
+    let cancelled = false;
 
-    const tryInitMap = () => {
-      const amap = window.AMap;
-      if (!amap) {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          setTimeout(tryInitMap, 200);
+    const loadAmap = () => {
+      if (window.AMap) return Promise.resolve();
+      return new Promise<void>((resolve, reject) => {
+        window._AMapSecurityConfig = { securityJsCode: amapSecurityCode ?? "" };
+        const existing = document.getElementById("amap-script") as HTMLScriptElement | null;
+        if (existing) {
+          if (window.AMap) resolve();
+          else {
+            existing.addEventListener("load", () => resolve(), { once: true });
+            existing.addEventListener("error", () => reject(new Error("AMAP_LOAD_FAILED")), {
+              once: true,
+            });
+          }
+          return;
         }
-        return;
-      }
+        const script = document.createElement("script");
+        script.id = "amap-script";
+        script.async = true;
+        script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(amapKey)}&plugin=AMap.Geocoder`;
+        script.addEventListener("load", () => resolve(), { once: true });
+        script.addEventListener("error", () => reject(new Error("AMAP_LOAD_FAILED")), {
+          once: true,
+        });
+        document.head.appendChild(script);
+      });
+    };
 
+    const initMap = () => {
+      if (cancelled) return;
+      const amap = window.AMap;
       const container = document.getElementById(`map-${job.id}`);
-      if (!container) return;
+      if (!amap || !container) return;
 
       amap.plugin(["AMap.Geocoder", "AMap.PlaceSearch"], () => {
         const initRender = (lng: number, lat: number) => {
+          if (cancelled) return;
           const map = new amap.Map(container, {
             zoom: 16,
             center: [lng, lat],
@@ -643,43 +678,56 @@ function JobModal({
           return;
         }
 
-        if (job.location) {
-          const geocoder = new amap.Geocoder({ city: "021" });
-          const ps = new amap.PlaceSearch({ city: "021", pageSize: 1 });
-          const rawLocation = job.location.split(" ").shift() || job.location;
-          const pureBuilding = rawLocation.split(/[a-zA-Z0-9-]/)[0] || rawLocation;
-          ps.search(pureBuilding, (status: string, result: AMap.PlaceSearchResult) => {
-            if (status === "complete" && result?.poiList?.pois?.length) {
-              const poi = result.poiList.pois[0];
-              initRender(poi.location.lng, poi.location.lat);
-            } else {
-              geocoder.getLocation(job.location, (status: string, result: AMap.GeocoderResult) => {
-                if (status === "complete" && result.geocodes.length) {
-                  const geo = result.geocodes[0];
-                  initRender(geo.location.lng, geo.location.lat);
-                } else {
-                  initRender(121.4899, 31.2402);
-                }
-              });
-            }
-          });
-        } else {
-          initRender(121.4899, 31.2402);
-        }
+        const geocoder = new amap.Geocoder({ city: "021" });
+        const ps = new amap.PlaceSearch({ city: "021", pageSize: 1 });
+        const rawLocation = job.location.split(" ").shift() || job.location;
+        const pureBuilding = rawLocation.split(/[a-zA-Z0-9-]/)[0] || rawLocation;
+        ps.search(pureBuilding, (status: string, result: AMap.PlaceSearchResult) => {
+          if (status === "complete" && result?.poiList?.pois?.length) {
+            const poi = result.poiList.pois[0];
+            initRender(poi.location.lng, poi.location.lat);
+          } else {
+            geocoder.getLocation(job.location, (status: string, result: AMap.GeocoderResult) => {
+              if (status === "complete" && result.geocodes.length) {
+                const geo = result.geocodes[0];
+                initRender(geo.location.lng, geo.location.lat);
+              } else {
+                initRender(121.4899, 31.2402);
+              }
+            });
+          }
+        });
       });
     };
 
-    // 延迟地图初始化，等模态框动画完成后再加载，避免主线程争抢导致卡顿
-    const timer = setTimeout(tryInitMap, 400);
-    return () => clearTimeout(timer);
-  }, [job.id, job.location, job.longitude, job.latitude, amapEnabled]);
+    loadAmap()
+      .then(() => {
+        if (!cancelled) setTimeout(initMap, 0);
+      })
+      .catch(() => {
+        if (!cancelled) setMapError(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [job.id, job.location, job.longitude, job.latitude, amapEnabled, amapKey, amapSecurityCode]);
 
   // 弹窗打开时锁定背景滚动，关闭时恢复
   useEffect(() => {
     const original = document.body.style.overflow;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
+    const timer = window.setTimeout(() => {
+      const first = modalRef.current?.querySelector<HTMLElement>(
+        "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])"
+      );
+      first?.focus();
+    }, 50);
     return () => {
+      window.clearTimeout(timer);
       document.body.style.overflow = original;
+      previouslyFocused?.focus();
     };
   }, []);
 
@@ -798,12 +846,18 @@ function JobModal({
         exit={isDesktop ? { opacity: 0 } : { opacity: 0, y: "100%" }}
         transition={{ duration: 0.3, delay: 0.05, ease: [0.32, 0.72, 0, 1] }}
         style={{ willChange: "transform, opacity" }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`job-modal-title-${job.id}`}
         className="relative flex h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-2xl md:rounded-2xl"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 p-4 md:p-6">
           <div>
-            <h2 className="text-[17px] font-normal tracking-[0.08em] text-brand-charcoal md:text-xl md:font-light md:tracking-[0.12em]">
+            <h2
+              id={`job-modal-title-${job.id}`}
+              className="text-[17px] font-normal tracking-[0.08em] text-brand-charcoal md:text-xl md:font-light md:tracking-[0.12em]"
+            >
               {job.title}
             </h2>
             <div className="mt-2 flex items-center gap-2 text-[13px] font-light text-brand-charcoal/70">
@@ -830,7 +884,19 @@ function JobModal({
         <div className="flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
           {/* Map */}
           {amapEnabled && job.location && (
-            <div id={`map-${job.id}`} className="h-48 w-full rounded-xl border border-zinc-100" />
+            <div>
+              <div
+                id={`map-${job.id}`}
+                role="img"
+                aria-label={`${job.location} 地图`}
+                className="h-48 w-full rounded-xl border border-zinc-100"
+              />
+              {mapError && (
+                <p className="mt-2 text-xs leading-relaxed text-brand-charcoal/70">
+                  地图暂不可用，工作地点：{job.location}
+                </p>
+              )}
+            </div>
           )}
 
           {/* Description */}
@@ -879,7 +945,7 @@ function JobModal({
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">
+                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/70">
                       姓名 *
                     </label>
                     <input
@@ -904,7 +970,7 @@ function JobModal({
                     )}
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">
+                    <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/70">
                       电话 *
                     </label>
                     <input
@@ -932,7 +998,7 @@ function JobModal({
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/60">
+                  <label className="mb-1.5 block text-[14px] font-light text-brand-charcoal/70">
                     简历 *
                   </label>
                   <input
@@ -984,7 +1050,7 @@ function JobModal({
                       </>
                     )}
                   </div>
-                  <p className="mt-1 text-xs font-light text-brand-charcoal/50">
+                  <p className="mt-1 text-xs font-light text-brand-charcoal/70">
                     仅支持 PDF，文件大小不超过 10MB
                   </p>
                   {fieldErrors.resume && (

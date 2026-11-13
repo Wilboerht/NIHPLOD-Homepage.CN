@@ -300,7 +300,7 @@ function AdminCronTasksContent() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-brand-charcoal/8 divide-y">
+              <tbody className="divide-y divide-brand-charcoal/10">
                 {tasks.map((task) => (
                   <tr key={task.name} className="hover:bg-brand-charcoal/[0.02]">
                     <td className="px-4 py-3">
@@ -465,7 +465,7 @@ function AdminCronTasksContent() {
         {recentRuns.length === 0 ? (
           <p className="py-10 text-center text-sm text-brand-charcoal/65">暂无运行记录</p>
         ) : (
-          <div className="divide-brand-charcoal/8 divide-y">
+          <div className="divide-y divide-brand-charcoal/10">
             {recentRuns.map((run) => {
               const status = runStatus(run);
               const meta = STATUS_META[status];

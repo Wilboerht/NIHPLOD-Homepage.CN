@@ -31,6 +31,7 @@ const {
   const createMockModel = () => ({
     findMany: vi.fn(),
     updateMany: vi.fn(),
+    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
   });
   return {
     mockVerifyUserAuth: vi.fn(),
@@ -46,6 +47,7 @@ const {
     prismaMock: {
       oAuthSession: createMockModel(),
       userConsent: createMockModel(),
+      oAuthAuthorizationCode: createMockModel(),
       oAuthClient: { findUnique: vi.fn() },
       // 审计日志 identifier 改按 id 查库（access token 不再携带明文手机号）
       user: { findUnique: vi.fn() },
@@ -110,8 +112,7 @@ vi.mock("@/lib/token-blacklist", () => ({
 vi.mock("@/lib/backchannel-logout", () => ({
   sendBackchannelLogout: (...args: unknown[]) => mockSendBackchannelLogout(...args),
   enqueueBackchannelLogoutNotifications: (...args: unknown[]) => mockEnqueueBackchannel(...args),
-  scheduleBackchannelRedelivery: (...args: unknown[]) =>
-    mockScheduleBackchannelRedelivery(...args),
+  scheduleBackchannelRedelivery: (...args: unknown[]) => mockScheduleBackchannelRedelivery(...args),
   isBlockedHostname: vi.fn().mockReturnValue(false),
 }));
 

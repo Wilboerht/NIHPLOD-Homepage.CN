@@ -164,6 +164,8 @@ export function DataTable<T extends object>({
     center: "text-center",
     right: "text-right",
   };
+  // 刷新失败但已有数据时保留表格，只在顶部展示错误条。
+  const showErrorState = Boolean(error) && data.length === 0;
 
   return (
     <div
@@ -173,6 +175,19 @@ export function DataTable<T extends object>({
         className
       )}
     >
+      {error && data.length > 0 && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700"
+        >
+          <span>{error}</span>
+          {onRetry && (
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              重试
+            </Button>
+          )}
+        </div>
+      )}
       {mobileCard && (
         <div className="md:hidden">
           {loading ? (
@@ -184,7 +199,7 @@ export function DataTable<T extends object>({
                 />
               ))}
             </div>
-          ) : error ? (
+          ) : showErrorState ? (
             <div
               role="alert"
               className="flex flex-col items-center gap-3 px-4 py-12 text-center text-red-600"
@@ -283,7 +298,7 @@ export function DataTable<T extends object>({
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={columns.length} density={density} />
               ))
-            ) : error ? (
+            ) : showErrorState ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-12 text-center text-red-600">
                   <div role="alert" className="flex flex-col items-center gap-3">

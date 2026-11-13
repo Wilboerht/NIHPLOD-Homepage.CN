@@ -749,7 +749,7 @@ export default function TOTPSettingsPage() {
                   type="button"
                   onClick={() => copyToClipboard(code, `regen-${index}`)}
                   aria-label={`复制备用码 ${code}`}
-                  className="hover:bg-brand-charcoal/8 flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80"
+                  className="flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80 hover:bg-brand-charcoal/10"
                 >
                   <span>{code}</span>
                   {copied === `regen-${index}` ? (

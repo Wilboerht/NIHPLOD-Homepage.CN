@@ -83,9 +83,10 @@ const nextConfig = {
       {
         pathname: "/images/**",
       },
-      {
-        pathname: "/uploads/**",
-      },
+      { pathname: "/uploads/products/**" },
+      { pathname: "/uploads/images/**" },
+      { pathname: "/uploads/avatars/**" },
+      { pathname: "/uploads/files/**" },
     ],
     // 允许的图片域名
     remotePatterns: [

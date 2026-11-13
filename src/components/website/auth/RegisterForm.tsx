@@ -131,6 +131,7 @@ export function RegisterForm({
             className={pcInputClass}
             autoComplete="name"
             placeholder="昵称或名字"
+            aria-label="昵称或名字"
           />
           <div>
             <input
@@ -142,6 +143,7 @@ export function RegisterForm({
               maxLength={11}
               autoComplete="tel"
               placeholder="手机号"
+              aria-label="手机号"
             />
             <AuthFieldError message={errors?.phone} />
           </div>
@@ -156,6 +158,7 @@ export function RegisterForm({
                 className={`${errors?.code ? pcInputErrorClass : pcInputClass} flex-1`}
                 autoComplete="one-time-code"
                 placeholder="验证码"
+                aria-label="验证码"
               />
               <button
                 type="button"
@@ -170,7 +173,7 @@ export function RegisterForm({
             </div>
             <AuthFieldError message={errors?.code} />
             {!errors?.code && regCountdown > 0 && (
-              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/70">
                 验证码已发送，请注意查收
               </p>
             )}
@@ -187,12 +190,14 @@ export function RegisterForm({
                 maxLength={PASSWORD_MAX_LENGTH}
                 autoComplete="new-password"
                 placeholder="密码（8-32位，含大小写字母和数字）"
+                aria-label="密码（8-32位，含大小写字母和数字）"
               />
               <button
                 type="button"
                 onClick={onShowPasswordToggle}
                 aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                aria-pressed={showPassword}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -212,12 +217,14 @@ export function RegisterForm({
                 maxLength={PASSWORD_MAX_LENGTH}
                 autoComplete="new-password"
                 placeholder="确认密码"
+                aria-label="确认密码"
               />
               <button
                 type="button"
                 onClick={onShowPasswordToggle}
                 aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                aria-pressed={showPassword}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -263,6 +270,7 @@ export function RegisterForm({
             value={regName}
             onChange={(e) => onRegNameChange(e.target.value)}
             placeholder="昵称或名字"
+            aria-label="昵称或名字"
             className={mobileInputClass}
           />
         </div>
@@ -277,6 +285,7 @@ export function RegisterForm({
             onChange={(e) => onRegPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
             maxLength={11}
             placeholder="手机号"
+            aria-label="手机号"
             className={errors?.phone ? mobileInputErrorClass : mobileInputClass}
           />
           <AuthFieldError message={errors?.phone} />
@@ -290,6 +299,7 @@ export function RegisterForm({
               value={regCode}
               onChange={(e) => onRegCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
               placeholder="验证码"
+              aria-label="验证码"
               autoComplete="one-time-code"
               className={errors?.code ? mobileInputErrorFlexClass : mobileInputFlexClass}
             />
@@ -306,7 +316,7 @@ export function RegisterForm({
           </div>
           <AuthFieldError message={errors?.code} />
           {!errors?.code && regCountdown > 0 && (
-            <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+            <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/70">
               验证码已发送，请注意查收
             </p>
           )}
@@ -320,6 +330,7 @@ export function RegisterForm({
               value={regPassword}
               onChange={(e) => onRegPasswordChange(e.target.value)}
               placeholder="密码（8-32位，含大小写字母和数字）"
+              aria-label="密码（8-32位，含大小写字母和数字）"
               maxLength={PASSWORD_MAX_LENGTH}
               className={`${errors?.password ? mobileInputErrorClass : mobileInputClass} pr-10`}
             />
@@ -327,7 +338,8 @@ export function RegisterForm({
               type="button"
               onClick={onShowPasswordToggle}
               aria-label={showPassword ? "隐藏密码" : "显示密码"}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              aria-pressed={showPassword}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -344,6 +356,7 @@ export function RegisterForm({
               value={regConfirmPassword}
               onChange={(e) => onRegConfirmPasswordChange(e.target.value)}
               placeholder="确认密码"
+              aria-label="确认密码"
               maxLength={PASSWORD_MAX_LENGTH}
               className={`${errors?.confirmPassword ? mobileInputErrorClass : mobileInputClass} pr-10`}
             />
@@ -351,7 +364,8 @@ export function RegisterForm({
               type="button"
               onClick={onShowPasswordToggle}
               aria-label={showPassword ? "隐藏密码" : "显示密码"}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              aria-pressed={showPassword}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>

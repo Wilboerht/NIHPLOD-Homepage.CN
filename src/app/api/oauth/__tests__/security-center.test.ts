@@ -61,6 +61,7 @@ const prismaMock = vi.hoisted(() => {
       findUnique: vi.fn().mockResolvedValue({ backchannelLogoutUri: null }),
     },
     userConsent: { updateMany: vi.fn() },
+    oAuthAuthorizationCode: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     externalIdentity: { findMany: vi.fn(), findFirst: vi.fn(), deleteMany: vi.fn() },
     user: { findUnique: vi.fn(), update: vi.fn() },
     loginAttempt: { findMany: vi.fn() },

@@ -94,6 +94,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
     mainRef.current?.focus();
   }, [pathname]);
 
+  useEffect(() => {
+    const crumbs = getBreadcrumbs(pathname);
+    const title = crumbs[crumbs.length - 1]?.title ?? "管理面板";
+    document.title = `${title} | 管理后台`;
+  }, [pathname]);
+
   // 抽屉打开时锁定背景滚动
   useScrollLock(drawerOpen);
 

@@ -307,13 +307,9 @@ function LoginPageContent() {
         router.push("/");
         return;
       }
-      let decoded: string;
-      try {
-        decoded = decodeURIComponent(rawReturnTo);
-      } catch {
-        router.push("/");
-        return;
-      }
+      // useSearchParams 已经解码一次，不能再次 decodeURIComponent，
+      // 否则合法的 %25 等编码会被破坏甚至抛 URI malformed。
+      const decoded = rawReturnTo;
       if (!isSafeReturnTo(decoded)) {
         router.push("/");
         return;

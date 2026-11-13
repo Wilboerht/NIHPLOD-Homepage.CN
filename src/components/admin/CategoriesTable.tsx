@@ -134,7 +134,7 @@ export function CategoriesTable({
         width: "200px",
         render: (_, record) => (
           <code
-            className="bg-brand-charcoal/8 inline-block max-w-full truncate rounded px-2 py-1 align-middle text-xs text-brand-charcoal/70"
+            className="inline-block max-w-full truncate rounded bg-brand-charcoal/10 px-2 py-1 align-middle text-xs text-brand-charcoal/70"
             title={record.slug}
           >
             {record.slug}
@@ -302,7 +302,7 @@ export function CategoriesTable({
                   disabled={!canWrite || togglingId === record.id}
                   onToggle={onToggleVisible}
                 />
-                <code className="bg-brand-charcoal/8 rounded px-2 py-0.5 text-xs text-brand-charcoal/70">
+                <code className="rounded bg-brand-charcoal/10 px-2 py-0.5 text-xs text-brand-charcoal/70">
                   {record.slug}
                 </code>
               </div>

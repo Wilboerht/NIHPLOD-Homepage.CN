@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/Toast";
 import { fetchWithAuth, UnauthorizedError } from "@/lib/fetch-with-auth";
 import { validatePasswordStrength } from "@/components/website/auth/auth-utils";
 import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
+import { solveCaptcha } from "@/lib/captcha-client";
 
 const inputClass =
   "w-full rounded-xl border border-stone-200 bg-white/60 px-4 py-3 text-base text-stone-800 outline-none transition-colors placeholder:text-stone-300 focus:border-stone-400 md:text-sm";
@@ -50,10 +51,12 @@ export function SecurityPanel({ initialMode = "change", onPasswordChanged }: Sec
   const handleSendSetCode = async () => {
     if (countdown > 0 || !user?.phone) return;
     try {
+      // 设置密码走已登录的 reset 发码通道，浏览器请求需要 PoW 人机验证。
+      const captchaToken = await solveCaptcha();
       const res = await fetchWithAuth("/api/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: user.phone, type: "reset" }),
+        body: JSON.stringify({ phone: user.phone, type: "reset", captchaToken }),
       });
       const data = await res.json();
       if (data.success) {

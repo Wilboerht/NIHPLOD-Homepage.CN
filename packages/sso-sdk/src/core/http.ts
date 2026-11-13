@@ -16,7 +16,12 @@ export async function fetchWithTimeout(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(input, { ...init, signal: controller.signal });
+    // 携带 code/refresh_token/client_secret 的请求禁止跟随重定向，防止凭证泄露。
+    return await fetch(input, {
+      ...init,
+      redirect: init.redirect ?? "error",
+      signal: controller.signal,
+    });
   } finally {
     clearTimeout(timer);
   }

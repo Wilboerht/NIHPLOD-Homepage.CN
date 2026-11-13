@@ -78,7 +78,9 @@ interface SpentClaimIssue {
   source: string;
   originalAmount: number | null;
   refundedAmount: number;
+  syncedRefunded: number;
   importRefunded: number;
+  drift: number;
   kind: "OVER_REFUNDED" | "UNLINKED_REFUND" | "REFUND_MISMATCH";
 }
 
@@ -119,7 +121,10 @@ interface ReconciliationData {
     totalIssueCount: number;
     pointIssueCount: number;
     spentIssueCount: number;
+    actionableIssueCount: number;
+    warningCount: number;
     hasIssues: boolean;
+    hasActionableIssues: boolean;
     truncated: boolean;
   };
   points: {
@@ -382,11 +387,25 @@ const claimIssueColumns: Column<SpentClaimIssue>[] = [
     render: (_, row) => number(row.refundedAmount),
   },
   {
+    key: "syncedRefunded",
+    title: "同步退款合计",
+    width: "120px",
+    align: "right",
+    render: (_, row) => number(row.syncedRefunded),
+  },
+  {
     key: "importRefunded",
-    title: "退款行合计",
-    width: "110px",
+    title: "其中 Excel",
+    width: "100px",
     align: "right",
     render: (_, row) => number(row.importRefunded),
+  },
+  {
+    key: "drift",
+    title: "差异",
+    width: "90px",
+    align: "right",
+    render: (_, row) => number(row.drift),
   },
   {
     key: "kind",

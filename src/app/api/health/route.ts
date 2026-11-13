@@ -86,14 +86,13 @@ export async function GET() {
           : null,
         ssoAnchor: ssoAnchor ? { day: ssoAnchor.day, count: ssoAnchor.count } : null,
         pendingCount,
-        archiveDir: process.env.AUDIT_ARCHIVE_DIR || "var/audit-archive",
       },
     };
   } catch {
     checks.audit = { status: "error", error: "audit_pipeline_unavailable" };
   }
 
-  const allOk = Object.values(checks).every((c) => !c.error);
+  const allOk = Object.values(checks).every((c) => c.status !== "error");
 
   return NextResponse.json(
     {

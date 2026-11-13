@@ -281,7 +281,12 @@ export async function proxy(request: NextRequest) {
 
   // 历史公开简历目录永久下线：即使迁移脚本尚未删除旧文件，也不能再通过公网访问。
   // 注意：已在 CDN/浏览器缓存的旧响应需按 docs/resume-storage.md 主动刷新缓存。
-  if (pathname === "/uploads/resumes" || pathname.startsWith("/uploads/resumes/")) {
+  if (
+    pathname === "/uploads/resumes" ||
+    pathname.startsWith("/uploads/resumes/") ||
+    pathname === "/uploads/spent-adjustments" ||
+    pathname.startsWith("/uploads/spent-adjustments/")
+  ) {
     return new NextResponse("Gone", {
       status: 410,
       headers: {

@@ -118,7 +118,7 @@ describe("POST /api/auth/send-code type=bind", () => {
     mockVerifyBindToken.mockResolvedValue(null);
   });
 
-  it("type=bind 无 CSRF 头也应豁免校验并真实发码（已注册手机号）", async () => {
+  it("type=bind 无凭证时应假发送（即使手机号已注册）", async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
 
     const res = await POST(createRequest(bindBody));
@@ -127,13 +127,9 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(mockValidateCSRF).not.toHaveBeenCalled();
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    // 真实发码：以 type=bind 入库并调用短信通道
-    expect(mockPrisma.smsCode.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ phone: bindBody.phone, type: "bind" }),
-      })
-    );
-    expect(mockSendLoginCode).toHaveBeenCalledWith(bindBody.phone, "123456");
+    // 无 bindToken/Bearer/子站代理凭证：不得向任意已注册手机号真实发码
+    expect(mockPrisma.smsCode.create).not.toHaveBeenCalled();
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
   });
 
   it("type=bind 携带 Origin 头不豁免：无有效 CSRF 应 403（防浏览器跨站滥用豁免）", async () => {
@@ -171,7 +167,7 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(mockSendLoginCode).not.toHaveBeenCalled();
   });
 
-  it("type=bind 携带 Origin 头但 CSRF 校验通过应正常发码", async () => {
+  it("type=bind 携带 Origin 且 CSRF 通过但无绑定凭证时仍假发送", async () => {
     mockValidateCSRF.mockReturnValue(true);
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
 
@@ -181,7 +177,7 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(mockValidateCSRF).toHaveBeenCalled();
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(mockSendLoginCode).toHaveBeenCalledWith(bindBody.phone, "123456");
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
   });
 
   it("type=bind 未注册手机号应假发送：返回成功、不发真实短信，但写入限流占位记录", async () => {
@@ -272,13 +268,13 @@ describe("POST /api/auth/send-code type=bind", () => {
     expect(fakeData).toEqual(realData);
   }, 10000);
 
-  it("type=bind 已注册手机号应真实发送（短信通道被调用）", async () => {
+  it("type=bind 无凭证时已注册手机号也只假发送", async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
 
     const res = await POST(createRequest(bindBody));
 
     expect(res.status).toBe(200);
-    expect(mockSendLoginCode).toHaveBeenCalledTimes(1);
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
   });
 
   it("type=bind 60 秒频控仍生效（豁免 CSRF 不豁免限流）", async () => {
@@ -547,18 +543,21 @@ describe("POST /api/auth/send-code 防枚举限流一致性回归", () => {
     expect(res.status).toBe(200);
     expect(mockRateLimit).toHaveBeenCalledWith("127.0.0.1", "form");
     expect(mockRateLimit).toHaveBeenCalledWith("sms-ip:127.0.0.1", "sms-daily-ip");
-    expect(mockPrisma.smsCode.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ ipAddress: "127.0.0.1" }),
-      })
-    );
+    // 无有效子站凭证：只假发送，不写入真实验证码、不调用短信通道
+    expect(mockPrisma.smsCode.create).not.toHaveBeenCalled();
+    expect(mockSendLoginCode).not.toHaveBeenCalled();
   });
 
   it("运营商发送失败：删除已入库行（deleteMany），立即重发不受 60 秒冷却阻塞", async () => {
+    mockGetSubsiteProxiedClientIP.mockReturnValue("203.0.113.5");
     mockPrisma.user.findUnique.mockResolvedValue({ id: "user-1" });
     mockSendLoginCode.mockResolvedValueOnce({ success: false, error: "运营商故障" });
 
-    const res1 = await POST(createRequest(bindBody));
+    const proxyHeaders = {
+      "x-subsite-proxy-key": "subsite-secret",
+      "x-forwarded-for": "203.0.113.5",
+    };
+    const res1 = await POST(createRequest(bindBody, proxyHeaders));
     const data1 = await res1.json();
 
     expect(res1.status).toBe(500);
@@ -568,7 +567,7 @@ describe("POST /api/auth/send-code 防枚举限流一致性回归", () => {
     });
 
     // 失败后行已删除：立即重发时冷却查询无记录，可正常发码
-    const res2 = await POST(createRequest(bindBody));
+    const res2 = await POST(createRequest(bindBody, proxyHeaders));
     expect(res2.status).toBe(200);
     expect(mockSendLoginCode).toHaveBeenCalledTimes(2);
   });

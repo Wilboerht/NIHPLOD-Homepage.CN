@@ -162,6 +162,7 @@ export function LoginForm({
               maxLength={11}
               autoComplete="tel"
               placeholder="手机号"
+              aria-label="手机号"
             />
             <AuthFieldError message={errors?.phone} />
           </div>
@@ -178,6 +179,7 @@ export function LoginForm({
                   className={`${errors?.code ? pcInputErrorClass : pcInputClass} flex-1`}
                   autoComplete="one-time-code"
                   placeholder="验证码"
+                  aria-label="验证码"
                 />
                 <button
                   type="button"
@@ -199,7 +201,7 @@ export function LoginForm({
               </div>
               <AuthFieldError message={errors?.code} />
               {!errors?.code && loginCodeCountdown > 0 && (
-                <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+                <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/70">
                   验证码已发送，请注意查收
                 </p>
               )}
@@ -218,12 +220,14 @@ export function LoginForm({
                   maxLength={128}
                   autoComplete="current-password"
                   placeholder="密码"
+                  aria-label="密码"
                 />
                 <button
                   type="button"
                   onClick={onShowPasswordToggle}
                   aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                  aria-pressed={showPassword}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -290,7 +294,7 @@ export function LoginForm({
             <button
               type="button"
               onClick={onWechatLogin}
-              className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
             >
               <MessageCircle className="h-3.5 w-3.5" />
               微信登录
@@ -300,7 +304,7 @@ export function LoginForm({
             <button
               type="button"
               onClick={onDouyinLogin}
-              className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+              className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
             >
               <Music2 className="h-3.5 w-3.5" />
               抖音登录
@@ -337,6 +341,7 @@ export function LoginForm({
             onChange={(e) => onLoginPhoneChange(e.target.value.replace(/\D/g, "").slice(0, 11))}
             maxLength={11}
             placeholder="手机号"
+            aria-label="手机号"
             className={errors?.phone ? mobileInputErrorClass : mobileInputClass}
           />
           <AuthFieldError message={errors?.phone} />
@@ -354,6 +359,7 @@ export function LoginForm({
                 value={loginCode}
                 onChange={(e) => onLoginCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="验证码"
+                aria-label="验证码"
                 className={errors?.code ? mobileInputErrorFlexClass : mobileInputFlexClass}
               />
               <div className="flex flex-col gap-1">
@@ -378,7 +384,7 @@ export function LoginForm({
             </div>
             <AuthFieldError message={errors?.code} />
             {!errors?.code && loginCodeCountdown > 0 && (
-              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/50">
+              <p className="mt-1.5 text-xs tracking-wide text-brand-charcoal/70">
                 验证码已发送，请注意查收
               </p>
             )}
@@ -394,6 +400,7 @@ export function LoginForm({
                 value={loginPassword}
                 onChange={(e) => onLoginPasswordChange(e.target.value)}
                 placeholder="密码"
+                aria-label="密码"
                 className={`${errors?.password ? mobileInputErrorClass : mobileInputClass} pr-10`}
                 maxLength={128}
               />
@@ -401,7 +408,8 @@ export function LoginForm({
                 type="button"
                 onClick={onShowPasswordToggle}
                 aria-label={showPassword ? "隐藏密码" : "显示密码"}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+                aria-pressed={showPassword}
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -476,7 +484,7 @@ export function LoginForm({
           <button
             type="button"
             onClick={onWechatLogin}
-            className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
           >
             <MessageCircle className="h-3.5 w-3.5" />
             微信登录
@@ -486,7 +494,7 @@ export function LoginForm({
           <button
             type="button"
             onClick={onDouyinLogin}
-            className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/40 transition-colors hover:text-brand-charcoal/70"
+            className="inline-flex h-7 min-h-0 items-center justify-center gap-1.5 text-xs tracking-wide text-brand-charcoal/70 transition-colors hover:text-brand-charcoal/70"
           >
             <Music2 className="h-3.5 w-3.5" />
             抖音登录

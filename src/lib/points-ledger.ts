@@ -372,7 +372,11 @@ export async function materializePoints(
 
 export type RedeemResult =
   | { ok: true; available: number; spent: number }
-  | { ok: false; code: "INSUFFICIENT" | "DUPLICATE"; available: number };
+  | {
+      ok: false;
+      code: "INSUFFICIENT" | "DUPLICATE" | "REFERENCE_CONFLICT";
+      available: number;
+    };
 
 /**
  * 兑礼扣减（商城/官网兑换调用）：条件扣减余额（CAS）→ FIFO 消耗未过期发放流水。
@@ -397,6 +401,16 @@ export async function redeemPoints(
     where: { userId_reference: { userId, reference } },
   });
   if (existing) {
+    // 幂等命中必须校验方向/金额/来源：不同业务端（网页/商城）可能复用同一
+    // reference 字符串，不能把另一端的扣分记录当作本次成功。
+    if (existing.type !== "REDEEM" || existing.amount !== -amount || existing.source !== source) {
+      const balance = await tx.pointBalance.findUnique({
+        where: { userId },
+        select: { available: true },
+      });
+      return { ok: false, code: "REFERENCE_CONFLICT", available: balance?.available ?? 0 };
+    }
+    await materializePoints(tx, userId, new Date());
     const balance = await tx.pointBalance.findUnique({
       where: { userId },
       select: { available: true },

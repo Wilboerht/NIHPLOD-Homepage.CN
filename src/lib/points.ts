@@ -17,11 +17,7 @@ import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { creditSpendPoints, refundSpendPoints, withPointTxRetry } from "@/lib/points-ledger";
 import { sendProfileUpdateWebhook, normalizeGender } from "@/lib/profile-webhook";
-import {
-  LEVEL_THRESHOLDS,
-  MEMBERSHIP_LEVELS,
-  POINT_EARN_YUAN_PER_POINT,
-} from "@/lib/membership";
+import { LEVEL_THRESHOLDS, MEMBERSHIP_LEVELS, POINT_EARN_YUAN_PER_POINT } from "@/lib/membership";
 import {
   claimSpentOrder,
   normalizeOptionalOrderNo,
@@ -38,6 +34,11 @@ export class SpentDailyLimitError extends Error {
 /** 冲正金额超过用户当前累计消费，严格模式拒绝部分冲正，避免账实不一致。 */
 export class SpentReversalExceedsBalanceError extends Error {
   readonly code = "SPENT_REVERSAL_EXCEEDS_BALANCE";
+}
+
+/** 同一 reference 被用于不同方向/金额/订单号：拒绝重复使用，避免退款被静默吞掉。 */
+export class SpentSyncReferenceConflictError extends Error {
+  readonly code = "SPENT_SYNC_REFERENCE_CONFLICT";
 }
 
 /** 严格模式下目标用户必须为 ACTIVE（导入/补录审核等正向入账使用）。 */
@@ -133,6 +134,13 @@ export async function applyExternalSpentSync(
         where: { userId_reference: { userId, reference } },
       });
       if (existing) {
+        if (
+          existing.spentDelta !== spentDelta ||
+          (existing.orderNoKey ?? null) !== normalizedOrder.orderNoKey ||
+          (existing.source !== null && existing.source !== source)
+        ) {
+          throw new SpentSyncReferenceConflictError();
+        }
         const current = await tx.user.findUnique({
           where: { id: userId },
           select: { totalSpent: true, membershipLevel: true },

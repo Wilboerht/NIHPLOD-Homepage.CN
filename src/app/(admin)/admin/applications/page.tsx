@@ -944,7 +944,7 @@ function AdminApplicationsContent() {
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-brand-charcoal/65">
                       {application.folder && (
-                        <span className="bg-brand-charcoal/8 inline-flex items-center gap-1 rounded px-1.5 py-0.5">
+                        <span className="inline-flex items-center gap-1 rounded bg-brand-charcoal/10 px-1.5 py-0.5">
                           <Tag className="h-3 w-3" />
                           {application.folder.name}
                         </span>
@@ -1166,7 +1166,7 @@ function AdminApplicationsContent() {
                       "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                       detailApplication.status === key
                         ? "bg-brand-primary text-white"
-                        : "bg-brand-charcoal/8 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                        : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                     )}
                   >
                     {config.label}
@@ -1186,7 +1186,7 @@ function AdminApplicationsContent() {
                     "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                     !detailApplication.folderId
                       ? "bg-brand-charcoal text-white"
-                      : "bg-brand-charcoal/8 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                      : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                   )}
                 >
                   未分类
@@ -1200,7 +1200,7 @@ function AdminApplicationsContent() {
                       "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                       detailApplication.folderId === folder.id
                         ? "bg-brand-primary text-white"
-                        : "bg-brand-charcoal/8 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                        : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
                     )}
                   >
                     {folder.name}

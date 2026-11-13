@@ -7,6 +7,7 @@
  * 权限：GET 需 sso:read，POST/DELETE 需 sso:write
  */
 import { NextRequest, NextResponse } from "next/server";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -249,8 +250,9 @@ export async function POST(request: NextRequest) {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    const body = await request.json();
-    const parsed = terminateSchema.safeParse(body);
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const parsed = terminateSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
@@ -446,15 +448,9 @@ export async function DELETE(request: NextRequest) {
     const stepUpResponse = await requireAdminStepUp(request, admin);
     if (stepUpResponse) return stepUpResponse;
 
-    let body: Record<string, unknown> = {};
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "请求格式错误" } },
-        { status: 400 }
-      );
-    }
+    const bodyResult = await parseAdminJsonBody<Record<string, unknown>>(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     if (!body.confirm) {
       return NextResponse.json(
         { success: false, error: { code: "CONFIRM_REQUIRED", message: "请确认此操作" } },

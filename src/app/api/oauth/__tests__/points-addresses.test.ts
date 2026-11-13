@@ -4,7 +4,7 @@
  * 覆盖：鉴权/scope/M2M 拒绝/账户状态，以及各端点对共享核心
  * （points-mall-api）的委派与参数传递。核心数据逻辑另有会话路由测试覆盖。
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 vi.mock("@/lib/ratelimit", () => ({
@@ -96,6 +96,8 @@ const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("OAUTH_ADDRESS_ALLOWED_CLIENTS", "test-client");
+    vi.stubEnv("OAUTH_MALL_PII_ALLOWED_CLIENTS", "test-client");
     process.env.OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS = "test-client";
     mockIsBlacklisted.mockReturnValue(false);
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
@@ -235,5 +237,9 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
       (await addressDELETE(req("DELETE", "/api/oauth/addresses/aid-1"), ctx("aid-1"))).status
     ).toBe(200);
     expect(mall.deleteAddressResponse).toHaveBeenCalledWith("user-1", "aid-1");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 });

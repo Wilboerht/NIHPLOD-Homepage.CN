@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
-import { GlobalModals, KineticBackground } from "@/components/website";
+import { GlobalModals } from "@/components/website/GlobalModals";
+import { KineticBackground } from "@/components/website/KineticBackground";
 
 interface WebsiteLayoutProps {
   children: ReactNode;

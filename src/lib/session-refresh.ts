@@ -85,7 +85,7 @@ export async function refreshUserSession(
   // （与 logout 路由的既有做法一致）；同时读取改密时间用于会话失效校验
   const tokenUser = await prisma.user.findUnique({
     where: { id: payload.id },
-    select: { phone: true, passwordChangedAt: true },
+    select: { phone: true, passwordChangedAt: true, sessionsInvalidatedAt: true },
   });
   const userPhone = tokenUser?.phone;
 
@@ -134,6 +134,24 @@ export async function refreshUserSession(
     logAuthEvent("user_refresh_token", {
       success: false,
       reason: "password_changed",
+      userId: payload.id,
+      identifier: userPhone,
+      ip,
+      channel,
+    });
+    return { success: false, reason: "invalid_token", userId: payload.id, userPhone };
+  }
+
+  // 3.2 全设备登出/安全事件即时失效：签发时间早于 sessionsInvalidatedAt 的旧 refresh token 拒绝续期。
+  const sessionsInvalidatedAt = tokenUser?.sessionsInvalidatedAt ?? null;
+  if (
+    sessionsInvalidatedAt &&
+    typeof payload.iat === "number" &&
+    payload.iat < Math.floor(sessionsInvalidatedAt.getTime() / 1000)
+  ) {
+    logAuthEvent("user_refresh_token", {
+      success: false,
+      reason: "sessions_invalidated",
       userId: payload.id,
       identifier: userPhone,
       ip,

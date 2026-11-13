@@ -867,7 +867,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
                                 {/* 图片展示区 + 胶囊定位容器 */}
                                 <div className="relative mb-4">
                                   {/* 步骤胶囊 */}
-                                  <div className="border-brand-charcoal/12 absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border bg-brand-cream px-3.5 py-1 text-[11px] font-light tracking-[0.08em] text-brand-charcoal/50">
+                                  <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border border-brand-charcoal/10 bg-brand-cream px-3.5 py-1 text-[11px] font-light tracking-[0.08em] text-brand-charcoal/50">
                                     步骤 {String(index + 1).padStart(2, "0")}
                                   </div>
                                   {/* 图片展示区 */}

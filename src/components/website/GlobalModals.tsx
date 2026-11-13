@@ -8,6 +8,7 @@
  */
 import dynamic from "next/dynamic";
 import { useMounted } from "@/hooks/useMounted";
+import { useAuth } from "@/contexts/AuthContext";
 
 const UserCenterModal = dynamic(() => import("./UserCenterModal").then((m) => m.UserCenterModal), {
   ssr: false,
@@ -15,9 +16,11 @@ const UserCenterModal = dynamic(() => import("./UserCenterModal").then((m) => m.
 
 export function GlobalModals() {
   const mounted = useMounted();
+  const { userCenterOpen } = useAuth();
 
-  // 确保客户端渲染 - SSG 期间返回 null 是正常行为
-  if (!mounted) {
+  // 确保客户端渲染 - SSG 期间返回 null 是正常行为；
+  // 用户中心只在打开时挂载，避免所有访客下载积分商城等大面板。
+  if (!mounted || !userCenterOpen) {
     return null;
   }
 

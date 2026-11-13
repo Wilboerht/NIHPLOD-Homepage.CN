@@ -410,7 +410,7 @@ function AdminAccountDeletionsContent() {
                 <th className="px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-brand-charcoal/8 divide-y">
+            <tbody className="divide-y divide-brand-charcoal/10">
               {items.map((item) => (
                 <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
                   <td className="px-4 py-3">

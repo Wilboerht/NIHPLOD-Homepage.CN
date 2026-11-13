@@ -114,7 +114,7 @@ describe("POST /api/auth/refresh 手机号查库（A4）", () => {
     // 审计日志 identifier 按 id 查库取手机号；同时读取改密时间用于会话失效校验
     expect(mockUserFindUnique).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      select: { phone: true, passwordChangedAt: true },
+      select: { phone: true, passwordChangedAt: true, sessionsInvalidatedAt: true },
     });
     expect(mockLogAuthEvent).toHaveBeenCalledWith(
       "user_refresh_token",

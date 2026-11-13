@@ -6,6 +6,7 @@
  * 审核操作见 [id]/review 路由。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -198,7 +199,9 @@ export async function POST(request: NextRequest) {
 
     let body: Record<string, unknown>;
     try {
-      const parsedBody = await request.json();
+      const bodyResult = await parseAdminJsonBody(request);
+      if (!bodyResult.ok) return bodyResult.response;
+      const parsedBody = bodyResult.data;
       if (!parsedBody || typeof parsedBody !== "object" || Array.isArray(parsedBody)) {
         throw new Error("invalid body");
       }

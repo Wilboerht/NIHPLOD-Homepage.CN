@@ -400,6 +400,7 @@ export async function redeemPointsResponse(
         ADDRESS_NOT_FOUND: 400,
         OUT_OF_STOCK: 400,
         INSUFFICIENT: 400,
+        REFERENCE_CONFLICT: 409,
         INVALID_REQUEST: 400,
         PRICE_CHANGED: 409,
         REDEMPTION_LIMIT_REACHED: 409,

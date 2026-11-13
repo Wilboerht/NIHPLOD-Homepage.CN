@@ -10,12 +10,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
-import {
-  adminPageSchema,
-  adminPageSizeSchema,
-  validateCUID,
-  invalidIdResponse,
-} from "@/lib/validation";
+import { adminPageSchema, validateCUID, invalidIdResponse } from "@/lib/validation";
 import { maskPhone } from "@/lib/mask-phone";
 import { SPENT_CHANNEL_LABELS } from "@/lib/spent-adjustment-meta";
 import { apiConsole } from "@/lib/logger";
@@ -24,7 +19,8 @@ export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
   page: adminPageSchema,
-  pageSize: adminPageSizeSchema,
+  // 批次详情支持一次导出 1000 行“需修正行”，与其它列表的 100 上限不同。
+  pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().int().min(1).max(1000)),
   status: z.enum(["ALL", "PENDING", "SUCCESS", "DUPLICATE", "ERROR"]).default("ALL"),
 });
 

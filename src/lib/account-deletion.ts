@@ -235,7 +235,6 @@ export async function executeAccountDeletion(
       // PII 衍生数据：密码历史、短信验证码、登录尝试（userId 维度）、收货地址簿、
       // 资料变更 webhook 失败队列（payload 含 PII 快照）、会话设备记录（IP/UA）
       await tx.passwordHistory.deleteMany({ where: { userId } });
-      await tx.smsCode.deleteMany({ where: { phone: originalPhone } });
       // 注：SmsCode.phone 为明文列，申请时旧号码的明文行无法通过哈希匹配删除，
       // 覆盖不到的场景依赖既有 7 天过期清理（cleanupExpiredSmsCodes）兜底
       await tx.loginAttempt.deleteMany({ where: { userId } });
@@ -255,6 +254,8 @@ export async function executeAccountDeletion(
       });
       if (!phoneReused) {
         await tx.loginAttempt.deleteMany({ where: { identifier: { in: phoneHashes } } });
+        // 号码未被新用户占用时才清理明文验证码，避免误删号码新主人的验证码。
+        await tx.smsCode.deleteMany({ where: { phone: originalPhone } });
       }
       await tx.userAddress.deleteMany({ where: { userId } });
       await tx.webhookDeliveryFailure.deleteMany({ where: { userId } });

@@ -99,8 +99,8 @@ const HIDDEN_FILTER_ACTIONS = new Set([
 ]);
 
 const ACTION_COLORS: Record<string, string> = {
-  login: "bg-brand-charcoal/8 text-brand-charcoal/80",
-  logout: "bg-brand-charcoal/8 text-brand-charcoal/80",
+  login: "bg-brand-charcoal/10 text-brand-charcoal/80",
+  logout: "bg-brand-charcoal/10 text-brand-charcoal/80",
   create_admin: "bg-emerald-50 text-emerald-700",
   create_product: "bg-emerald-50 text-emerald-700",
   create_category: "bg-emerald-50 text-emerald-700",
@@ -177,7 +177,7 @@ function ActionBadge({
     <span
       title={label}
       className={`inline-flex max-w-full items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        ACTION_COLORS[action] || "bg-brand-charcoal/8 text-brand-charcoal/80"
+        ACTION_COLORS[action] || "bg-brand-charcoal/10 text-brand-charcoal/80"
       }`}
     >
       {label}
@@ -223,7 +223,7 @@ function DetailDiff({ detail }: { detail: Record<string, unknown> | null | undef
     );
   }
   return (
-    <pre className="border-brand-charcoal/8 max-h-80 overflow-auto rounded-lg border bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/70">
+    <pre className="max-h-80 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/70">
       {JSON.stringify(detail, null, 2)}
     </pre>
   );

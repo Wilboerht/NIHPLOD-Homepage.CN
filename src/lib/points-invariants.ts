@@ -64,7 +64,9 @@ export async function checkPointInvariants(limit = 200): Promise<PointInvariantR
     LEFT JOIN remaining r ON r."userId" = pb."userId"
     WHERE COALESCE(r.remaining, 0) < 0
        OR (COALESCE(r.remaining, 0) = 0 AND pb."available" > 0)
-       OR (COALESCE(r.remaining, 0) > 0 AND pb."available" <> COALESCE(r.remaining, 0))
+       -- available < remaining 是超兑债务的合法状态（负余额/先退款后发放），
+       -- 不作为 actionable invariant；只有 available 超过 remaining 才是异常。
+       OR pb."available" > COALESCE(r.remaining, 0)
     LIMIT ${take}
   `;
 

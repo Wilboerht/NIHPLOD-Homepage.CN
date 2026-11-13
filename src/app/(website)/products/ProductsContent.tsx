@@ -32,13 +32,8 @@ interface ProductsContentProps {
  * 抽屉容器与顶部导航由 products/layout.tsx 中的 ProductsShell 提供。
  */
 export function ProductsContent({ categories, products }: ProductsContentProps) {
-  const {
-    activeTab,
-    mobileView,
-    switchMobileView,
-    navigateToProduct,
-    listScrollTopRef,
-  } = useProductsShell();
+  const { activeTab, mobileView, switchMobileView, navigateToProduct, listScrollTopRef } =
+    useProductsShell();
 
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const desktopScrollRef = useRef<HTMLElement>(null);
@@ -66,7 +61,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
 
   // 首屏始终渲染全部产品，仅通过 CSS 隐藏“当季热卖”之外的产品，
   // 保证不执行 JS 的爬虫也能从列表页发现所有产品详情链接。
-  const listTitle = activeTab === "featured" ? "当季热卖" : "全部产品";
+  const listTitle = "全部产品";
   const productTabLabel = listTitle;
   const visibleProducts = products;
 
@@ -179,11 +174,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
         {cat.name}
       </span>
       {cat.productSlug ? (
-        <ChevronRight
-          size={16}
-          strokeWidth={1.5}
-          className="shrink-0 text-brand-primary/40"
-        />
+        <ChevronRight size={16} strokeWidth={1.5} className="shrink-0 text-brand-primary/40" />
       ) : (
         <span className="shrink-0 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/40">
           敬请期待
@@ -319,8 +310,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + idx * 0.1, duration: 0.6, ease: "easeOut" }}
                       className={cn(
-                        "flex flex-col border border-brand-charcoal/[0.06] bg-[#FFFDF9]",
-                        activeTab === "featured" && idx >= 3 && "hidden"
+                        "flex flex-col border border-brand-charcoal/[0.06] bg-[#FFFDF9]"
                       )}
                     >
                       <NextLink
@@ -467,8 +457,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
                     onClick={(e) => handleProductLinkClick(e, product.slug)}
                     className={cn(
                       "group relative flex cursor-pointer flex-col",
-                      index === 1 && "mt-12 [@media(max-height:700px)]:mt-6",
-                      activeTab === "featured" && index >= 3 && "hidden"
+                      index === 1 && "mt-12 [@media(max-height:700px)]:mt-6"
                     )}
                   >
                     <m.div

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -44,7 +45,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const parsedSlug = legalSlugSchema.safeParse(slug);
     if (!parsedSlug.success) return illegalSlugResponse();
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = legalDraftSaveRequestSchema.parse(body);
 
     const document = await saveLegalDraft({
@@ -89,7 +92,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const parsedSlug = legalSlugSchema.safeParse(slug);
     if (!parsedSlug.success) return illegalSlugResponse();
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = legalDiscardDraftRequestSchema.parse(body);
 
     const document = await discardLegalDraft({

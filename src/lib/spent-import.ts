@@ -371,8 +371,10 @@ function rowReference(
   orderNo: string | null,
   purchasedAt: string | null
 ): string {
+  // 订单号大小写/尾空格差异必须归一，否则同一笔退款可换一种写法重复导入。
+  const normalizedOrderNo = orderNo ? normalizeOrderNo(orderNo) : "";
   const hash = createHash("sha256")
-    .update(`${phone}|${amount}|${orderNo ?? ""}|${purchasedAt ?? ""}`)
+    .update(`${phone}|${amount}|${normalizedOrderNo}|${purchasedAt ?? ""}`)
     .digest("hex")
     .slice(0, 32);
   return `import:${hash}`;
@@ -386,17 +388,27 @@ async function mapWithConcurrency<T, R>(
   items: T[],
   limit: number,
   fn: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const results = new Array<R>(items.length);
+): Promise<{ results: R[]; error: unknown | null }> {
+  const results = new Array<R | undefined>(items.length);
+  const errors: unknown[] = [];
   let next = 0;
+  let aborted = false;
   const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
+    while (!aborted && next < items.length) {
       const index = next++;
-      results[index] = await fn(items[index], index);
+      try {
+        results[index] = await fn(items[index], index);
+      } catch (error) {
+        errors.push(error);
+        aborted = true;
+      }
     }
   });
   await Promise.all(workers);
-  return results;
+  return {
+    results: results.filter((item): item is R => item !== undefined),
+    error: errors[0] ?? null,
+  };
 }
 
 function cellText(cell: unknown): string {
@@ -535,6 +547,10 @@ function parseImportAoa(aoa: unknown[][], fileHash: string): ImportParseResult {
       errors.push(
         `渠道不正确（可选：${SPENT_CHANNELS.map((c) => SPENT_CHANNEL_LABELS[c]).join(" / ")}）`
       );
+    }
+    if (amount !== null && amount < 0 && !purchasedAt) {
+      // 退款行必须有日期参与幂等指纹，避免“带日期/不带日期”绕过重复导入检测。
+      errors.push("退款行必须填写消费日期");
     }
     if (!orderNoRaw) {
       errors.push("订单号/小票号必填，用于跨批次去重");
@@ -1195,7 +1211,7 @@ export async function executeImportBatch(params: {
   // 心跳节流：避免每行事务都锁同一 batch 行，把 8 并发退化为串行。
   let lastBatchHeartbeatAt = Date.now();
   try {
-    rowResults = await mapWithConcurrency(
+    const pool = await mapWithConcurrency(
       parsed,
       IMPORT_EXECUTE_CONCURRENCY,
       async (row): Promise<ExecuteRowResult> => {
@@ -1398,14 +1414,16 @@ export async function executeImportBatch(params: {
         }
       }
     );
+    rowResults = pool.results;
+    if (pool.error) throw pool.error;
   } catch (error) {
+    await recomputeImportBatchStats(batch.id, { markPendingAsError: true }).catch(() => {});
     await prisma.spentImportBatch
-      .update({
-        where: { id: batch.id },
+      .updateMany({
+        where: { id: batch.id, status: "PROCESSING", leaseToken: batch.leaseToken },
         data: {
           status: "FAILED",
           lastError: (error instanceof Error ? error.message : String(error)).slice(0, 500),
-          processedRows: batch.rows.length,
           finishedAt: new Date(),
         },
       })
@@ -1474,10 +1492,13 @@ export type UndoResult =
         | "ALREADY_UNDONE"
         | "NOTHING_TO_UNDO"
         | "NOT_COMPLETED"
+        | "UNDO_IN_PROGRESS"
+        | "PARTIAL"
         | "REVERSAL_EXCEEDS_BALANCE"
         | "USER_DELETED"
         | "INTERNAL_ERROR";
       message: string;
+      revertedRows?: number;
     };
 
 /**
@@ -1508,6 +1529,13 @@ export async function failStaleImportBatches(maxAgeMinutes = 30): Promise<number
       finishedAt: new Date(),
     },
   });
+
+  await prisma.spentImportRow
+    .updateMany({
+      where: { batchId: { in: ids }, status: "PENDING" },
+      data: { status: "ERROR", error: "执行中断，请重新导入", appliedDelta: null },
+    })
+    .catch(() => {});
 
   const rows = await prisma.spentImportRow.findMany({
     where: { batchId: { in: ids } },
@@ -1565,7 +1593,107 @@ export async function failStaleImportBatches(maxAgeMinutes = 30): Promise<number
  * 不会被幂等误判为重复（不再次入账）。
  * 仅当全部行冲正 + 清理成功才落 undoneAt；部分失败保持未撤销状态，可重试。
  */
+async function recomputeImportBatchStats(
+  batchId: string,
+  options: { markPendingAsError?: boolean } = {}
+): Promise<{
+  processed: number;
+  success: number;
+  duplicate: number;
+  error: number;
+  totalAmount: number;
+}> {
+  if (options.markPendingAsError) {
+    await prisma.spentImportRow.updateMany({
+      where: { batchId, status: "PENDING" },
+      data: { status: "ERROR", error: "执行中断，请重新导入", appliedDelta: null },
+    });
+  }
+  const rows = await prisma.spentImportRow.findMany({
+    where: { batchId },
+    select: { status: true, appliedDelta: true, revertedAt: true },
+  });
+  let success = 0;
+  let duplicate = 0;
+  let error = 0;
+  let totalAmount = 0;
+  for (const row of rows) {
+    if (row.status === "SUCCESS" && !row.revertedAt) {
+      success += 1;
+      totalAmount += row.appliedDelta ?? 0;
+    } else if (row.status === "DUPLICATE") {
+      duplicate += 1;
+    } else if (row.status === "ERROR") {
+      error += 1;
+    }
+  }
+  await prisma.spentImportBatch.update({
+    where: { id: batchId },
+    data: {
+      processedRows: rows.length,
+      successRows: success,
+      duplicateRows: duplicate,
+      errorRows: error,
+      totalAmount,
+    },
+  });
+  return { processed: rows.length, success, duplicate, error, totalAmount };
+}
+
+const UNDO_CHUNK_SIZE = 50;
+
 export async function undoImportBatch(batchId: string): Promise<UndoResult> {
+  const leaseToken = randomUUID();
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - 30 * 60 * 1000);
+
+  const claimed = await prisma.spentImportBatch.updateMany({
+    where: {
+      id: batchId,
+      status: { in: ["COMPLETED", "FAILED"] },
+      undoneAt: null,
+      OR: [
+        { undoStatus: { not: "RUNNING" } },
+        { undoHeartbeatAt: { lt: staleBefore } },
+        { undoHeartbeatAt: null },
+      ],
+    },
+    data: {
+      undoStatus: "RUNNING",
+      undoLeaseToken: leaseToken,
+      undoHeartbeatAt: now,
+      undoStartedAt: now,
+      undoCompletedAt: null,
+      undoError: null,
+      undoAttempts: { increment: 1 },
+    },
+  });
+  if (claimed.count === 0) {
+    const existing = await prisma.spentImportBatch.findUnique({
+      where: { id: batchId },
+      select: { status: true, undoneAt: true, undoStatus: true },
+    });
+    if (!existing) return { ok: false, code: "NOT_FOUND", message: "导入批次不存在" };
+    if (existing.undoneAt) {
+      return { ok: false, code: "ALREADY_UNDONE", message: "该批次已撤销，不能重复操作" };
+    }
+    if (existing.status === "PROCESSING") {
+      return {
+        ok: false,
+        code: "NOT_COMPLETED",
+        message: "该批次仍在处理中，请等待完成后撤销（进程中断的批次会在超时后自动转失败）",
+      };
+    }
+    if (existing.undoStatus === "RUNNING") {
+      return {
+        ok: false,
+        code: "UNDO_IN_PROGRESS",
+        message: "该批次正在撤销中，请稍后查看结果",
+      };
+    }
+    return { ok: false, code: "INTERNAL_ERROR", message: "无法取得撤销租约，请稍后重试" };
+  }
+
   const batch = await prisma.spentImportBatch.findUnique({
     where: { id: batchId },
     select: {
@@ -1575,6 +1703,7 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
       totalAmount: true,
       rows: {
         where: { status: "SUCCESS", revertedAt: null },
+        orderBy: [{ amount: "asc" }, { userId: "asc" }, { createdAt: "asc" }, { id: "asc" }],
         select: {
           id: true,
           userId: true,
@@ -1582,22 +1711,17 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
           appliedDelta: true,
           orderNo: true,
           orderNoKey: true,
-          // 注意：reference 是当初写入 SpentSyncRecord 的批内唯一键；
-          // syncReference 只是跨批内容键，不能拿去匹配 SpentSyncRecord。
           reference: true,
         },
       },
     },
   });
-
   if (!batch) {
     return { ok: false, code: "NOT_FOUND", message: "导入批次不存在" };
   }
   if (batch.undoneAt) {
     return { ok: false, code: "ALREADY_UNDONE", message: "该批次已撤销，不能重复操作" };
   }
-  // 执行中的批次可能仍在继续入账，撤销后会导致“批次已撤销但后续行仍入账”。
-  // 崩溃残留的 PROCESSING 会由 failStaleImportBatches 定时标记为 FAILED 后再允许撤销。
   if (batch.status === "PROCESSING") {
     return {
       ok: false,
@@ -1606,14 +1730,61 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
     };
   }
 
-  // 历史行没有 appliedDelta：从原始 SpentSyncRecord 取实际生效金额，
-  // 绝不能用 amount 代替——负数行当初可能被 0 下限钳制，直接撤销会反向多冲正。
-  const rows: { row: (typeof batch.rows)[number]; appliedDelta: number }[] = [];
+  const alreadyReverted = await prisma.spentImportRow.count({
+    where: { batchId, status: "SUCCESS", revertedAt: { not: null } },
+  });
+  const totalRows = batch.rows.length + alreadyReverted;
+  const progress = {
+    completedRows: alreadyReverted,
+    totalRows,
+    totalAmount: batch.totalAmount,
+    lastRowId: null as string | null,
+  };
+
+  const heartbeatTimer = setInterval(() => {
+    void prisma.spentImportBatch
+      .updateMany({
+        where: { id: batchId, undoStatus: "RUNNING", undoLeaseToken: leaseToken },
+        data: { undoHeartbeatAt: new Date() },
+      })
+      .catch((error) => apiConsole.warn("[SpentImport] 撤销心跳更新失败:", error));
+  }, 60 * 1000);
+  heartbeatTimer.unref?.();
+
+  const persistProgress = async () => {
+    const updated = await prisma.spentImportBatch.updateMany({
+      where: { id: batchId, undoStatus: "RUNNING", undoLeaseToken: leaseToken },
+      data: { undoProgress: progress, undoHeartbeatAt: new Date() },
+    });
+    if (updated.count === 0) throw new Error("IMPORT_UNDO_STALE");
+  };
+
+  const finishPartial = async (
+    code: "PARTIAL" | "REVERSAL_EXCEEDS_BALANCE" | "USER_DELETED" | "INTERNAL_ERROR",
+    message: string,
+    retryable: boolean
+  ): Promise<UndoResult> => {
+    await persistProgress().catch(() => {});
+    await prisma.spentImportBatch
+      .updateMany({
+        where: { id: batchId, undoStatus: "RUNNING", undoLeaseToken: leaseToken },
+        data: {
+          undoStatus: retryable ? "PARTIAL" : "FAILED",
+          undoError: message.slice(0, 1000),
+          undoLeaseToken: null,
+          undoHeartbeatAt: null,
+          ...(retryable ? {} : { undoCompletedAt: new Date() }),
+        },
+      })
+      .catch(() => {});
+    return { ok: false, code, message, revertedRows: progress.completedRows };
+  };
+
+  const rows: Array<{ row: (typeof batch.rows)[number]; appliedDelta: number }> = [];
   let missingAppliedDelta = 0;
   for (const row of batch.rows) {
-    if (!row.userId) continue;
     let appliedDelta = row.appliedDelta;
-    if (appliedDelta === null) {
+    if (appliedDelta === null && row.userId) {
       const original = await prisma.spentSyncRecord.findUnique({
         where: {
           userId_reference: { userId: row.userId, reference: row.reference },
@@ -1626,155 +1797,213 @@ export async function undoImportBatch(batchId: string): Promise<UndoResult> {
       missingAppliedDelta += 1;
       continue;
     }
+    if (!row.userId) {
+      missingAppliedDelta += 1;
+      continue;
+    }
     rows.push({ row, appliedDelta });
   }
 
   if (missingAppliedDelta > 0) {
-    return {
-      ok: false,
-      code: "INTERNAL_ERROR",
-      message: `有 ${missingAppliedDelta} 行历史入账缺少实际生效金额，无法安全撤销，请人工核对`,
-    };
+    clearInterval(heartbeatTimer);
+    return finishPartial(
+      "INTERNAL_ERROR",
+      `有 ${missingAppliedDelta} 行历史入账缺少实际生效金额或用户，无法安全撤销，请人工核对`,
+      false
+    );
   }
+
   if (rows.length === 0) {
+    clearInterval(heartbeatTimer);
     const historicalSuccessCount = await prisma.spentImportRow.count({
       where: { batchId, status: "SUCCESS" },
     });
     if (historicalSuccessCount > 0) {
-      await prisma.spentImportBatch.update({
-        where: { id: batch.id },
-        data: { undoneAt: new Date() },
+      await prisma.spentImportBatch.updateMany({
+        where: { id: batchId, undoneAt: null },
+        data: {
+          undoneAt: new Date(),
+          undoStatus: "DONE",
+          undoCompletedAt: new Date(),
+          undoLeaseToken: null,
+          undoHeartbeatAt: null,
+          undoProgress: progress,
+        },
       });
-      return { ok: true, revertedRows: 0, totalAmount: 0 };
+      return { ok: true, revertedRows: alreadyReverted, totalAmount: batch.totalAmount };
     }
+    await prisma.spentImportBatch.updateMany({
+      where: { id: batchId, undoStatus: "RUNNING", undoLeaseToken: leaseToken },
+      data: {
+        undoStatus: "DONE",
+        undoCompletedAt: new Date(),
+        undoLeaseToken: null,
+        undoHeartbeatAt: null,
+        undoProgress: progress,
+      },
+    });
     return { ok: false, code: "NOTHING_TO_UNDO", message: "该批次没有可撤销的入账记录" };
   }
 
-  // 已注销账户的消费额/积分已按注销策略清零并保留 totalSpent；
-  // 撤销时若继续反向冲正，会重新向已注销账户写入余额/等级变化。
-  const undoUserIds = [...new Set(rows.map(({ row }) => row.userId).filter(Boolean))] as string[];
-  const userStatusRows =
-    (await prisma.user.findMany({
-      where: { id: { in: undoUserIds } },
-      select: { id: true, status: true },
-    })) ?? [];
-  const deletedUsers = userStatusRows.filter((user) => user.status === "DELETED");
-  if (deletedUsers.length > 0) {
-    return {
-      ok: false,
-      code: "USER_DELETED",
-      message: `批次中有 ${deletedUsers.length} 个已注销用户，不能自动冲正；请人工核对后处理`,
-    };
+  const undoUserIds = [...new Set(rows.map(({ row }) => row.userId as string))];
+  const deletedUsers = (
+    await prisma.user.findMany({
+      where: { id: { in: undoUserIds }, status: "DELETED" },
+      select: { id: true },
+    })
+  ).length;
+  if (deletedUsers > 0) {
+    clearInterval(heartbeatTimer);
+    return finishPartial(
+      "USER_DELETED",
+      `批次中有 ${deletedUsers} 个已注销用户，不能自动冲正；请人工核对后处理`,
+      false
+    );
   }
 
-  // 整批撤销必须原子：任何一行失败都回滚，避免“部分已冲正、批次仍未撤销”
-  // 导致财务数据与批次状态不一致。逐行顺序执行，避免并发事务互相争锁。
   const webhookUpdates = new Map<string, Parameters<typeof pushMembershipUpdateWebhook>[1]>();
-  try {
-    await prisma.$transaction(
-      async (tx) => {
-        for (const { row, appliedDelta } of rows) {
-          const reference = `import-undo:${batch.id}:${row.id}`;
+  const flushWebhooks = () => {
+    for (const [userId, result] of webhookUpdates) {
+      invalidateProfileCache();
+      pushMembershipUpdateWebhook(userId, result).catch((error) =>
+        apiConsole.warn(`[SpentImport] 撤销后会 webhook 推送失败（不影响撤销）:`, error)
+      );
+    }
+    webhookUpdates.clear();
+  };
 
-          // appliedDelta=0 的行当初未实际入账，也标记 reverted 以清除跨批内容幂等占用
-          if (appliedDelta !== 0) {
-            const synced = await applyExternalSpentSync(
-              {
-                userId: row.userId as string,
-                spentDelta: -appliedDelta,
-                reference,
-                allowNegativeClamp: false,
-                requireNotDeleted: true,
-                suppressWebhook: true,
-                note: `撤销Excel导入批次 ${batch.id}`,
-              },
-              tx
-            );
-            if (synced && synced.appliedDelta !== 0) {
-              webhookUpdates.set(row.userId as string, {
-                totalSpent: synced.totalSpent,
-                membershipLevel: synced.membershipLevel,
-              });
-            }
+  try {
+    for (let offset = 0; offset < rows.length; offset += UNDO_CHUNK_SIZE) {
+      const chunk = rows.slice(offset, offset + UNDO_CHUNK_SIZE);
+      chunk.sort(
+        (a, b) => a.row.userId!.localeCompare(b.row.userId!) || a.row.id.localeCompare(b.row.id)
+      );
+      await prisma.$transaction(
+        async (tx) => {
+          const current = await tx.spentImportBatch.findUnique({
+            where: { id: batchId },
+            select: { undoStatus: true, undoLeaseToken: true, undoneAt: true },
+          });
+          if (
+            (current?.undoStatus && current.undoStatus !== "RUNNING") ||
+            (current?.undoLeaseToken && current.undoLeaseToken !== leaseToken) ||
+            current?.undoneAt
+          ) {
+            throw new Error("IMPORT_UNDO_STALE");
           }
 
-          // 不物理删除原始 SpentSyncRecord，保留审计并通过 revertedAt 标记。
-          // 原入账 reference 是 row.reference（含批次 version），不是 syncReference。
-          await tx.spentSyncRecord.updateMany({
-            where: {
-              userId: row.userId as string,
-              reference: row.reference,
-            },
-            data: { revertedAt: new Date() },
-          });
-          if ((row.amount ?? 0) < 0) {
-            if (appliedDelta < 0) {
-              await releaseSpentOrderRefund(tx, {
-                userId: row.userId as string,
-                orderNoKey: row.orderNoKey as string,
-                amount: Math.abs(appliedDelta),
+          for (const { row, appliedDelta } of chunk) {
+            const userId = row.userId as string;
+            const reference = `import-undo:${batchId}:${row.id}`;
+
+            if (appliedDelta !== 0) {
+              const synced = await applyExternalSpentSync(
+                {
+                  userId,
+                  spentDelta: -appliedDelta,
+                  reference,
+                  allowNegativeClamp: false,
+                  requireNotDeleted: true,
+                  suppressWebhook: true,
+                  note: `撤销Excel导入批次 ${batchId}`,
+                },
+                tx
+              );
+              if (synced && synced.appliedDelta !== 0) {
+                webhookUpdates.set(userId, {
+                  totalSpent: synced.totalSpent,
+                  membershipLevel: synced.membershipLevel,
+                });
+              }
+            }
+
+            await tx.spentSyncRecord.updateMany({
+              where: { userId, reference: row.reference },
+              data: { revertedAt: new Date() },
+            });
+            if ((row.amount ?? 0) < 0) {
+              if (appliedDelta < 0) {
+                await releaseSpentOrderRefund(tx, {
+                  userId,
+                  orderNoKey: row.orderNoKey as string,
+                  amount: Math.abs(appliedDelta),
+                });
+              }
+            } else if (row.orderNoKey) {
+              await releaseSpentOrderClaim(tx, {
+                userId,
+                orderNoKey: row.orderNoKey,
+                source: "SPENT_IMPORT",
+                reference: row.reference,
               });
             }
-          } else if (row.orderNoKey) {
-            await releaseSpentOrderClaim(tx, {
-              userId: row.userId as string,
-              orderNoKey: row.orderNoKey,
-              source: "SPENT_IMPORT",
-              reference: row.reference,
+            await tx.spentImportRow.update({
+              where: { id: row.id },
+              data: { revertedAt: new Date() },
             });
           }
-          await tx.spentImportRow.update({
-            where: { id: row.id },
-            data: { revertedAt: new Date() },
-          });
-        }
-
-        const finalized = await tx.spentImportBatch.updateMany({
-          where: { id: batch.id, undoneAt: null },
-          data: { undoneAt: new Date() },
-        });
-        if (finalized.count === 0) {
-          throw new Error("IMPORT_ALREADY_UNDONE");
-        }
-      },
-      { timeout: 10 * 60 * 1000, maxWait: 30 * 1000 }
-    );
-  } catch (error) {
-    if (error instanceof SpentReversalExceedsBalanceError) {
-      apiConsole.warn(
-        `[SpentImport] 撤销批次 ${batch.id} 被拒绝：用户当前累计消费不足以完整冲正，已整体回滚`
+        },
+        { timeout: 2 * 60 * 1000, maxWait: 30 * 1000 }
       );
-      return {
-        ok: false,
-        code: "REVERSAL_EXCEEDS_BALANCE",
-        message: "撤销已整体回滚：存在用户当前累计消费不足以完整冲正的行，请核对后人工处理",
-      };
+
+      progress.completedRows += chunk.length;
+      progress.lastRowId = chunk[chunk.length - 1]?.row.id ?? progress.lastRowId;
+      await persistProgress();
+      flushWebhooks();
     }
-    if (error instanceof SpentUserDeletedError) {
-      return {
-        ok: false,
-        code: "USER_DELETED",
-        message: "批次中有用户已注销，不能自动冲正；请人工核对后处理",
-      };
-    }
-    if (error instanceof Error && error.message === "IMPORT_ALREADY_UNDONE") {
+
+    const finalized = await prisma.spentImportBatch.updateMany({
+      where: {
+        id: batchId,
+        undoStatus: "RUNNING",
+        undoLeaseToken: leaseToken,
+        undoneAt: null,
+      },
+      data: {
+        undoneAt: new Date(),
+        undoStatus: "DONE",
+        undoCompletedAt: new Date(),
+        undoLeaseToken: null,
+        undoHeartbeatAt: null,
+        undoProgress: progress,
+        undoError: null,
+      },
+    });
+    if (finalized.count === 0) {
       return { ok: false, code: "ALREADY_UNDONE", message: "该批次已撤销，不能重复操作" };
     }
-    apiConsole.error(`[SpentImport] 撤销批次 ${batch.id} 失败，事务已回滚:`, error);
-    return {
-      ok: false,
-      code: "INTERNAL_ERROR",
-      message: "撤销失败，已整体回滚，请稍后重试",
-    };
-  }
-
-  // 事务提交后再推送会员变更，避免回滚后子站收到错误状态。
-  for (const [userId, result] of webhookUpdates) {
-    invalidateProfileCache();
-    pushMembershipUpdateWebhook(userId, result).catch((error) =>
-      apiConsole.warn(`[SpentImport] 撤销后会员 webhook 推送失败（不影响撤销）:`, error)
+    return { ok: true, revertedRows: progress.completedRows, totalAmount: batch.totalAmount };
+  } catch (error) {
+    if (error instanceof SpentReversalExceedsBalanceError) {
+      apiConsole.warn(`[SpentImport] 撤销批次 ${batchId} 被拒绝：用户累计消费不足`);
+      return finishPartial(
+        "REVERSAL_EXCEEDS_BALANCE",
+        "存在用户当前累计消费不足以完整冲正的行，请核对后人工处理",
+        false
+      );
+    }
+    if (error instanceof SpentUserDeletedError) {
+      return finishPartial(
+        "USER_DELETED",
+        "批次中有用户已注销，不能自动冲正；请人工核对后处理",
+        false
+      );
+    }
+    if (error instanceof Error && error.message === "IMPORT_UNDO_STALE") {
+      return {
+        ok: false,
+        code: "UNDO_IN_PROGRESS",
+        message: "撤销租约已失效，请稍后重试",
+        revertedRows: progress.completedRows,
+      };
+    }
+    apiConsole.error(`[SpentImport] 撤销批次 ${batchId} 分块失败:`, error);
+    return finishPartial(
+      "PARTIAL",
+      `已撤销 ${progress.completedRows} 行，剩余行处理失败，可继续重试`,
+      true
     );
+  } finally {
+    clearInterval(heartbeatTimer);
   }
-
-  return { ok: true, revertedRows: rows.length, totalAmount: batch.totalAmount };
 }

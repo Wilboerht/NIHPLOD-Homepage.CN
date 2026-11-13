@@ -8,6 +8,7 @@
  * 本接口提供人工查看与立即重投，便于运维介入。
  */
 import { NextRequest, NextResponse } from "next/server";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
@@ -179,7 +180,9 @@ export async function POST(request: NextRequest) {
     const rateLimitResponse = await checkAdminRateLimit(request, "webhook-failures:write");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const parsed = actionSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

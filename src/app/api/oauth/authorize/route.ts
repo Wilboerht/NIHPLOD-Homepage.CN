@@ -356,12 +356,7 @@ export async function GET(request: NextRequest) {
       return failRedirect(safeRedirectUri, "invalid_request", "popup_nonce 参数过长", state);
     }
     if (!state || state.length < 32 || state.length > 512) {
-      return failRedirect(
-        safeRedirectUri,
-        "invalid_request",
-        "state 参数无效或长度不足",
-        state
-      );
+      return failRedirect(safeRedirectUri, "invalid_request", "state 参数无效或长度不足", state);
     }
     if (code_challenge.length !== 43) {
       return failRedirect(
@@ -405,12 +400,7 @@ export async function GET(request: NextRequest) {
     const requestedScopes = scope.split(" ").filter(Boolean);
     for (const s of requestedScopes) {
       if (!SUPPORTED_SCOPES.includes(s)) {
-        return failRedirect(
-          safeRedirectUri,
-          "invalid_scope",
-          `权限范围 '${s}' 不受支持`,
-          state
-        );
+        return failRedirect(safeRedirectUri, "invalid_scope", `权限范围 '${s}' 不受支持`, state);
       }
       if (!client.scopes.includes(s) && !OIDC_IMPLICIT_SCOPES.includes(s)) {
         return failRedirect(
@@ -504,7 +494,12 @@ export async function GET(request: NextRequest) {
 
     // 9. 未登录 → 302 到登录页（prompt=none 已在上面处理）
     if (!isLoggedIn) {
-      const returnTo = `/api/oauth/authorize?${searchParams.toString()}`;
+      // 重新认证是一次性的：剥离 max_age 与 prompt=login，避免登录成功后再次命中
+      // 同一分支形成无限登录循环（尤其是 max_age=0）。
+      const reauthParams = new URLSearchParams(searchParams);
+      reauthParams.delete("max_age");
+      if (prompt === "login") reauthParams.delete("prompt");
+      const returnTo = `/api/oauth/authorize?${reauthParams.toString()}`;
       const loginUrl = new URL("/login", getPublicOrigin(request));
       loginUrl.searchParams.set("return_to", returnTo);
       loginUrl.searchParams.set("client_name", client.name);
@@ -521,6 +516,7 @@ export async function GET(request: NextRequest) {
       // 命中本分支形成 authorize ⇄ login 死循环（用户已重新认证，继续按正常流程处理即可）
       const reauthParams = new URLSearchParams(searchParams);
       reauthParams.delete("prompt");
+      reauthParams.delete("max_age");
       const returnTo = `/api/oauth/authorize?${reauthParams.toString()}`;
       const loginUrl = new URL("/login", getPublicOrigin(request));
       loginUrl.searchParams.set("return_to", returnTo);
@@ -892,12 +888,7 @@ export async function POST(request: NextRequest) {
     // 校验 scope：openid 始终允许，拒绝超出 client 允许范围或系统不支持的 scope
     for (const s of requestedScopes) {
       if (!SUPPORTED_SCOPES.includes(s)) {
-        return failRedirect(
-          safeRedirectUri,
-          "invalid_scope",
-          `权限范围 '${s}' 不受支持`,
-          state
-        );
+        return failRedirect(safeRedirectUri, "invalid_scope", `权限范围 '${s}' 不受支持`, state);
       }
       if (!client.scopes.includes(s) && !OIDC_IMPLICIT_SCOPES.includes(s)) {
         return failRedirect(

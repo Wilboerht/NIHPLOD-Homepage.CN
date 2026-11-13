@@ -30,6 +30,10 @@ vi.mock("@/components/ui/Toast", () => ({
   useToast: () => ({ success: mockShowSuccess, error: mockShowError }),
 }));
 
+vi.mock("@/lib/captcha-client", () => ({
+  solveCaptcha: vi.fn().mockResolvedValue("captcha-token"),
+}));
+
 import { SecurityPanel } from "@/components/website/user-center/panels/SecurityPanel";
 
 function jsonResponse(body: unknown) {

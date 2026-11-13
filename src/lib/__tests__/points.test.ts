@@ -160,7 +160,12 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
   });
 
   it("重复上报（幂等命中）时不推送", async () => {
-    mockTxSpentSyncFindUnique.mockResolvedValue({ id: "rec-1" });
+    mockTxSpentSyncFindUnique.mockResolvedValue({
+      id: "rec-1",
+      spentDelta: 500,
+      orderNoKey: "ORDER-1",
+      source: "MALL_SYNC",
+    });
     mockTxUserFindUnique.mockResolvedValue({ totalSpent: 1300, membershipLevel: "SILVER" });
 
     const result = await applyExternalSpentSync({

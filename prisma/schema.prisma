@@ -732,7 +732,7 @@ enum AuditActorType {
 }
 
 model AuditLog {
-  id          String         @id @default(cuid())
+  id          String         @default(cuid())
   action      String // 操作类型: create_admin, update_admin, delete_admin, login, logout 等
   targetType  String // 目标类型: admin, product, category, job, message, application 等
   targetId    String? // 目标记录ID
@@ -760,7 +760,7 @@ model AuditLog {
   schemaVersion       Int       @default(2)
   chainVersion        Int       @default(1)
   integrityKeyVersion Int       @default(1)
-  chainSeq            Int?      @unique
+  chainSeq            BigInt?
   prevHash            String?
   entryHash           String?
   finalizedAt         DateTime?
@@ -782,6 +782,18 @@ model AuditLog {
   @@index([targetId, createdAt(sort: Desc)])
   @@index([sessionJti])
   @@index([riskLevel, createdAt(sort: Desc)])
+  @@index([chainSeq])
+  @@id([id, createdAt])
+  @@unique([chainSeq, createdAt])
+  // 大表运维索引（GIN/trgm、部分索引、手工并发索引）以 prisma/index-manifest.ts 为准。
+}
+
+/** 审计链游标：串行分配 chainSeq 与 prevHash，替代全表链尾查询。 */
+model AuditChainCursor {
+  stream    String   @id
+  seq       BigInt   @default(0)
+  lastHash  String?
+  updatedAt DateTime @updatedAt
 }
 
 /**
@@ -889,6 +901,12 @@ model AuditRetentionJob {
   // 执行租约/心跳：worker 崩溃后可回收 RUNNING，避免任务永久卡死
   leaseToken  String?
   heartbeatAt DateTime?
+
+  // 断点续跑：按日期桶记录进度，失败后按退避重试
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  nextRetryAt DateTime?
+  progress    Json?
 
   @@index([status, createdAt])
   @@index([requestedBy, createdAt])
@@ -1096,6 +1114,14 @@ enum SpentImportBatchStatus {
   FAILED
 }
 
+enum SpentImportUndoStatus {
+  IDLE
+  RUNNING
+  PARTIAL
+  DONE
+  FAILED
+}
+
 model SpentImportBatch {
   id            String                 @id @default(cuid())
   adminId       String
@@ -1117,6 +1143,14 @@ model SpentImportBatch {
   errorRows     Int // ????
   totalAmount   Int // ????????????? appliedDelta ???
   undoneAt      DateTime? // ?????????????????
+  undoStatus      SpentImportUndoStatus @default(IDLE)
+  undoLeaseToken  String?
+  undoHeartbeatAt DateTime?
+  undoStartedAt   DateTime?
+  undoCompletedAt DateTime?
+  undoProgress    Json?
+  undoError       String?               @db.Text
+  undoAttempts    Int                   @default(0)
   createdAt     DateTime               @default(now())
 
   admin Admin            @relation(fields: [adminId], references: [id])

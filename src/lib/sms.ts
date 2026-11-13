@@ -192,6 +192,8 @@ export async function sendSMS(options: SMSParams): Promise<SMSResult> {
   if (!provider || provider === "mock") {
     if (process.env.NODE_ENV === "production") {
       apiConsole.error("[SMS] 生产环境 SMS_PROVIDER 未设置或为 mock，短信功能不可用");
+      // 生产环境不能把未发送的消息标记为成功。
+      return { success: false, error: "SMS_PROVIDER_NOT_CONFIGURED" };
     }
     return sendMockSMS(options);
   }
@@ -202,8 +204,8 @@ export async function sendSMS(options: SMSParams): Promise<SMSResult> {
     case "tencent":
       return sendTencentSMS(options);
     default:
-      apiConsole.error(`[SMS] 未知的 SMS_PROVIDER: ${provider}，回退 mock`);
-      return sendMockSMS(options);
+      apiConsole.error(`[SMS] 未知的 SMS_PROVIDER: ${provider}，拒绝发送`);
+      return { success: false, error: "SMS_PROVIDER_INVALID" };
   }
 }
 

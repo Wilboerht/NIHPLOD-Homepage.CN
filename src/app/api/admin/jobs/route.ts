@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import prisma from "@/lib/prisma";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
 import { z } from "zod";
@@ -149,7 +150,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const body = bodyResult.data;
     const validated = CreateJobSchema.parse(body);
 
     // 对 HTML 字段入库前消毒

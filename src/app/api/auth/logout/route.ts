@@ -8,7 +8,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
-import { verifyRefreshToken } from "@/lib/jwt";
+import { verifyIdToken, verifyRefreshToken } from "@/lib/jwt";
 import { revokeRefreshToken } from "@/lib/auth-security";
 import { revokeAccessToken } from "@/lib/token-blacklist";
 import {
@@ -28,6 +28,22 @@ import {
 } from "@/lib/request-body";
 import { validateCSRFToken, csrfForbiddenResponse, CSRF_COOKIE_NAME } from "@/lib/csrf";
 import { prisma } from "@/lib/prisma";
+
+/**
+ * 只信任验签通过、且 sub 与当前用户一致的 id_token_hint.sid。
+ * 未验签/不匹配时返回 null，调用方回退为撤销该 client 全部会话。
+ */
+async function resolveVerifiedSessionId(
+  idTokenHint: string | null,
+  clientId: string | null,
+  userId: string
+): Promise<string | null> {
+  if (!idTokenHint) return null;
+  const claims = await verifyIdToken(idTokenHint, clientId ?? undefined).catch(() => null);
+  if (!claims || claims.sub !== userId || !claims.sid) return null;
+  if (clientId && claims.aud !== clientId) return null;
+  return claims.sid;
+}
 import {
   enqueueBackchannelLogoutForActiveSessions,
   scheduleBackchannelRedelivery,
@@ -60,12 +76,15 @@ export async function POST(request: NextRequest) {
       // （/api/user/oauth/revoke），伪造 clientId 无法越权影响其他用户。
       const requestedClientId =
         typeof body.clientId === "string" && body.clientId ? body.clientId : null;
-      // RP-Initiated Logout 页面从 id_token_hint 解出的 sid：仅用于把撤销范围
-      // 收窄到“当前设备”；伪造 sid 只会影响本人会话，无法越权影响其他用户。
-      const requestedClientSessionId =
-        typeof body.clientSessionId === "string" && body.clientSessionId
-          ? body.clientSessionId
-          : null;
+      // RP-Initiated Logout 的 sid 必须来自验签通过的 id_token_hint；
+      // 客户端单独提交的 clientSessionId 不再被信任。
+      const idTokenHint =
+        typeof body.idTokenHint === "string" && body.idTokenHint ? body.idTokenHint : null;
+      const requestedClientSessionId = await resolveVerifiedSessionId(
+        idTokenHint,
+        requestedClientId,
+        user.id
+      );
 
       const refreshToken = request.cookies.get(USER_REFRESH_COOKIE_NAME)?.value;
 
@@ -171,10 +190,13 @@ export async function POST(request: NextRequest) {
               // 主站内部登录会话（clientId=null）以发起方 clientId 兜底，保证登出闭环
               const requestedClientId =
                 typeof body.clientId === "string" && body.clientId ? body.clientId : null;
-              const requestedClientSessionId =
-                typeof body.clientSessionId === "string" && body.clientSessionId
-                  ? body.clientSessionId
-                  : null;
+              const idTokenHint =
+                typeof body.idTokenHint === "string" && body.idTokenHint ? body.idTokenHint : null;
+              const requestedClientSessionId = await resolveVerifiedSessionId(
+                idTokenHint,
+                requestedClientId,
+                refreshPayload.id
+              );
               const targetClientId = refreshRecord.clientId ?? requestedClientId;
               if (targetClientId) {
                 await revokeOAuthClientSessions(

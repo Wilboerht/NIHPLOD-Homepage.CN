@@ -35,20 +35,6 @@ async function ensureCsrfToken(): Promise<string | null> {
   return null;
 }
 
-/** 从 id_token_hint 解出 sid（不验签，仅用于把登出范围收窄到当前会话）。 */
-function extractSidFromIdToken(idToken: string): string | null {
-  try {
-    const parts = idToken.split(".");
-    if (parts.length !== 3) return null;
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
-    const payload = JSON.parse(atob(padded)) as { sid?: unknown };
-    return typeof payload.sid === "string" && payload.sid ? payload.sid : null;
-  } catch {
-    return null;
-  }
-}
-
 async function checkTrustedLogoutUri(uri: string, clientId: string | null): Promise<boolean> {
   if (!uri) return true;
   // 站内相对路径：必须拒绝反斜杠/控制字符（"/\evil.com" 会被浏览器解析为跨站）
@@ -214,8 +200,6 @@ function LogoutContent() {
 
       // 从 id_token_hint 解出 sid：把 RP 发起的登出精确收窄到当前设备；
       // 未携带 hint / hint 无 sid 时回退为撤销该 client 全部会话（兼容旧行为）。
-      const clientSessionId = idTokenHint ? extractSidFromIdToken(idTokenHint) : null;
-
       const res = await fetch("/api/auth/logout", {
         method: "POST",
         headers,
@@ -228,7 +212,8 @@ function LogoutContent() {
         body: JSON.stringify({
           allDevices,
           ...(clientId ? { clientId } : {}),
-          ...(clientSessionId ? { clientSessionId } : {}),
+          // 服务端只信任验签通过的 id_token_hint，不信任前端解出的 sid。
+          ...(idTokenHint ? { idTokenHint } : {}),
         }),
       });
 

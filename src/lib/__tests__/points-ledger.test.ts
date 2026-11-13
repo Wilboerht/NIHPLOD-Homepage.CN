@@ -309,7 +309,12 @@ describe("redeemPoints 兑礼扣减", () => {
   });
 
   it("重复 reference：幂等返回成功且不重复扣减", async () => {
-    tx.pointLedger.findUnique.mockResolvedValue({ id: "ledger-1" });
+    tx.pointLedger.findUnique.mockResolvedValue({
+      id: "ledger-1",
+      type: "REDEEM",
+      amount: -600,
+      source: "WEBSITE",
+    });
     tx.pointBalance.findUnique.mockResolvedValue({ available: 400 });
 
     const result = await redeemPoints(asTx(tx), {

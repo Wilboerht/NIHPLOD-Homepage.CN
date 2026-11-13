@@ -25,7 +25,7 @@ const base = {
   schemaVersion: 2,
   chainVersion: 1,
   integrityKeyVersion: 1,
-  chainSeq: 1,
+  chainSeq: BigInt(1),
   prevHash: null,
 };
 
@@ -38,7 +38,7 @@ describe("audit chain", () => {
     process.env.AUDIT_INTEGRITY_HMAC_KEY = "x".repeat(32);
     const first = computeAuditEntryHash(base);
     const second = computeAuditEntryHash({ ...base });
-    const next = computeAuditEntryHash({ ...base, chainSeq: 2, prevHash: first });
+    const next = computeAuditEntryHash({ ...base, chainSeq: BigInt(2), prevHash: first });
 
     expect(first).toMatch(/^[a-f0-9]{64}$/);
     expect(first).toBe(second);

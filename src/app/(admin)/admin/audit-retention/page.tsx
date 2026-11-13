@@ -55,6 +55,10 @@ interface RetentionJob {
   deletedBytes: number;
   holdsExcluded: number;
   error: string | null;
+  attempts: number;
+  maxAttempts: number;
+  nextRetryAt: string | null;
+  progress: { completedBuckets?: string[] } | null;
   createdAt: string;
   finishedAt: string | null;
   expiresAt: string;
@@ -96,6 +100,8 @@ function RetentionContent() {
   const [submitting, setSubmitting] = useState(false);
   const [cancelTargetJob, setCancelTargetJob] = useState<string | null>(null);
   const [cancelCode, setCancelCode] = useState("");
+  const [retryTargetJob, setRetryTargetJob] = useState<string | null>(null);
+  const [retryCode, setRetryCode] = useState("");
   const [holdOpen, setHoldOpen] = useState(false);
   const [holdForm, setHoldForm] = useState({
     targetType: "",
@@ -209,6 +215,20 @@ function RetentionContent() {
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "取消失败");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const retryJob = async (id: string) => {
+    setSubmitting(true);
+    try {
+      await apiPost(`/api/admin/audit-retention/jobs/${id}/retry`, { totpCode: retryCode });
+      toast.success("清理任务已重新排队");
+      setRetryCode("");
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "重试失败");
     } finally {
       setSubmitting(false);
     }
@@ -477,6 +497,15 @@ function RetentionContent() {
                           onClick={() => setCancelTargetJob(job.id)}
                         >
                           取消
+                        </Button>
+                      ) : isOwner && job.status === "FAILED" ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={submitting}
+                          onClick={() => setRetryTargetJob(job.id)}
+                        >
+                          重试
                         </Button>
                       ) : (
                         "-"
@@ -753,6 +782,30 @@ function RetentionContent() {
           placeholder="6 位动态验证码或备用码"
           value={cancelCode}
           onChange={(e) => setCancelCode(e.target.value.trim())}
+          autoComplete="one-time-code"
+        />
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!retryTargetJob}
+        onClose={() => setRetryTargetJob(null)}
+        onConfirm={async () => {
+          const id = retryTargetJob;
+          setRetryTargetJob(null);
+          if (id) await retryJob(id);
+        }}
+        title="重试清理任务"
+        description="仅允许重试已失败且未过期的任务；重试会从上次进度继续。"
+        type="warning"
+        confirmText="确认重试"
+        loading={submitting}
+        confirmDisabled={retryCode.length < 6}
+      >
+        <Input
+          label="TOTP 验证码"
+          placeholder="6 位动态验证码或备用码"
+          value={retryCode}
+          onChange={(e) => setRetryCode(e.target.value.trim())}
           autoComplete="one-time-code"
         />
       </ConfirmDialog>

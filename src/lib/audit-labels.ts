@@ -212,7 +212,7 @@ export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
   ba_emergency_account: "BA 应急账号",
 };
 
-const BA_SSO_ACTION_ALIASES: Record<string, string> = {
+export const BA_SSO_ACTION_ALIASES: Record<string, string> = {
   admin_sso_authorize: "ba_admin_sso_authorize",
   admin_sso_token: "ba_admin_sso_token",
   admin_sso_status_sync: "ba_admin_sso_status_sync",

@@ -154,8 +154,7 @@ function buildLogoutConfirmHtml(): string {
 
 /** 生成安全随机字符串（用于 logout state，Node/Edge Runtime 均支持 Web Crypto） */
 function generateRandomString(length: number): string {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
   const maxValid = Math.floor(256 / chars.length) * chars.length;
   let result = "";
   while (result.length < length) {
@@ -200,8 +199,8 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
   if (config.redirectToSso !== undefined) {
     console.warn(
       "[SSO SDK] redirectToSso 已弃用，请改用 defaultScope" +
-      "（redirectToSso: true → defaultScope: \"global\"，false → \"local\"）。" +
-      "注意：默认退出范围已变更为 \"local\"（仅退出本站，不跳转 SSO 中心）。"
+        '（redirectToSso: true → defaultScope: "global"，false → "local"）。' +
+        '注意：默认退出范围已变更为 "local"（仅退出本站，不跳转 SSO 中心）。'
     );
     if (config.defaultScope === undefined) {
       defaultScope = config.redirectToSso ? "global" : "local";
@@ -214,15 +213,24 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
   // insecureLocalDev：与 middleware/callback 一致地去前缀 + 关 Secure
   const secureCookies = !insecureLocalDev;
   const pickName = (explicit: string | undefined, fallback: string) =>
-    insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : explicit ?? fallback;
-  const accessTokenCookieName = pickName(config.accessTokenCookieName, DEFAULT_ACCESS_TOKEN_COOKIE_NAME);
-  const refreshTokenCookieName = pickName(config.refreshTokenCookieName, DEFAULT_REFRESH_TOKEN_COOKIE_NAME);
+    insecureLocalDev ? toInsecureCookieName(explicit ?? fallback) : (explicit ?? fallback);
+  const accessTokenCookieName = pickName(
+    config.accessTokenCookieName,
+    DEFAULT_ACCESS_TOKEN_COOKIE_NAME
+  );
+  const refreshTokenCookieName = pickName(
+    config.refreshTokenCookieName,
+    DEFAULT_REFRESH_TOKEN_COOKIE_NAME
+  );
   const idTokenCookieName = pickName(config.idTokenCookieName, DEFAULT_ID_TOKEN_COOKIE_NAME);
   const stateCookieName = pickName(config.stateCookieName, DEFAULT_STATE_COOKIE_NAME);
   const nonceCookieName = pickName(config.nonceCookieName, DEFAULT_NONCE_COOKIE_NAME);
   const returnUrlCookieName = pickName(config.returnUrlCookieName, DEFAULT_RETURN_COOKIE_NAME);
   const verifierCookieName = pickName(config.verifierCookieName, DEFAULT_VERIFIER_COOKIE_NAME);
-  const logoutStateCookieName = pickName(config.logoutStateCookieName, DEFAULT_LOGOUT_STATE_COOKIE_NAME);
+  const logoutStateCookieName = pickName(
+    config.logoutStateCookieName,
+    DEFAULT_LOGOUT_STATE_COOKIE_NAME
+  );
 
   const normalizedBase = ssoBaseUrl.replace(/\/+$/, "");
   // 服务器间调用（discovery/revoke）的基准地址：配置了内网地址时走内网，
@@ -331,6 +339,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: body.toString(),
+            redirect: "error",
             signal: AbortSignal.timeout(3000),
           });
         let revokeRes = await doRevoke();
@@ -356,7 +365,11 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
       res.cookies.set(nonceCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(returnUrlCookieName, "", getHostCookieOptions(0, secureCookies));
       res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, "/", secureCookies));
-      res.cookies.set(verifierCookieName, "", getSecureCookieOptions(0, callbackPath, secureCookies));
+      res.cookies.set(
+        verifierCookieName,
+        "",
+        getSecureCookieOptions(0, callbackPath, secureCookies)
+      );
 
       // 清理带 state 后缀的瞬态 cookie 残留（middleware 的多标签页隔离格式：
       // `${name}_${state}`）。过期时间为 10 分钟，这里主动清理避免残留。
@@ -389,10 +402,7 @@ export function createLogoutRouteHandler(config: LogoutRouteConfig) {
         `${normalizedBase}/api/oauth/end-session`;
       const logoutUrl = new URL(endSessionEndpoint);
       logoutUrl.searchParams.set("client_id", clientId);
-      logoutUrl.searchParams.set(
-        "post_logout_redirect_uri",
-        postLogoutRedirectUri
-      );
+      logoutUrl.searchParams.set("post_logout_redirect_uri", postLogoutRedirectUri);
       if (idTokenHint) {
         logoutUrl.searchParams.set("id_token_hint", idTokenHint);
       }

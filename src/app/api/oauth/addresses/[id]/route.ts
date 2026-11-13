@@ -13,7 +13,15 @@ import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
 import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { updateAddressResponse, deleteAddressResponse } from "@/lib/points-mall-api";
+import { isOAuthClientAllowed } from "@/lib/oauth-constants";
 import { apiConsole } from "@/lib/logger";
+
+function denyAddressClient(resJson: (body: unknown, status?: number) => Response): Response {
+  return resJson(
+    { error: "insufficient_scope", error_description: "该客户端未被允许访问收货地址" },
+    403
+  );
+}
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -26,6 +34,13 @@ async function handleUpdate(request: NextRequest, context: RouteContext, method:
       action: "addresses_update",
     });
     if (!auth.ok) return auth.response;
+    if (
+      !isOAuthClientAllowed("OAUTH_ADDRESS_ALLOWED_CLIENTS", auth.payload.client_id, [
+        "wechat-mp-points",
+      ])
+    ) {
+      return denyAddressClient(auth.resJson);
+    }
     const { id } = await context.params;
     return decorateOAuthResponse(
       await updateAddressResponse(auth.payload.id, id, request),
@@ -55,6 +70,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       action: "addresses_delete",
     });
     if (!auth.ok) return auth.response;
+    if (
+      !isOAuthClientAllowed("OAUTH_ADDRESS_ALLOWED_CLIENTS", auth.payload.client_id, [
+        "wechat-mp-points",
+      ])
+    ) {
+      return denyAddressClient(auth.resJson);
+    }
     const { id } = await context.params;
     return decorateOAuthResponse(
       await deleteAddressResponse(auth.payload.id, id),

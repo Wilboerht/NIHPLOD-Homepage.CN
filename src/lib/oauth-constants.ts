@@ -28,6 +28,23 @@ export const SUPPORTED_SCOPES: readonly string[] = [
 export const OIDC_IMPLICIT_SCOPES: readonly string[] = ["openid"] as const;
 
 /**
+ * 敏感 OAuth 资源（收货地址、兑换 PII）的第一方/显式允许客户端。
+ * membership scope 只代表会员等级读取，不再隐式授予地址写/兑换 PII 读取。
+ */
+export function isOAuthClientAllowed(
+  envName: string,
+  clientId: string | null | undefined,
+  defaults: readonly string[] = []
+): boolean {
+  if (!clientId) return false;
+  const raw = process.env[envName]?.trim();
+  const allowed = new Set(
+    (raw ? raw.split(",") : defaults).map((value) => value.trim()).filter(Boolean)
+  );
+  return allowed.has(clientId);
+}
+
+/**
  * OpenID Connect issuer / 公开 base URL。
  * 全站唯一出处：JWT 签发/验证（jwt.ts）、Discovery 文档、授权重定向 iss 参数
  * 等所有 issuer 相关场景统一使用此函数，避免多处回退链不一致。

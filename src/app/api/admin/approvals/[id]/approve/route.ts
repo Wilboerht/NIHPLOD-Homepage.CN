@@ -5,6 +5,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { approveApprovalRequest } from "@/lib/admin-approval";
 import { approvalErrorResponse } from "@/lib/admin-approval-http";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 export const dynamic = "force-dynamic";
 // 审批可能触发 Excel 批量导入（最多 500 行），与导入执行接口保持相同超时上限
@@ -41,7 +42,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const rateLimitResponse = await checkAdminRateLimit(request, "approval:review");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const parsed = bodySchema.safeParse(await request.json());
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const parsed = bodySchema.safeParse(bodyResult.data);
     if (!parsed.success) {
       return NextResponse.json(
         {

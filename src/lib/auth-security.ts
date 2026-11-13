@@ -892,7 +892,8 @@ export async function revokeRefreshToken(
   userId: string,
   token?: string,
   clientId?: string | null,
-  reason?: RefreshTokenRevokedReason
+  reason?: RefreshTokenRevokedReason,
+  options?: { strict?: boolean }
 ): Promise<number> {
   try {
     // 显式 null → 仅内部 token；undefined → 全部；字符串 → 指定 client
@@ -928,6 +929,7 @@ export async function revokeRefreshToken(
     }
   } catch (error) {
     apiConsole.error("[RevokeRefreshToken] 撤销失败:", error);
+    if (options?.strict) throw error;
     return 0;
   }
 }

@@ -402,7 +402,8 @@ describe("OAuth 2.0 / OIDC 端到端流程", () => {
       userId,
       refresh_token,
       undefined,
-      "user_revoke"
+      "user_revoke",
+      { strict: true }
     );
 
     // refresh token 携带 sid，仅撤销该会话（不波及同 user+client 的其它设备会话）

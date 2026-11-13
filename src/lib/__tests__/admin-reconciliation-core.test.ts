@@ -40,9 +40,11 @@ describe("财务对账核心 SQL 边界", () => {
     expect(sql).toContain("pl.\"source\" = 'WEBSITE'");
   });
 
-  it("只有 Excel 来源订单才与 Excel 退款行对账", async () => {
+  it("退款合计使用全部来源的同步记录，避免商城退款误报", async () => {
     await findSpentClaimIssues();
     const sql = sqlText(mocks.queryRaw.mock.calls[0][0]);
-    expect(sql).toContain("c.\"source\" = 'SPENT_IMPORT'");
+    expect(sql).toContain('FROM "SpentSyncRecord"');
+    expect(sql).toContain('c."refundedAmount" <> COALESCE(s.refunded, 0)');
+    expect(sql).not.toContain('c."source" = \'SPENT_IMPORT\'');
   });
 });

@@ -29,6 +29,7 @@ import {
   readJsonBody,
 } from "@/lib/request-body";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
+import { decodeJwt } from "jose";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 
@@ -107,7 +108,8 @@ export async function POST(request: NextRequest) {
     const client = verifyResult.client;
 
     // 已认证阶段：client 级桶，避免共享出口 IP 的子站服务端互相挤占配额
-    const clientLimitResult = await rateLimit(`client:${client_id}`, "oauth-revoke");
+    const clientBucket = client.isPublic ? `client:${client_id}:${ip}` : `client:${client_id}`;
+    const clientLimitResult = await rateLimit(clientBucket, "oauth-revoke");
     if (!clientLimitResult.success) {
       return resJson({ error: "rate_limited", error_description: "子项目请求过于频繁" }, 429);
     }
@@ -123,7 +125,35 @@ export async function POST(request: NextRequest) {
     const tryRevokeRefreshToken = async (): Promise<boolean> => {
       // 验证 JWT 签名以获取 userId
       const refreshPayload = await verifyRefreshToken(token);
-      if (!refreshPayload) return false;
+      if (!refreshPayload) {
+        // 验证失败可能来自 DB 抖动（会话/黑名单查询）。此时解码未验签 payload，
+        // 只用于确认 client 归属后无条件撤销，避免返回 200 但 token 仍可用。
+        try {
+          const unverified = decodeJwt(token) as {
+            id?: string;
+            client_id?: string;
+            sid?: string;
+          };
+          if (unverified.client_id !== client_id || !unverified.id) return false;
+          await revokeRefreshToken(unverified.id, token, undefined, "user_revoke", {
+            strict: true,
+          });
+          if (unverified.sid) {
+            await prisma.oAuthSession.updateMany({
+              where: { sessionId: unverified.sid, revokedAt: null },
+              data: { revokedAt: new Date() },
+            });
+          } else {
+            await prisma.oAuthSession.updateMany({
+              where: { userId: unverified.id, clientId: client_id, revokedAt: null },
+              data: { revokedAt: new Date() },
+            });
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      }
 
       // 所有权校验：OAuth refresh token 携带 client_id 时，必须与本请求 client_id 一致
       if (refreshPayload.client_id && refreshPayload.client_id !== client_id) {
@@ -149,7 +179,8 @@ export async function POST(request: NextRequest) {
         refreshPayload.id,
         token,
         undefined,
-        "user_revoke"
+        "user_revoke",
+        { strict: true }
       );
 
       // 同步撤销关联的 OAuthSession（登出后会话一并失效）。
@@ -182,7 +213,26 @@ export async function POST(request: NextRequest) {
 
     const tryRevokeAccessToken = async (): Promise<boolean> => {
       const accessPayload = await verifyOAuthAccessToken(token);
-      if (!accessPayload) return false;
+      if (!accessPayload) {
+        // 验证失败可能来自 DB 抖动；解码 payload 仅用于确认 client 归属后
+        // 无条件写 jti 黑名单，写失败会抛错并由外层返回 503。
+        try {
+          const unverified = decodeJwt(token) as {
+            id?: string;
+            client_id?: string;
+            jti?: string;
+            exp?: number;
+          };
+          if (unverified.client_id !== client_id || !unverified.jti) return false;
+          await revokeAccessToken(
+            unverified.jti,
+            unverified.exp ? unverified.exp * 1000 : undefined
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      }
 
       // 所有权校验：client 只能撤销颁发给自己的 access_token
       if (accessPayload.client_id !== client_id) {

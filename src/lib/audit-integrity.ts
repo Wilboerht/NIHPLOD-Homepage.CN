@@ -10,9 +10,9 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import {
+  createAuditDigestHasher,
   getAuditIntegrityKey,
   getAuditIntegrityKeyVersion,
-  computeAuditDigest,
 } from "./audit-chain";
 import { verifyArchiveBackup, verifyArchiveDay, type AuditStream } from "./audit-archive";
 
@@ -131,8 +131,67 @@ function ssoSelect() {
   } as const;
 }
 
-function computeDigest(rows: Array<Record<string, unknown>>): string {
-  return computeAuditDigest(rows);
+async function digestStreamRows(
+  stream: AuditStream,
+  day: AuditDayRange,
+  pageSize = 1000
+): Promise<{ count: number; digest: string }> {
+  const hasher = createAuditDigestHasher();
+  let count = 0;
+  let cursor: { createdAt: Date; id: string } | null = null;
+
+  for (;;) {
+    const baseWhere = { createdAt: { gte: day.fromAt, lt: day.toAt } };
+    if (stream === "audit") {
+      const rows = (await prisma.auditLog.findMany({
+        where: cursor
+          ? {
+              createdAt: { gte: day.fromAt, lt: day.toAt },
+              OR: [
+                { createdAt: { gt: cursor.createdAt } },
+                { createdAt: cursor.createdAt, id: { gt: cursor.id } },
+              ],
+            }
+          : baseWhere,
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: pageSize,
+        select: auditSelect(),
+      })) as Array<{ createdAt: Date; id: string } & Record<string, unknown>>;
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        hasher.update(row as unknown as Record<string, unknown>);
+        count += 1;
+      }
+      const last = rows[rows.length - 1];
+      cursor = { createdAt: last.createdAt, id: last.id };
+      if (rows.length < pageSize) break;
+    } else {
+      const rows = (await prisma.ssoAuditEvent.findMany({
+        where: cursor
+          ? {
+              createdAt: { gte: day.fromAt, lt: day.toAt },
+              OR: [
+                { createdAt: { gt: cursor.createdAt } },
+                { createdAt: cursor.createdAt, id: { gt: cursor.id } },
+              ],
+            }
+          : baseWhere,
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        take: pageSize,
+        select: ssoSelect(),
+      })) as Array<{ createdAt: Date; id: string } & Record<string, unknown>>;
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        hasher.update(row as unknown as Record<string, unknown>);
+        count += 1;
+      }
+      const last = rows[rows.length - 1];
+      cursor = { createdAt: last.createdAt, id: last.id };
+      if (rows.length < pageSize) break;
+    }
+  }
+
+  return { count, digest: hasher.digest() };
 }
 
 function signaturePayload(input: {
@@ -171,29 +230,12 @@ function computeAnchorSignature(input: {
     .digest("hex");
 }
 
-async function loadStreamRows(stream: AuditStream, day: AuditDayRange) {
-  if (stream === "audit") {
-    return prisma.auditLog.findMany({
-      where: { createdAt: { gte: day.fromAt, lt: day.toAt } },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      select: auditSelect(),
-    });
-  }
-  return prisma.ssoAuditEvent.findMany({
-    where: { createdAt: { gte: day.fromAt, lt: day.toAt } },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: ssoSelect(),
-  });
-}
-
 /** 生成/复用某流某日的 v2 锚点。 */
 export async function anchorAuditStreamForDay(
   stream: AuditStream,
   dayRange: AuditDayRange = getUtc8DayRange(new Date(Date.now() - DAY_MS))
 ): Promise<AnchorResult> {
-  const rows = await loadStreamRows(stream, dayRange);
-  const digest = computeDigest(rows as unknown as Array<Record<string, unknown>>);
-  const count = rows.length;
+  const { digest, count } = await digestStreamRows(stream, dayRange);
 
   const existing = await prisma.auditLogAnchor.findFirst({
     where: { stream, day: dayRange.day, signatureVersion: 2 },
@@ -348,9 +390,7 @@ async function verifyAnchorChain(anchor: {
     select: { day: true, digest: true },
   });
   if (!previous) {
-    return anchor.prevAnchorHash
-      ? { ok: false, error: "ANCHOR_CHAIN_PREV_MISSING" }
-      : { ok: true };
+    return anchor.prevAnchorHash ? { ok: false, error: "ANCHOR_CHAIN_PREV_MISSING" } : { ok: true };
   }
   // 防御异常/测试替身返回当前锚点自身；生产查询带 day < 条件不会命中。
   if (previous.day >= anchor.day) return { ok: true };
@@ -469,14 +509,13 @@ export async function verifyAuditDay(
     };
   }
 
-  const rows = await loadStreamRows(stream, dayRange);
-  const digest = computeDigest(rows as unknown as Array<Record<string, unknown>>);
-  if (digest !== anchor.digest || rows.length !== anchor.count) {
+  const { digest, count } = await digestStreamRows(stream, dayRange);
+  if (digest !== anchor.digest || count !== anchor.count) {
     return {
       stream,
       day,
       verified: false,
-      count: rows.length,
+      count,
       digest,
       signatureVersion: anchor.signatureVersion,
       keyVersion: anchor.keyVersion,
@@ -507,7 +546,7 @@ export async function verifyAuditDay(
     stream,
     day,
     verified: signatureOk,
-    count: rows.length,
+    count,
     digest,
     signatureVersion: anchor.signatureVersion,
     keyVersion: anchor.keyVersion,

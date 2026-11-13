@@ -81,6 +81,10 @@ export async function revokeSecurityAuthorization(params: {
     select: { id: true, sessionId: true },
     orderBy: { createdAt: "desc" },
   });
+  // 即使没有活跃 session，也必须先清理未使用授权码：
+  // 撤销前签发、仍在 5 分钟有效期内的 code 仍可兑换 token 并创建新会话。
+  await prisma.oAuthAuthorizationCode.deleteMany({ where: { userId, clientId, used: false } });
+
   if (activeSessions.length === 0) {
     return { ok: false, status: 404, code: "NOT_FOUND", message: "未找到该授权记录" };
   }

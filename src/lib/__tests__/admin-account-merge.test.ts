@@ -84,6 +84,8 @@ vi.mock("@/lib/security-notify", () => ({ enqueueSecurityActionNotification: moc
 vi.mock("@/lib/points", () => ({
   calculateLevel: (spent: number) =>
     spent >= 5000 ? "GOLD" : spent >= 1000 ? "SILVER" : "REGULAR",
+  invalidateProfileCache: vi.fn(),
+  pushMembershipUpdateWebhook: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/logger", () => ({ apiConsole: { warn: vi.fn() } }));
 

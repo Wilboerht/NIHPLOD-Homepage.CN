@@ -113,17 +113,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (!result.ok) {
-      await finishAuditLog(auditId, "FAILURE", { code: result.code });
+      await finishAuditLog(auditId, result.code === "PARTIAL" ? "PARTIAL" : "FAILURE", {
+        code: result.code,
+        revertedRows: result.revertedRows ?? 0,
+      });
       const statusMap: Record<string, number> = {
         NOT_FOUND: 404,
         ALREADY_UNDONE: 409,
         NOTHING_TO_UNDO: 400,
         NOT_COMPLETED: 409,
+        UNDO_IN_PROGRESS: 409,
+        PARTIAL: 409,
         REVERSAL_EXCEEDS_BALANCE: 409,
         USER_DELETED: 409,
       };
       return NextResponse.json(
-        { success: false, error: { code: result.code, message: result.message } },
+        {
+          success: false,
+          error: { code: result.code, message: result.message },
+          data: { revertedRows: result.revertedRows ?? 0 },
+        },
         { status: statusMap[result.code] ?? 500 }
       );
     }
