@@ -159,6 +159,14 @@ export type AuditAction =
   | "ba_complaint_status_update"
   | "ba_complaint_delete"
   | "ba_emergency_password_reset"
+  | "ba_certificate_submit"
+  | "ba_certificate_issue"
+  | "ba_certificate_update"
+  | "ba_certificate_reject"
+  | "ba_certificate_revoke"
+  | "ba_certificate_delete"
+  | "ba_certificate_download"
+  | "ba_certificate_seal_upload"
   | "break_glass_view"
   | "admin_login_failed"
   | "admin_totp_failed"
@@ -219,6 +227,7 @@ export type AuditTargetType =
   | "point_redemption"
   | "ba_complaint"
   | "ba_emergency_account"
+  | "ba_certificate"
   | "oauth_session"
   | "point_campaign"
   | "audit_hold"
@@ -367,6 +376,14 @@ export const AUDIT_ACTIONS = [
   "ba_complaint_status_update",
   "ba_complaint_delete",
   "ba_emergency_password_reset",
+  "ba_certificate_submit",
+  "ba_certificate_issue",
+  "ba_certificate_update",
+  "ba_certificate_reject",
+  "ba_certificate_revoke",
+  "ba_certificate_delete",
+  "ba_certificate_download",
+  "ba_certificate_seal_upload",
   "break_glass_view",
   "device_force_logout",
   "admin_login_failed",
@@ -430,6 +447,7 @@ export const AUDIT_TARGET_TYPES = [
   "point_redemption",
   "ba_complaint",
   "ba_emergency_account",
+  "ba_certificate",
   "point_campaign",
   "audit_hold",
   "audit_retention",

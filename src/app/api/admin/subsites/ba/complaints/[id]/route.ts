@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { checkAdminRateLimit, verifyAuth } from "@/lib/auth";
-import {
-  canReadBaComplaints,
-  hasAdminPermission,
-} from "@/lib/admin-permissions";
+import { canReadBaComplaints, hasAdminPermission, resolveBaRole } from "@/lib/admin-permissions";
 import { baInternalRequest } from "@/lib/ba-internal";
 import {
   mapBaError,
@@ -37,19 +34,17 @@ function actorFromAdmin(admin: {
   email: string;
   name: string;
   role: string;
+  permissionOverrides?: string[] | null;
 }) {
   return {
     id: admin.id,
     email: admin.email,
     name: admin.name,
-    role: admin.role,
+    role: resolveBaRole(admin.role, admin.permissionOverrides) ?? admin.role,
   };
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await verifyAuth(request);
   if (!admin) return jsonError("UNAUTHORIZED", "未授权管理员访问", 401);
   if (!canReadBaComplaints(admin)) {
@@ -76,10 +71,7 @@ export async function GET(
   );
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await verifyAuth(request);
   if (!admin) return jsonError("UNAUTHORIZED", "未授权管理员访问", 401);
   if (!hasAdminPermission(admin, "ba:complaints:write")) {

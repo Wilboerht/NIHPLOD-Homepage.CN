@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminRateLimit, verifyAuth } from "@/lib/auth";
-import { hasAdminPermission } from "@/lib/admin-permissions";
+import { hasAdminPermission, resolveBaRole } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { baInternalRequest } from "@/lib/ba-internal";
 import { mapBaError } from "@/lib/ba-complaints";
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
           id: admin.id,
           email: admin.email,
           name: admin.name,
-          role: admin.role,
+          role: resolveBaRole(admin.role, admin.permissionOverrides) ?? admin.role,
         },
       },
       timeoutMs: 8000,

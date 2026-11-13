@@ -13,6 +13,26 @@ const MUTATING_EXPORT = /export\s+(?:async\s+function|const)\s+(POST|PUT|PATCH|D
 
 /** 明确不需要写审计的端点（必须写原因） */
 const ALLOWLIST = new Map<string, string>([
+  [
+    "src/app/api/admin/subsites/ba/certificates/[id]/issue/route.ts",
+    "audit is written in ba-certificate-action-route.ts",
+  ],
+  [
+    "src/app/api/admin/subsites/ba/certificates/[id]/reject/route.ts",
+    "audit is written in ba-certificate-action-route.ts",
+  ],
+  [
+    "src/app/api/admin/subsites/ba/certificates/[id]/revoke/route.ts",
+    "audit is written in ba-certificate-action-route.ts",
+  ],
+  [
+    "src/app/api/admin/subsites/ba/certificates/[id]/delete/route.ts",
+    "audit is written in ba-certificate-action-route.ts",
+  ],
+  [
+    "src/app/api/admin/subsites/ba/certificates/preview/route.ts",
+    "preview is read-only and does not mutate certificate state",
+  ],
   // 审批路由的审计在 src/lib/admin-approval.ts 内统一写入，静态扫描看不到
   ["src/app/api/admin/approvals/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],
   ["src/app/api/admin/approvals/[id]/approve/route.ts", "审计在 src/lib/admin-approval.ts 内完成"],

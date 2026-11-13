@@ -108,6 +108,14 @@ export const ADMIN_PERMISSIONS = [
   "ba:complaints:write",
   "ba:complaints:delete",
   "ba:complaints:sensitive:read",
+  "ba:certificates:read",
+  "ba:certificates:download",
+  "ba:certificates:submit",
+  "ba:certificates:issue",
+  "ba:certificates:update",
+  "ba:certificates:revoke",
+  "ba:certificates:delete",
+  "ba:certificates:sensitive:read",
 
   "legal:read",
   "legal:write",
@@ -230,6 +238,14 @@ export const PERMISSION_GROUPS: { group: string; permissions: AdminPermission[] 
       "ba:complaints:write",
       "ba:complaints:delete",
       "ba:complaints:sensitive:read",
+      "ba:certificates:read",
+      "ba:certificates:download",
+      "ba:certificates:submit",
+      "ba:certificates:issue",
+      "ba:certificates:update",
+      "ba:certificates:revoke",
+      "ba:certificates:delete",
+      "ba:certificates:sensitive:read",
     ],
   },
   {
@@ -312,6 +328,14 @@ export const PERMISSION_LABELS: Record<AdminPermission, string> = {
   "ba:complaints:write": "BA 举报处理（状态/审核备注）",
   "ba:complaints:delete": "BA 举报删除（软删除）",
   "ba:complaints:sensitive:read": "查看 BA 举报完整联系方式与证据",
+  "ba:certificates:read": "BA 证书查看",
+  "ba:certificates:download": "BA 证书下载 PNG/PDF",
+  "ba:certificates:submit": "BA 证书提报/编辑待审",
+  "ba:certificates:issue": "BA 证书核发（高风险）",
+  "ba:certificates:update": "BA 待审证书修改",
+  "ba:certificates:revoke": "BA 证书吊销（高风险）",
+  "ba:certificates:delete": "BA 证书软删除",
+  "ba:certificates:sensitive:read": "BA 证书敏感字段查看（手机号）",
   "legal:read": "法务文档查看（服务条款/隐私政策）",
   "legal:write": "法务文档编辑与发布（高风险）",
 };
@@ -370,9 +394,7 @@ export function canReadBaComplaints(admin: {
   permissions?: string[] | null;
   permissionOverrides?: string[] | null;
 }): boolean {
-  return BA_COMPLAINT_READ_PERMISSIONS.some((permission) =>
-    hasAdminPermission(admin, permission)
-  );
+  return BA_COMPLAINT_READ_PERMISSIONS.some((permission) => hasAdminPermission(admin, permission));
 }
 
 /**

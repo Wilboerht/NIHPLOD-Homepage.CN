@@ -123,6 +123,14 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   ba_complaint_status_update: "处理 BA 举报状态",
   ba_complaint_delete: "删除 BA 举报（软删除）",
   ba_emergency_password_reset: "重置 BA 应急账号密码",
+  ba_certificate_submit: "BA 证书提报",
+  ba_certificate_issue: "BA 证书核发",
+  ba_certificate_update: "BA 证书修改",
+  ba_certificate_reject: "BA 证书拒绝",
+  ba_certificate_revoke: "BA 证书吊销",
+  ba_certificate_delete: "BA 证书删除",
+  ba_certificate_download: "BA 证书下载",
+  ba_certificate_seal_upload: "BA 证书签章上传",
   break_glass_view: "查看测肤子站应急账号",
   device_force_logout: "强制下线设备",
   admin_login_failed: "管理员登录失败",
@@ -210,6 +218,7 @@ export const AUDIT_TARGET_TYPE_LABELS: Record<string, string> = {
   legal_document: "法务文档",
   ba_complaint: "BA 举报",
   ba_emergency_account: "BA 应急账号",
+  ba_certificate: "BA 证书",
 };
 
 export const BA_SSO_ACTION_ALIASES: Record<string, string> = {

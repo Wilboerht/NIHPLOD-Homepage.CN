@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   Award,
@@ -165,10 +166,18 @@ function BaDashboardContent() {
         title="BA 证书平台"
         description="品牌授权与打假举报概览（只读）"
         actions={
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={loading ? "mr-1.5 h-4 w-4 animate-spin" : "mr-1.5 h-4 w-4"} />
-            刷新
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/subsites/ba/certificates"
+              className="inline-flex h-9 items-center rounded-lg border border-brand-charcoal/20 px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+            >
+              证书管理
+            </Link>
+            <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+              <RefreshCw className={loading ? "mr-1.5 h-4 w-4 animate-spin" : "mr-1.5 h-4 w-4"} />
+              刷新
+            </Button>
+          </div>
         }
       />
 
@@ -181,7 +190,8 @@ function BaDashboardContent() {
           <div className="flex items-start gap-2 text-sm text-amber-800">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              BA 服务暂时不可用：{payload.reason === "not_configured" ? "内部 API 未配置" : "请稍后重试"}
+              BA 服务暂时不可用：
+              {payload.reason === "not_configured" ? "内部 API 未配置" : "请稍后重试"}
             </span>
           </div>
         </PanelCard>
@@ -223,7 +233,11 @@ function BaDashboardContent() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <StatCard label="经销商" value={dashboard.dealers.total} icon={<Building2 className="h-5 w-5" />} />
+            <StatCard
+              label="经销商"
+              value={dashboard.dealers.total}
+              icon={<Building2 className="h-5 w-5" />}
+            />
             <StatCard
               label="管理员"
               value={dashboard.admins.total}
@@ -349,7 +363,10 @@ function BaDashboardContent() {
               {recentAudit.length > 0 ? (
                 <ul className="mt-3 divide-y divide-brand-charcoal/5">
                   {recentAudit.map((item) => (
-                    <li key={item.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 py-2.5 text-sm"
+                    >
                       <span className="min-w-0 truncate">{item.action}</span>
                       <span className="shrink-0 text-xs text-brand-charcoal/55">
                         {item.actorName || "系统"} · {formatDateTime(item.createdAt)}
