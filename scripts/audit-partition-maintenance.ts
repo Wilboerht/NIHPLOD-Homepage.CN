@@ -27,6 +27,7 @@ async function main() {
       throw new Error('"AuditLog" 尚未分区，请先执行分区迁移');
     }
 
+    await client.query("SET TIME ZONE 'UTC'");
     const ahead = readAhead();
     const now = new Date();
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -40,9 +41,10 @@ async function main() {
           .slice(0, 10)}`
       );
       if (process.argv.includes("--plan")) continue;
+      const fromLiteral = from.toISOString().slice(0, 19).replace("T", " ");
+      const toLiteral = to.toISOString().slice(0, 19).replace("T", " ");
       await client.query(
-        `CREATE TABLE IF NOT EXISTS "${name}" PARTITION OF "AuditLog" FOR VALUES FROM ($1) TO ($2)`,
-        [from, to]
+        `CREATE TABLE IF NOT EXISTS "${name}" PARTITION OF "AuditLog" FOR VALUES FROM ('${fromLiteral}') TO ('${toLiteral}')`
       );
     }
     if (process.argv.includes("--plan")) {

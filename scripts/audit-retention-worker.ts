@@ -8,17 +8,9 @@
  *   * * * * * root cd /var/www/NIHPLOD-Homepage.CN && /usr/local/bin/node node_modules/.bin/tsx \
  *     scripts/audit-retention-worker.ts >> /var/log/nihplod-audit-retention.log 2>&1
  */
+import "./load-env";
 import { config as dotenvConfig } from "dotenv";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
-
-for (const file of [".env.local", ".env.production", ".env"]) {
-  const path = join(process.cwd(), file);
-  if (existsSync(path)) {
-    dotenvConfig({ path, quiet: true });
-    break;
-  }
-}
 
 const secureEnv = process.env.AUDIT_RETENTION_ENV_FILE || "/etc/nihplod/audit-retention.env";
 if (existsSync(secureEnv)) {
