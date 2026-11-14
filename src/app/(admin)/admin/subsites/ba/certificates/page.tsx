@@ -101,7 +101,8 @@ function CertificatesContent() {
   }, [page, search, status]);
 
   useEffect(() => {
-    deferInEffect(load);
+    const timer = window.setTimeout(() => deferInEffect(load), 300);
+    return () => window.clearTimeout(timer);
   }, [load]);
 
   useEffect(() => {
