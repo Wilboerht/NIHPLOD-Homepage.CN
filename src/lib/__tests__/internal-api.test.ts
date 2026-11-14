@@ -15,6 +15,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import {
+  generateInternalActorSignature,
   generateInternalApiSignature,
   verifyInternalApiSignature,
   createSignedInternalRequestHeaders,
@@ -44,6 +45,31 @@ describe("internal-api", () => {
 
   afterEach(() => {
     process.env = originalEnv;
+  });
+
+  it("actor header is bound to a separate HMAC signature", () => {
+    const actorHeader = Buffer.from(
+      JSON.stringify({ externalAdminId: "admin-1" }),
+      "utf8"
+    ).toString("base64url");
+    const headers = createSignedInternalRequestHeaders(
+      "advisor",
+      "GET",
+      "/api/internal/admin/certificates",
+      "",
+      { actorHeader }
+    );
+    expect(headers?.["X-Internal-Actor-Signature"]).toMatch(/^[a-f0-9]{64}$/);
+    const timestamp = Number(headers?.["X-Internal-API-Timestamp"]);
+    const nonce = headers?.["X-Internal-API-Nonce"] ?? "";
+    expect(headers?.["X-Internal-Actor-Signature"]).toBe(
+      generateInternalActorSignature(
+        VALID_SECRET,
+        timestamp,
+        nonce,
+        actorHeader
+      )
+    );
   });
 
   describe("generateInternalApiSignature / verifyInternalApiSignature", () => {

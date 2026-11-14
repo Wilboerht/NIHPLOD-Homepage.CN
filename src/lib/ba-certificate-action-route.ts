@@ -6,6 +6,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { parseAdminJsonBody } from "@/lib/request-body";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 import { mapBaError } from "@/lib/ba-complaints";
 import { baCertificateRequest } from "@/lib/ba-certificate-proxy";
 import type { BaCertificateListItem } from "@/lib/ba-certificates";
@@ -53,7 +54,9 @@ export async function handleBaCertificateAction(
     idempotencyKey?: string;
   }>(request);
   if (!parsed.ok) return parsed.response;
-  const reason = String(parsed.data.reason ?? "").trim();
+  const reason = String(parsed.data.reason ?? "")
+    .trim()
+    .slice(0, 1000);
   if (options.requireReason && !reason) {
     return NextResponse.json(
       { success: false, error: { code: "REASON_REQUIRED", message: "请填写操作原因" } },
@@ -88,7 +91,7 @@ export async function handleBaCertificateAction(
     adminId: admin.id,
     detail: { action: options.action, idempotencyKey },
     request,
-  }).catch(() => {});
+  }).catch((error) => apiConsole.error("[BaCertificateAction] 审计写入失败", error));
 
   return NextResponse.json({ success: true, data: result.data }, { headers: NO_STORE });
 }

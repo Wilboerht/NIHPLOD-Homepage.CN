@@ -4,6 +4,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { mapBaError } from "@/lib/ba-complaints";
 import { baCertificateRequest, baCertificateStream } from "@/lib/ba-certificate-proxy";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 import type { BaCertificateDetail } from "@/lib/ba-certificates";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     adminId: admin.id,
     detail: { format },
     request,
-  }).catch(() => {});
+  }).catch((error) => apiConsole.error("[BaCertificateDownload] 审计写入失败", error));
 
   const headers = new Headers();
   headers.set(

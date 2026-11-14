@@ -27,6 +27,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import type { BaDashboardPayload } from "@/types/ba-dashboard";
 
 const COMPLAINT_STATUS_LABELS: Record<string, string> = {
@@ -75,6 +76,7 @@ function StatCard({
 }
 
 function BaDashboardContent() {
+  const { can } = useAdminPermissions();
   const [payload, setPayload] = useState<BaDashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,12 +169,14 @@ function BaDashboardContent() {
         description="品牌授权与打假举报概览（只读）"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/admin/subsites/ba/certificates"
-              className="inline-flex h-9 items-center rounded-lg border border-brand-charcoal/20 px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
-            >
-              证书管理
-            </Link>
+            {can("ba:certificates:read") && (
+              <Link
+                href="/admin/subsites/ba/certificates"
+                className="inline-flex h-9 items-center rounded-lg border border-brand-charcoal/20 px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+              >
+                证书管理
+              </Link>
+            )}
             <Button variant="outline" size="sm" onClick={load} disabled={loading}>
               <RefreshCw className={loading ? "mr-1.5 h-4 w-4 animate-spin" : "mr-1.5 h-4 w-4"} />
               刷新

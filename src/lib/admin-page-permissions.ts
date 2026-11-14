@@ -174,7 +174,7 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
   },
   {
     match: (pathname) => pathname === "/admin/subsites/ba/certificates",
-    anyOf: ["ba:certificates:read"],
+    allOf: ["ba:certificates:read"],
   },
 ];
 

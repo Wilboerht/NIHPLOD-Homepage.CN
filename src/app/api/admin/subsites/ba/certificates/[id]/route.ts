@@ -5,6 +5,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { parseAdminJsonBody } from "@/lib/request-body";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 import { mapBaError } from "@/lib/ba-complaints";
 import { baCertificateRequest } from "@/lib/ba-certificate-proxy";
 import type { BaCertificateDetail } from "@/lib/ba-certificates";
@@ -88,6 +89,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     adminId: admin.id,
     detail: { idempotencyKey },
     request,
-  });
+  }).catch((error) => apiConsole.error("[BaCertificateUpdate] 审计写入失败", error));
   return NextResponse.json({ success: true, data: result.data }, { headers: NO_STORE });
 }

@@ -6,6 +6,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { parseAdminJsonBody } from "@/lib/request-body";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 import { mapBaError } from "@/lib/ba-complaints";
 import { baCertificateRequest } from "@/lib/ba-certificate-proxy";
 import type { BaCertificateListData } from "@/lib/ba-certificates";
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
     adminId: admin.id,
     detail: { mode, idempotencyKey },
     request,
-  }).catch(() => {});
+  }).catch((error) => apiConsole.error("[BaCertificateCreate] 审计写入失败", error));
 
   return NextResponse.json({ success: true, data: result.data }, { headers: NO_STORE });
 }

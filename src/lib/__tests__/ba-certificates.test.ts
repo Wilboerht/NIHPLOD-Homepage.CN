@@ -41,6 +41,20 @@ describe("BA certificate permissions", () => {
     );
   });
 
+  it("explicit issue-only admin can issue without ba:admin or read", () => {
+    const admin = {
+      ...base,
+      role: "admin",
+      permissions: ["ba:certificates:issue"],
+    };
+    expect(hasBaCertificateCapability(admin, "ba.certificates.issue")).toBe(true);
+    expect(hasBaCertificateCapability(admin, "ba.certificates.read")).toBe(false);
+    const payload = JSON.parse(Buffer.from(baActorHeader(admin), "base64url").toString("utf8")) as {
+      baRole: string | null;
+    };
+    expect(payload.baRole).toBeNull();
+  });
+
   it("actor header contains canonical BA role and capabilities", () => {
     const admin = {
       ...base,

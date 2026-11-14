@@ -260,6 +260,12 @@ export const adminNavGroups: NavGroup[] = [
         icon: BadgeCheck,
         permissionsAny: ["ba:access", "ba:admin"],
       },
+      {
+        title: "BA 证书管理",
+        href: "/admin/subsites/ba/certificates",
+        icon: FileCheck,
+        permission: "ba:certificates:read",
+      },
     ],
   },
 ];

@@ -6,6 +6,7 @@ import { readFormDataBody } from "@/lib/request-body";
 import { mapBaError } from "@/lib/ba-complaints";
 import { baCertificateRequest } from "@/lib/ba-certificate-proxy";
 import { createAuditLog } from "@/lib/audit";
+import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     adminId: admin.id,
     detail: { size: file.size, type: file.type },
     request,
-  }).catch(() => {});
+  }).catch((error) => apiConsole.error("[BaCertificateSeal] 审计写入失败", error));
   return NextResponse.json(
     { success: true, data: result.data },
     { headers: { "Cache-Control": "no-store" } }

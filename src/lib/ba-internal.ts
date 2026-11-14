@@ -49,10 +49,14 @@ export async function baInternalRequest<T>(
   const method = options.method ?? "GET";
   const bodyText = options.body !== undefined ? JSON.stringify(options.body) : "";
   const { search, canonical } = buildQuery(options.query);
+  const actorHeader =
+    options.headers?.["x-internal-actor"] ??
+    options.headers?.["X-Internal-Actor"];
 
   const headers = createSignedInternalRequestHeaders("ba", method, path, bodyText, {
     query: canonical,
     forceQueryBinding: true,
+    actorHeader,
   });
   if (!headers) {
     return {
@@ -125,9 +129,13 @@ export async function baInternalStream(
   const method = options.method ?? "GET";
   const bodyText = options.body !== undefined ? JSON.stringify(options.body) : "";
   const { search, canonical } = buildQuery(options.query);
+  const actorHeader =
+    options.headers?.["x-internal-actor"] ??
+    options.headers?.["X-Internal-Actor"];
   const headers = createSignedInternalRequestHeaders("ba", method, path, bodyText, {
     query: canonical,
     forceQueryBinding: true,
+    actorHeader,
   });
   if (!headers) {
     return {

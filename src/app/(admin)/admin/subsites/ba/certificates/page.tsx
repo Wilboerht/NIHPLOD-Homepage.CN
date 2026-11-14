@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileCheck2, Plus, RefreshCw, Search } from "lucide-react";
 import { apiGet, apiPost, apiRequest, getApiErrorMessage } from "@/lib/api-client";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -78,10 +78,13 @@ function CertificatesContent() {
   const [detail, setDetail] = useState<BaCertificateDetail | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const loadRequestRef = useRef(0);
+  const submitKeyRef = useRef<{ signature: string; key: string } | null>(null);
 
   const pageSize = 20;
 
   const load = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -91,12 +94,20 @@ function CertificatesContent() {
         status,
         q: search || undefined,
       });
+      if (requestId !== loadRequestRef.current) return;
+      const nextTotalPages = Math.max(1, Math.ceil(data.total / pageSize));
+      if (page > nextTotalPages) {
+        setPage(nextTotalPages);
+        return;
+      }
       setItems(data.items);
       setTotal(data.total);
     } catch (err) {
-      setError(getApiErrorMessage(err, "加载证书失败"));
+      if (requestId === loadRequestRef.current) {
+        setError(getApiErrorMessage(err, "加载证书失败"));
+      }
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
   }, [page, search, status]);
 
@@ -226,7 +237,11 @@ function CertificatesContent() {
   const submitDraft = async () => {
     setActionLoading(true);
     try {
-      const idempotencyKey = crypto.randomUUID();
+      const signature = JSON.stringify({ editingId, formMode, draft });
+      if (!submitKeyRef.current || submitKeyRef.current.signature !== signature) {
+        submitKeyRef.current = { signature, key: crypto.randomUUID() };
+      }
+      const idempotencyKey = submitKeyRef.current.key;
       const result = await withStepUp(() =>
         editingId
           ? apiRequest<BaCertificateListItem>(
@@ -243,6 +258,7 @@ function CertificatesContent() {
             })
       );
       if (!result) return;
+      submitKeyRef.current = null;
       toast.success(editingId ? "证书已更新" : formMode === "issue" ? "证书已核发" : "证书已提报");
       setFormOpen(false);
       await load();
@@ -666,6 +682,9 @@ function CertificatesContent() {
                         <div className="font-medium">{item.action}</div>
                         {item.comment && (
                           <div className="mt-1 text-brand-charcoal/70">{item.comment}</div>
+                        )}
+                        {item.reason && (
+                          <div className="mt-1 text-brand-charcoal/60">原因：{item.reason}</div>
                         )}
                         <div className="mt-1 text-brand-charcoal/45">
                           {item.actorName ?? "-"} ·{" "}

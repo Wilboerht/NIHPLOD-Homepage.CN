@@ -179,6 +179,17 @@ let legacySignatureWarned = false;
  *   `METHOD|path|query|timestamp|nonce|bodyHash`（绑定 query，防篡改）；
  *   不传时保持旧格式 `METHOD|path|timestamp|nonce|bodyHash`（仅过渡期使用）
  */
+export function generateInternalActorSignature(
+  secret: string,
+  timestamp: number,
+  nonce: string,
+  actorHeader: string
+): string {
+  return createHmac("sha256", secret)
+    .update(`ACTOR|${timestamp}|${nonce}|${actorHeader}`)
+    .digest("hex");
+}
+
 export function generateInternalApiSignature(
   secret: string,
   method: string,
@@ -211,7 +222,11 @@ export function createSignedInternalRequestHeaders(
   method: string,
   path: string,
   bodyText = "",
-  options?: { query?: string; forceQueryBinding?: boolean }
+  options?: {
+    query?: string;
+    forceQueryBinding?: boolean;
+    actorHeader?: string;
+  }
 ): Record<string, string> | null {
   const { keys } = getInternalApiKeys();
   const config = [...keys.values()].find((item) => item.project === project);
@@ -231,12 +246,23 @@ export function createSignedInternalRequestHeaders(
     bodyHash,
     useQueryBinding ? (options?.query ?? "") : undefined
   );
+  const actorSignature = options?.actorHeader
+    ? generateInternalActorSignature(
+        config.secret,
+        timestamp,
+        nonce,
+        options.actorHeader
+      )
+    : null;
 
   return {
     "X-Internal-API-Key": config.key,
     "X-Internal-API-Timestamp": String(timestamp),
     "X-Internal-API-Nonce": nonce,
     "X-Internal-API-Signature": signature,
+    ...(actorSignature
+      ? { "X-Internal-Actor-Signature": actorSignature }
+      : {}),
   };
 }
 
