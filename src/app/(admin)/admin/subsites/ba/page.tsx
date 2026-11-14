@@ -20,6 +20,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { PanelCard } from "@/components/admin/PanelCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -65,9 +66,9 @@ function StatCard({
     <PanelCard className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium text-brand-charcoal/60">{label}</p>
+          <p className="text-xs font-medium text-brand-charcoal/65">{label}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums text-brand-charcoal">{value}</p>
-          {hint && <p className="mt-1 text-[11px] text-brand-charcoal/50">{hint}</p>}
+          {hint && <p className="mt-1 text-[11px] text-brand-charcoal/65">{hint}</p>}
         </div>
         <span className="rounded-lg bg-brand-primary/[0.06] p-2 text-brand-primary">{icon}</span>
       </div>
@@ -185,6 +186,8 @@ function BaDashboardContent() {
         }
       />
 
+      <AdminHubTabs section="ba" />
+
       {error && (
         <PanelCard className="border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</PanelCard>
       )}
@@ -283,27 +286,27 @@ function BaDashboardContent() {
                   </div>
                   <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
                     <div>
-                      <dt className="text-xs text-brand-charcoal/50">用户名</dt>
+                      <dt className="text-xs text-brand-charcoal/65">用户名</dt>
                       <dd className="mt-0.5 font-mono text-brand-charcoal">
                         {emergencyAccount.username}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-brand-charcoal/50">密码</dt>
+                      <dt className="text-xs text-brand-charcoal/65">密码</dt>
                       <dd className="mt-0.5 font-mono text-brand-charcoal">••••••••</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-brand-charcoal/50">最近登录</dt>
+                      <dt className="text-xs text-brand-charcoal/65">最近登录</dt>
                       <dd className="mt-0.5 text-brand-charcoal">
                         {formatDateTime(emergencyAccount.lastLoginAt)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-brand-charcoal/50">BA 角色</dt>
+                      <dt className="text-xs text-brand-charcoal/65">BA 角色</dt>
                       <dd className="mt-0.5 text-brand-charcoal">{emergencyAccount.role ?? "—"}</dd>
                     </div>
                   </dl>
-                  <p className="mt-2 text-xs text-brand-charcoal/50">
+                  <p className="mt-2 text-xs text-brand-charcoal/65">
                     密码只保存哈希，无法查看原密码；重置后新密码只显示一次，请立即保存。
                   </p>
                 </div>
@@ -314,7 +317,7 @@ function BaDashboardContent() {
                       重置密码
                     </Button>
                   ) : (
-                    <p className="max-w-xs text-xs text-brand-charcoal/50 lg:text-right">
+                    <p className="max-w-xs text-xs text-brand-charcoal/65 lg:text-right">
                       {emergencyAccount.exists
                         ? "仅 BA 超级管理员可重置应急密码"
                         : "请先在 BA 服务器运行 npm run init:break-glass"}
@@ -341,7 +344,7 @@ function BaDashboardContent() {
                             <span className="block truncate font-medium">
                               {item.channel || item.descriptionPreview}
                             </span>
-                            <span className="block truncate text-xs text-brand-charcoal/55">
+                            <span className="block truncate text-xs text-brand-charcoal/65">
                               {item.descriptionPreview}
                             </span>
                           </span>
@@ -353,10 +356,10 @@ function BaDashboardContent() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-3 text-sm text-brand-charcoal/55">暂无举报</p>
+                  <p className="mt-3 text-sm text-brand-charcoal/65">暂无举报</p>
                 )
               ) : (
-                <p className="mt-3 text-sm text-brand-charcoal/55">
+                <p className="mt-3 text-sm text-brand-charcoal/65">
                   需要 BA 举报查看权限才能看到举报摘要。
                 </p>
               )}
@@ -372,14 +375,14 @@ function BaDashboardContent() {
                       className="flex items-center justify-between gap-3 py-2.5 text-sm"
                     >
                       <span className="min-w-0 truncate">{item.action}</span>
-                      <span className="shrink-0 text-xs text-brand-charcoal/55">
+                      <span className="shrink-0 text-xs text-brand-charcoal/65">
                         {item.actorName || "系统"} · {formatDateTime(item.createdAt)}
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-3 text-sm text-brand-charcoal/55">暂无审计记录</p>
+                <p className="mt-3 text-sm text-brand-charcoal/65">暂无审计记录</p>
               )}
             </PanelCard>
           </div>
@@ -432,13 +435,13 @@ function BaDashboardContent() {
             新密码只显示一次。关闭后无法再次查看，请立即保存到密码管理器。
           </div>
           <div>
-            <p className="text-xs font-medium text-brand-charcoal/60">用户名</p>
+            <p className="text-xs font-medium text-brand-charcoal/65">用户名</p>
             <code className="mt-1 block rounded-lg bg-brand-charcoal/[0.05] px-3 py-2.5 font-mono text-sm">
               {resetResult?.username}
             </code>
           </div>
           <div>
-            <p className="text-xs font-medium text-brand-charcoal/60">新密码</p>
+            <p className="text-xs font-medium text-brand-charcoal/65">新密码</p>
             <div className="mt-1 flex items-center gap-2">
               <code className="min-w-0 flex-1 break-all rounded-lg bg-brand-charcoal/[0.05] px-3 py-2.5 font-mono text-sm">
                 {resetResult?.password}

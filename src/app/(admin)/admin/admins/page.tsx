@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Search,
   RefreshCw,
   Pencil,
   Trash2,
@@ -29,7 +28,7 @@ import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
 import { formatDateTime } from "@/lib/format";
 import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
-import { RequirePermission } from "@/components/admin";
+import { AdminSearchInput, RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { BreakGlassButton } from "@/components/admin/BreakGlassButton";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
@@ -85,6 +84,7 @@ interface AdminItem {
   permissions: string[];
   totpEnabled: boolean;
   totpResetRequired: boolean;
+  lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -119,13 +119,6 @@ function AdminAdminsContent() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
-  const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
-  const urlSearch = searchParams.get("search") || "";
-  const [prevUrlSearch, setPrevUrlSearch] = useState(urlSearch);
-  if (prevUrlSearch !== urlSearch) {
-    setPrevUrlSearch(urlSearch);
-    setSearchInput(urlSearch);
-  }
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminItem | null>(null);
   const {
@@ -190,11 +183,17 @@ function AdminAdminsContent() {
   } | null>(null);
   const [recoverySaved, setRecoverySaved] = useState(false);
 
-  const pageParam = Number(searchParams.get("page"));
-  const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
-  const search = searchParams.get("search") || "";
-  // 勾选状态：翻页/搜索变化时自动清空
-  const selection = useRowSelection<AdminItem>((admin) => admin.id, `${page}|${search}`);
+const pageParam = Number(searchParams.get("page"));
+const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
+const search = searchParams.get("search") || "";
+const statusFilter = searchParams.get("status") || "";
+const roleFilter = searchParams.get("role") || "";
+const totpFilter = searchParams.get("totp") || "";
+// 勾选状态：翻页/搜索/筛选变化时自动清空
+const selection = useRowSelection<AdminItem>(
+  (admin) => admin.id,
+  `${page}|${search}|${statusFilter}|${roleFilter}|${totpFilter}`
+);
   const { selectedIds } = selection;
   const [showBatchDelete, setShowBatchDelete] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
@@ -204,10 +203,16 @@ function AdminAdminsContent() {
     const isLatest = takeLatestAdmins();
     setLoading(true);
     try {
-      const data = await apiGet<{ admins: AdminItem[]; pagination: typeof pagination }>(
-        "/api/admin/admins",
-        { page, search }
-      );
+        const data = await apiGet<{ admins: AdminItem[]; pagination: typeof pagination }>(
+          "/api/admin/admins",
+          {
+            page,
+            search,
+            status: statusFilter || undefined,
+            role: roleFilter || undefined,
+            totp: totpFilter || undefined,
+          }
+        );
       if (!isLatest()) return;
       setAdmins(data.admins);
       setPagination(data.pagination);
@@ -223,7 +228,16 @@ function AdminAdminsContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, search, error, router, takeLatestAdmins]);
+    }, [
+    page,
+    search,
+    statusFilter,
+    roleFilter,
+    totpFilter,
+    error,
+    router,
+    takeLatestAdmins,
+  ]);
 
   useEffect(() => {
     deferInEffect(fetchAdmins);
@@ -522,43 +536,81 @@ function AdminAdminsContent() {
           }
         />
 
-        {/* 搜索栏 */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-          <div className="relative max-w-md flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
-            <Input
-              aria-label="搜索管理员"
-              placeholder="搜索邮箱/姓名..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && updateParams({ search: searchInput })}
-              className="pl-10"
-            />
-          </div>
-          {canManage && isOwnerActor && selection.selectedCount > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-brand-charcoal/65">
-                已选 {selection.selectedCount} 项
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-red-600 hover:bg-red-50"
-                leftIcon={<Trash2 className="h-4 w-4" />}
-                onClick={() => setShowBatchDelete(true)}
-              >
-                批量删除
-              </Button>
-              <button
-                onClick={selection.clear}
-                aria-label="取消选择"
-                className="inline-flex rounded p-1.5 text-brand-charcoal/65 hover:text-brand-charcoal/80"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      {/* 搜索与筛选 */}
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <AdminSearchInput
+            value={search}
+            onCommit={(next) => updateParams({ search: next })}
+            ariaLabel="搜索管理员"
+            placeholder="搜索邮箱/姓名..."
+            className="lg:max-w-sm lg:flex-1"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-32">
+              <Select
+                aria-label="按状态筛选"
+                value={statusFilter}
+                onChange={(event) => updateParams({ status: event.target.value })}
+                options={[
+                  { value: "", label: "全部状态" },
+                  { value: "ACTIVE", label: "已启用" },
+                  { value: "DISABLED", label: "已禁用" },
+                ]}
+              />
             </div>
-          )}
+            <div className="w-32">
+              <Select
+                aria-label="按角色筛选"
+                value={roleFilter}
+                onChange={(event) => updateParams({ role: event.target.value })}
+                options={[
+                  { value: "", label: "全部角色" },
+                  ...ADMIN_ROLES.map((role) => ({
+                    value: role,
+                    label: ROLE_LABELS[role as AdminRoleValue] ?? role,
+                  })),
+                ]}
+              />
+            </div>
+            <div className="w-36">
+              <Select
+                aria-label="按二次验证筛选"
+                value={totpFilter}
+                onChange={(event) => updateParams({ totp: event.target.value })}
+                options={[
+                  { value: "", label: "全部二次验证" },
+                  { value: "enabled", label: "已启用 TOTP" },
+                  { value: "disabled", label: "未启用 TOTP" },
+                ]}
+              />
+            </div>
+            {canManage && isOwnerActor && selection.selectedCount > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-brand-charcoal/65">
+                  已选 {selection.selectedCount} 项
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-red-600 hover:bg-red-50"
+                  leftIcon={<Trash2 className="h-4 w-4" />}
+                  onClick={() => setShowBatchDelete(true)}
+                >
+                  批量删除
+                </Button>
+                <button
+                  onClick={selection.clear}
+                  aria-label="取消选择"
+                  className="inline-flex rounded p-1.5 text-brand-charcoal/65 hover:text-brand-charcoal/80"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+      </div>
 
         {/* 列表（移动端卡片） */}
         <MobileList
@@ -606,12 +658,22 @@ function AdminAdminsContent() {
                       )}
                     </div>
                     <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">{admin.email}</p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <Badge variant={advisor.variant}>{advisor.label}</Badge>
-                      <span className="text-xs text-brand-charcoal/65">
-                        创建于 {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
-                      </span>
-                    </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <Badge variant={admin.status === "ACTIVE" ? "success" : "secondary"}>
+                  {admin.status === "ACTIVE" ? "已启用" : "已禁用"}
+                </Badge>
+                {admin.totpEnabled ? (
+                  <Badge variant="success">TOTP 已启用</Badge>
+                ) : (
+                  <Badge variant={admin.totpResetRequired ? "warning" : "danger"}>
+                    {admin.totpResetRequired ? "待重新绑定" : "TOTP 未启用"}
+                  </Badge>
+                )}
+                <Badge variant={advisor.variant}>{advisor.label}</Badge>
+                <span className="text-xs text-brand-charcoal/65">
+                  最近登录 {admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "从未"}
+                </span>
+              </div>
                   </div>
                 </div>
                 <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
@@ -734,12 +796,21 @@ function AdminAdminsContent() {
                 <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   邮箱
                 </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                  角色
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                  测肤子站
-                </th>
+                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
+                    角色
+                  </th>
+                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
+                    状态
+                  </th>
+                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
+                    二次验证
+                  </th>
+                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
+                    最近登录
+                  </th>
+                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
+                    测肤子站
+                  </th>
                 <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   创建时间
                 </th>
@@ -751,11 +822,11 @@ function AdminAdminsContent() {
             <tbody className="divide-y divide-brand-charcoal/[0.06]">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRowSkeleton key={i} columns={canManage ? 7 : 6} />
+                  <TableRowSkeleton key={i} columns={canManage ? 10 : 9} />
                 ))
               ) : admins.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 7 : 6} className="px-5 py-8">
+                  <td colSpan={canManage ? 10 : 9} className="px-5 py-8">
                     <Empty
                       title="暂无管理员"
                       className="py-6"
@@ -801,12 +872,29 @@ function AdminAdminsContent() {
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-3.5">
-                      {(() => {
-                        const advisor = getAdvisorAccess(admin);
-                        return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
-                      })()}
-                    </td>
+                      <td className="px-5 py-3.5">
+                        <Badge variant={admin.status === "ACTIVE" ? "success" : "secondary"}>
+                          {admin.status === "ACTIVE" ? "已启用" : "已禁用"}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {admin.totpEnabled ? (
+                          <Badge variant="success">已启用</Badge>
+                        ) : admin.totpResetRequired ? (
+                          <Badge variant="warning">待重新绑定</Badge>
+                        ) : (
+                          <Badge variant="danger">未启用</Badge>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5 text-xs text-brand-charcoal/65">
+                        {admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "从未登录"}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {(() => {
+                          const advisor = getAdvisorAccess(admin);
+                          return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
+                        })()}
+                      </td>
                     <td className="px-5 py-3.5 text-brand-charcoal/65">
                       {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
                     </td>

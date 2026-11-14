@@ -121,9 +121,15 @@ export const ADMIN_PAGE_RULES: readonly AdminPageRule[] = [
       "redemptions:read",
       "redemptions:fulfill",
       "redemptions:cancel",
+      "redemptions:after-sales",
       "gifts:read",
       "gifts:write",
+      "points:read",
     ],
+  },
+  {
+    match: (pathname) => pathname === "/admin/points-ledger",
+    allOf: ["points:read"],
   },
   {
     match: (pathname) => pathname === "/admin/approvals",

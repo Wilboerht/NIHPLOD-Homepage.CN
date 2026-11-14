@@ -16,17 +16,21 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
+import { downloadFromUrl } from "@/lib/client-download";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
+import Link from "next/link";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
 import { RedemptionTimelineModal } from "@/components/admin/RedemptionTimelineModal";
 import { APPROVAL_THRESHOLDS } from "@/lib/admin-approval-policy";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { DateRangeFilter } from "@/components/admin/DateRangeFilter";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 
 interface RedeemableProductItem {
@@ -123,7 +127,9 @@ function AdminPointGiftsContent() {
   const tab: StatusTab = ["PENDING", "FULFILLED", "CANCELLED", "ALL"].includes(tabParam)
     ? (tabParam as StatusTab)
     : "PENDING";
-  const redemptionSearchParam = get("search");
+    const redemptionSearchParam = get("search");
+  const redemptionDateFrom = get("dateFrom");
+  const redemptionDateTo = get("dateTo");
 
   // 页面按任务拆成两个工作区：默认优先处理兑换履约，礼品配置按需切换
   const viewParam = get("view");
@@ -169,6 +175,7 @@ function AdminPointGiftsContent() {
   }, []);
   const [revealingPii, setRevealingPii] = useState(false);
   const [redemptionsTotal, setRedemptionsTotal] = useState(0);
+  const [exporting, setExporting] = useState(false);
   const [redemptionSearch, setRedemptionSearch] = useState(redemptionSearchParam);
   const [prevRedemptionSearch, setPrevRedemptionSearch] = useState(redemptionSearchParam);
   if (prevRedemptionSearch !== redemptionSearchParam) {
@@ -251,6 +258,8 @@ function AdminPointGiftsContent() {
           pageSize: 10,
           status: tab === "ALL" ? undefined : tab,
           search: redemptionSearchParam || undefined,
+          dateFrom: redemptionDateFrom || undefined,
+          dateTo: redemptionDateTo || undefined,
           reveal: piiRevealedRef.current ? "1" : undefined,
         });
 
@@ -292,6 +301,8 @@ function AdminPointGiftsContent() {
     page,
     tab,
     redemptionSearchParam,
+    redemptionDateFrom,
+    redemptionDateTo,
     showError,
     canRedeemRead,
     view,
@@ -340,6 +351,25 @@ function AdminPointGiftsContent() {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (tab !== "ALL") params.set("status", tab);
+      if (redemptionSearchParam) params.set("search", redemptionSearchParam);
+      if (redemptionDateFrom) params.set("dateFrom", redemptionDateFrom);
+      if (redemptionDateTo) params.set("dateTo", redemptionDateTo);
+      await downloadFromUrl(
+        `/api/admin/point-redemptions/export?${params.toString()}`,
+        "point-redemptions.csv"
+      );
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // 两个数据集独立请求，避免任一筛选变化重复拉取全部数据
   useEffect(() => {
     deferInEffect(fetchProducts);
@@ -348,6 +378,16 @@ function AdminPointGiftsContent() {
   useEffect(() => {
     deferInEffect(fetchRedemptions);
   }, [fetchRedemptions]);
+
+  // 完整收件信息限时展示：5 分钟后自动回到脱敏列表
+  useEffect(() => {
+    if (!piiRevealed) return;
+    const timer = window.setTimeout(() => {
+      updatePiiRevealed(false);
+      void fetchRedemptions();
+    }, 5 * 60 * 1000);
+    return () => window.clearTimeout(timer);
+  }, [fetchRedemptions, piiRevealed, updatePiiRevealed]);
 
   // 兑换记录搜索防抖写入 URL
   useEffect(() => {
@@ -602,6 +642,30 @@ function AdminPointGiftsContent() {
     }
   };
 
+  if (!canGiftRead && !canRedeemRead) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="积分兑换" description="当前账号没有兑换履约或礼品设置权限。" />
+        <AdminHubTabs section="points" />
+        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6 text-sm text-brand-charcoal/70">
+          <p>请通过上方页签进入有权限的积分功能；若无可用页签，请联系超级管理员授权。</p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            {canAdmin("redemptions:after-sales") && (
+              <Link className="text-brand-primary hover:underline" href="/admin/redemption-after-sales">
+                前往兑换售后
+              </Link>
+            )}
+            {canAdmin("points:read") && (
+              <Link className="text-brand-primary hover:underline" href="/admin/points-ledger">
+                前往积分流水
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -613,26 +677,34 @@ function AdminPointGiftsContent() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {view === "redemptions" && canFulfill && !piiRevealed && (
-              <Button variant="outline" size="sm" loading={revealingPii} onClick={handleRevealPii}>
-                验证并显示完整收件信息
-              </Button>
-            )}
-            {view === "redemptions" && canRedeemRead && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const params = new URLSearchParams();
-                  if (tab !== "ALL") params.set("status", tab);
-                  if (redemptionSearchParam) params.set("search", redemptionSearchParam);
-                  window.open(`/api/admin/point-redemptions/export?${params}`, "_blank");
-                }}
-              >
-                <Download className="mr-1.5 h-4 w-4" />
-                导出 CSV
-              </Button>
-            )}
+        {view === "redemptions" && canFulfill && !piiRevealed && (
+          <Button variant="outline" size="sm" loading={revealingPii} onClick={handleRevealPii}>
+            验证并显示完整收件信息
+          </Button>
+        )}
+        {view === "redemptions" && canFulfill && piiRevealed && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              updatePiiRevealed(false);
+              void fetchRedemptions();
+            }}
+          >
+            隐藏完整收件信息
+          </Button>
+        )}
+        {view === "redemptions" && canRedeemRead && (
+          <Button
+            variant="outline"
+            size="sm"
+            loading={exporting}
+            onClick={() => void handleExport()}
+          >
+            <Download className="mr-1.5 h-4 w-4" />
+            导出 CSV
+          </Button>
+        )}
             <Button
               variant="outline"
               size="sm"
@@ -644,6 +716,8 @@ function AdminPointGiftsContent() {
           </div>
         }
       />
+
+      <AdminHubTabs section="points" />
 
       {/* 与消费记录审核一致的筛选栏：工作区切换 + 当前工作区筛选 */}
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
@@ -722,6 +796,13 @@ function AdminPointGiftsContent() {
                     </button>
                   )}
                 </div>
+                <DateRangeFilter
+                  from={redemptionDateFrom}
+                  to={redemptionDateTo}
+                  onChange={({ from, to }) =>
+                    update({ dateFrom: from || null, dateTo: to || null, page: null })
+                  }
+                />
                 <div className="w-full sm:w-40">
                   <Select
                     aria-label="按履约状态筛选"
@@ -1570,8 +1651,10 @@ export default function AdminPointGiftsPage() {
         "redemptions:read",
         "redemptions:fulfill",
         "redemptions:cancel",
+        "redemptions:after-sales",
         "gifts:read",
         "gifts:write",
+        "points:read",
       ]}
     >
       <AdminPointGiftsContent />

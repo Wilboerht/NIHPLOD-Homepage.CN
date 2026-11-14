@@ -39,15 +39,19 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { useSensitiveReveal } from "@/hooks/useSensitiveReveal";
+import { useUrlDetail } from "@/hooks/useUrlDetail";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import {
   DataTable,
+  DateRangeFilter,
   IconButton,
   PageHeader,
   RequirePermission,
   type Column,
 } from "@/components/admin";
 import { RecordAccountLinkControl } from "@/components/admin/RecordAccountLinkControl";
+import { ApplicationBoard } from "./ApplicationBoard";
 
 interface Job {
   id: string;
@@ -77,6 +81,29 @@ interface Application {
   status: string;
   notes?: string | null;
   folderId: string | null;
+  rating?: number | null;
+  tags?: string[];
+  source?: string | null;
+  rejectionReason?: string | null;
+  lastContactedAt?: string | null;
+  interviews?: {
+    id: string;
+    scheduledAt: string;
+    durationMinutes: number;
+    mode: string;
+    locationOrLink: string | null;
+    interviewer: string | null;
+    note: string | null;
+    result: string;
+  }[];
+  events?: {
+    id: string;
+    type: string;
+    fromStatus: string | null;
+    toStatus: string | null;
+    note: string | null;
+    createdAt: string;
+  }[];
   createdAt: string;
   updatedAt: string;
   canViewSensitive?: boolean;
@@ -87,13 +114,44 @@ interface Application {
 // 状态配置
 const statusConfig: Record<
   string,
-  { label: string; color: "default" | "warning" | "primary" | "success" | "danger" }
+  {
+    label: string;
+    color: "default" | "warning" | "primary" | "success" | "danger" | "secondary";
+  }
 > = {
   pending: { label: "待处理", color: "warning" },
-  reviewed: { label: "已查看", color: "primary" },
+  reviewed: { label: "初筛通过", color: "primary" },
+  interview_scheduled: { label: "待面试", color: "warning" },
   interviewed: { label: "已面试", color: "default" },
+  offer: { label: "Offer", color: "primary" },
   rejected: { label: "已拒绝", color: "danger" },
   hired: { label: "已录用", color: "success" },
+  withdrawn: { label: "已放弃", color: "secondary" },
+};
+
+const INTERVIEW_MODE_LABELS: Record<string, string> = {
+  VIDEO: "视频",
+  ONSITE: "现场",
+  PHONE: "电话",
+};
+
+const INTERVIEW_RESULT_LABELS: Record<string, string> = {
+  PENDING: "待面试",
+  PASSED: "通过",
+  FAILED: "未通过",
+  CANCELLED: "已取消",
+};
+
+const APPLICATION_EVENT_LABELS: Record<string, string> = {
+  STATUS_CHANGED: "状态变更",
+  NOTE_ADDED: "更新备注",
+  RATING_CHANGED: "修改评级",
+  TAGS_CHANGED: "修改标签",
+  SOURCE_CHANGED: "修改来源",
+  INTERVIEW_CREATED: "安排面试",
+  INTERVIEW_UPDATED: "更新面试",
+  INTERVIEW_RESULT: "更新面试结果",
+  INTERVIEW_DELETED: "删除面试",
 };
 
 const JOB_TYPE_LABELS: Record<string, string> = {
@@ -118,6 +176,7 @@ function AdminApplicationsContent() {
   const { requireTotp, totpModal } = useTotpConfirm();
   const canWrite = canAdmin("applications:write");
   const canDelete = canAdmin("applications:delete");
+  const canExport = canAdmin("applications:export");
   const canReadJobs = canAdmin("jobs:read");
   const takeLatest = useLatestRequest();
   const takeLatestDetail = useLatestRequest();
@@ -128,6 +187,10 @@ function AdminApplicationsContent() {
   const statusFilter = get("status", "all");
   const jobFilter = get("jobId", "all");
   const folderFilter = get("folderId", "all");
+  const dateFrom = get("dateFrom");
+  const dateTo = get("dateTo");
+  const viewMode = get("view", "list");
+  const [exporting, setExporting] = useState(false);
 
   // 状态
   const [applications, setApplications] = useState<Application[]>([]);
@@ -157,9 +220,36 @@ function AdminApplicationsContent() {
   const [detailApplication, setDetailApplication] = useState<Application | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [revealingPhone, setRevealingPhone] = useState(false);
+  const [evaluation, setEvaluation] = useState({ rating: "", tags: "", source: "" });
+  const [savingEvaluation, setSavingEvaluation] = useState(false);
+  const [interviewOpen, setInterviewOpen] = useState(false);
+  const [interviewSaving, setInterviewSaving] = useState(false);
+  const [interviewForm, setInterviewForm] = useState({
+    scheduledAt: "",
+    durationMinutes: "30",
+    mode: "VIDEO",
+    locationOrLink: "",
+    interviewer: "",
+    note: "",
+  });
+  const maskedPhoneRef = useRef<string | null>(null);
+  const {
+    revealed: phoneRevealed,
+    remainingSeconds: phoneRevealRemaining,
+    reveal: markPhoneRevealed,
+    hide: hidePhone,
+  } = useSensitiveReveal({
+    onHide: () => {
+      setDetailApplication((prev) =>
+        prev && maskedPhoneRef.current ? { ...prev, phone: maskedPhoneRef.current } : prev
+      );
+    },
+  });
   const [editingNotes, setEditingNotes] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const detailIdRef = useRef<string | null>(null);
+  const { value: applicationParam, open: openApplicationUrl, close: closeApplicationUrl } =
+    useUrlDetail("application");
 
   // 删除确认
   const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
@@ -224,6 +314,8 @@ function AdminApplicationsContent() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (jobFilter !== "all") params.set("jobId", jobFilter);
       if (folderFilter !== "all") params.set("folderId", folderFilter);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
 
       const data = await apiGet<{
         items: Application[];
@@ -251,7 +343,18 @@ function AdminApplicationsContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, searchParam, statusFilter, jobFilter, folderFilter, showError, router, takeLatest]);
+    }, [
+    page,
+    searchParam,
+    statusFilter,
+    jobFilter,
+    folderFilter,
+    dateFrom,
+    dateTo,
+    showError,
+    router,
+    takeLatest,
+  ]);
 
   useEffect(() => {
     deferInEffect(fetchApplications);
@@ -276,6 +379,37 @@ function AdminApplicationsContent() {
   }, [search, searchParam, update]);
 
   // 更新状态（详情弹窗用函数式更新，避免闭包里的旧状态覆盖）
+  const exportCandidates = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (jobFilter !== "all") params.set("jobId", jobFilter);
+      if (folderFilter !== "all") params.set("folderId", folderFilter);
+      if (searchParam) params.set("search", searchParam);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      const run = () =>
+        downloadFromUrl(
+          `/api/admin/applications/export?${params.toString()}`,
+          "candidates.csv"
+        );
+      try {
+        await run();
+      } catch (error) {
+        if (!isTotpRequired(error)) throw error;
+        const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+        if (!verified) return;
+        await run();
+      }
+      success("候选人清单已开始下载（手机号已脱敏）");
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const updateStatus = async (application: Application, newStatus: string, toastMsg?: string) => {
     try {
       const updated = await apiPatch<Application>(`/api/admin/applications/${application.id}`, {
@@ -330,6 +464,7 @@ function AdminApplicationsContent() {
         data = await request();
       }
       setDetailApplication((prev) => (prev ? { ...prev, phone: data.phone } : prev));
+    markPhoneRevealed();
     } catch (err) {
       showError(err instanceof Error ? err.message : "查看完整手机号失败");
     } finally {
@@ -377,6 +512,98 @@ function AdminApplicationsContent() {
       showError(err instanceof Error ? err.message : "保存失败");
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const saveEvaluation = async () => {
+    if (!detailApplication) return;
+    setSavingEvaluation(true);
+    try {
+      const updated = await apiPatch<Application>(
+        `/api/admin/applications/${detailApplication.id}`,
+        {
+          rating: evaluation.rating ? Number(evaluation.rating) : null,
+          tags: evaluation.tags
+            .split(/[,，]/)
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+            .slice(0, 10),
+          source: evaluation.source.trim() || null,
+          expectedUpdatedAt: detailApplication.updatedAt,
+        }
+      );
+      setDetailApplication((prev) =>
+        prev
+          ? {
+              ...prev,
+              rating: updated.rating ?? null,
+              tags: updated.tags ?? [],
+              source: updated.source ?? null,
+              updatedAt: updated.updatedAt ?? prev.updatedAt,
+            }
+          : prev
+      );
+      success("候选人评价已保存");
+      fetchApplications();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "保存评价失败");
+    } finally {
+      setSavingEvaluation(false);
+    }
+  };
+
+  const reloadDetailForInterview = async () => {
+    if (!detailApplication) return;
+    const detail = await apiGet<Application>(`/api/admin/applications/${detailApplication.id}`);
+    setDetailApplication(detail);
+  };
+
+  const createInterview = async () => {
+    if (!detailApplication) return;
+    if (!interviewForm.scheduledAt) {
+      showError("请选择面试时间");
+      return;
+    }
+    setInterviewSaving(true);
+    try {
+      await apiPost(`/api/admin/applications/${detailApplication.id}/interviews`, {
+        scheduledAt: new Date(interviewForm.scheduledAt).toISOString(),
+        durationMinutes: Number(interviewForm.durationMinutes) || 30,
+        mode: interviewForm.mode,
+        locationOrLink: interviewForm.locationOrLink.trim() || undefined,
+        interviewer: interviewForm.interviewer.trim() || undefined,
+        note: interviewForm.note.trim() || undefined,
+      });
+      success("面试已安排");
+      setInterviewOpen(false);
+      setInterviewForm({
+        scheduledAt: "",
+        durationMinutes: "30",
+        mode: "VIDEO",
+        locationOrLink: "",
+        interviewer: "",
+        note: "",
+      });
+      await reloadDetailForInterview();
+      fetchApplications();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "安排面试失败");
+    } finally {
+      setInterviewSaving(false);
+    }
+  };
+
+  const updateInterviewResult = async (interviewId: string, result: string) => {
+    if (!detailApplication) return;
+    try {
+      await apiPatch(
+        `/api/admin/applications/${detailApplication.id}/interviews/${interviewId}`,
+        { result }
+      );
+      success("面试结果已更新");
+      await reloadDetailForInterview();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "更新面试结果失败");
     }
   };
 
@@ -458,9 +685,13 @@ function AdminApplicationsContent() {
     setDetailLoading(false);
   };
 
+
   // 查看详情：列表只返回脱敏字段，详情单独请求（同时触发 application_detail_view 审计）
   const viewDetail = async (application: Application) => {
+    openApplicationUrl(application.id);
     detailIdRef.current = application.id;
+    hidePhone();
+    maskedPhoneRef.current = application.phone;
     setDetailApplication(application);
     setDetailLoading(true);
     setEditingNotes("");
@@ -482,6 +713,18 @@ function AdminApplicationsContent() {
       if (isLatest()) setDetailLoading(false);
     }
   };
+
+    useEffect(() => {
+      if (!applicationParam) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (detailApplication) closeDetail();
+        return;
+      }
+      if (detailApplication?.id === applicationParam) return;
+      void viewDetail({ id: applicationParam } as Application);
+      // 仅在 URL 参数变化时触发；viewDetail 内部状态变化不应重新拉取
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [applicationParam]);
 
   // 下载简历：优先 fetch+blob（能提示 409/401），OSS 跨域失败时回退新标签页
   const downloadResume = async (application: Application) => {
@@ -732,6 +975,47 @@ function AdminApplicationsContent() {
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <div
+              role="group"
+              aria-label="简历视图"
+              className="flex items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+            >
+              <button
+                type="button"
+                aria-pressed={viewMode !== "board"}
+                onClick={() => update({ view: null }, { replace: true })}
+                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                  viewMode !== "board"
+                    ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                    : "text-brand-charcoal/65 hover:bg-white/70"
+                }`}
+              >
+                列表
+              </button>
+              <button
+                type="button"
+                aria-pressed={viewMode === "board"}
+                onClick={() => update({ view: "board", status: null }, { replace: true })}
+                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                  viewMode === "board"
+                    ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                    : "text-brand-charcoal/65 hover:bg-white/70"
+                }`}
+              >
+                看板
+              </button>
+            </div>
+            {canExport && (
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Download className="h-4 w-4" />}
+                loading={exporting}
+                onClick={() => void exportCandidates()}
+              >
+                导出
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -866,21 +1150,26 @@ function AdminApplicationsContent() {
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row md:ml-auto">
-              <div className="w-full sm:w-36">
-                <Select
-                  aria-label="按状态筛选"
-                  options={[
-                    { value: "all", label: "全部状态" },
-                    { value: "pending", label: "待处理" },
-                    { value: "reviewed", label: "已查看" },
-                    { value: "interviewed", label: "已面试" },
-                    { value: "rejected", label: "已拒绝" },
-                    { value: "hired", label: "已录用" },
-                  ]}
-                  value={statusFilter}
-                  onChange={(e) => update({ status: e.target.value })}
-                />
-              </div>
+              {viewMode !== "board" && (
+                <div className="w-full sm:w-36">
+                  <Select
+                    aria-label="按状态筛选"
+                    options={[
+                      { value: "all", label: "全部状态" },
+                      { value: "pending", label: "待处理" },
+                      { value: "reviewed", label: "初筛通过" },
+                      { value: "interview_scheduled", label: "待面试" },
+                      { value: "interviewed", label: "已面试" },
+                      { value: "offer", label: "Offer" },
+                      { value: "rejected", label: "已拒绝" },
+                      { value: "hired", label: "已录用" },
+                      { value: "withdrawn", label: "已放弃" },
+                    ]}
+                    value={statusFilter}
+                    onChange={(e) => update({ status: e.target.value })}
+                  />
+                </div>
+              )}
               {canReadJobs && (
                 <div className="w-full sm:w-44">
                   <Select
@@ -894,13 +1183,35 @@ function AdminApplicationsContent() {
                   />
                 </div>
               )}
+              <DateRangeFilter
+                from={dateFrom}
+                to={dateTo}
+                onChange={({ from, to }) =>
+                  update({ dateFrom: from || null, dateTo: to || null })
+                }
+              />
             </div>
           </div>
         </div>
       </div>
 
       {/* 申请列表 */}
-      {loadError ? (
+      {viewMode === "board" && (
+        <ApplicationBoard
+          filters={{
+            jobId: jobFilter !== "all" ? jobFilter : undefined,
+            folderId: folderFilter !== "all" ? folderFilter : undefined,
+            search: searchParam || undefined,
+            dateFrom: dateFrom || undefined,
+            dateTo: dateTo || undefined,
+          }}
+          canWrite={canWrite}
+          onOpen={(id) => void viewDetail({ id } as Application)}
+          reloadKey={0}
+        />
+      )}
+      {viewMode !== "board" &&
+        (loadError ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12">
           <p className="text-sm text-red-500">加载失败，请重试</p>
           <Button variant="outline" size="sm" onClick={fetchApplications}>
@@ -996,7 +1307,7 @@ function AdminApplicationsContent() {
             );
           }}
         />
-      )}
+      ))}
 
       {/* 分页（始终展示总数） */}
       {total > 0 && (
@@ -1010,12 +1321,16 @@ function AdminApplicationsContent() {
         </div>
       )}
 
-      {/* 详情弹窗 */}
+      {/* 详情抽屉 */}
       <Modal
         open={!!detailApplication}
-        onClose={closeDetail}
+        onClose={() => {
+          closeDetail();
+          closeApplicationUrl();
+        }}
         title="简历详情"
-        size="lg"
+        size="xl"
+        variant="drawer"
         mobileFullScreen
         closeOnBackdrop={false}
         closeGuard={() => !savingNotes && confirmCloseNotes()}
@@ -1046,7 +1361,8 @@ function AdminApplicationsContent() {
                     <User className="h-4 w-4" />
                     {detailApplication.phone}
                     {detailApplication.canViewSensitive &&
-                      detailApplication.phone.includes("*") && (
+                      detailApplication.phone.includes("*") &&
+                      !phoneRevealed && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1056,6 +1372,21 @@ function AdminApplicationsContent() {
                           查看完整
                         </Button>
                       )}
+                    {phoneRevealed && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={hidePhone}
+                          className="text-xs text-brand-primary hover:underline"
+                        >
+                          隐藏
+                        </button>
+                        <span className="text-xs text-brand-charcoal/65">
+                          {Math.floor(phoneRevealRemaining / 60)}:
+                          {String(phoneRevealRemaining % 60).padStart(2, "0")} 后自动隐藏
+                        </span>
+                      </>
+                    )}
                   </span>
                 </div>
               </div>
@@ -1209,6 +1540,112 @@ function AdminApplicationsContent() {
               </div>
             </div>
 
+            {/* 评价与标签 */}
+            <div className="space-y-3 rounded-xl border border-brand-charcoal/10 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-brand-charcoal">候选人评价</h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  loading={savingEvaluation}
+                  disabled={!canWrite}
+                  onClick={() => void saveEvaluation()}
+                >
+                  保存评价
+                </Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Select
+                  label="评级"
+                  value={evaluation.rating}
+                  disabled={!canWrite}
+                  onChange={(event) =>
+                    setEvaluation((prev) => ({ ...prev, rating: event.target.value }))
+                  }
+                  options={[
+                    { value: "", label: "未评级" },
+                    ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: `${"★".repeat(n)}` })),
+                  ]}
+                />
+                <Input
+                  label="标签（逗号分隔）"
+                  value={evaluation.tags}
+                  disabled={!canWrite}
+                  onChange={(event) =>
+                    setEvaluation((prev) => ({ ...prev, tags: event.target.value }))
+                  }
+                  placeholder="如：沟通优秀, 待复试"
+                />
+                <Input
+                  label="来源"
+                  value={evaluation.source}
+                  disabled={!canWrite}
+                  onChange={(event) =>
+                    setEvaluation((prev) => ({ ...prev, source: event.target.value }))
+                  }
+                  placeholder="官网 / 内推 / 招聘平台"
+                />
+              </div>
+            </div>
+
+            {/* 面试安排 */}
+            <div className="space-y-3 rounded-xl border border-brand-charcoal/10 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-brand-charcoal">面试安排</h3>
+                <Button size="sm" variant="outline" disabled={!canWrite} onClick={() => setInterviewOpen(true)}>
+                  安排面试
+                </Button>
+              </div>
+              {(detailApplication.interviews ?? []).length === 0 ? (
+                <p className="text-xs text-brand-charcoal/65">暂无面试安排</p>
+              ) : (
+                <ul className="divide-y divide-brand-charcoal/10">
+                  {(detailApplication.interviews ?? []).map((interview) => (
+                    <li key={interview.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium">{formatDate(interview.scheduledAt)} · {INTERVIEW_MODE_LABELS[interview.mode] ?? interview.mode}</p>
+                        <p className="truncate text-xs text-brand-charcoal/65">
+                          {interview.interviewer || "未指定面试官"} {interview.locationOrLink ? ` · ${interview.locationOrLink}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge variant={interview.result === "PASSED" ? "success" : interview.result === "FAILED" ? "danger" : "secondary"}>
+                          {INTERVIEW_RESULT_LABELS[interview.result] ?? interview.result}
+                        </Badge>
+                        {canWrite && interview.result === "PENDING" && (
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => void updateInterviewResult(interview.id, "PASSED")}>通过</Button>
+                            <Button size="sm" variant="ghost" className="text-red-600" onClick={() => void updateInterviewResult(interview.id, "FAILED")}>未通过</Button>
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* 时间线 */}
+            <div className="space-y-2 rounded-xl border border-brand-charcoal/10 p-3">
+              <h3 className="text-sm font-semibold text-brand-charcoal">操作时间线</h3>
+              {(detailApplication.events ?? []).length === 0 ? (
+                <p className="text-xs text-brand-charcoal/65">暂无记录</p>
+              ) : (
+                <ul className="space-y-1.5 text-xs text-brand-charcoal/65">
+                  {(detailApplication.events ?? []).slice(0, 20).map((event) => (
+                    <li key={event.id}>
+                      <span className="font-medium text-brand-charcoal">
+                        {APPLICATION_EVENT_LABELS[event.type] ?? event.type}
+                      </span>
+                      {event.toStatus
+                        ? ` · ${statusConfig[event.toStatus]?.label ?? event.toStatus}`
+                        : ""} · {formatDate(event.createdAt)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             {/* 备注 */}
             <div>
               <Textarea
@@ -1233,6 +1670,31 @@ function AdminApplicationsContent() {
             </div>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        open={interviewOpen}
+        onClose={() => { if (!interviewSaving) setInterviewOpen(false); }}
+        title="安排面试"
+        size="md"
+        closeOnBackdrop={!interviewSaving}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" disabled={interviewSaving} onClick={() => setInterviewOpen(false)}>取消</Button>
+            <Button loading={interviewSaving} onClick={() => void createInterview()}>确认安排</Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <Input label="面试时间" type="datetime-local" value={interviewForm.scheduledAt} onChange={(event) => setInterviewForm((prev) => ({ ...prev, scheduledAt: event.target.value }))} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input label="时长（分钟）" type="number" min={15} max={480} value={interviewForm.durationMinutes} onChange={(event) => setInterviewForm((prev) => ({ ...prev, durationMinutes: event.target.value }))} />
+            <Select label="方式" value={interviewForm.mode} onChange={(event) => setInterviewForm((prev) => ({ ...prev, mode: event.target.value }))} options={[{ value: "VIDEO", label: "视频" }, { value: "ONSITE", label: "现场" }, { value: "PHONE", label: "电话" }]} />
+          </div>
+          <Input label="面试官" value={interviewForm.interviewer} onChange={(event) => setInterviewForm((prev) => ({ ...prev, interviewer: event.target.value }))} />
+          <Input label="地点 / 会议链接" value={interviewForm.locationOrLink} onChange={(event) => setInterviewForm((prev) => ({ ...prev, locationOrLink: event.target.value }))} />
+          <Textarea label="面试备注" value={interviewForm.note} onChange={(event) => setInterviewForm((prev) => ({ ...prev, note: event.target.value }))} rows={3} />
+        </div>
       </Modal>
 
       {/* 删除确认 */}

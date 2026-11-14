@@ -35,6 +35,20 @@ const snapshot: AdminStatsSnapshot = {
   failedAccountDeletionsCount: 1,
   webhookFailuresCount: 7,
   cronFailures24hCount: 2,
+  generatedAt: "2026-10-22T03:00:00.000Z",
+  trendDays: [
+    "2026-10-16",
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-21",
+    "2026-10-22",
+  ],
+  userTrendValues: [1, 2, 3, 4, 5, 6, 7],
+  messageTrendValues: [0, 1, 0, 2, 0, 1, 2],
+  spentTrendValues: [1, 0, 1, 1, 0, 2, 1],
+  redemptionTrendValues: [0, 0, 1, 0, 1, 0, 0],
 };
 
 const recentMessage: RecentMessageRecord = {

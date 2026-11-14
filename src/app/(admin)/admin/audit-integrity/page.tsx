@@ -9,6 +9,7 @@ import { apiGet, apiPost } from "@/lib/api-client";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { DataTable, PageHeader, RequirePermission, type Column } from "@/components/admin";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 
 interface AnchorItem {
   id: string;
@@ -24,6 +25,12 @@ interface AnchorItem {
   verifiedAt: string | null;
   createdAt: string;
 }
+
+const VERIFY_STATUS_LABELS: Record<string, string> = {
+  VERIFIED: "已校验",
+  FAILED: "校验失败",
+  PENDING: "待校验",
+};
 
 interface IntegrityData {
   config: { root: string; backupRoot: string | null; keyVersion: number };
@@ -137,7 +144,7 @@ function IntegrityContent() {
       title: "摘要",
       width: "180px",
       render: (_, item) => (
-        <span className="font-mono text-xs text-brand-charcoal/60">
+        <span className="font-mono text-xs text-brand-charcoal/65">
           {item.digest.slice(0, 16)}…
         </span>
       ),
@@ -167,7 +174,7 @@ function IntegrityContent() {
                 : "warning"
           }
         >
-          {item.verifyStatus}
+          {VERIFY_STATUS_LABELS[item.verifyStatus] ?? item.verifyStatus}
         </Badge>
       ),
     },
@@ -207,6 +214,8 @@ function IntegrityContent() {
         }
       />
 
+      <AdminHubTabs section="audit" />
+
       {data && !data.chainVerified && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           <p className="font-medium">锚点链连续性异常</p>
@@ -220,23 +229,23 @@ function IntegrityContent() {
 
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/60">最新管理审计锚点</p>
+          <p className="text-xs text-brand-charcoal/65">最新管理审计锚点</p>
           <p className="mt-1 font-mono text-lg font-semibold">{data?.latest.audit?.day ?? "-"}</p>
-          <p className="text-xs text-brand-charcoal/50">
+          <p className="text-xs text-brand-charcoal/65">
             {data?.latest.audit ? `${data.latest.audit.count} 条` : "暂无"}
           </p>
         </div>
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/60">最新 SSO 锚点</p>
+          <p className="text-xs text-brand-charcoal/65">最新 SSO 锚点</p>
           <p className="mt-1 font-mono text-lg font-semibold">{data?.latest.sso?.day ?? "-"}</p>
-          <p className="text-xs text-brand-charcoal/50">
+          <p className="text-xs text-brand-charcoal/65">
             {data?.latest.sso ? `${data.latest.sso.count} 条` : "暂无"}
           </p>
         </div>
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/60">PENDING / 归档目录</p>
+          <p className="text-xs text-brand-charcoal/65">待处理 / 归档目录</p>
           <p className="mt-1 text-lg font-semibold">{data?.pendingCount ?? 0}</p>
-          <p className="break-all text-xs text-brand-charcoal/50">{data?.config.root ?? "-"}</p>
+          <p className="break-all text-xs text-brand-charcoal/65">{data?.config.root ?? "-"}</p>
         </div>
       </div>
 
@@ -256,9 +265,50 @@ function IntegrityContent() {
           emptyText="暂无锚点"
           tableLayout="fixed"
           minWidth="980px"
+          mobileCard={(item) => (
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono">{item.day}</span>
+                <Badge variant={item.stream === "audit" ? "primary" : "secondary"}>
+                  {item.stream === "audit" ? "管理审计" : "SSO 审计"}
+                </Badge>
+              </div>
+              <p className="text-xs text-brand-charcoal/65">
+                {item.count} 条 · 签名 v{item.signatureVersion} / key {item.keyVersion}
+              </p>
+              <p className="break-all font-mono text-xs text-brand-charcoal/65">
+                {item.digest.slice(0, 24)}…
+              </p>
+              <div className="flex items-center justify-between gap-2 text-xs text-brand-charcoal/65">
+                <span>{item.archivedAt ? formatDate(item.archivedAt) : "未归档"}</span>
+                <Badge
+                  variant={
+                    item.verifyStatus === "VERIFIED"
+                      ? "success"
+                      : item.verifyStatus === "FAILED"
+                        ? "danger"
+                        : "warning"
+                  }
+                >
+                  {VERIFY_STATUS_LABELS[item.verifyStatus] ?? item.verifyStatus}
+                </Badge>
+              </div>
+              <div className="flex justify-end border-t border-brand-charcoal/10 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  loading={verifying === `${item.stream}/${item.day}`}
+                  disabled={Boolean(verifying)}
+                  onClick={() => void verify(item.stream, item.day)}
+                >
+                  校验
+                </Button>
+              </div>
+            </div>
+          )}
         />
       ) : (
-        <div className="flex items-center gap-2 text-sm text-brand-charcoal/60">
+        <div className="flex items-center gap-2 text-sm text-brand-charcoal/65">
           <ShieldCheck className="h-4 w-4" />
           加载中...
         </div>

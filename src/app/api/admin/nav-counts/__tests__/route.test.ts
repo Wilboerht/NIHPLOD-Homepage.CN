@@ -9,6 +9,9 @@ const { prismaMock, hasPermissionMock } = vi.hoisted(() => ({
     pointRedemption: { count: vi.fn() },
     jobApplication: { count: vi.fn() },
     adminApprovalRequest: { count: vi.fn() },
+    webhookDeliveryFailure: { count: vi.fn() },
+    backchannelLogoutFailure: { count: vi.fn() },
+    cronTaskRun: { count: vi.fn() },
   },
   hasPermissionMock: vi.fn(),
 }));
@@ -26,6 +29,9 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/admin-permissions", () => ({
   hasAdminPermission: (...args: unknown[]) => hasPermissionMock(...args),
 }));
+vi.mock("@/lib/ba-internal", () => ({
+  baInternalRequest: vi.fn().mockResolvedValue({ ok: true, status: 200, data: { total: 0 } }),
+}));
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn(), log: vi.fn() },
 }));
@@ -41,6 +47,9 @@ describe("GET /api/admin/nav-counts", () => {
     prismaMock.pointRedemption.count.mockResolvedValue(4);
     prismaMock.jobApplication.count.mockResolvedValue(6);
     prismaMock.adminApprovalRequest.count.mockResolvedValue(1);
+  prismaMock.webhookDeliveryFailure.count.mockResolvedValue(0);
+  prismaMock.backchannelLogoutFailure.count.mockResolvedValue(0);
+  prismaMock.cronTaskRun.count.mockResolvedValue(0);
     hasPermissionMock.mockReturnValue(true);
   });
 
@@ -51,12 +60,27 @@ describe("GET /api/admin/nav-counts", () => {
     expect(res.status).toBe(200);
     expect(body.data).toEqual({
       messages: 3,
+      baComplaints: 0,
       accountDeletions: 2,
       spentAdjustments: 5,
       pointRedemptions: 4,
       redemptionAfterSales: 4,
       applications: 6,
       approvals: 1,
+      systemAlerts: [
+        {
+          key: "account-deletions",
+          label: "注销执行失败",
+          count: 2,
+          href: "/admin/account-deletions",
+        },
+        {
+          key: "approvals-expiring",
+          label: "审批即将过期",
+          count: 1,
+          href: "/admin/approvals?status=PENDING&expiring=1",
+        },
+      ],
     });
     expect(prismaMock.accountDeletionRequest.count).toHaveBeenCalledWith({
       where: { status: "FAILED" },
@@ -85,12 +109,14 @@ describe("GET /api/admin/nav-counts", () => {
 
     expect(body.data).toEqual({
       messages: 3,
+      baComplaints: 0,
       accountDeletions: 0,
       spentAdjustments: 0,
       pointRedemptions: 0,
       redemptionAfterSales: 0,
       applications: 0,
       approvals: 0,
+      systemAlerts: [],
     });
     expect(prismaMock.accountDeletionRequest.count).not.toHaveBeenCalled();
     expect(prismaMock.spentAdjustmentApplication.count).not.toHaveBeenCalled();

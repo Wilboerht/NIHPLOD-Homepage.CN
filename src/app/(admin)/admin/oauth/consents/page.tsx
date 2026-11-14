@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { formatDateTime as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { IconButton } from "@/components/admin/IconButton";
 import { useRowSelection } from "@/hooks/useRowSelection";
@@ -280,6 +281,8 @@ function OAuthConsentsPage() {
           </Button>
         }
       />
+
+      <AdminHubTabs section="sso" />
 
       {/* 工具栏：状态分段筛选 + 精确搜索 */}
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">

@@ -33,6 +33,11 @@ vi.mock("@/hooks/useTotpConfirm", () => ({
 vi.mock("@/components/ui/Toast", () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn() }),
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/admin/redemption-after-sales",
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 import RedemptionAfterSalesPage from "../redemption-after-sales/page";
 

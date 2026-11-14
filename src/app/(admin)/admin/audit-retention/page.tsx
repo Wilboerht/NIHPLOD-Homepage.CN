@@ -14,6 +14,7 @@ import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { PageHeader, RequirePermission } from "@/components/admin";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 
 interface Bucket {
   stream: "audit" | "sso";
@@ -77,6 +78,15 @@ interface LegalHold {
   releasedAt: string | null;
   expiresAt: string | null;
 }
+
+const JOB_STATUS_LABELS: Record<string, string> = {
+  PENDING: "待执行",
+  RUNNING: "执行中",
+  SUCCEEDED: "已完成",
+  FAILED: "失败",
+  EXPIRED: "已过期",
+  CANCELLED: "已取消",
+};
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -287,23 +297,25 @@ function RetentionContent() {
         }
       />
 
+      <AdminHubTabs section="audit" />
+
       <div className="grid gap-3 md:grid-cols-4">
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/60">可删除记录</p>
+          <p className="text-xs text-brand-charcoal/65">可删除记录</p>
           <p className="mt-1 text-2xl font-semibold">{data?.preview.expectedCount ?? 0}</p>
         </div>
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/60">预计释放空间</p>
+          <p className="text-xs text-brand-charcoal/65">预计释放空间</p>
           <p className="mt-1 text-2xl font-semibold">
             {formatBytes(data?.preview.expectedBytes ?? 0)}
           </p>
         </div>
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/60">法律保留排除</p>
+          <p className="text-xs text-brand-charcoal/65">法律保留排除</p>
           <p className="mt-1 text-2xl font-semibold">{data?.preview.holdsExcluded ?? 0}</p>
         </div>
         <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/60">清理开关</p>
+          <p className="text-xs text-brand-charcoal/65">清理开关</p>
           <p className="mt-1 flex items-center gap-2 text-sm font-semibold">
             {data?.enabled ? (
               <Badge variant="success">已启用</Badge>
@@ -323,7 +335,7 @@ function RetentionContent() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-brand-charcoal">到期预览</h3>
-            <p className="mt-1 text-xs text-brand-charcoal/60">
+            <p className="mt-1 text-xs text-brand-charcoal/65">
               AuditLog 保留 1825 天 / SSO 保留 730 天；当前最早数据尚未到期。
             </p>
           </div>
@@ -354,8 +366,7 @@ function RetentionContent() {
         )}
 
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/60">
+          <table className="w-full min-w-[760px] text-sm">            <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/65">
               <tr>
                 <th className="py-2 pr-3 font-medium">流</th>
                 <th className="py-2 pr-3 font-medium">日期</th>
@@ -370,7 +381,7 @@ function RetentionContent() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-brand-charcoal/60">
+                  <td colSpan={8} className="py-6 text-center text-brand-charcoal/65">
                     加载中...
                   </td>
                 </tr>
@@ -399,7 +410,7 @@ function RetentionContent() {
                     <td className="py-2 pr-3 font-mono text-xs">{bucket.day}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{bucket.count}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{bucket.eligible}</td>
-                    <td className="py-2 pr-3 text-right text-xs text-brand-charcoal/60">
+                    <td className="py-2 pr-3 text-right text-xs text-brand-charcoal/65">
                       {formatBytes(bucket.bytes)}
                     </td>
                     <td className="py-2 pr-3 text-center">
@@ -417,7 +428,7 @@ function RetentionContent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-brand-charcoal/60">
+                  <td colSpan={8} className="py-6 text-center text-brand-charcoal/65">
                     当前没有到期待删除数据
                   </td>
                 </tr>
@@ -443,7 +454,7 @@ function RetentionContent() {
         </div>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
-            <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/60">
+            <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/65">
               <tr>
                 <th className="py-2 pr-3 font-medium">创建时间</th>
                 <th className="py-2 pr-3 font-medium">申请人</th>
@@ -457,7 +468,7 @@ function RetentionContent() {
             <tbody>
               {jobs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-brand-charcoal/60">
+                  <td colSpan={7} className="py-6 text-center text-brand-charcoal/65">
                     暂无清理任务
                   </td>
                 </tr>
@@ -479,7 +490,7 @@ function RetentionContent() {
                               : "warning"
                         }
                       >
-                        {job.status}
+                        {JOB_STATUS_LABELS[job.status] ?? job.status}
                       </Badge>
                     </td>
                     <td className="py-2 pr-3 text-right text-xs tabular-nums">
@@ -517,14 +528,67 @@ function RetentionContent() {
             </tbody>
           </table>
         </div>
+        <div className="mt-4 space-y-2 md:hidden">
+          {jobs.length === 0 ? (
+            <p className="py-6 text-center text-sm text-brand-charcoal/65">暂无清理任务</p>
+          ) : (
+            jobs.map((job) => (
+              <div key={job.id} className="rounded-xl border border-brand-charcoal/10 p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-brand-charcoal/65">
+                    {formatDate(job.createdAt)}
+                  </span>
+                  <Badge
+                    variant={
+                      job.status === "SUCCEEDED"
+                        ? "success"
+                        : job.status === "FAILED" || job.status === "EXPIRED"
+                          ? "danger"
+                          : "warning"
+                    }
+                  >
+                    {JOB_STATUS_LABELS[job.status] ?? job.status}
+                  </Badge>
+                </div>
+                <p className="mt-1 line-clamp-2 text-xs text-brand-charcoal/70">{job.reason}</p>
+                <p className="mt-1 text-xs text-brand-charcoal/65">
+                  {job.expectedCount} / {job.deletedCount} 条 ·{" "}
+                  {job.finishedAt ? formatDate(job.finishedAt) : "未完成"}
+                </p>
+                <div className="mt-2 flex justify-end gap-2 border-t border-brand-charcoal/10 pt-2">
+                  {isOwner && job.status === "PENDING" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={submitting}
+                      onClick={() => setCancelTargetJob(job.id)}
+                    >
+                      取消
+                    </Button>
+                  )}
+                  {isOwner && job.status === "FAILED" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={submitting}
+                      onClick={() => setRetryTargetJob(job.id)}
+                    >
+                      重试
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {isOwner && (
         <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
           <h3 className="text-sm font-semibold text-brand-charcoal">法律保留</h3>
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-3 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px] text-sm">
-              <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/60">
+              <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/65">
                 <tr>
                   <th className="py-2 pr-3 font-medium">目标</th>
                   <th className="py-2 pr-3 font-medium">原因</th>
@@ -536,7 +600,7 @@ function RetentionContent() {
               <tbody>
                 {holds.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-brand-charcoal/60">
+                    <td colSpan={5} className="py-6 text-center text-brand-charcoal/65">
                       暂无法律保留
                     </td>
                   </tr>
@@ -555,9 +619,9 @@ function RetentionContent() {
                       </td>
                       <td className="py-2 pr-3 text-xs">
                         {formatDate(hold.createdAt)}
-                        <span className="ml-1 text-brand-charcoal/50">{hold.createdByEmail}</span>
+                        <span className="ml-1 text-brand-charcoal/65">{hold.createdByEmail}</span>
                         {hold.expiresAt && (
-                          <span className="ml-1 block text-brand-charcoal/50">
+                          <span className="ml-1 block text-brand-charcoal/65">
                             到期：{formatDate(hold.expiresAt)}
                           </span>
                         )}
@@ -589,10 +653,58 @@ function RetentionContent() {
                     </tr>
                   ))
                 )}
-              </tbody>
-            </table>
-          </div>
+            </tbody>
+          </table>
         </div>
+        <div className="mt-4 space-y-2 md:hidden">
+          {holds.length === 0 ? (
+            <p className="py-6 text-center text-sm text-brand-charcoal/65">暂无法律保留</p>
+          ) : (
+            holds.map((hold) => {
+              const target = hold.targetType
+                ? `${hold.targetType}:${hold.targetId}`
+                : hold.userId
+                  ? `user:${hold.userId}`
+                  : `admin:${hold.adminId}`;
+              const statusLabel =
+                hold.expiresAt && new Date(hold.expiresAt) <= new Date()
+                  ? "已过期"
+                  : hold.active
+                    ? "生效中"
+                    : "已解除";
+              return (
+                <div key={hold.id} className="rounded-xl border border-brand-charcoal/10 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="break-all font-mono text-xs">{target}</span>
+                    <Badge
+                      variant={
+                        statusLabel === "已过期"
+                          ? "warning"
+                          : hold.active
+                            ? "danger"
+                            : "secondary"
+                      }
+                    >
+                      {statusLabel}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs text-brand-charcoal/70">{hold.reason}</p>
+                  <p className="mt-1 text-xs text-brand-charcoal/65">
+                    {formatDate(hold.createdAt)} · {hold.createdByEmail ?? "-"}
+                  </p>
+                  <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
+                    {hold.active && (
+                      <Button variant="ghost" size="sm" onClick={() => setReleaseHold(hold)}>
+                        解除
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
       )}
 
       <Modal
@@ -661,7 +773,7 @@ function RetentionContent() {
 
       <Modal open={holdOpen} onClose={() => setHoldOpen(false)} title="设置法律保留" size="md">
         <div className="space-y-4">
-          <p className="text-xs text-brand-charcoal/60">
+          <p className="text-xs text-brand-charcoal/65">
             至少填写 targetType + targetId、userId、adminId 之一。命中的审计记录不会被到期清理。
           </p>
           <div className="grid gap-3 md:grid-cols-2">
@@ -731,7 +843,7 @@ function RetentionContent() {
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-xs text-brand-charcoal/60">
+          <p className="text-xs text-brand-charcoal/65">
             解除后，命中该目标的审计记录将重新参与到期清理。
           </p>
           <Input

@@ -8,12 +8,15 @@ import { createAuditLogStrict } from "@/lib/audit";
 import { maskPhone } from "@/lib/mask-phone";
 import { escapeCSV } from "@/lib/csv";
 import { apiConsole } from "@/lib/logger";
+import { parseAdminDateRange } from "@/lib/admin-list-date-range";
 
 export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
   status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
   search: z.string().max(100).optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -33,6 +36,8 @@ export async function GET(request: NextRequest) {
     const parsed = querySchema.safeParse({
       status: request.nextUrl.searchParams.get("status") || undefined,
       search: request.nextUrl.searchParams.get("search")?.trim() || undefined,
+      dateFrom: request.nextUrl.searchParams.get("dateFrom") || undefined,
+      dateTo: request.nextUrl.searchParams.get("dateTo") || undefined,
     });
     if (!parsed.success) {
       return NextResponse.json(
@@ -40,17 +45,31 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+    const range = parseAdminDateRange(parsed.data.dateFrom, parsed.data.dateTo);
+    if (!range.ok) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_DATE", message: range.message } },
+        { status: 400 }
+      );
+    }
 
-    const where: Prisma.SpentAdjustmentApplicationWhereInput = parsed.data.status
-      ? { status: parsed.data.status }
-      : {};
+    const baseWhere: Prisma.SpentAdjustmentApplicationWhereInput = {};
     if (parsed.data.search) {
-      where.OR = [
+      baseWhere.OR = [
         { orderNo: { contains: parsed.data.search, mode: "insensitive" } },
         { user: { phone: { equals: parsed.data.search } } },
         { user: { nickname: { contains: parsed.data.search, mode: "insensitive" } } },
       ];
     }
+    if (range.from || range.to) {
+      baseWhere.createdAt = {
+        ...(range.from ? { gte: range.from } : {}),
+        ...(range.to ? { lte: range.to } : {}),
+      };
+    }
+    const where: Prisma.SpentAdjustmentApplicationWhereInput = parsed.data.status
+      ? { AND: [baseWhere, { status: parsed.data.status }] }
+      : baseWhere;
     const rows = await prisma.spentAdjustmentApplication.findMany({
       where,
       orderBy: [{ createdAt: "desc" }, { id: "asc" }],

@@ -72,6 +72,9 @@ const querySchema = z.object({
   page: z.preprocess((val) => (val ? Number(val) : 1), z.number().min(1).max(1000)),
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
   search: z.string().max(100).nullish(),
+  status: z.enum(["ACTIVE", "DISABLED"]).optional(),
+  role: roleSchema.optional(),
+  totp: z.enum(["enabled", "disabled"]).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -89,51 +92,59 @@ export const GET = withAuth(async (request, admin) => {
     const rateLimitResponse = await checkAdminRateLimit(request, "admin-read");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const { searchParams } = new URL(request.url);
-    const params = querySchema.parse({
-      page: searchParams.get("page"),
-      pageSize: searchParams.get("pageSize"),
-      search: searchParams.get("search"),
-    });
+const { searchParams } = new URL(request.url);
+const params = querySchema.parse({
+  page: searchParams.get("page"),
+  pageSize: searchParams.get("pageSize"),
+  search: searchParams.get("search"),
+  status: searchParams.get("status") || undefined,
+  role: searchParams.get("role") || undefined,
+  totp: searchParams.get("totp") || undefined,
+});
 
-    const where: Record<string, unknown> = { deletedAt: null };
-    if (params.search) {
-      where.OR = [
-        { email: { contains: params.search, mode: "insensitive" } },
-        { name: { contains: params.search, mode: "insensitive" } },
-      ];
-    }
+const where: Record<string, unknown> = { deletedAt: null };
+if (params.search) {
+  where.OR = [
+    { email: { contains: params.search, mode: "insensitive" } },
+    { name: { contains: params.search, mode: "insensitive" } },
+  ];
+}
+if (params.status) where.status = params.status;
+if (params.role) where.role = params.role;
+if (params.totp) where.totpEnabled = params.totp === "enabled";
 
-    const [admins, total] = await Promise.all([
-      prisma.admin.findMany({
-        where,
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
-        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          permissions: true,
-          status: true,
-          totpEnabled: true,
-          totpResetRequired: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      }),
-      prisma.admin.count({ where }),
-    ]);
+const [admins, total] = await Promise.all([
+  prisma.admin.findMany({
+    where,
+    skip: (params.page - 1) * params.pageSize,
+    take: params.pageSize,
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      permissions: true,
+      status: true,
+      totpEnabled: true,
+      totpResetRequired: true,
+      lastLoginAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  }),
+  prisma.admin.count({ where }),
+]);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        admins: admins.map((a) => ({
-          ...a,
-          createdAt: a.createdAt.toISOString(),
-          updatedAt: a.updatedAt.toISOString(),
-        })),
+return NextResponse.json({
+  success: true,
+  data: {
+    admins: admins.map((a) => ({
+      ...a,
+      lastLoginAt: a.lastLoginAt?.toISOString() ?? null,
+      createdAt: a.createdAt.toISOString(),
+      updatedAt: a.updatedAt.toISOString(),
+    })),
         pagination: {
           page: params.page,
           pageSize: params.pageSize,

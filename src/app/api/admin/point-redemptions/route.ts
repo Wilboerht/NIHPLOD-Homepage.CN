@@ -14,6 +14,7 @@ import { createAuditLogStrict } from "@/lib/audit";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { getRedemptionProtectionView } from "@/lib/redemption-protection";
 import { adminPageSchema, adminPageSizeSchema } from "@/lib/validation";
+import { parseAdminDateRange } from "@/lib/admin-list-date-range";
 
 const querySchema = z.object({
   page: adminPageSchema,
@@ -34,6 +35,8 @@ const querySchema = z.object({
     ])
     .optional(),
   search: z.string().max(100).optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -59,29 +62,47 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const { searchParams } = new URL(request.url);
-    const parsed = querySchema.safeParse({
-      page: searchParams.get("page"),
-      pageSize: searchParams.get("pageSize"),
-      status: searchParams.get("status") || undefined,
-      search: searchParams.get("search")?.trim() || undefined,
-    });
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
-        { status: 400 }
-      );
-    }
+const parsed = querySchema.safeParse({
+  page: searchParams.get("page"),
+  pageSize: searchParams.get("pageSize"),
+  status: searchParams.get("status") || undefined,
+  search: searchParams.get("search")?.trim() || undefined,
+  dateFrom: searchParams.get("dateFrom") || undefined,
+  dateTo: searchParams.get("dateTo") || undefined,
+});
+if (!parsed.success) {
+  return NextResponse.json(
+    { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+    { status: 400 }
+  );
+}
 
-    const { page, pageSize, status, search } = parsed.data;
-    const where: Prisma.PointRedemptionWhereInput = status ? { status } : {};
-    if (search) {
-      where.OR = [
-        { productName: { contains: search, mode: "insensitive" } },
-        // 手机号仅精确匹配：模糊匹配会让无敏感权限的角色逐位穷举还原完整手机号
-        { user: { phone: { equals: search } } },
-        { user: { nickname: { contains: search, mode: "insensitive" } } },
-      ];
-    }
+const { page, pageSize, status, search } = parsed.data;
+const range = parseAdminDateRange(parsed.data.dateFrom, parsed.data.dateTo);
+if (!range.ok) {
+  return NextResponse.json(
+    { success: false, error: { code: "INVALID_DATE", message: range.message } },
+    { status: 400 }
+  );
+}
+const baseWhere: Prisma.PointRedemptionWhereInput = {};
+if (search) {
+  baseWhere.OR = [
+    { productName: { contains: search, mode: "insensitive" } },
+    // 手机号仅精确匹配：模糊匹配会让无敏感权限的角色逐位穷举还原完整手机号
+    { user: { phone: { equals: search } } },
+    { user: { nickname: { contains: search, mode: "insensitive" } } },
+  ];
+}
+if (range.from || range.to) {
+  baseWhere.createdAt = {
+    ...(range.from ? { gte: range.from } : {}),
+    ...(range.to ? { lte: range.to } : {}),
+  };
+}
+const where: Prisma.PointRedemptionWhereInput = status
+  ? { AND: [baseWhere, { status }] }
+  : baseWhere;
     // PII 最小化：列表默认脱敏；履约管理员需显式 reveal=1 并完成 step-up，
     // 才返回完整收件人手机号/地址，且严格审计失败时拒绝返回明文。
     const canFulfill = hasAdminPermission(admin, "redemptions:fulfill");
@@ -129,7 +150,7 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.pointRedemption.count({ where }),
-      prisma.pointRedemption.groupBy({ by: ["status"], _count: true }),
+      prisma.pointRedemption.groupBy({ by: ["status"], _count: true, where: baseWhere }),
       // 全站可用积分总额（所有用户 PointBalance.available 之和，可为负：含退款超兑债务）
       prisma.pointBalance.aggregate({ _sum: { available: true } }),
     ]);

@@ -19,6 +19,7 @@ import { useAdminListQuery } from "@/hooks/useAdminListQuery";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import {
+  AdminHubTabs,
   DataTable,
   PageHeader,
   RequirePermission,
@@ -251,6 +252,8 @@ function NotificationOutboxContent() {
           </Button>
         }
       />
+
+      <AdminHubTabs section="notifications" />
 
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-5">
         <StatStrip

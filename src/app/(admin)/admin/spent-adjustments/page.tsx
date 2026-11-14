@@ -33,6 +33,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { downloadFromUrl } from "@/lib/client-download";
 import { cn } from "@/lib/utils";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -41,6 +42,7 @@ import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { DateRangeFilter } from "@/components/admin/DateRangeFilter";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
 import { APPROVAL_THRESHOLDS } from "@/lib/admin-approval-policy";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -115,12 +117,15 @@ function AdminSpentAdjustmentsContent() {
   const [data, setData] = useState<ListData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const tabParam = get("status", "PENDING");
   const tab: StatusFilter = TABS.some((item) => item.key === tabParam)
     ? (tabParam as StatusFilter)
     : "PENDING";
   const page = getNumber("page", 1);
   const searchParam = get("search");
+  const dateFrom = get("dateFrom");
+  const dateTo = get("dateTo");
   const [search, setSearch] = useState(searchParam);
   const [prevSearchParam, setPrevSearchParam] = useState(searchParam);
   if (prevSearchParam !== searchParam) {
@@ -182,6 +187,8 @@ function AdminSpentAdjustmentsContent() {
         pageSize: 20,
         status: tab === "ALL" ? undefined : tab,
         search: searchParam || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       });
       if (!isLatest()) return;
       setData(result);
@@ -193,7 +200,16 @@ function AdminSpentAdjustmentsContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, tab, searchParam, showError, canReadSpent, takeLatestSpent]);
+    }, [
+    page,
+    tab,
+    searchParam,
+    dateFrom,
+    dateTo,
+    showError,
+    canReadSpent,
+    takeLatestSpent,
+  ]);
 
   useEffect(() => {
     deferInEffect(fetchData);
@@ -216,6 +232,27 @@ function AdminSpentAdjustmentsContent() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search, searchParam, update]);
+
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (tab !== "ALL") params.set("status", tab);
+      if (searchParam) params.set("search", searchParam);
+      const dateFrom = get("dateFrom");
+      const dateTo = get("dateTo");
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      await downloadFromUrl(
+        `/api/admin/spent-adjustments/export?${params.toString()}`,
+        "spent-adjustments.csv"
+      );
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const openDetail = (item: ApplicationItem) => {
     setDetail(item);
@@ -422,19 +459,15 @@ function AdminSpentAdjustmentsContent() {
                 </Button>
               </>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const params = new URLSearchParams();
-                if (tab !== "ALL") params.set("status", tab);
-                if (searchParam) params.set("search", searchParam);
-                window.open(`/api/admin/spent-adjustments/export?${params}`, "_blank");
-              }}
-            >
-              <Download className="mr-1.5 h-4 w-4" />
-              导出 CSV
-            </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            loading={exporting}
+            onClick={() => void exportCsv()}
+          >
+            <Download className="mr-1.5 h-4 w-4" />
+            导出 CSV
+          </Button>
             <Button variant="outline" size="sm" onClick={fetchData}>
               <RefreshCw className="mr-1.5 h-4 w-4" />
               刷新
@@ -510,10 +543,17 @@ function AdminSpentAdjustmentsContent() {
               </button>
             )}
           </div>
+          <DateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onChange={({ from, to }) =>
+              update({ dateFrom: from || null, dateTo: to || null, page: null })
+            }
+          />
         </div>
       </div>
 
-      {/* 列表（移动端卡片） */}
+    {/* 列表（移动端卡片） */}
       <div className="md:hidden">
         {loading ? (
           <div className="space-y-2">

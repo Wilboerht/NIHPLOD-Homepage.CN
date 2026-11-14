@@ -1,18 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileCheck2, Plus, RefreshCw, Search } from "lucide-react";
+import { Download, FileCheck2, Plus, RefreshCw } from "lucide-react";
 import { apiGet, apiPost, apiRequest, getApiErrorMessage } from "@/lib/api-client";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { AdminSearchInput } from "@/components/admin/AdminSearchInput";
+import { MobileList, MobileListCard } from "@/components/admin/MobileList";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { PanelCard } from "@/components/admin/PanelCard";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
+import { Select } from "@/components/ui/Select";
+import { useListQuery } from "@/hooks/useListQuery";
+import { useUrlDetail } from "@/hooks/useUrlDetail";
 import { useToast } from "@/components/ui/Toast";
 import type {
   BaCertificateDetail,
@@ -61,12 +68,18 @@ function CertificatesContent() {
   const toast = useToast();
   const { can } = useAdminPermissions();
   const { requireTotp, totpModal } = useTotpConfirm();
+  const { get, getNumber, update } = useListQuery();
+  const page = getNumber("page", 1);
+  const statusParam = get("status", "ALL");
+  const status = ["ALL", "PENDING", "ISSUED", "UPCOMING", "invalid"].includes(statusParam)
+    ? statusParam
+    : "ALL";
+  const search = get("search");
+  const { value: certificateParam, open: openCertificateUrl, close: closeCertificateUrl } =
+    useUrlDetail("certificate");
   const [items, setItems] = useState<BaCertificateListItem[]>([]);
   const [meta, setMeta] = useState<BaCertificateMeta | null>(null);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("ALL");
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -97,7 +110,7 @@ function CertificatesContent() {
       if (requestId !== loadRequestRef.current) return;
       const nextTotalPages = Math.max(1, Math.ceil(data.total / pageSize));
       if (page > nextTotalPages) {
-        setPage(nextTotalPages);
+        update({ page: String(nextTotalPages) }, { replace: true, resetPage: false });
         return;
       }
       setItems(data.items);
@@ -109,7 +122,7 @@ function CertificatesContent() {
     } finally {
       if (requestId === loadRequestRef.current) setLoading(false);
     }
-  }, [page, search, status]);
+  }, [page, search, status, update]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => deferInEffect(load), 300);
@@ -270,6 +283,7 @@ function CertificatesContent() {
   };
 
   const openDetail = async (id: string) => {
+    openCertificateUrl(id);
     try {
       const data = await apiGet<BaCertificateDetail>(
         `/api/admin/subsites/ba/certificates/${encodeURIComponent(id)}`
@@ -280,6 +294,18 @@ function CertificatesContent() {
       toast.error(getApiErrorMessage(err, "加载证书详情失败"));
     }
   };
+
+  useEffect(() => {
+    if (!certificateParam) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDetailOpen(false);
+      return;
+    }
+    if (detail?.certificate.id === certificateParam && detailOpen) return;
+    void openDetail(certificateParam);
+    // 仅在 URL 参数变化时触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [certificateParam]);
 
   const runAction = async (action: "issue" | "reject" | "revoke" | "delete") => {
     if (!detail) return;
@@ -350,45 +376,93 @@ function CertificatesContent() {
         }
       />
 
+      <AdminHubTabs section="ba" />
+
       <PanelCard className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-1 gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40" />
-              <input
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPage(1);
-                }}
-                placeholder="搜索证书编号、公司或店铺"
-                className="h-10 w-full rounded-lg border border-brand-charcoal/15 bg-white pl-9 pr-3 text-sm outline-none focus:border-brand-primary"
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+            <AdminSearchInput
+              value={search}
+              onCommit={(next) => update({ search: next || null }, { replace: true })}
+              ariaLabel="搜索证书"
+              placeholder="搜索证书编号、公司或店铺"
+              className="flex-1"
+            />
+            <div className="w-full sm:w-40">
+              <Select
+                aria-label="按证书状态筛选"
+                value={status}
+                onChange={(event) =>
+                  update({ status: event.target.value === "ALL" ? null : event.target.value })
+                }
+                options={[
+                  { value: "ALL", label: "全部状态" },
+                  { value: "PENDING", label: "待审核" },
+                  { value: "ISSUED", label: "已签发" },
+                  { value: "UPCOMING", label: "待生效" },
+                  { value: "invalid", label: "已失效" },
+                ]}
               />
             </div>
-            <select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value);
-                setPage(1);
-              }}
-              className="h-10 rounded-lg border border-brand-charcoal/15 bg-white px-3 text-sm"
-            >
-              <option value="ALL">全部状态</option>
-              <option value="PENDING">待审核</option>
-              <option value="ISSUED">已签发</option>
-              <option value="UPCOMING">待生效</option>
-              <option value="invalid">已失效</option>
-            </select>
           </div>
-          <span className="text-xs text-brand-charcoal/60">共 {total} 条</span>
+          <span className="text-xs text-brand-charcoal/65">共 {total} 条</span>
         </div>
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-        <div className="mt-4 overflow-x-auto">
+        <MobileList
+          className="mt-4 md:hidden"
+          loading={loading}
+          skeletonCount={3}
+          error={error ?? undefined}
+          empty="暂无证书"
+          isEmpty={!loading && !error && items.length === 0}
+        >
+          {items.map((item) => (
+            <MobileListCard key={item.id}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                    {item.certNumber}
+                  </p>
+                  <p className="mt-1 truncate font-medium text-brand-charcoal">
+                    {item.companyName}
+                  </p>
+                  <p className="truncate text-xs text-brand-charcoal/65">{item.shopName}</p>
+                </div>
+                <Badge variant={STATUS_VARIANTS[item.displayStatus] ?? "secondary"}>
+                  {STATUS_LABELS[item.displayStatus] ?? item.displayStatus}
+                </Badge>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs text-brand-charcoal/70">
+                {item.scopeText}
+              </p>
+              <p className="mt-2 text-xs text-brand-charcoal/65">
+                {item.startDate} ~ {item.endDate}
+              </p>
+              <div className="mt-2 flex justify-end gap-1 border-t border-brand-charcoal/10 pt-2">
+                <Button variant="ghost" size="sm" onClick={() => void openDetail(item.id)}>
+                  详情
+                </Button>
+                {item.allowedActions.downloadPng && can("ba:certificates:download") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void downloadCertificate(item.id, "png", item.certNumber)}
+                  >
+                    <Download className="mr-1 h-3.5 w-3.5" />
+                    PNG
+                  </Button>
+                )}
+              </div>
+            </MobileListCard>
+          ))}
+        </MobileList>
+
+        <div className="mt-4 hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] text-sm">
             <thead>
-              <tr className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/60">
+              <tr className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/65">
                 <th className="py-2 pr-3">证书编号</th>
                 <th className="py-2 pr-3">公司 / 店铺</th>
                 <th className="py-2 pr-3">授权范围</th>
@@ -401,13 +475,13 @@ function CertificatesContent() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-brand-charcoal/50">
+                  <td colSpan={7} className="py-10 text-center text-brand-charcoal/65">
                     加载中…
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-brand-charcoal/50">
+                  <td colSpan={7} className="py-10 text-center text-brand-charcoal/65">
                     暂无证书
                   </td>
                 </tr>
@@ -417,7 +491,7 @@ function CertificatesContent() {
                     <td className="py-3 pr-3 font-mono text-xs">{item.certNumber}</td>
                     <td className="py-3 pr-3">
                       <div className="font-medium">{item.companyName}</div>
-                      <div className="text-xs text-brand-charcoal/55">{item.shopName}</div>
+                      <div className="text-xs text-brand-charcoal/65">{item.shopName}</div>
                     </td>
                     <td className="max-w-[260px] py-3 pr-3">
                       <div className="line-clamp-2 text-xs leading-relaxed text-brand-charcoal/70">
@@ -459,27 +533,16 @@ function CertificatesContent() {
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >
-            上一页
-          </Button>
-          <span className="text-xs text-brand-charcoal/60">
-            {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => setPage((value) => value + 1)}
-          >
-            下一页
-          </Button>
-        </div>
+        {totalPages > 1 && (
+          <div className="mt-4 flex justify-center">
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onChange={(nextPage) => update({ page: String(nextPage) })}
+            />
+          </div>
+        )}
       </PanelCard>
 
       <Modal
@@ -565,9 +628,13 @@ function CertificatesContent() {
 
       <Modal
         open={detailOpen}
-        onClose={() => setDetailOpen(false)}
+        onClose={() => {
+          setDetailOpen(false);
+          closeCertificateUrl();
+        }}
         title={detail?.certificate.certNumber ?? "证书详情"}
         size="xl"
+        variant="drawer"
         footer={
           detail && (
             <div className="flex flex-wrap justify-end gap-2">
@@ -633,46 +700,46 @@ function CertificatesContent() {
             <div className="space-y-4 text-sm">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <div className="text-xs text-brand-charcoal/50">状态</div>
+                  <div className="text-xs text-brand-charcoal/65">状态</div>
                   <Badge variant={STATUS_VARIANTS[detail.certificate.displayStatus] ?? "secondary"}>
                     {STATUS_LABELS[detail.certificate.displayStatus] ??
                       detail.certificate.displayStatus}
                   </Badge>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/50">有效期</div>
+                  <div className="text-xs text-brand-charcoal/65">有效期</div>
                   <div>
                     {detail.certificate.startDate} ~ {detail.certificate.endDate}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/50">公司</div>
+                  <div className="text-xs text-brand-charcoal/65">公司</div>
                   <div>{detail.certificate.companyName}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/50">店铺</div>
+                  <div className="text-xs text-brand-charcoal/65">店铺</div>
                   <div>{detail.certificate.shopName}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/50">手机号</div>
+                  <div className="text-xs text-brand-charcoal/65">手机号</div>
                   <div>{detail.certificate.phoneMasked ?? "-"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/50">提报人</div>
+                  <div className="text-xs text-brand-charcoal/65">提报人</div>
                   <div>{detail.certificate.auditorName ?? "-"}</div>
                 </div>
               </div>
               <div>
-                <div className="text-xs text-brand-charcoal/50">授权范围</div>
+                <div className="text-xs text-brand-charcoal/65">授权范围</div>
                 <p className="whitespace-pre-wrap leading-relaxed">
                   {detail.certificate.scopeText}
                 </p>
               </div>
               <div>
-                <div className="mb-2 text-xs text-brand-charcoal/50">操作时间线</div>
+                <div className="mb-2 text-xs text-brand-charcoal/65">操作时间线</div>
                 <div className="space-y-2">
                   {detail.timeline.length === 0 ? (
-                    <p className="text-xs text-brand-charcoal/50">暂无记录</p>
+                    <p className="text-xs text-brand-charcoal/65">暂无记录</p>
                   ) : (
                     detail.timeline.map((item) => (
                       <div
@@ -684,7 +751,7 @@ function CertificatesContent() {
                           <div className="mt-1 text-brand-charcoal/70">{item.comment}</div>
                         )}
                         {item.reason && (
-                          <div className="mt-1 text-brand-charcoal/60">原因：{item.reason}</div>
+                          <div className="mt-1 text-brand-charcoal/65">原因：{item.reason}</div>
                         )}
                         <div className="mt-1 text-brand-charcoal/45">
                           {item.actorName ?? "-"} ·{" "}

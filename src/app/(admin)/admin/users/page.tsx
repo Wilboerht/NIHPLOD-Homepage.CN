@@ -58,6 +58,8 @@ import { createClientRequestId } from "@/lib/request-id";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { apiConsole } from "@/lib/logger";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useSensitiveReveal } from "@/hooks/useSensitiveReveal";
+import { useUrlDetail } from "@/hooks/useUrlDetail";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { UserAvatar } from "@/components/admin/UserAvatar";
@@ -513,6 +515,7 @@ function AdminUsersContent() {
 
   // 模态框状态
   const [detailOpen, setDetailOpen] = useState(false);
+  const { value: userParam, open: openUserUrl, close: closeUserUrl } = useUrlDetail("user");
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailUserId, setDetailUserId] = useState<string | null>(null);
   const [detailUser, setDetailUser] = useState<UserDetail | null>(null);
@@ -630,6 +633,14 @@ function AdminUsersContent() {
   const { confirmClose: confirmCloseBirthday } = useUnsavedChanges(isBirthdayDirty);
   const [revealedPhone, setRevealedPhone] = useState("");
   const [revealingPhone, setRevealingPhone] = useState(false);
+  const {
+    revealed: phoneRevealed,
+    remainingSeconds: phoneRevealRemaining,
+    reveal: markPhoneRevealed,
+    hide: hidePhone,
+  } = useSensitiveReveal({
+    onHide: () => setRevealedPhone(""),
+  });
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusTarget, setStatusTarget] = useState<{ id: string; status: UserStatus } | null>(null);
   const [statusReason, setStatusReason] = useState("");
@@ -1083,7 +1094,8 @@ function AdminUsersContent() {
     }
   };
 
-  const openDetail = async (id: string, preserveTab = false) => {
+  const openDetail = async (id: string, preserveTab = false, syncUrl = true) => {
+    if (syncUrl) openUserUrl(id);
     const isLatest = takeLatestDetail();
     setDetailOpen(true);
     setDetailLoading(true);
@@ -1098,6 +1110,7 @@ function AdminUsersContent() {
     setDetailLoginAttempts([]);
     if (!preserveTab) setActiveDetailTab("overview");
     setRevealedPhone("");
+    hidePhone();
     setLedgerItems([]);
     setLedgerPage(1);
     setLedgerTotalPages(0);
@@ -1135,9 +1148,21 @@ function AdminUsersContent() {
     }
   };
 
+  useEffect(() => {
+    if (!userParam) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDetailOpen(false);
+      return;
+    }
+    if (detailOpen && detailUserId === userParam) return;
+    void openDetail(userParam, false, false);
+    // 仅在 URL 参数变化时同步；openDetail 内部状态变化不应重新触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userParam]);
+
   /** 显示完整手机号（敏感操作，服务端写审计日志） */
   const revealPhone = async () => {
-    if (!detailUser || revealedPhone) return;
+    if (!detailUser || phoneRevealed) return;
     setRevealingPhone(true);
     try {
       const data = await runWithStepUp(() =>
@@ -1146,6 +1171,7 @@ function AdminUsersContent() {
       // 取消 TOTP 时 runWithStepUp 返回 null，手机号保持脱敏。
       if (data === null) return;
       setRevealedPhone(data.phone);
+      markPhoneRevealed();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "获取手机号失败");
     } finally {
@@ -1636,12 +1662,17 @@ function AdminUsersContent() {
         </>
       )}
 
-      {/* 用户详情模态框 */}
+      {/* 用户详情抽屉 */}
       <Modal
         open={detailOpen}
-        onClose={() => setDetailOpen(false)}
+        onClose={() => {
+          setDetailOpen(false);
+          hidePhone();
+          closeUserUrl();
+        }}
         title={detailUser?.nickname || detailUser?.phone || "用户详情"}
         size="full"
+        variant="drawer"
         mobileFullScreen
       >
         {detailLoading ? (
@@ -1694,19 +1725,36 @@ function AdminUsersContent() {
                           已验证
                         </Badge>
                       )}
-                      {canRevealPhone &&
-                        !revealedPhone &&
-                        detailUser.phone &&
-                        detailUser.phone.includes("*") && (
-                          <button
-                            type="button"
-                            onClick={revealPhone}
-                            disabled={revealingPhone}
-                            className="ml-1 text-brand-primary hover:underline disabled:opacity-50"
-                          >
-                            {revealingPhone ? "加载中..." : "显示完整号码"}
-                          </button>
-                        )}
+              {canRevealPhone &&
+                !phoneRevealed &&
+                detailUser.phone &&
+                detailUser.phone.includes("*") && (
+                  <button
+                    type="button"
+                    onClick={revealPhone}
+                    disabled={revealingPhone}
+                    className="ml-1 text-brand-primary hover:underline disabled:opacity-50"
+                  >
+                    {revealingPhone ? "加载中..." : "显示完整号码"}
+                  </button>
+                )}
+              {phoneRevealed && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hidePhone();
+                    }}
+                    className="ml-1 text-brand-primary hover:underline"
+                  >
+                    隐藏
+                  </button>
+                  <span className="text-brand-charcoal/65">
+                    {Math.floor(phoneRevealRemaining / 60)}:
+                    {String(phoneRevealRemaining % 60).padStart(2, "0")} 后自动隐藏
+                  </span>
+                </>
+              )}
                     </span>
                     <span className="inline-flex min-w-0 items-center gap-1">
                       <span className="shrink-0 text-brand-charcoal/65">ID</span>

@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, apiRequest, ApiError } from "@/lib/api-client";
+import { downloadFromUrl } from "@/lib/client-download";
 import {
   buildNeedsAttentionCsv,
   pickNeedsAttentionRows,
@@ -285,7 +286,11 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
             <div className="mt-4 flex items-center gap-3">
               <Button
                 variant="outline"
-                onClick={() => window.open("/api/admin/spent-import/template", "_blank")}
+                onClick={() =>
+                  void downloadFromUrl("/api/admin/spent-import/template", "spent-import-template.xlsx").catch(
+                    (error) => showError(error instanceof Error ? error.message : "模板下载失败")
+                  )
+                }
               >
                 <Download className="mr-1.5 h-4 w-4" />
                 下载模板

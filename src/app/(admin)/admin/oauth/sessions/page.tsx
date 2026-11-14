@@ -32,6 +32,7 @@ import {
 } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { IconButton } from "@/components/admin/IconButton";
@@ -333,6 +334,8 @@ function OAuthSessionsPage() {
           </>
         }
       />
+
+      <AdminHubTabs section="sso" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

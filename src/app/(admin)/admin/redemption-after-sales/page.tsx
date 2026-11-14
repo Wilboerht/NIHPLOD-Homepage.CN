@@ -14,11 +14,21 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { downloadFromUrl } from "@/lib/client-download";
 import { formatDateTimeNumeric } from "@/lib/format";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { useListQuery } from "@/hooks/useListQuery";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
-import { DataTable, PageHeader, RequirePermission, type Column } from "@/components/admin";
+import {
+  AdminHubTabs,
+  AdminSearchInput,
+  DataTable,
+  DateRangeFilter,
+  PageHeader,
+  RequirePermission,
+  type Column,
+} from "@/components/admin";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
 import { RedemptionTimelineModal } from "@/components/admin/RedemptionTimelineModal";
 import { APPROVAL_THRESHOLDS } from "@/lib/admin-approval-policy";
@@ -158,16 +168,25 @@ const columns: Column<Item>[] = [
 
 function AfterSalesContent() {
   const toast = useToast();
+  const { get, getNumber, update } = useListQuery();
   const { can, role } = useAdminPermissions();
   const canReview = can("redemptions:after-sales");
   const canRefund = can("redemptions:cancel");
   const canRequestApproval = can("approvals:request");
   const isOwner = role === "owner";
   const { requireTotp, totpModal } = useTotpConfirm();
-  const [tab, setTab] = useState<Status>("AFTER_SALES_REQUESTED");
-  const [page, setPage] = useState(1);
+  const tabParam = get("status", "AFTER_SALES_REQUESTED");
+  const tab: Status = TABS.some((item) => item.key === tabParam)
+    ? (tabParam as Status)
+    : "AFTER_SALES_REQUESTED";
+  const page = getNumber("page", 1);
+  const search = get("search");
+  const dateFrom = get("dateFrom");
+  const dateTo = get("dateTo");
   const [data, setData] = useState<ListData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [action, setAction] = useState<ActionState | null>(null);
   const [submittingAction, setSubmittingAction] = useState(false);
@@ -180,18 +199,48 @@ function AfterSalesContent() {
         page,
         pageSize: 20,
         status: tab,
+        search: search || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       });
       setData(result);
+      setLoadError(false);
     } catch {
+      setLoadError(true);
       toast.error("加载售后列表失败");
     } finally {
       setLoading(false);
     }
-  }, [page, tab, toast]);
+  }, [dateFrom, dateTo, page, search, tab, toast]);
 
   useEffect(() => {
     deferInEffect(load);
   }, [load]);
+
+  useEffect(() => {
+    const totalPages = data?.pagination.totalPages ?? 0;
+    if (totalPages > 0 && page > totalPages) {
+      update({ page: String(totalPages) }, { replace: true, resetPage: false });
+    }
+  }, [data?.pagination.totalPages, page, update]);
+
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ status: tab });
+      if (search) params.set("search", search);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      await downloadFromUrl(
+        `/api/admin/point-redemptions/export?${params.toString()}`,
+        `point-redemptions-after-sales-${tab}.csv`
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const post = async (
     id: string,
@@ -336,17 +385,13 @@ function AfterSalesContent() {
         title="兑换售后"
         description="审核售后、确认退货、执行退分；所有操作写审计，退分需 TOTP。"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
               leftIcon={<Download className="h-4 w-4" />}
-              onClick={() =>
-                window.open(
-                  `/api/admin/point-redemptions/export?status=${encodeURIComponent(tab)}`,
-                  "_blank"
-                )
-              }
+              loading={exporting}
+              onClick={() => void exportCsv()}
             >
               导出 CSV
             </Button>
@@ -363,21 +408,47 @@ function AfterSalesContent() {
         }
       />
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((item) => (
-          <Button
-            key={item.key}
-            variant={tab === item.key ? "primary" : "outline"}
-            size="sm"
-            onClick={() => {
-              setPage(1);
-              setTab(item.key);
-            }}
-          >
-            {item.label}
-            {data?.counts[item.key] ? ` (${data.counts[item.key]})` : ""}
-          </Button>
-        ))}
+      <AdminHubTabs section="points" />
+
+      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex flex-wrap gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1">
+            {TABS.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                aria-pressed={tab === item.key}
+                onClick={() => update({ status: item.key, page: null })}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 ${
+                  tab === item.key
+                    ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                    : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                }`}
+              >
+                {item.label}
+                <span className="min-w-[1.25rem] rounded-full bg-brand-charcoal/[0.06] px-1.5 py-0.5 text-center text-xs tabular-nums text-brand-charcoal/65">
+                  {data?.counts[item.key] ?? 0}
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row lg:ml-auto lg:w-auto">
+            <AdminSearchInput
+              value={search}
+              onCommit={(next) => update({ search: next || null, page: null }, { replace: true })}
+              ariaLabel="搜索手机号、昵称或产品名"
+              placeholder="搜索手机号 / 昵称 / 产品名"
+              className="lg:w-72"
+            />
+            <DateRangeFilter
+              from={dateFrom}
+              to={dateTo}
+              onChange={({ from, to }) =>
+                update({ dateFrom: from || null, dateTo: to || null, page: null })
+              }
+            />
+          </div>
+        </div>
       </div>
 
       <DataTable
@@ -393,6 +464,8 @@ function AfterSalesContent() {
         ]}
         data={data?.redemptions ?? []}
         loading={loading}
+        error={loadError ? "售后列表加载失败，请稍后重试" : null}
+        onRetry={load}
         rowKey="id"
         density="compact"
         emptyText="当前状态下暂无售后记录"
@@ -403,6 +476,9 @@ function AfterSalesContent() {
               <span className="font-medium">{item.productName}</span>
               <Badge variant="warning">{STATUS_LABELS[item.status]}</Badge>
             </div>
+            <p className="text-xs text-brand-charcoal/65">
+              {item.user.nickname ?? item.user.phone} · {formatDateTimeNumeric(item.createdAt)}
+            </p>
             <p className="text-xs text-brand-charcoal/65">{item.afterSalesReason ?? "-"}</p>
             <p className="text-xs text-brand-charcoal/65">积分：{item.points}</p>
             {renderActions(item)}
@@ -411,12 +487,14 @@ function AfterSalesContent() {
       />
 
       {data && data.pagination.totalPages > 1 && (
-        <Pagination
-          page={data.pagination.page}
-          pageSize={data.pagination.pageSize}
-          total={data.pagination.total}
-          onChange={setPage}
-        />
+        <div className="flex justify-center">
+          <Pagination
+            page={data.pagination.page}
+            pageSize={data.pagination.pageSize}
+            total={data.pagination.total}
+            onChange={(nextPage) => update({ page: String(nextPage) })}
+          />
+        </div>
       )}
       <Modal
         open={!!action}

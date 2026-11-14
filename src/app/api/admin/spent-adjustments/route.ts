@@ -27,12 +27,15 @@ import {
   createSpentApplicationSchema,
 } from "@/lib/spent-adjustment-applications";
 import { MAX_PENDING_PER_USER } from "@/lib/spent-adjustment-meta";
+import { parseAdminDateRange } from "@/lib/admin-list-date-range";
 
 const querySchema = z.object({
   page: adminPageSchema,
   pageSize: adminPageSizeSchema,
   status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
   search: z.string().max(100).optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -58,30 +61,48 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const { searchParams } = new URL(request.url);
-    const parsed = querySchema.safeParse({
-      page: searchParams.get("page"),
-      pageSize: searchParams.get("pageSize"),
-      status: searchParams.get("status") || undefined,
-      search: searchParams.get("search")?.trim() || undefined,
-    });
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
-        { status: 400 }
-      );
-    }
+const parsed = querySchema.safeParse({
+  page: searchParams.get("page"),
+  pageSize: searchParams.get("pageSize"),
+  status: searchParams.get("status") || undefined,
+  search: searchParams.get("search")?.trim() || undefined,
+  dateFrom: searchParams.get("dateFrom") || undefined,
+  dateTo: searchParams.get("dateTo") || undefined,
+});
+if (!parsed.success) {
+  return NextResponse.json(
+    { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },
+    { status: 400 }
+  );
+}
 
-    const { page, pageSize, status, search } = parsed.data;
+const { page, pageSize, status, search } = parsed.data;
+const range = parseAdminDateRange(parsed.data.dateFrom, parsed.data.dateTo);
+if (!range.ok) {
+  return NextResponse.json(
+    { success: false, error: { code: "INVALID_DATE", message: range.message } },
+    { status: 400 }
+  );
+}
 
-    const where: Prisma.SpentAdjustmentApplicationWhereInput = status ? { status } : {};
-    if (search) {
-      where.OR = [
-        { orderNo: { contains: search, mode: "insensitive" } },
-        // 手机号精确匹配，避免通过子串逐位枚举用户
-        { user: { phone: { equals: search.trim() } } },
-        { user: { nickname: { contains: search, mode: "insensitive" } } },
-      ];
-    }
+const baseWhere: Prisma.SpentAdjustmentApplicationWhereInput = {};
+if (search) {
+  baseWhere.OR = [
+    { orderNo: { contains: search, mode: "insensitive" } },
+    // 手机号精确匹配，避免通过子串逐位枚举用户
+    { user: { phone: { equals: search.trim() } } },
+    { user: { nickname: { contains: search, mode: "insensitive" } } },
+  ];
+}
+if (range.from || range.to) {
+  baseWhere.createdAt = {
+    ...(range.from ? { gte: range.from } : {}),
+    ...(range.to ? { lte: range.to } : {}),
+  };
+}
+const where: Prisma.SpentAdjustmentApplicationWhereInput = status
+  ? { AND: [baseWhere, { status }] }
+  : baseWhere;
 
     const [applications, total, statusCounts] = await Promise.all([
       prisma.spentAdjustmentApplication.findMany({
@@ -117,10 +138,11 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.spentAdjustmentApplication.count({ where }),
-      prisma.spentAdjustmentApplication.groupBy({
-        by: ["status"],
-        _count: true,
-      }),
+  prisma.spentAdjustmentApplication.groupBy({
+    by: ["status"],
+    _count: true,
+    where: baseWhere,
+  }),
     ]);
 
     const counts: Record<string, number> = { PENDING: 0, APPROVED: 0, REJECTED: 0 };

@@ -27,6 +27,7 @@ import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { isTotpRequired, useTotpConfirm } from "@/hooks/useTotpConfirm";
 import { AuditExportDialog } from "@/components/admin/AuditExportDialog";
 import {
+  AdminHubTabs,
   DataTable,
   IconButton,
   PageHeader,
@@ -540,6 +541,8 @@ function AuditLogsContent() {
           </div>
         }
       />
+
+      <AdminHubTabs section="audit" />
 
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
         <div className="flex flex-col gap-3">

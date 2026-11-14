@@ -177,6 +177,7 @@ export type AuditAction =
   | "spent_import_preview"
   | "point_redemption_pii_view"
   | "point_redemption_export"
+  | "points_ledger_export"
   | "spent_adjustment_export"
   | "application_list_view"
   | "audit_log_view"
@@ -395,6 +396,7 @@ export const AUDIT_ACTIONS = [
   "spent_import_preview",
   "point_redemption_pii_view",
   "point_redemption_export",
+  "points_ledger_export",
   "spent_adjustment_export",
   "application_list_view",
   "audit_log_view",

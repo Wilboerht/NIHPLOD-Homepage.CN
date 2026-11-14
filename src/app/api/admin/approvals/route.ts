@@ -6,6 +6,7 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { listApprovalRequests, createApprovalRequest } from "@/lib/admin-approval";
 import { approvalErrorResponse } from "@/lib/admin-approval-http";
 import { APPROVAL_POLICY_KEYS } from "@/lib/admin-approval-policy";
+import { parseAdminDateRange } from "@/lib/admin-list-date-range";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,10 @@ const querySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   status: statusSchema.optional(),
   policyKey: z.enum(APPROVAL_POLICY_KEYS).optional(),
+  requesterSearch: z.string().max(100).optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  expiringSoon: z.enum(["1"]).optional(),
 });
 
 const createSchema = z.object({
@@ -67,6 +72,10 @@ export async function GET(request: NextRequest) {
       pageSize: searchParams.get("pageSize") || "20",
       status: searchParams.get("status") || undefined,
       policyKey: searchParams.get("policyKey") || undefined,
+      requesterSearch: searchParams.get("requesterSearch")?.trim() || undefined,
+      dateFrom: searchParams.get("dateFrom") || undefined,
+      dateTo: searchParams.get("dateTo") || undefined,
+      expiringSoon: searchParams.get("expiringSoon") || undefined,
     });
     if (!parsed.success) {
       return NextResponse.json(
@@ -74,8 +83,26 @@ export async function GET(request: NextRequest) {
         { status: 400, headers: NO_STORE_HEADERS }
       );
     }
+    const range = parseAdminDateRange(parsed.data.dateFrom, parsed.data.dateTo);
+    if (!range.ok) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_DATE", message: range.message } },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
+    }
 
-    const data = await listApprovalRequests(admin, parsed.data);
+    const data = await listApprovalRequests(admin, {
+      page: parsed.data.page,
+      pageSize: parsed.data.pageSize,
+      ...(parsed.data.status ? { status: parsed.data.status } : {}),
+      ...(parsed.data.policyKey ? { policyKey: parsed.data.policyKey } : {}),
+      ...(parsed.data.requesterSearch
+        ? { requesterSearch: parsed.data.requesterSearch }
+        : {}),
+      ...(range.from ? { dateFrom: range.from } : {}),
+      ...(range.to ? { dateTo: range.to } : {}),
+      ...(parsed.data.expiringSoon === "1" ? { expiringSoon: true } : {}),
+    });
     return NextResponse.json({ success: true, data }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     return approvalErrorResponse(error);

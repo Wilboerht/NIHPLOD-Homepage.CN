@@ -109,10 +109,43 @@ const getCachedCounts = unstable_cache(
           ],
         },
       }),
+  ]);
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const trendDays = Array.from({ length: 7 }, (_, index) =>
+    getUtc8DateKey(new Date(dayStart.getTime() - (6 - index) * DAY_MS))
+  );
+  const trendStart = new Date(dayStart.getTime() - 6 * DAY_MS);
+  const countByDay = (rows: { createdAt: Date }[]): number[] => {
+    const counts = new Map<string, number>(trendDays.map((day) => [day, 0]));
+    for (const row of rows) {
+      const key = getUtc8DateKey(row.createdAt);
+      if (counts.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return trendDays.map((day) => counts.get(day) ?? 0);
+  };
+  const [userTrendRows, messageTrendRows, spentTrendRows, redemptionTrendRows] =
+    await Promise.all([
+      prisma.user.findMany({
+        where: { createdAt: { gte: trendStart }, status: { not: "DELETED" } },
+        select: { createdAt: true },
+      }),
+      prisma.contactMessage.findMany({
+        where: { createdAt: { gte: trendStart } },
+        select: { createdAt: true },
+      }),
+      prisma.spentAdjustmentApplication.findMany({
+        where: { createdAt: { gte: trendStart } },
+        select: { createdAt: true },
+      }),
+      prisma.pointRedemption.findMany({
+        where: { createdAt: { gte: trendStart } },
+        select: { createdAt: true },
+      }),
     ]);
 
-    return {
-      productsCount,
+  return {
+    productsCount,
       categoriesCount,
       draftProductsCount,
       jobsCount,
@@ -129,13 +162,19 @@ const getCachedCounts = unstable_cache(
       pendingRedemptionsOldestAt: toIsoString(pendingRedemptionsAgg._min.createdAt),
       pendingApplicationsCount: pendingApplicationsAgg._count,
       pendingApplicationsOldestAt: toIsoString(pendingApplicationsAgg._min.createdAt),
-      newApplicationsThisWeekCount,
-      failedAccountDeletionsCount,
-      webhookFailuresCount,
-      cronFailures24hCount,
-    };
-  },
-  ["admin-stats-counts-v6"],
+    newApplicationsThisWeekCount,
+    failedAccountDeletionsCount,
+    webhookFailuresCount,
+    cronFailures24hCount,
+    generatedAt: now.toISOString(),
+    trendDays,
+    userTrendValues: countByDay(userTrendRows),
+    messageTrendValues: countByDay(messageTrendRows),
+    spentTrendValues: countByDay(spentTrendRows),
+    redemptionTrendValues: countByDay(redemptionTrendRows),
+  };
+},
+["admin-stats-counts-v7"],
   { revalidate: STATS_REVALIDATE, tags: [...STATS_CACHE_TAGS] }
 );
 
@@ -170,7 +209,8 @@ export async function getAdminStats(admin: AdminUser): Promise<AdminStatsData> {
   const canReviewApprovals = hasAdminPermission(admin, "approvals:review");
   const canRequestApprovals = hasAdminPermission(admin, "approvals:request");
 
-  const [counts, recentMessages, pendingApprovals] = await Promise.all([
+const [counts, recentMessages, pendingApprovals, pendingApprovalsExpiringSoon] =
+  await Promise.all([
     getCachedCounts(dateKey),
     canReadMessages ? getCachedRecentMessages(dateKey) : Promise.resolve(undefined),
     canReviewApprovals || canRequestApprovals
@@ -189,11 +229,25 @@ export async function getAdminStats(admin: AdminUser): Promise<AdminStatsData> {
           },
         })
       : Promise.resolve(undefined),
+    canReviewApprovals
+      ? prisma.adminApprovalRequest.count({
+          where: {
+            status: "PENDING",
+            expiresAt: {
+              gt: new Date(),
+              lte: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            },
+          },
+        })
+      : Promise.resolve(undefined),
   ]);
 
-  const data = buildAdminStatsData(admin, counts, recentMessages);
-  if (pendingApprovals !== undefined) data.pendingApprovals = pendingApprovals;
-  return data;
+const data = buildAdminStatsData(admin, counts, recentMessages);
+if (pendingApprovals !== undefined) data.pendingApprovals = pendingApprovals;
+if (pendingApprovalsExpiringSoon !== undefined) {
+  data.pendingApprovalsExpiringSoon = pendingApprovalsExpiringSoon;
+}
+return data;
 }
 
 const getCachedSsoStats = unstable_cache(

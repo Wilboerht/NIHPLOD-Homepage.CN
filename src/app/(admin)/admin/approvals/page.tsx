@@ -13,14 +13,16 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { ApprovalRequestDialog } from "@/components/admin/ApprovalRequestDialog";
-import { PageHeader, RequirePermission } from "@/components/admin";
+import { AdminSearchInput, DateRangeFilter, PageHeader, RequirePermission } from "@/components/admin";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { formatDateTimeSeconds } from "@/lib/format";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useFreshTotpConfirm } from "@/hooks/useFreshTotpConfirm";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useUrlDetail } from "@/hooks/useUrlDetail";
 import { APPROVAL_POLICIES, type ApprovalPolicyKey } from "@/lib/admin-approval-policy";
+import { buildApprovalSummary } from "@/lib/approval-summary";
 
 interface ApprovalItem {
   id: string;
@@ -54,6 +56,8 @@ interface ApprovalItem {
 
 interface ListResponse {
   items: ApprovalItem[];
+  counts?: Record<string, number>;
+  expiringSoonCount?: number;
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }
 
@@ -115,8 +119,15 @@ function ApprovalsContent() {
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
   const status = searchParams.get("status") || "";
+  const policyKey = searchParams.get("policyKey") || "";
+  const requesterSearch = searchParams.get("requesterSearch") || "";
+  const dateFrom = searchParams.get("dateFrom") || "";
+  const dateTo = searchParams.get("dateTo") || "";
+  const expiringSoon = searchParams.get("expiring") === "1";
 
   const [items, setItems] = useState<ApprovalItem[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [expiringSoonCount, setExpiringSoonCount] = useState(0);
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: 20,
@@ -134,6 +145,38 @@ function ApprovalsContent() {
   const [secretOpen, setSecretOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
   const [riskAcknowledged, setRiskAcknowledged] = useState(false);
+  const {
+    value: approvalParam,
+    open: openApprovalUrl,
+    close: closeApprovalUrl,
+  } = useUrlDetail("approval");
+  const openApproval = (item: ApprovalItem) => {
+    setSelected(item);
+    openApprovalUrl(item.id);
+  };
+  const closeApproval = () => {
+    setSelected(null);
+    closeApprovalUrl();
+  };
+  useEffect(() => {
+    if (!approvalParam) {
+      // 浏览器返回/直接删除 URL 参数时同步关闭抽屉
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelected((prev) => (prev ? null : prev));
+      return;
+    }
+    let cancelled = false;
+    apiGet<ApprovalItem>(`/api/admin/approvals/${approvalParam}`)
+      .then((data) => {
+        if (!cancelled) setSelected(data);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("加载审批详情失败");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [approvalParam, toast]);
 
   const takeLatest = useLatestRequest();
   const fetchItems = useCallback(async () => {
@@ -144,9 +187,16 @@ function ApprovalsContent() {
         page,
         pageSize: 20,
         status: status || undefined,
+        policyKey: policyKey || undefined,
+        requesterSearch: requesterSearch || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        expiringSoon: expiringSoon ? "1" : undefined,
       });
       if (!isLatest()) return;
       setItems(data.items);
+      setCounts(data.counts ?? {});
+      setExpiringSoonCount(data.expiringSoonCount ?? 0);
       setPagination(data.pagination);
       setLoadError(false);
     } catch (error) {
@@ -156,7 +206,7 @@ function ApprovalsContent() {
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [page, status, takeLatest, toast]);
+  }, [dateFrom, dateTo, expiringSoon, page, policyKey, requesterSearch, status, takeLatest, toast]);
 
   useEffect(() => {
     deferInEffect(fetchItems);
@@ -173,6 +223,18 @@ function ApprovalsContent() {
   };
 
   const isRequester = selected?.requesterId === currentAdminId;
+  const approvalSummary = useMemo(
+    () =>
+      selected
+        ? buildApprovalSummary({
+            policyKey: selected.policyKey,
+            payload: selected.payload as Record<string, unknown> | null,
+            targetSnapshot: selected.targetSnapshot,
+            targetLabel: selected.targetLabel,
+          })
+        : null,
+    [selected]
+  );
   const displayPayload = useMemo(() => {
     const payload = selected?.payload;
     if (!payload) return payload;
@@ -243,7 +305,7 @@ function ApprovalsContent() {
       if (data.request) {
         await refreshSelected(data.request.id);
       } else {
-        setSelected(null);
+        closeApproval();
       }
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "审批操作失败");
@@ -259,7 +321,7 @@ function ApprovalsContent() {
       await apiPost(`/api/admin/approvals/${selected.id}/cancel`);
       window.dispatchEvent(new Event("admin:nav-counts-refresh"));
       toast.success("申请已撤回");
-      setSelected(null);
+      closeApproval();
       await fetchItems();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "撤回失败");
@@ -338,7 +400,11 @@ function ApprovalsContent() {
     }
   };
 
-  const statusTabs = STATUS_OPTIONS;
+  const statusTabs = STATUS_OPTIONS.map((option) => (
+    option.value
+      ? { ...option, label: `${option.label} (${counts[option.value] ?? 0})` }
+      : { ...option, label: `全部状态 (${Object.values(counts).reduce((sum, n) => sum + n, 0)})` }
+  ));
 
   return (
     <div className="flex flex-col gap-6">
@@ -369,15 +435,52 @@ function ApprovalsContent() {
       />
 
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-full sm:w-44">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+          <div className="w-full sm:w-48">
             <Select
-              label="状态"
+              aria-label="按状态筛选"
               options={statusTabs}
               value={status}
               onChange={(event) => updateParams({ status: event.target.value })}
             />
           </div>
+          <div className="w-full sm:w-52">
+            <Select
+              aria-label="按审批类型筛选"
+              value={policyKey}
+              onChange={(event) => updateParams({ policyKey: event.target.value })}
+              options={[
+                { value: "", label: "全部审批类型" },
+                ...Object.entries(APPROVAL_POLICIES).map(([key, policy]) => ({
+                  value: key,
+                  label: policy.label,
+                })),
+              ]}
+            />
+          </div>
+          <AdminSearchInput
+            value={requesterSearch}
+            onCommit={(next) => updateParams({ requesterSearch: next })}
+            ariaLabel="搜索申请人"
+            placeholder="申请人姓名 / 邮箱 / ID"
+            className="xl:max-w-xs"
+          />
+          <DateRangeFilter
+            from={dateFrom}
+            to={dateTo}
+            onChange={({ from, to }) => updateParams({ dateFrom: from, dateTo: to })}
+          />
+          <Button
+            variant={expiringSoon ? "primary" : "outline"}
+            size="sm"
+            onClick={() =>
+              updateParams(
+                expiringSoon ? { expiring: "", status: "" } : { expiring: "1", status: "PENDING" }
+              )
+            }
+          >
+            24 小时内过期{expiringSoonCount > 0 ? ` (${expiringSoonCount})` : ""}
+          </Button>
         </div>
       </div>
 
@@ -411,7 +514,7 @@ function ApprovalsContent() {
                 key={item.id}
                 type="button"
                 onClick={() => {
-                  setSelected(item);
+                  openApproval(item);
                   setNote("");
                   setRiskAcknowledged(false);
                 }}
@@ -459,10 +562,11 @@ function ApprovalsContent() {
       <Modal
         open={!!selected}
         onClose={() => {
-          if (!actionLoading) setSelected(null);
+          if (!actionLoading) closeApproval();
         }}
         title="审批详情"
-        size="lg"
+        size="xl"
+        variant="drawer"
         mobileFullScreen
         closeGuard={() => !actionLoading}
       >
@@ -523,20 +627,48 @@ function ApprovalsContent() {
               </p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <p className="mb-1 text-xs font-medium text-brand-charcoal/65">申请参数</p>
-                <pre className="max-h-52 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-xs">
-                  {JSON.stringify(displayPayload, null, 2)}
-                </pre>
+            {approvalSummary && (
+              <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3">
+                <p className="mb-2 text-xs font-medium text-brand-charcoal/65">操作摘要</p>
+                <dl className="grid gap-2 sm:grid-cols-2">
+                  {approvalSummary.fields.map((field) => (
+                    <div key={field.label} className="min-w-0">
+                      <dt className="text-xs text-brand-charcoal/65">{field.label}</dt>
+                      <dd className="mt-0.5 break-all text-sm font-medium text-brand-charcoal">
+                        {field.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {approvalSummary.riskNotes.length > 0 && (
+                  <ul className="mt-3 space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                    {approvalSummary.riskNotes.map((risk) => (
+                      <li key={risk}>{risk}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <div>
-                <p className="mb-1 text-xs font-medium text-brand-charcoal/65">目标快照</p>
-                <pre className="max-h-52 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-xs">
-                  {JSON.stringify(selected.targetSnapshot, null, 2)}
-                </pre>
+            )}
+
+            <details className="rounded-lg border border-brand-charcoal/10 bg-white">
+              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-brand-charcoal/65">
+                技术详情（原始参数与目标快照）
+              </summary>
+              <div className="grid gap-3 border-t border-brand-charcoal/10 p-3 md:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-xs font-medium text-brand-charcoal/65">申请参数</p>
+                  <pre className="max-h-52 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-xs">
+                    {JSON.stringify(displayPayload, null, 2)}
+                  </pre>
+                </div>
+                <div>
+                  <p className="mb-1 text-xs font-medium text-brand-charcoal/65">目标快照</p>
+                  <pre className="max-h-52 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-xs">
+                    {JSON.stringify(selected.targetSnapshot, null, 2)}
+                  </pre>
+                </div>
               </div>
-            </div>
+            </details>
 
             {selected.decisionNote && (
               <div>

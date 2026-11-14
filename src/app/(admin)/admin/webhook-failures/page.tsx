@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Webhook, RefreshCw, RotateCw, Trash2, AlertCircle } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -222,6 +223,8 @@ function AdminWebhookFailuresContent() {
           </Button>
         }
       />
+
+      <AdminHubTabs section="notifications" />
 
       {/* 队列切换 */}
       <div className="flex flex-wrap gap-2">

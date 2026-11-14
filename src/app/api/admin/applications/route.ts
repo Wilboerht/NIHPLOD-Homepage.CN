@@ -8,6 +8,7 @@ import { apiConsole } from "@/lib/logger";
 import { createAuditLogStrict } from "@/lib/audit";
 import { cuidSchema } from "@/lib/validation";
 import { maskPhone } from "@/lib/mask-phone";
+import { parseAdminDateRange } from "@/lib/admin-list-date-range";
 
 const folderIdSchema = z.union([z.literal("uncategorized"), cuidSchema]);
 
@@ -20,7 +21,7 @@ const querySchema = z.object({
   pageSize: z.preprocess((val) => (val ? Number(val) : 20), z.number().min(1).max(100)),
   status: z.preprocess(
     (val) => (val === null || val === "" ? undefined : val),
-    z.enum(["all", "pending", "reviewed", "interviewed", "rejected", "hired"]).default("all")
+    z.enum(["all", "pending", "reviewed", "interview_scheduled", "interviewed", "offer", "rejected", "hired", "withdrawn"]).default("all")
   ),
   jobId: z.preprocess(
     (val) => (val === null || val === "" ? undefined : val),
@@ -30,10 +31,12 @@ const querySchema = z.object({
     (val) => (val === null || val === "" ? undefined : val),
     folderIdSchema.optional()
   ),
-  search: z.preprocess(
-    (val) => (val === null || val === "" ? undefined : val),
-    z.string().max(100).optional()
-  ),
+search: z.preprocess(
+  (val) => (val === null || val === "" ? undefined : val),
+  z.string().max(100).optional()
+),
+dateFrom: z.string().optional(),
+dateTo: z.string().optional(),
 });
 
 // GET /api/admin/applications - 获取简历申请列表
@@ -62,16 +65,25 @@ export async function GET(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const { searchParams } = new URL(request.url);
-    const params = querySchema.parse({
-      page: searchParams.get("page"),
-      pageSize: searchParams.get("pageSize"),
-      status: searchParams.get("status"),
-      jobId: searchParams.get("jobId"),
-      folderId: searchParams.get("folderId"),
-      search: searchParams.get("search"),
-    });
+const params = querySchema.parse({
+  page: searchParams.get("page"),
+  pageSize: searchParams.get("pageSize"),
+  status: searchParams.get("status"),
+  jobId: searchParams.get("jobId"),
+  folderId: searchParams.get("folderId"),
+  search: searchParams.get("search"),
+  dateFrom: searchParams.get("dateFrom") || undefined,
+  dateTo: searchParams.get("dateTo") || undefined,
+});
 
-    const { page, pageSize, status, jobId, folderId, search } = params;
+const { page, pageSize, status, jobId, folderId, search } = params;
+const range = parseAdminDateRange(params.dateFrom, params.dateTo);
+if (!range.ok) {
+  return NextResponse.json(
+    { success: false, error: { code: "INVALID_DATE", message: range.message } },
+    { status: 400, headers: NO_STORE_HEADERS }
+  );
+}
 
     // 构建查询条件
     const where: Prisma.JobApplicationWhereInput = {};
@@ -91,12 +103,18 @@ export async function GET(request: NextRequest) {
       where.folderId = folderId;
     }
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { phone: { equals: search } },
-      ];
-    }
+if (search) {
+  where.OR = [
+    { name: { contains: search, mode: "insensitive" } },
+    { phone: { equals: search } },
+  ];
+}
+if (range.from || range.to) {
+  where.createdAt = {
+    ...(range.from ? { gte: range.from } : {}),
+    ...(range.to ? { lte: range.to } : {}),
+  };
+}
 
     const canViewSensitive = hasAdminPermission(admin, "applications:sensitive:read");
 
@@ -115,8 +133,19 @@ export async function GET(request: NextRequest) {
           resumePath: true,
           status: true,
           folderId: true,
+          rating: true,
+          tags: true,
+          source: true,
+          rejectionReason: true,
+          lastContactedAt: true,
           createdAt: true,
           updatedAt: true,
+          interviews: {
+            where: { result: "PENDING", scheduledAt: { gte: new Date() } },
+            orderBy: { scheduledAt: "asc" },
+            take: 1,
+            select: { id: true, scheduledAt: true, mode: true, interviewer: true },
+          },
           job: {
             select: {
               id: true,

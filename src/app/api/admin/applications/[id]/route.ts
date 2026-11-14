@@ -36,13 +36,39 @@ async function withFileDeleteRetry<T>(action: () => Promise<T>, attempts = 3): P
   throw lastError;
 }
 
-const statusSchema = z.enum(["pending", "reviewed", "interviewed", "rejected", "hired"]);
+const statusSchema = z.enum([
+  "pending",
+  "reviewed",
+  "interview_scheduled",
+  "interviewed",
+  "offer",
+  "hired",
+  "rejected",
+  "withdrawn",
+]);
 
 const ALLOWED_TRANSITIONS: Record<string, readonly string[]> = {
-  pending: ["reviewed", "interviewed", "rejected", "hired"],
-  reviewed: ["pending", "interviewed", "rejected", "hired"],
-  interviewed: ["reviewed", "rejected", "hired"],
+  pending: [
+    "reviewed",
+    "interview_scheduled",
+    "interviewed",
+    "offer",
+    "rejected",
+    "withdrawn",
+  ],
+  reviewed: [
+    "pending",
+    "interview_scheduled",
+    "interviewed",
+    "offer",
+    "rejected",
+    "withdrawn",
+  ],
+  interview_scheduled: ["reviewed", "interviewed", "offer", "rejected", "withdrawn"],
+  interviewed: ["reviewed", "offer", "hired", "rejected", "withdrawn"],
+  offer: ["interviewed", "hired", "rejected", "withdrawn"],
   rejected: ["pending", "reviewed"],
+  withdrawn: ["pending", "reviewed"],
   hired: [],
 };
 
@@ -58,6 +84,10 @@ const patchSchema = z
     status: statusSchema.optional(),
     notes: z.string().max(5000, "备注最多5000字符").optional(),
     folderId: z.string().min(1).optional().nullable(),
+    rating: z.number().int().min(1).max(5).nullable().optional(),
+    tags: z.array(z.string().trim().min(1).max(20)).max(10).optional(),
+    source: z.string().trim().max(100).nullable().optional(),
+    rejectionReason: z.string().trim().max(2000).nullable().optional(),
     /** 乐观锁：只有当前状态匹配时才更新，防止并发覆盖 */
     expectedStatus: statusSchema.optional(),
     /** 乐观锁：保存前的 updatedAt（必填，防止并发覆盖丢更新） */
@@ -222,7 +252,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const { status, notes, folderId, expectedStatus, expectedUpdatedAt } = parsed.data;
+    const { status, notes, folderId, expectedStatus, expectedUpdatedAt, rating, tags, source, rejectionReason } =
+      parsed.data;
 
     if (status && expectedStatus && !ALLOWED_TRANSITIONS[expectedStatus]?.includes(status)) {
       return NextResponse.json(
@@ -252,6 +283,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (status) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
     if (folderId !== undefined) updateData.folderId = folderId; // null 表示移除分类
+    if (rating !== undefined) updateData.rating = rating;
+    if (tags !== undefined) updateData.tags = tags;
+    if (source !== undefined) updateData.source = source;
+    if (rejectionReason !== undefined) updateData.rejectionReason = rejectionReason;
+    if (status || notes !== undefined || rating !== undefined || tags !== undefined) {
+      updateData.lastContactedAt = new Date();
+    }
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -349,6 +387,36 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
         { status: 409 }
       );
+    }
+
+    const events: {
+      type: string;
+      fromStatus?: string | null;
+      toStatus?: string | null;
+      note?: string | null;
+    }[] = [];
+    if (status) {
+      events.push({
+        type: "STATUS_CHANGED",
+        fromStatus: expectedStatus ?? null,
+        toStatus: status,
+      });
+    }
+    if (notes !== undefined) events.push({ type: "NOTE_ADDED" });
+    if (rating !== undefined) events.push({ type: "RATING_CHANGED" });
+    if (tags !== undefined) events.push({ type: "TAGS_CHANGED" });
+    if (source !== undefined) events.push({ type: "SOURCE_CHANGED" });
+    if (events.length > 0 && typeof prisma.jobApplicationEvent?.createMany === "function") {
+      await prisma.jobApplicationEvent.createMany({
+        data: events.map((event) => ({
+          applicationId: id,
+          type: event.type,
+          fromStatus: event.fromStatus ?? null,
+          toStatus: event.toStatus ?? null,
+          note: event.note ?? null,
+          changedByAdminId: admin.id,
+        })),
+      });
     }
 
     const application = await prisma.jobApplication.findUnique({

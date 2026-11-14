@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import type { AdminApprovalRequest, AdminApprovalStatus } from "@/generated/prisma/client";
 import type { AdminUser } from "@/types/auth";
 import { prisma } from "./prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { stableStringify } from "./audit-chain";
 import { toInputJson } from "./prisma-json";
 import { createAuditLog } from "./audit";
@@ -48,6 +49,10 @@ export interface CreateApprovalRequestInput {
 export interface ApprovalListOptions {
   status?: string;
   policyKey?: string;
+  requesterSearch?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  expiringSoon?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -662,13 +667,41 @@ export async function listApprovalRequests(admin: AdminUser, options: ApprovalLi
   const isReviewer = admin.role === "owner" || hasAdminPermission(admin, "approvals:review");
   const page = Math.max(1, options.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, options.pageSize ?? 20));
-  const where = {
+  const now = new Date();
+  const expiringBefore = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  const baseWhere: Prisma.AdminApprovalRequestWhereInput = {
     ...(isReviewer ? {} : { requesterId: admin.id }),
-    ...(options.status ? { status: options.status as AdminApprovalStatus } : {}),
     ...(options.policyKey ? { policyKey: options.policyKey } : {}),
   };
+  if (options.requesterSearch) {
+    baseWhere.OR = [
+      { requesterId: { equals: options.requesterSearch } },
+      { requesterEmail: { contains: options.requesterSearch, mode: "insensitive" } },
+      { requesterName: { contains: options.requesterSearch, mode: "insensitive" } },
+    ];
+  }
+  if (options.dateFrom || options.dateTo) {
+    baseWhere.createdAt = {
+      ...(options.dateFrom ? { gte: options.dateFrom } : {}),
+      ...(options.dateTo ? { lte: options.dateTo } : {}),
+    };
+  }
+  if (options.expiringSoon) {
+    baseWhere.status = "PENDING";
+    baseWhere.expiresAt = { gt: now, lte: expiringBefore };
+  }
+  const where: Prisma.AdminApprovalRequestWhereInput = {
+    ...baseWhere,
+    ...(options.status ? { status: options.status as AdminApprovalStatus } : {}),
+  };
 
-  const [items, total] = await Promise.all([
+  const countsWhere: Prisma.AdminApprovalRequestWhereInput = {
+    ...baseWhere,
+    ...(options.expiringSoon ? {} : {}),
+  };
+
+  const [items, total, statusCounts, expiringSoonCount] = await Promise.all([
     prisma.adminApprovalRequest.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -678,6 +711,18 @@ export async function listApprovalRequests(admin: AdminUser, options: ApprovalLi
       omit: { payload: true },
     }),
     prisma.adminApprovalRequest.count({ where }),
+    prisma.adminApprovalRequest.groupBy({
+      by: ["status"],
+      _count: true,
+      where: options.expiringSoon ? baseWhere : countsWhere,
+    }),
+    prisma.adminApprovalRequest.count({
+      where: {
+        ...baseWhere,
+        status: "PENDING",
+        expiresAt: { gt: now, lte: expiringBefore },
+      },
+    }),
   ]);
 
   // 非导入类审批的 payload 很小，按需补齐；导入类只返回占位，详情接口再读完整值。
@@ -693,6 +738,11 @@ export async function listApprovalRequests(admin: AdminUser, options: ApprovalLi
       : [];
   const payloadById = new Map(payloadRows.map((row) => [row.id, row.payload]));
 
+  const counts: Record<string, number> = {};
+  for (const row of statusCounts) {
+    counts[row.status] = row._count;
+  }
+
   return {
     items: items.map((item) =>
       approvalSummary({
@@ -703,6 +753,8 @@ export async function listApprovalRequests(admin: AdminUser, options: ApprovalLi
             : (payloadById.get(item.id) ?? null),
       })
     ),
+    counts,
+    expiringSoonCount,
     pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
   };
 }

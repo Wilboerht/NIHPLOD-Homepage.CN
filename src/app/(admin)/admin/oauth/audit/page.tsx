@@ -18,6 +18,7 @@ import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
@@ -268,6 +269,8 @@ function OAuthAuditPage() {
           </>
         }
       />
+
+      <AdminHubTabs section="sso" />
 
       {/* 筛选栏：条件按类型分组，窄屏自然换行 */}
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">

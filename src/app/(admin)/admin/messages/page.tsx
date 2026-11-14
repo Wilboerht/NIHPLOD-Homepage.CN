@@ -20,6 +20,7 @@ import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useSensitiveReveal } from "@/hooks/useSensitiveReveal";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
@@ -73,7 +74,13 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
   const canWriteMessages = canAdmin("messages:write");
   const canReadSensitivePhone = canAdmin("messages:sensitive:read");
   const { requireTotp, totpModal } = useTotpConfirm();
-  const [revealedPhone, setRevealedPhone] = useState<string | null>(null);
+    const [revealedPhone, setRevealedPhone] = useState<string | null>(null);
+  const {
+    revealed: phoneRevealed,
+    remainingSeconds: phoneRevealRemaining,
+    reveal: markPhoneRevealed,
+    hide: hidePhone,
+  } = useSensitiveReveal({ onHide: () => setRevealedPhone(null) });
 
   // 列表状态由 URL 派生
   const page = getNumber("page", 1);
@@ -211,7 +218,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
 
   // 查看详情
   const viewDetail = async (message: Message) => {
-    setRevealedPhone(null);
+    hidePhone();
     setDetailMessage(message);
     setInternalNoteDraft(message.internalNote ?? "");
     if (!message.read) {
@@ -221,12 +228,13 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
 
   // 显式揭示完整手机号：step-up + 服务端严格审计，失败则不返回明文
   const revealPhone = async () => {
-    if (!detailMessage || revealedPhone) return;
+    if (!detailMessage || phoneRevealed) return;
     const submit = () =>
       apiPost<{ phone: string }>(`/api/admin/messages/${detailMessage.id}/reveal`);
     try {
       const data = await submit();
       setRevealedPhone(data.phone);
+      markPhoneRevealed();
     } catch (err) {
       if (isTotpRequired(err)) {
         const verified = await requireTotp(err instanceof ApiError ? err.code : undefined);
@@ -234,6 +242,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
         try {
           const data = await submit();
           setRevealedPhone(data.phone);
+          markPhoneRevealed();
         } catch (retryError) {
           showError(retryError instanceof Error ? retryError.message : "查看完整号码失败");
         }
@@ -957,18 +966,34 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                   </div>
                   <span className="mt-0.5 flex items-center gap-1.5 text-xs text-brand-charcoal/65">
                     {revealedPhone ?? detailMessage.phone}
-                    {canReadSensitivePhone && !revealedPhone && (
+                    {canReadSensitivePhone && !phoneRevealed && (
                       <Button variant="outline" size="sm" onClick={() => void revealPhone()}>
                         <Eye className="mr-1 h-3.5 w-3.5" />
                         显示完整号码
                       </Button>
                     )}
-                    {canReadSensitivePhone && revealedPhone && (
-                      <Tooltip content="复制手机号" side="top">
-                        <IconButton label="复制手机号" onClick={() => copyPhone(revealedPhone)}>
-                          <Copy className="h-3.5 w-3.5" />
-                        </IconButton>
-                      </Tooltip>
+                    {canReadSensitivePhone && phoneRevealed && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={hidePhone}
+                          className="text-brand-primary hover:underline"
+                        >
+                          隐藏
+                        </button>
+                        <span className="text-brand-charcoal/65">
+                          {Math.floor(phoneRevealRemaining / 60)}:
+                          {String(phoneRevealRemaining % 60).padStart(2, "0")} 后自动隐藏
+                        </span>
+                        <Tooltip content="复制手机号" side="top">
+                          <IconButton
+                            label="复制手机号"
+                            onClick={() => revealedPhone && copyPhone(revealedPhone)}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </IconButton>
+                        </Tooltip>
+                      </>
                     )}
                   </span>
                 </div>

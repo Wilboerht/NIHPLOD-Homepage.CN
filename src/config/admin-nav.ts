@@ -2,21 +2,15 @@
  * 后台管理导航配置
  */
 import {
-  Activity,
-  Archive,
   BadgeCheck,
   Bell,
   Briefcase,
-  FileCheck,
-  FileSearch,
   FolderTree,
   Gift,
   Key,
   LayoutDashboard,
   MessageSquare,
-  MonitorStop,
   Package,
-  PackageCheck,
   ReceiptText,
   Scale,
   ScanFace,
@@ -24,17 +18,17 @@ import {
   Shield,
   Timer,
   UserCheck,
-  UserCog,
   UserX,
   Users,
-  Webhook,
   LucideIcon,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/admin-permissions";
+import { getSectionEntry, type AdminSectionKey } from "./admin-sections";
 
 /** 侧边栏待办数量来源，对应 /api/admin/nav-counts */
 export type AdminNavCountKey =
   | "messages"
+  | "baComplaints"
   | "accountDeletions"
   | "spentAdjustments"
   | "pointRedemptions"
@@ -51,8 +45,14 @@ export interface NavItem {
   permission?: AdminPermission;
   /** 任一权限点满足即可访问（用于同时支持多个权限域的页面） */
   permissionsAny?: AdminPermission[];
-  /** 待办数量来源；不填则使用静态 badge */
+  /** 待办数量来源；多个来源会求和展示 */
+  countKeys?: AdminNavCountKey[];
+  /** 兼容单来源写法 */
   countKey?: AdminNavCountKey;
+  /** 域中心分区；用于面包屑与页签 */
+  section?: AdminSectionKey;
+  /** 额外视为激活的路径前缀（域中心未移动到同一路径时使用） */
+  activePrefixes?: string[];
 }
 
 export interface NavGroup {
@@ -80,14 +80,14 @@ export const adminNavGroups: NavGroup[] = [
         href: "/admin/account-deletions",
         icon: UserX,
         permission: "users:read",
-        countKey: "accountDeletions",
+        countKeys: ["accountDeletions"],
       },
       {
         title: "消费审核",
         href: "/admin/spent-adjustments",
         icon: ReceiptText,
         permissionsAny: ["spent:read", "spent:import", "spent:create", "spent:review"],
-        countKey: "spentAdjustments",
+        countKeys: ["spentAdjustments"],
       },
       {
         title: "对账中心",
@@ -96,24 +96,21 @@ export const adminNavGroups: NavGroup[] = [
         permission: "reconciliation:read",
       },
       {
-        title: "积分礼品",
+        title: "积分兑换",
         href: "/admin/point-gifts",
         icon: Gift,
+        section: "points",
+        activePrefixes: ["/admin/redemption-after-sales", "/admin/points-ledger"],
         permissionsAny: [
           "redemptions:read",
           "redemptions:fulfill",
           "redemptions:cancel",
+          "redemptions:after-sales",
           "gifts:read",
           "gifts:write",
+          "points:read",
         ],
-        countKey: "pointRedemptions",
-      },
-      {
-        title: "兑换售后",
-        href: "/admin/redemption-after-sales",
-        icon: PackageCheck,
-        permission: "redemptions:after-sales",
-        countKey: "redemptionAfterSales",
+        countKeys: ["pointRedemptions", "redemptionAfterSales"],
       },
       {
         title: "留言管理",
@@ -126,7 +123,7 @@ export const adminNavGroups: NavGroup[] = [
           "ba:complaints:delete",
           "ba:complaints:sensitive:read",
         ],
-        countKey: "messages",
+        countKeys: ["messages", "baComplaints"],
       },
     ],
   },
@@ -151,7 +148,7 @@ export const adminNavGroups: NavGroup[] = [
         href: "/admin/applications",
         icon: UserCheck,
         permission: "applications:read",
-        countKey: "applications",
+        countKeys: ["applications"],
       },
     ],
   },
@@ -163,26 +160,16 @@ export const adminNavGroups: NavGroup[] = [
         href: "/admin/approvals",
         icon: BadgeCheck,
         permissionsAny: ["approvals:request", "approvals:review"],
-        countKey: "approvals",
+        countKeys: ["approvals"],
       },
       { title: "管理员管理", href: "/admin/admins", icon: Shield, permission: "admins:read" },
       {
-        title: "审计日志",
+        title: "审计中心",
         href: "/admin/audit-logs",
         icon: ScrollText,
         permission: "audit:read",
-      },
-      {
-        title: "审计完整性",
-        href: "/admin/audit-integrity",
-        icon: FileCheck,
-        permission: "audit:read",
-      },
-      {
-        title: "审计保留",
-        href: "/admin/audit-retention",
-        icon: Archive,
-        permission: "audit:retention:read",
+        section: "audit",
+        activePrefixes: ["/admin/audit-integrity", "/admin/audit-retention"],
       },
     ],
   },
@@ -197,50 +184,19 @@ export const adminNavGroups: NavGroup[] = [
       },
       { title: "定时任务", href: "/admin/cron-tasks", icon: Timer, permission: "cron:read" },
       {
-        title: "通知失败队列",
-        href: "/admin/webhook-failures",
-        icon: Webhook,
-        permission: "webhooks:read",
-      },
-      {
-        title: "事务通知队列",
+        title: "通知投递",
         href: "/admin/notification-outbox",
         icon: Bell,
+        section: "notifications",
+        activePrefixes: ["/admin/webhook-failures"],
         permission: "notifications:read",
       },
-    ],
-  },
-  {
-    label: "SSO 管理",
-    items: [
       {
-        title: "SSO 概览",
+        title: "SSO 管理",
         href: "/admin/oauth/stats",
-        icon: Activity,
-        permission: "sso:read",
-      },
-      {
-        title: "OAuth 客户端",
-        href: "/admin/oauth-clients",
         icon: Key,
-        permission: "sso:clients:read",
-      },
-      {
-        title: "授权记录",
-        href: "/admin/oauth/consents",
-        icon: UserCog,
-        permission: "sso:read",
-      },
-      {
-        title: "会话管理",
-        href: "/admin/oauth/sessions",
-        icon: MonitorStop,
-        permission: "sso:read",
-      },
-      {
-        title: "SSO 审计",
-        href: "/admin/oauth/audit",
-        icon: FileSearch,
+        section: "sso",
+        activePrefixes: ["/admin/oauth", "/admin/oauth-clients"],
         permission: "sso:read",
       },
     ],
@@ -255,16 +211,12 @@ export const adminNavGroups: NavGroup[] = [
         permissionsAny: ["advisor:stats:read", "advisor:access", "advisor:admin"],
       },
       {
-        title: "BA 证书平台",
+        title: "BA 平台",
         href: "/admin/subsites/ba",
         icon: BadgeCheck,
+        section: "ba",
+        activePrefixes: ["/admin/subsites/ba/certificates"],
         permissionsAny: ["ba:access", "ba:admin"],
-      },
-      {
-        title: "BA 证书管理",
-        href: "/admin/subsites/ba/certificates",
-        icon: FileCheck,
-        permission: "ba:certificates:read",
       },
     ],
   },
@@ -289,9 +241,15 @@ export function getVisibleNavGroups(permissions: readonly string[]): NavGroup[] 
 }
 
 /** 路径段级匹配：/admin/foo 不会误命中 /admin/foobar */
-export function isNavItemActive(item: Pick<NavItem, "href">, pathname: string): boolean {
+export function isNavItemActive(
+  item: Pick<NavItem, "href" | "activePrefixes">,
+  pathname: string
+): boolean {
   if (item.href === "/admin") return pathname === "/admin";
-  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  if (pathname === item.href || pathname.startsWith(`${item.href}/`)) return true;
+  return (item.activePrefixes ?? []).some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 }
 
 /**
@@ -345,6 +303,11 @@ export function getBreadcrumbs(pathname: string): { title: string; href: string 
   const activeItem = getActiveNavItem(pathname);
   if (activeItem && activeItem.href !== "/admin") {
     breadcrumbs.push({ title: activeItem.title, href: activeItem.href });
+  }
+
+  const sectionEntry = getSectionEntry(pathname);
+  if (sectionEntry && sectionEntry.tab.label !== activeItem?.title) {
+    breadcrumbs.push({ title: sectionEntry.tab.label, href: sectionEntry.tab.href });
   }
 
   const deepPath = parseDeepPath(pathname);

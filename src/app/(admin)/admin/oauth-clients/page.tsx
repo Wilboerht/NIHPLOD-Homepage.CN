@@ -45,6 +45,7 @@ import { formatDate, formatDateTimeSeconds as formatDateTime } from "@/lib/forma
 import { cn } from "@/lib/utils";
 import { RequirePermission } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 
 interface OAuthClient {
   id: string;
@@ -949,6 +950,8 @@ if (!payload) {
           </>
         }
       />
+
+      <AdminHubTabs section="sso" />
 
       {/* 工具栏：搜索与结果统计同一行，避免筛选控件堆叠 */}
       <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">

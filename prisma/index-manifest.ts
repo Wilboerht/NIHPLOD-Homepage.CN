@@ -91,6 +91,11 @@ export const concurrentIndexes: ConcurrentIndexDefinition[] = [
     columns: '"type", "createdAt" DESC',
   },
   {
+    name: "PointLedger_createdAt_idx",
+    table: "PointLedger",
+    columns: '"createdAt" DESC',
+  },
+  {
     name: "SpentImportRow_batchId_createdAt_idx",
     table: "SpentImportRow",
     columns: '"batchId", "createdAt"',

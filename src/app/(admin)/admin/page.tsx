@@ -23,9 +23,11 @@ import {
   DashboardModalCard,
   PendingQueue,
   SystemAlertIndicator,
+  TrendPanel,
   type StatStripItem,
   type PendingQueueItem,
   type SystemAlert,
+  type TrendSeries,
 } from "@/components/admin";
 import { Empty } from "@/components/ui/Empty";
 import { SecurityMonitor } from "@/components/admin/SecurityMonitor";
@@ -37,6 +39,7 @@ import { getOwnerGovernanceData, getSecurityMonitorData } from "@/lib/admin-dash
 import { apiConsole } from "@/lib/logger";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { RecentMessagesList } from "@/components/admin/RecentMessagesList";
+import { DashboardStatsRefresh } from "@/components/admin/DashboardStatsRefresh";
 
 export default async function AdminDashboard() {
   // 服务端验证管理员身份，未登录直接重定向
@@ -178,14 +181,25 @@ export default async function AdminDashboard() {
       href: "/admin/webhook-failures",
     });
   }
-  if (stats?.cronFailures24h !== undefined && stats.cronFailures24h > 0) {
-    systemAlerts.push({
-      key: "cron",
-      label: "定时任务失败",
-      count: stats.cronFailures24h,
-      href: "/admin/cron-tasks",
-    });
-  }
+if (stats?.cronFailures24h !== undefined && stats.cronFailures24h > 0) {
+  systemAlerts.push({
+    key: "cron",
+    label: "定时任务失败",
+    count: stats.cronFailures24h,
+    href: "/admin/cron-tasks",
+  });
+}
+if (
+  stats?.pendingApprovalsExpiringSoon !== undefined &&
+  stats.pendingApprovalsExpiringSoon > 0
+) {
+  systemAlerts.push({
+    key: "approvals-expiring",
+    label: "审批即将过期",
+    count: stats.pendingApprovalsExpiringSoon,
+    href: "/admin/approvals?status=PENDING&expiring=1",
+  });
+}
 
   // 概览指标：按权限裁剪，无权限的域不渲染
   const overviewItems: StatStripItem[] = [];
@@ -265,20 +279,52 @@ export default async function AdminDashboard() {
       ]
     : [];
 
-  const recentMessages = stats?.recentMessages;
-  const showRecentMessages = recentMessages !== undefined;
-  const twoColumnBottom = showRecentMessages && !!ssoStats;
-  const hasPendingQueues = pendingQueueItems.length > 0;
+const recentMessages = stats?.recentMessages;
+const showRecentMessages = recentMessages !== undefined;
+const twoColumnBottom = showRecentMessages && !!ssoStats;
+const hasPendingQueues = pendingQueueItems.length > 0;
+const trendDays =
+  stats?.userTrend?.days ??
+  stats?.messageTrend?.days ??
+  stats?.spentTrend?.days ??
+  stats?.redemptionTrend?.days ??
+  [];
+const trendSeries: TrendSeries[] = [];
+if (stats?.userTrend) {
+  trendSeries.push({ key: "users", label: "新增用户", values: stats.userTrend.values });
+}
+if (stats?.messageTrend) {
+  trendSeries.push({ key: "messages", label: "新增留言", values: stats.messageTrend.values });
+}
+if (stats?.spentTrend) {
+  trendSeries.push({ key: "spent", label: "消费申报", values: stats.spentTrend.values });
+}
+if (stats?.redemptionTrend) {
+  trendSeries.push({ key: "redemptions", label: "积分兑换", values: stats.redemptionTrend.values });
+}
+const statsUpdatedAt = stats?.generatedAt
+  ? new Intl.DateTimeFormat("zh-CN", {
+      timeZone: "Asia/Shanghai",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date(stats.generatedAt))
+  : null;
 
-  return (
-    <div className="flex flex-col gap-4">
-      <PageHeader
-        title="仪表盘"
-        description="待办优先；治理、监控与历史记录点击查看"
-        accessory={
-          systemAlerts.length > 0 ? <SystemAlertIndicator alerts={systemAlerts} /> : undefined
-        }
-      />
+return (
+  <div className="flex flex-col gap-4">
+    <PageHeader
+      title="仪表盘"
+      description={
+        statsUpdatedAt
+          ? `待办优先；统计更新于 ${statsUpdatedAt}`
+          : "待办优先；治理、监控与历史记录点击查看"
+      }
+      accessory={
+        systemAlerts.length > 0 ? <SystemAlertIndicator alerts={systemAlerts} /> : undefined
+      }
+      actions={<DashboardStatsRefresh />}
+    />
 
       {statsError || !stats ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-12">
@@ -298,13 +344,15 @@ export default async function AdminDashboard() {
         <>
           {hasPendingQueues && <PendingQueue items={pendingQueueItems} />}
 
-          {overviewItems.length > 0 && (
-            <PanelCard title="运营概览">
-              <StatStrip items={overviewItems} />
-            </PanelCard>
-          )}
-        </>
-      )}
+        {overviewItems.length > 0 && (
+          <PanelCard title="运营概览">
+            <StatStrip items={overviewItems} />
+          </PanelCard>
+        )}
+
+        {trendSeries.length > 0 && <TrendPanel days={trendDays} series={trendSeries} />}
+      </>
+    )}
 
       {/* 治理与监控：卡片仅展示摘要，点击打开弹窗查看完整内容 */}
       {governanceData && <OwnerGovernanceCard data={governanceData} />}

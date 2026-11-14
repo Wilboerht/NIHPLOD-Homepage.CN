@@ -24,6 +24,7 @@ import { apiGet } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import {
+  AdminHubTabs,
   PageHeader,
   PanelCard,
   RequirePermission,
@@ -184,6 +185,8 @@ function OAuthStatsContent() {
             </Button>
           }
         />
+
+        <AdminHubTabs section="sso" />
 
         {error ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-12">

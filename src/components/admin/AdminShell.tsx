@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { IconButton } from "./IconButton";
+import { SystemAlertIndicator, type SystemAlert } from "./SystemAlertIndicator";
 
 /** 管理端内容区统一最大宽度（与消费记录审核页对齐） */
 const CONTENT_MAX_WIDTH_CLASS = "max-w-7xl";
@@ -28,6 +29,7 @@ type NavCounts = Record<AdminNavCountKey, number>;
 
 const EMPTY_NAV_COUNTS: NavCounts = {
   messages: 0,
+  baComplaints: 0,
   accountDeletions: 0,
   spentAdjustments: 0,
   pointRedemptions: 0,
@@ -70,6 +72,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   };
   const [loggingOut, setLoggingOut] = useState(false);
   const [navCounts, setNavCounts] = useState<NavCounts>(EMPTY_NAV_COUNTS);
+  const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
   const [navCountsVersion, setNavCountsVersion] = useState(0);
   const drawerTrapRef = useFocusTrap(drawerOpen);
 
@@ -154,19 +157,29 @@ export function AdminShell({ children }: { children: ReactNode }) {
     if (!permissionList) return;
     const canReadAny =
       permissionList.includes("messages:read") ||
+      permissionList.includes("ba:complaints:read") ||
+      permissionList.includes("ba:complaints:write") ||
+      permissionList.includes("ba:complaints:delete") ||
+      permissionList.includes("ba:complaints:sensitive:read") ||
       permissionList.includes("users:read") ||
+      permissionList.includes("users:security:write") ||
       permissionList.includes("spent:read") ||
       permissionList.includes("redemptions:read") ||
       permissionList.includes("redemptions:after-sales") ||
       permissionList.includes("applications:read") ||
       permissionList.includes("approvals:request") ||
-      permissionList.includes("approvals:review");
+      permissionList.includes("approvals:review") ||
+      permissionList.includes("webhooks:read") ||
+      permissionList.includes("cron:read");
     if (!canReadAny) return;
 
     let cancelled = false;
-    apiGet<NavCounts>("/api/admin/nav-counts")
+    apiGet<NavCounts & { systemAlerts?: SystemAlert[] }>("/api/admin/nav-counts")
       .then((data) => {
-        if (!cancelled) setNavCounts({ ...EMPTY_NAV_COUNTS, ...data });
+        if (cancelled) return;
+        const { systemAlerts: alerts, ...counts } = data;
+        setNavCounts({ ...EMPTY_NAV_COUNTS, ...counts });
+        setSystemAlerts(Array.isArray(alerts) ? alerts : []);
       })
       .catch((error) => {
         if (!cancelled) apiConsole.warn("侧边栏待处理数量加载失败:", error);
@@ -251,6 +264,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           pathname={pathname}
           permissions={permissionList}
           navCounts={navCounts}
+          systemAlerts={systemAlerts}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapsed}
           userName={name}
@@ -294,6 +308,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             pathname={pathname}
             permissions={permissionList}
             navCounts={navCounts}
+            systemAlerts={systemAlerts}
             onNavigate={() => setDrawerOpen(false)}
             onClose={() => setDrawerOpen(false)}
             userName={name}
@@ -342,6 +357,7 @@ interface SidebarContentProps {
   /** 当前管理员有效权限（未加载完成时显示骨架） */
   permissions?: string[];
   navCounts?: NavCounts;
+  systemAlerts?: SystemAlert[];
   /** 桌面端折叠为图标模式 */
   collapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -374,6 +390,7 @@ function SidebarContent({
   pathname,
   permissions,
   navCounts = EMPTY_NAV_COUNTS,
+  systemAlerts = [],
   collapsed = false,
   onToggleCollapse,
   onNavigate,
@@ -455,8 +472,12 @@ function SidebarContent({
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const active = isNavItemActive(item, pathname);
+                const countKeys = item.countKeys ?? (item.countKey ? [item.countKey] : []);
                 // 仅对有权限的待办模块显示红点；0 时不显示
-                const count = item.countKey ? navCounts[item.countKey] : item.badge;
+                const count =
+                  countKeys.length > 0
+                    ? countKeys.reduce((sum, key) => sum + (navCounts[key] ?? 0), 0)
+                    : item.badge;
                 const hasPending = typeof count === "number" && count > 0;
                 const pendingTitle =
                   typeof count === "number" ? `${item.title}（${count} 条待处理）` : item.title;
@@ -510,6 +531,11 @@ function SidebarContent({
             <p className="text-xs text-brand-charcoal/65">
               {userRole ? (ROLE_LABELS[userRole as AdminRoleValue] ?? "管理员") : "管理员"}
             </p>
+          </div>
+        )}
+        {systemAlerts.length > 0 && (
+          <div className={cn("mb-1", collapsed && "px-1")}>
+            <SystemAlertIndicator alerts={systemAlerts} showLabel={!collapsed} />
           </div>
         )}
         <Link

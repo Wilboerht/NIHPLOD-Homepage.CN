@@ -7,7 +7,19 @@
 import { hasAdminPermission, type AdminPermission } from "./admin-permissions";
 import type { AdminUser } from "@/types/auth";
 
+export interface AdminTrend {
+  days: string[];
+  values: number[];
+}
+
 export interface AdminStatsData {
+  /** 统计快照生成时间（缓存时间） */
+  generatedAt?: string;
+  userTrend?: AdminTrend;
+  messageTrend?: AdminTrend;
+  spentTrend?: AdminTrend;
+  redemptionTrend?: AdminTrend;
+  pendingApprovalsExpiringSoon?: number;
   products?: number;
   categories?: number;
   /** 草稿产品数（products:read） */
@@ -79,6 +91,12 @@ export interface AdminStatsSnapshot {
   failedAccountDeletionsCount: number;
   webhookFailuresCount: number;
   cronFailures24hCount: number;
+  generatedAt: string;
+  trendDays: string[];
+  userTrendValues: number[];
+  messageTrendValues: number[];
+  spentTrendValues: number[];
+  redemptionTrendValues: number[];
 }
 
 export interface RecentMessageRecord {
@@ -102,11 +120,13 @@ export function buildAdminStatsData(
   recentMessages?: RecentMessageRecord[]
 ): AdminStatsData {
   const can = (permission: AdminPermission) => hasAdminPermission(admin, permission);
-  const data: AdminStatsData = {};
+  const data: AdminStatsData = { generatedAt: counts.generatedAt };
+  const trend = (values: number[]): AdminTrend => ({ days: counts.trendDays, values });
 
   if (can("users:read")) {
     data.totalUsers = counts.totalUsersCount;
     data.newUsersToday = counts.newUsersTodayCount;
+    data.userTrend = trend(counts.userTrendValues);
   }
   // 注销失败属于需要人工干预的安全告警，仅对有安全写入权限的角色展示。
   if (can("users:security:write")) {
@@ -127,10 +147,12 @@ export function buildAdminStatsData(
     data.pendingSpentAdjustments = counts.pendingSpentAdjustmentsCount;
     data.pendingSpentAmount = counts.pendingSpentAmount;
     data.pendingSpentAdjustmentsOldestAt = counts.pendingSpentAdjustmentsOldestAt;
+    data.spentTrend = trend(counts.spentTrendValues);
   }
   if (can("redemptions:read")) {
     data.pendingRedemptions = counts.pendingRedemptionsCount;
     data.pendingRedemptionsOldestAt = counts.pendingRedemptionsOldestAt;
+    data.redemptionTrend = trend(counts.redemptionTrendValues);
   }
   if (can("webhooks:read")) data.webhookFailures = counts.webhookFailuresCount;
   if (can("cron:read")) data.cronFailures24h = counts.cronFailures24hCount;
@@ -140,6 +162,7 @@ export function buildAdminStatsData(
     data.messagesToday = counts.messagesTodayCount;
     data.unreadMessages = counts.unreadMessagesCount;
     data.unreadMessagesOldestAt = counts.unreadMessagesOldestAt;
+    data.messageTrend = trend(counts.messageTrendValues);
     data.recentMessages = (recentMessages ?? []).map((msg) => ({
       ...msg,
       phone: maskPhone(msg.phone),

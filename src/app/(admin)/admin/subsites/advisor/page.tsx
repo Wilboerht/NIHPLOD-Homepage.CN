@@ -123,7 +123,7 @@ function PageSkeleton() {
 function QuickLinks({ canOpenAdvisor }: { canOpenAdvisor: boolean }) {
   if (!canOpenAdvisor) {
     return (
-      <p className="text-xs text-brand-charcoal/60">
+      <p className="text-xs text-brand-charcoal/65">
         需要测肤子站访问权限（advisor:access）才能打开子站后台，请联系超级管理员授权。
       </p>
     );
@@ -166,7 +166,7 @@ function BudgetBar({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2 text-[11px]">
-        <span className="text-brand-charcoal/60">{label}</span>
+        <span className="text-brand-charcoal/65">{label}</span>
         <span className="font-mono tabular-nums text-brand-charcoal/80">
           ¥{usage.toFixed(2)}
           {configured ? ` / ¥${budget.toFixed(2)} · ${percent}%` : " · 未配置"}
@@ -189,7 +189,7 @@ function AIHealthSummary({ health }: { health: AdvisorAIHealth | null }) {
             未知
           </Badge>
         </div>
-        <p className="mt-2 text-xs text-brand-charcoal/60">AI 健康数据暂不可用。</p>
+        <p className="mt-2 text-xs text-brand-charcoal/65">AI 健康数据暂不可用。</p>
       </div>
     );
   }
@@ -221,7 +221,7 @@ function AIHealthSummary({ health }: { health: AdvisorAIHealth | null }) {
           percent={health.monthlyUsagePercent}
         />
         <div className="flex items-center justify-between gap-2 text-[11px]">
-          <span className="text-brand-charcoal/60">熔断器</span>
+          <span className="text-brand-charcoal/65">熔断器</span>
           {activeCircuits.length === 0 ? (
             <span className="text-emerald-700">全部正常</span>
           ) : (
@@ -264,7 +264,7 @@ function SkinDistribution({ items }: { items: AdvisorSubsiteDashboard["skinTypeD
   const total = items.reduce((sum, item) => sum + item.value, 0);
 
   if (total === 0) {
-    return <p className="text-xs text-brand-charcoal/60">暂无肤质数据</p>;
+    return <p className="text-xs text-brand-charcoal/65">暂无肤质数据</p>;
   }
 
   return (
@@ -296,7 +296,7 @@ function SkinDistribution({ items }: { items: AdvisorSubsiteDashboard["skinTypeD
                   {SKIN_TYPE_LABELS[item.key] || item.name}
                 </span>
               </span>
-              <span className="font-mono tabular-nums text-brand-charcoal/55">
+              <span className="font-mono tabular-nums text-brand-charcoal/65">
                 {item.value} · {percent}%
               </span>
             </div>
@@ -311,7 +311,7 @@ function WeeklyTrend({ items }: { items: AdvisorSubsiteDashboard["weeklyGrowth"]
   const max = Math.max(1, ...items.map((item) => Math.max(item.started, item.completed)));
 
   if (items.length === 0) {
-    return <p className="text-xs text-brand-charcoal/60">暂无趋势数据</p>;
+    return <p className="text-xs text-brand-charcoal/65">暂无趋势数据</p>;
   }
 
   return (
@@ -319,7 +319,7 @@ function WeeklyTrend({ items }: { items: AdvisorSubsiteDashboard["weeklyGrowth"]
       <div className="space-y-1.5">
         {items.map((item) => (
           <div key={item.day} className="flex items-center gap-2 text-[11px]">
-            <span className="w-8 shrink-0 text-brand-charcoal/60">
+            <span className="w-8 shrink-0 text-brand-charcoal/65">
               {WEEKDAY_LABELS[item.day] || item.day}
             </span>
             <div className="flex flex-1 items-center gap-1">
@@ -336,13 +336,13 @@ function WeeklyTrend({ items }: { items: AdvisorSubsiteDashboard["weeklyGrowth"]
                 />
               </div>
             </div>
-            <span className="w-12 shrink-0 text-right font-mono tabular-nums text-brand-charcoal/55">
+            <span className="w-12 shrink-0 text-right font-mono tabular-nums text-brand-charcoal/65">
               {item.started}/{item.completed}
             </span>
           </div>
         ))}
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[11px] text-brand-charcoal/55">
+      <div className="mt-2 flex items-center gap-3 text-[11px] text-brand-charcoal/65">
         <span className="inline-flex items-center gap-1">
           <span className="h-1.5 w-2.5 rounded-full bg-brand-charcoal/40" />
           开始
@@ -458,7 +458,7 @@ function NoticePanel({
           <span className="mt-0.5 shrink-0">{icon}</span>
           <div>
             <p className="text-sm font-medium text-brand-charcoal">{title}</p>
-            <p className="mt-0.5 text-xs text-brand-charcoal/60">{description}</p>
+            <p className="mt-0.5 text-xs text-brand-charcoal/65">{description}</p>
           </div>
         </div>
         {action && <div className="shrink-0">{action}</div>}

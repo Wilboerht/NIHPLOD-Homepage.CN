@@ -470,6 +470,14 @@ export async function POST(request: NextRequest) {
 
     // 记录成功登录尝试（用于审计和安全监控）
     await recordAdminAttempt(email, true, request);
+    try {
+      await prisma.admin.update({
+        where: { id: admin.id },
+        data: { lastLoginAt: new Date() },
+      });
+    } catch (err) {
+      apiConsole.warn("[AdminLogin] 更新最近登录时间失败:", err);
+    }
 
     // 生成 JWT token（过期时间与 Cookie maxAge 保持一致）
     const token = await signToken({

@@ -173,15 +173,22 @@ model JobApplication {
   resumeSize       Int? // 简历字节数
   jobTitleSnapshot String? // 投递时的职位标题快照
   consentAt        DateTime? // 隐私政策同意时间
-  status           String    @default("pending") // 状态: pending, reviewed, interviewed, rejected, hired
+  status           String    @default("pending") // 状态: pending, reviewed, interview_scheduled, interviewed, offer, hired, rejected, withdrawn
   notes            String?   @db.Text // 备注
   folderId         String? // 分类夹ID（可选）
+  rating           Int? // 1-5 星候选人评级
+  tags             String[]  @default([]) // 运营标签（如：优秀沟通、待复试）
+  source           String? // 候选人来源（官网/内推/招聘平台等）
+  rejectionReason  String?   @db.Text // 拒绝原因
+  lastContactedAt  DateTime? // 最近联系候选人时间
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @default(now()) @updatedAt
 
   job    Job                @relation(fields: [jobId], references: [id], onDelete: Restrict)
   folder ApplicationFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   user   User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  interviews JobInterview[]
+  events     JobApplicationEvent[]
 
   @@index([jobId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
@@ -190,6 +197,60 @@ model JobApplication {
   @@index([createdAt(sort: Desc)])
   @@index([name])
   @@index([phone])
+}
+
+// ============================================
+// 招聘面试与状态时间线
+// ============================================
+
+enum JobInterviewMode {
+  ONSITE
+  VIDEO
+  PHONE
+}
+
+enum JobInterviewResult {
+  PENDING
+  PASSED
+  FAILED
+  CANCELLED
+}
+
+model JobInterview {
+  id              String            @id @default(cuid())
+  applicationId   String
+  scheduledAt     DateTime
+  durationMinutes Int               @default(30)
+  mode            JobInterviewMode  @default(VIDEO)
+  locationOrLink  String?
+  interviewer     String?
+  note            String?           @db.Text
+  result          JobInterviewResult @default(PENDING)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @default(now()) @updatedAt
+
+  application JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, scheduledAt])
+  @@index([scheduledAt])
+}
+
+model JobApplicationEvent {
+  id              String   @id @default(cuid())
+  applicationId   String
+  type            String // STATUS_CHANGED / NOTE_ADDED / INTERVIEW_CREATED / INTERVIEW_UPDATED / RATING_CHANGED / TAGS_CHANGED
+  fromStatus      String?
+  toStatus        String?
+  note            String?  @db.Text
+  metadata        Json?
+  changedByAdminId String?
+  createdAt       DateTime @default(now())
+
+  application JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedByAdmin Admin? @relation(fields: [changedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt])
+  @@index([changedByAdminId])
 }
 
 // ============================================
@@ -1238,6 +1299,8 @@ model PointLedger {
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, type, expiresAt])
   @@index([expiresAt])
+  @@index([createdAt(sort: Desc)])
+  @@index([type, createdAt(sort: Desc)])
 }
 
 // 积分余额（可用可负；frozen 列已废弃恒为 0，无冻结期）
@@ -1420,6 +1483,7 @@ model Admin {
   totpEnabledAt     DateTime? // TOTP 绑定时间（启用/重绑时写入，关闭后置空）
   totpResetRequired Boolean     @default(false) // 恢复码已消费，必须重新绑定 TOTP
   totpBackupCodes   String?     @db.Text // 加密存储的备用码 JSON 数组
+  lastLoginAt       DateTime? // 最近成功登录时间（含 TOTP 校验通过）
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @default(now()) @updatedAt
 
@@ -1432,6 +1496,7 @@ model Admin {
   totpRecoveryCodes        AdminTotpRecovery[]          @relation("AdminTotpRecoveryTarget")
   createdTotpRecoveryCodes AdminTotpRecovery[]          @relation("AdminTotpRecoveryCreator")
   emailHistory             AdminEmailHistory[]
+  jobApplicationEvents     JobApplicationEvent[]
 
   @@index([status])
   @@index([deletedAt])
