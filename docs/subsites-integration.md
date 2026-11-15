@@ -118,7 +118,9 @@ ACTOR|timestamp|nonce|actorHeader
 - ticket/grant 均一次性，绑定管理员、action、resource、state；ticket 不进入 URL。
 - step-up 要求主站管理员 SSO 使用 RS256/JWKS；旧 HS256 兼容模式不支持 step-up。
 - break-glass 本地账号保留登录 TOTP 例外，不参与逐操作 step-up。
-- 上线灰度：BA `BA_STEP_UP_ENFORCEMENT=off` → `warn`（仅日志）→ `enforce`（428）。
+- 弹窗被浏览器拦截时保留当前表单，并提示允许本站弹窗后重试；不整页跳转。
+- 缺失 grant 的 `warn`/`enforce` 尝试会写 `ADMIN_STEP_UP_MISSING` 审计。
+- 上线灰度：BA `BA_STEP_UP_ENFORCEMENT=off` → `warn`（审计 + 日志）→ `enforce`（428）。
 - 未设置时默认 `off`；配置成无法识别的值按 `enforce` 处理（fail-closed）。
 - 切到 `enforce` 前必须确认主站 `BA_ADMIN_STEP_UP_ENABLED=true` 且 TOTP/JWKS 可用。
 - 回滚：将 `BA_STEP_UP_ENFORCEMENT` 设为 `off`；已签发的 grant 会自然过期。

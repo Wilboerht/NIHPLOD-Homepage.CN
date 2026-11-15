@@ -7,7 +7,6 @@ import { BA_STEP_UP_ACTION_LABELS, isBaStepUpAction, baStepUpPermission } from "
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireFreshAdminTotp } from "@/lib/admin-totp";
 import { createAuditLog, createAuditLogStrict } from "@/lib/audit";
-import { rateLimit } from "@/lib/ratelimit";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -63,11 +62,6 @@ export const POST = withAuth(async (request: NextRequest, admin) => {
   }
   if (!hasAdminPermission(admin, baStepUpPermission(parsed.action))) {
     return jsonError("FORBIDDEN", "缺少该证书操作权限", 403);
-  }
-
-  const limiter = await rateLimit(`ba-step-up-ticket:${admin.id}`, "admin-totp");
-  if (!limiter.success) {
-    return jsonError("RATE_LIMITED", "二次验证请求过于频繁，请稍后再试", 429);
   }
 
   const totpFailure = await requireFreshAdminTotp(admin.id, parsed.totpCode);
