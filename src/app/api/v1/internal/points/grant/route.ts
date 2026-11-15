@@ -191,13 +191,28 @@ export async function POST(request: NextRequest) {
         data: { granted: 0, duplicated: true, available: balance.available },
       });
     }
-    if (referenceMatch[2] !== getUtc8DateKey()) {
+    const todayKey = getUtc8DateKey();
+    const yesterdayKey = getUtc8DateKey(new Date(Date.now() - 86_400_000));
+    const referenceDate = referenceMatch[2];
+    if (referenceDate !== todayKey && referenceDate !== yesterdayKey) {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "INVALID_REFERENCE",
-            message: "仅允许发放当天（UTC+8）的打卡积分，历史日期补录不发分",
+            message: "只允许发放今天或昨天（UTC+8）的打卡积分，历史日期补录不发分",
+          },
+        },
+        { status: 400 }
+      );
+    }
+    if (referenceDate === yesterdayKey && points > 3) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "INVALID_REFERENCE",
+            message: "昨天补发仅允许打卡规则上限 3 分",
           },
         },
         { status: 400 }

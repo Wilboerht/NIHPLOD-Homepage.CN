@@ -36,6 +36,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     `/api/internal/admin/certificates/${encodeURIComponent(id)}`
   );
   if (!result.ok) return mapBaError(result);
+  if (hasAdminPermission(admin, "ba:certificates:sensitive:read")) {
+    await createAuditLog({
+      action: "ba_certificate_view",
+      targetType: "ba_certificate",
+      targetId: id,
+      targetLabel: result.data.certificate.certNumber,
+      detail: { sensitive: Boolean(result.data.certificate.phone) },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      adminId: admin.id,
+      request,
+    }).catch((error) => apiConsole.error("[BaCertificateView] 审计写入失败", error));
+  }
   return NextResponse.json({ success: true, data: result.data }, { headers: NO_STORE });
 }
 

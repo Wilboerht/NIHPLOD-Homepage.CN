@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileCheck2, Plus, RefreshCw } from "lucide-react";
@@ -20,6 +20,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useUrlDetail } from "@/hooks/useUrlDetail";
+import { useSensitiveReveal } from "@/hooks/useSensitiveReveal";
 import { useToast } from "@/components/ui/Toast";
 import type {
   BaCertificateDetail,
@@ -71,7 +72,7 @@ function CertificatesContent() {
   const { get, getNumber, update } = useListQuery();
   const page = getNumber("page", 1);
   const statusParam = get("status", "ALL");
-  const status = ["ALL", "PENDING", "ISSUED", "UPCOMING", "invalid"].includes(statusParam)
+  const status = ["ALL", "PENDING", "ISSUED", "UPCOMING", "EXPIRED", "REVOKED", "REJECTED", "invalid"].includes(statusParam)
     ? statusParam
     : "ALL";
   const search = get("search");
@@ -93,6 +94,8 @@ function CertificatesContent() {
   const [actionLoading, setActionLoading] = useState(false);
   const loadRequestRef = useRef(0);
   const submitKeyRef = useRef<{ signature: string; key: string } | null>(null);
+  const detailLoadingRef = useRef<string | null>(null);
+  const phoneReveal = useSensitiveReveal();
 
   const pageSize = 20;
 
@@ -283,15 +286,21 @@ function CertificatesContent() {
   };
 
   const openDetail = async (id: string) => {
+    if (detailLoadingRef.current === id) return;
+    detailLoadingRef.current = id;
+    phoneReveal.hide();
     openCertificateUrl(id);
     try {
       const data = await apiGet<BaCertificateDetail>(
         `/api/admin/subsites/ba/certificates/${encodeURIComponent(id)}`
       );
+      if (new URLSearchParams(window.location.search).get("certificate") !== id) return;
       setDetail(data);
       setDetailOpen(true);
     } catch (err) {
       toast.error(getApiErrorMessage(err, "加载证书详情失败"));
+    } finally {
+      if (detailLoadingRef.current === id) detailLoadingRef.current = null;
     }
   };
 
@@ -401,6 +410,9 @@ function CertificatesContent() {
                   { value: "ISSUED", label: "已签发" },
                   { value: "UPCOMING", label: "待生效" },
                   { value: "invalid", label: "已失效" },
+                  { value: "REJECTED", label: STATUS_LABELS.REJECTED },
+                  { value: "EXPIRED", label: STATUS_LABELS.EXPIRED },
+                  { value: "REVOKED", label: STATUS_LABELS.REVOKED },
                 ]}
               />
             </div>
@@ -444,7 +456,7 @@ function CertificatesContent() {
                 <Button variant="ghost" size="sm" onClick={() => void openDetail(item.id)}>
                   详情
                 </Button>
-                {item.allowedActions.downloadPng && can("ba:certificates:download") && (
+                {item.allowedActions.downloadPng && item.artifact.pngReady && can("ba:certificates:download") && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -512,7 +524,7 @@ function CertificatesContent() {
                         <Button variant="ghost" size="sm" onClick={() => void openDetail(item.id)}>
                           详情
                         </Button>
-                        {item.allowedActions.downloadPng && can("ba:certificates:download") && (
+                        {item.allowedActions.downloadPng && item.artifact.pngReady && can("ba:certificates:download") && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -722,7 +734,25 @@ function CertificatesContent() {
                 </div>
                 <div>
                   <div className="text-xs text-brand-charcoal/65">手机号</div>
-                  <div>{detail.certificate.phoneMasked ?? "-"}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>
+                      {phoneReveal.revealed && detail.certificate.phone
+                        ? detail.certificate.phone
+                        : detail.certificate.phoneMasked ?? "-"}
+                    </span>
+                    {detail.certificate.phone && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => (phoneReveal.revealed ? phoneReveal.hide() : phoneReveal.reveal())}
+                      >
+                        {phoneReveal.revealed
+                          ? `隐藏（${phoneReveal.remainingSeconds}s）`
+                          : "查看完整手机号"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-brand-charcoal/65">提报人</div>
@@ -764,15 +794,23 @@ function CertificatesContent() {
               </div>
             </div>
             <div className="space-y-3">
-              <div className="overflow-hidden rounded-lg border border-brand-charcoal/10 bg-white">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/admin/subsites/ba/certificates/${detail.certificate.id}/preview`}
-                  alt="证书预览"
-                  className="w-full"
-                />
-              </div>
-              {detail.certificate.allowedActions.downloadPng && can("ba:certificates:download") && (
+              {(detail.certificate.displayStatus === "PENDING" ||
+                detail.certificate.displayStatus === "REJECTED" ||
+                (detail.certificate.artifact.pngReady && can("ba:certificates:download"))) ? (
+                <div className="overflow-hidden rounded-lg border border-brand-charcoal/10 bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/admin/subsites/ba/certificates/${detail.certificate.id}/preview`}
+                    alt="证书预览"
+                    className="w-full"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-4 text-xs text-brand-charcoal/60">
+                  证书文件尚未生成，或当前账号没有下载权限。
+                </div>
+              )}
+              {detail.certificate.allowedActions.downloadPng && detail.certificate.artifact.pngReady && can("ba:certificates:download") && (
                 <Button
                   variant="outline"
                   className="w-full"
@@ -788,7 +826,7 @@ function CertificatesContent() {
                   下载 PNG
                 </Button>
               )}
-              {detail.certificate.allowedActions.downloadPdf && can("ba:certificates:download") && (
+              {detail.certificate.allowedActions.downloadPdf && detail.certificate.artifact.pdfReady && can("ba:certificates:download") && (
                 <Button
                   variant="outline"
                   className="w-full"
@@ -821,3 +859,4 @@ export default function BaCertificatesPage() {
     </RequirePermission>
   );
 }
+

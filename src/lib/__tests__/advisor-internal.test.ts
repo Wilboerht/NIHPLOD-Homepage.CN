@@ -36,7 +36,7 @@ describe("advisorRequest", () => {
     await expect(advisorJson("/api/internal/diary")).resolves.toBeNull();
   });
 
-  it("Bearer 回退：GET 带 query，默认 base 为 smart.nihplod.cn", async () => {
+  it("Bearer 回退：GET 带 query，默认 base 为内网 127.0.0.1:3002", async () => {
     process.env.ADVISOR_INTERNAL_SECRET = "test-secret";
     globalFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
 
@@ -46,7 +46,7 @@ describe("advisorRequest", () => {
 
     expect(result.ok).toBe(true);
     expect(globalFetch).toHaveBeenCalledWith(
-      "https://smart.nihplod.cn/api/internal/diary?userId=u1&before=2026-01-01",
+      "http://127.0.0.1:3002/api/internal/diary?userId=u1&before=2026-01-01",
       expect.objectContaining({ headers: { Authorization: "Bearer test-secret" } })
     );
   });
@@ -146,7 +146,7 @@ describe("getSubsitePurgeTargets", () => {
     expect(getSubsitePurgeTargets()).toEqual([
       {
         name: "advisor",
-        baseUrl: "https://smart.nihplod.cn",
+        baseUrl: "http://127.0.0.1:3002",
         purgePath: "/api/internal/user-data/purge",
       },
     ]);

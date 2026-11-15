@@ -224,7 +224,7 @@ function AdminProductsContent() {
           missing?: number;
           skippedProducts?: number;
           warnings?: unknown[];
-        }>("/api/admin/products/sync-advisor", {}, { timeoutMs: 60_000 });
+        }>("/api/admin/products/sync-advisor", {}, { timeoutMs: 300_000 });
 
       let data: Awaited<ReturnType<typeof submit>>;
       try {

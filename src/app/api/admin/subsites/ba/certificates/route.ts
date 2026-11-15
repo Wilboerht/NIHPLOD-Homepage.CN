@@ -42,9 +42,6 @@ export async function GET(request: NextRequest) {
         pageSize: search.get("pageSize") || 20,
         status: search.get("status") || "ALL",
         q: search.get("q") || undefined,
-        includeSensitive: hasAdminPermission(admin, "ba:certificates:sensitive:read")
-          ? "true"
-          : "false",
       },
     }
   );

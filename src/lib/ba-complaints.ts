@@ -66,7 +66,19 @@ export function mapBaError(result: {
   code: string;
   message: string;
 }): NextResponse {
-  const passthrough = new Set([400, 404, 409, 429]);
+  if (result.status === 401) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "BA_AUTH_FAILED",
+          message: "BA 内部鉴权失败，请检查主站与 BA 的内部 API 密钥配置",
+        },
+      },
+      { status: 502, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const passthrough = new Set([400, 403, 404, 409, 429]);
   const status = passthrough.has(result.status) ? result.status : 503;
   return NextResponse.json(
     {

@@ -50,7 +50,10 @@ export async function GET(request: NextRequest) {
   const canReadComplaints = canReadBaComplaints(admin);
   const canManageEmergencyAccount = hasAdminPermission(admin, "ba:admin");
   const result = await baInternalRequest<BaDashboardData>(DASHBOARD_PATH, {
-    query: { includeComplaints: canReadComplaints ? "true" : "false" },
+    query: {
+      includeComplaints: canReadComplaints ? "true" : "false",
+      includeEmergency: canManageEmergencyAccount ? "true" : "false",
+    },
     timeoutMs: DASHBOARD_TIMEOUT_MS,
   });
 

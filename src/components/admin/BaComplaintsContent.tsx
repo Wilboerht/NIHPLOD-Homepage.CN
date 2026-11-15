@@ -18,6 +18,8 @@ import { apiDelete, apiGet, apiPatch, ApiError } from "@/lib/api-client";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
+import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
+import { useSensitiveReveal } from "@/hooks/useSensitiveReveal";
 import { useToast } from "@/components/ui/Toast";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { PanelCard } from "@/components/admin/PanelCard";
@@ -99,6 +101,9 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
   const { can } = useAdminPermissions();
   const { success, error: showError } = useToast();
+  const { requireTotp, totpModal } = useTotpConfirm();
+  const sensitiveReveal = useSensitiveReveal();
+  const hideSensitiveReveal = sensitiveReveal.hide;
   const searchParams = useSearchParams();
   const deepLinkId = searchParams.get("id");
   const canWrite = can("ba:complaints:write");
@@ -126,9 +131,10 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
 
   useEffect(() => {
     if (deepLinkId) {
+      hideSensitiveReveal();
       deferInEffect(() => setSelectedId(deepLinkId));
     }
-  }, [deepLinkId]);
+  }, [deepLinkId, hideSensitiveReveal]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -168,8 +174,8 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
 
   const loadDetail = useCallback(
     async (id: string) => {
-      const isLatest = takeLatestDetail();
-      setDetailLoading(true);
+    const isLatest = takeLatestDetail();
+    setDetailLoading(true);
       setDetailError(null);
       try {
         const response = await apiGet<BaComplaintDetailData & { sensitive: boolean }>(
@@ -202,6 +208,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
   }, [selectedId, loadDetail]);
 
   const openDetail = (id: string) => {
+    hideSensitiveReveal();
     setSelectedId(id);
     setReviewNote("");
   };
@@ -251,11 +258,25 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
     }
   };
 
+  const withStepUp = async <T,>(action: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await action();
+    } catch (error) {
+      if (!isTotpRequired(error)) throw error;
+      const verified = await requireTotp(error instanceof ApiError ? error.code : undefined);
+      if (!verified) return null;
+      return await action();
+    }
+  };
+
   const confirmDelete = async () => {
     if (!selectedId) return;
     setActionLoading("delete");
     try {
-      await apiDelete(`/api/admin/subsites/ba/complaints/${encodeURIComponent(selectedId)}`);
+      const deleted = await withStepUp(() =>
+        apiDelete(`/api/admin/subsites/ba/complaints/${encodeURIComponent(selectedId)}`)
+      );
+      if (deleted === null) return;
       success("举报已删除（软删除，证据与审计保留）");
       setDeleteOpen(false);
       setSelectedId(null);
@@ -462,7 +483,32 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
               </DetailRow>
               <DetailRow label="违规渠道">{detail.complaint.channel || "—"}</DetailRow>
               <DetailRow label="联系方式">
-                {detail.complaint.contactInfo || (
+                {detail.complaint.contactInfo ? (
+                  sensitiveReveal.revealed ? (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>{detail.complaint.contactInfo}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={sensitiveReveal.hide}
+                      >
+                        隐藏
+                      </Button>
+                    </span>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => sensitiveReveal.reveal()}
+                    >
+                      查看完整联系方式（{sensitiveReveal.remainingSeconds > 0
+                        ? `${sensitiveReveal.remainingSeconds}s`
+                        : "敏感信息"}）
+                    </Button>
+                  )
+                ) : (
                   <span className="text-brand-charcoal/45">
                     {detailSensitive ? "未填写" : "无权限查看（需敏感信息权限）"}
                   </span>
@@ -477,7 +523,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                 <ImageIcon className="h-4 w-4" />
                 证据图片（{detail.complaint.evidenceCount}）
               </div>
-              {evidence.length > 0 ? (
+              {evidence.length > 0 && (!detailSensitive || sensitiveReveal.revealed) ? (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {evidence.map((image) => (
                     <a
@@ -500,7 +546,9 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                 <p className="text-sm text-brand-charcoal/50">
                   {detailSensitive
                     ? detail.complaint.evidenceCount > 0
-                      ? "证据图片加载失败"
+                      ? sensitiveReveal.revealed
+                        ? "证据图片加载失败"
+                        : "证据已隐藏，请先点击“查看完整联系方式”"
                       : "无证据图片"
                     : "无权限查看证据（需敏感信息权限）"}
                 </p>
@@ -602,6 +650,8 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
         loading={actionLoading === "delete"}
         type="danger"
       />
+
+      {totpModal}
     </div>
   );
 }

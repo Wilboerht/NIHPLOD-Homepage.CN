@@ -6,6 +6,11 @@ import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { AUTH_COOKIE_NAME, COOKIE_OPTIONS } from "@/types/auth";
 import { createAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
+import {
+  revokeSubsiteAdminSessions,
+  type SubsiteRevokeResult,
+} from "@/lib/subsites-admin-session";
 import {
   ADMIN_STEP_UP_COOKIE_NAME,
   ADMIN_STEP_UP_COOKIE_OPTIONS,
@@ -55,6 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     let revocationFailed = false;
+    let subsiteResults: SubsiteRevokeResult[] = [];
     const token = getTokenFromRequest(request);
     let adminId: string | undefined;
     let adminEmail: string | undefined;
@@ -82,6 +88,29 @@ export async function POST(request: NextRequest) {
           revocationFailed = true;
           apiConsole.warn("[AdminLogout] step-up grant 撤销失败:", err);
         });
+
+        const dbAdmin = await prisma.admin.findUnique({
+          where: { id: payload.id },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            permissions: true,
+          },
+        });
+        if (dbAdmin) {
+          subsiteResults = await revokeSubsiteAdminSessions({
+            id: dbAdmin.id,
+            email: dbAdmin.email,
+            name: dbAdmin.name,
+            role: dbAdmin.role,
+            permissionOverrides: dbAdmin.permissions,
+          }).catch((error) => {
+            apiConsole.warn("[AdminLogout] 子站会话撤销异常:", error);
+            return [];
+          });
+        }
       }
     }
 
@@ -96,20 +125,30 @@ export async function POST(request: NextRequest) {
         actorRole: adminRole,
         authMethod: "session",
         sessionJti: adminJti,
-        detail: { email: adminEmail, revocationFailed },
+        detail: {
+          email: adminEmail,
+          revocationFailed,
+          subsiteRevocations: subsiteResults,
+        },
         adminId,
         request,
       });
     }
 
+    const failedSubsites = subsiteResults.filter((result) => !result.ok).map((result) => result.target);
+
     return clearAuthCookies(
       NextResponse.json({
         success: true,
         data: {
-          message: revocationFailed
-            ? "本地已登出，但服务端会话撤销未完成，请稍后确认"
-            : "已成功登出",
-          revocationFailed,
+          message:
+            failedSubsites.length > 0
+              ? `本地已登出，但 ${failedSubsites.join(" / ")} 后台会话未能撤销，请稍后确认`
+              : revocationFailed
+                ? "本地已登出，但服务端会话撤销未完成，请稍后确认"
+                : "已成功登出",
+          revocationFailed: revocationFailed || failedSubsites.length > 0,
+          failedSubsites,
         },
       })
     );

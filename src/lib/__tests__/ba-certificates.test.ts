@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  baActorCapabilities,
   baActorHeader,
   baCertificateCapabilities,
   hasBaCertificateCapability,
@@ -28,6 +29,24 @@ describe("BA certificate permissions", () => {
     };
     expect(hasBaCertificateCapability(admin, "ba.certificates.issue")).toBe(false);
     expect(hasBaCertificateCapability(admin, "ba.certificates.read")).toBe(true);
+  });
+
+  it("uses permissionOverrides from verifyAuth, not only resolved permissions", () => {
+    const admin = {
+      ...base,
+      role: "admin",
+      permissionOverrides: ["ba:access", "ba:certificates:read"],
+    };
+    expect(hasBaCertificateCapability(admin, "ba.certificates.read")).toBe(true);
+    expect(hasBaCertificateCapability(admin, "ba.certificates.issue")).toBe(false);
+  });
+
+  it("BA super admin capability includes complaint operations without leaking cert issue", () => {
+    const admin = { ...base, role: "admin", permissions: ["ba:admin"] };
+    const capabilities = baActorCapabilities(admin);
+    expect(capabilities).toContain("ba.admin");
+    expect(capabilities).toContain("ba.complaints.delete");
+    expect(capabilities).not.toContain("ba.certificates.issue");
   });
 
   it("download permission implies read for detail lookup", () => {

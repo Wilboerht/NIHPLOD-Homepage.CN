@@ -9,9 +9,12 @@ import {
   Check,
   Clock,
   Copy,
+  ExternalLink,
   FileCheck2,
   KeyRound,
+  MessageSquare,
   RefreshCw,
+  ScrollText,
   ShieldAlert,
   Users,
 } from "lucide-react";
@@ -29,6 +32,8 @@ import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
+import { buildBaAdminLink } from "@/lib/ba-admin-link";
+import { AUDIT_ACTION_LABELS } from "@/lib/audit-labels";
 import type { BaDashboardPayload } from "@/types/ba-dashboard";
 
 const COMPLAINT_STATUS_LABELS: Record<string, string> = {
@@ -159,7 +164,11 @@ function BaDashboardContent() {
   const dashboard = payload?.dashboard ?? null;
   const canReadComplaints = payload?.canReadComplaints ?? false;
   const canManageEmergencyAccount = payload?.canManageEmergencyAccount ?? false;
-  const emergencyAccount = dashboard?.emergencyAccount ?? null;
+  const canOpenWorkbench = can("ba:access") || can("ba:admin");
+  const canViewAudit = can("ba:admin");
+  const canManageAdmins = can("admins:read");
+  const emergencyAccount =
+    canManageEmergencyAccount ? (dashboard?.emergencyAccount ?? null) : null;
   const recentComplaints = dashboard?.complaints.recent ?? [];
   const recentAudit = dashboard?.recentAudit ?? [];
 
@@ -167,9 +176,40 @@ function BaDashboardContent() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="BA 证书平台"
-        description="品牌授权与打假举报概览（只读）"
+        description="品牌授权、证书与打假举报运营概览"
         actions={
           <div className="flex flex-wrap gap-2">
+            {canOpenWorkbench && (
+              <a
+                href={buildBaAdminLink("/workbench")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-primary/30 px-3 text-sm font-medium text-brand-primary transition-colors hover:bg-brand-primary/[0.05]"
+              >
+                <ExternalLink className="h-4 w-4" />
+                打开 BA 工作台
+              </a>
+            )}
+            {canViewAudit && (
+              <a
+                href={buildBaAdminLink("/workbench/audit-logs")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-charcoal/20 px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+              >
+                <ScrollText className="h-4 w-4" />
+                BA 审计
+              </a>
+            )}
+            {canReadComplaints && (
+              <Link
+                href="/admin/messages?source=ba"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-charcoal/20 px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+              >
+                <MessageSquare className="h-4 w-4" />
+                举报处理
+              </Link>
+            )}
             {can("ba:certificates:read") && (
               <Link
                 href="/admin/subsites/ba/certificates"
@@ -187,6 +227,18 @@ function BaDashboardContent() {
       />
 
       <AdminHubTabs section="ba" />
+
+      <p className="text-xs text-brand-charcoal/60">
+        BA 管理员由主站统一管理，BA 工作台不提供本地管理员创建；仅保留 break-glass 应急账号。
+        {canManageAdmins && (
+          <>
+            {" "}
+            <Link href="/admin/admins" className="text-brand-primary hover:underline">
+              前往主站管理员管理
+            </Link>
+          </>
+        )}
+      </p>
 
       {error && (
         <PanelCard className="border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</PanelCard>
@@ -231,12 +283,14 @@ function BaDashboardContent() {
               value={dashboard.certificates.expiring30d}
               icon={<ShieldAlert className="h-5 w-5" />}
             />
-            <StatCard
-              label="待处理举报"
-              value={dashboard.complaints.pending}
-              hint={`调查中 ${dashboard.complaints.investigating}`}
-              icon={<AlertTriangle className="h-5 w-5" />}
-            />
+            {canReadComplaints && (
+              <StatCard
+                label="待处理举报"
+                value={dashboard.complaints.pending}
+                hint={`调查中 ${dashboard.complaints.investigating}`}
+                icon={<AlertTriangle className="h-5 w-5" />}
+              />
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -251,11 +305,13 @@ function BaDashboardContent() {
               hint={`SSO ${dashboard.admins.sso} / 本地 ${dashboard.admins.local}`}
               icon={<Users className="h-5 w-5" />}
             />
-            <StatCard
-              label="本月已解决举报"
-              value={dashboard.complaints.resolvedThisMonth}
-              icon={<Award className="h-5 w-5" />}
-            />
+            {canReadComplaints && (
+              <StatCard
+                label="本月已解决举报"
+                value={dashboard.complaints.resolvedThisMonth}
+                icon={<Award className="h-5 w-5" />}
+              />
+            )}
           </div>
 
           {emergencyAccount && (
@@ -374,7 +430,7 @@ function BaDashboardContent() {
                       key={item.id}
                       className="flex items-center justify-between gap-3 py-2.5 text-sm"
                     >
-                      <span className="min-w-0 truncate">{item.action}</span>
+                      <span className="min-w-0 truncate">{AUDIT_ACTION_LABELS[item.action] ?? item.action}</span>
                       <span className="shrink-0 text-xs text-brand-charcoal/65">
                         {item.actorName || "系统"} · {formatDateTime(item.createdAt)}
                       </span>

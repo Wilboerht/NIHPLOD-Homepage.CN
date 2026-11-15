@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { checkAdminRateLimit, verifyAuth } from "@/lib/auth";
-import { canReadBaComplaints, hasAdminPermission, resolveBaRole } from "@/lib/admin-permissions";
-import { baInternalRequest } from "@/lib/ba-internal";
+import { canReadBaComplaints, hasAdminPermission } from "@/lib/admin-permissions";
+import { requireAdminStepUp } from "@/lib/admin-totp";
+import { baActorRequest } from "@/lib/ba-certificate-proxy";
 import {
   mapBaError,
   type BaComplaintActionData,
@@ -29,21 +30,6 @@ function jsonError(code: string, message: string, status: number): NextResponse 
   );
 }
 
-function actorFromAdmin(admin: {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  permissionOverrides?: string[] | null;
-}) {
-  return {
-    id: admin.id,
-    email: admin.email,
-    name: admin.name,
-    role: resolveBaRole(admin.role, admin.permissionOverrides) ?? admin.role,
-  };
-}
-
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await verifyAuth(request);
   if (!admin) return jsonError("UNAUTHORIZED", "未授权管理员访问", 401);
@@ -56,11 +42,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
   const includeSensitive = hasAdminPermission(admin, "ba:complaints:sensitive:read");
-  const result = await baInternalRequest<BaComplaintDetailData>(
+  const result = await baActorRequest<BaComplaintDetailData>(
+    admin,
     `/api/internal/admin/complaints/${encodeURIComponent(id)}`,
     { query: { includeSensitive: includeSensitive ? "true" : "false" } }
   );
   if (!result.ok) return mapBaError(result);
+  if (includeSensitive) {
+    await createAuditLog({
+      action: "ba_complaint_view",
+      targetType: "ba_complaint",
+      targetId: id,
+      detail: { sensitive: true },
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      adminId: admin.id,
+      request,
+    }).catch((error) => logger.error("[BAComplaint] 查看审计写入失败", { error: String(error) }));
+  }
 
   return NextResponse.json(
     {
@@ -93,14 +94,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const { id } = await params;
-  const result = await baInternalRequest<BaComplaintActionData>(
+  const result = await baActorRequest<BaComplaintActionData>(
+    admin,
     `/api/internal/admin/complaints/${encodeURIComponent(id)}/status`,
     {
       method: "POST",
       body: {
         status: parsed.data.status,
         review_note: parsed.data.review_note,
-        actor: actorFromAdmin(admin),
       },
     }
   );
@@ -142,13 +143,14 @@ export async function DELETE(
   const rateLimitResponse = await checkAdminRateLimit(request, "admin-write", admin.id);
   if (rateLimitResponse) return rateLimitResponse;
 
+  const stepUpResponse = await requireAdminStepUp(request, admin);
+  if (stepUpResponse) return stepUpResponse;
+
   const { id } = await params;
-  const result = await baInternalRequest<{ id: string }>(
+  const result = await baActorRequest<{ id: string }>(
+    admin,
     `/api/internal/admin/complaints/${encodeURIComponent(id)}/delete`,
-    {
-      method: "POST",
-      body: { actor: actorFromAdmin(admin) },
-    }
+    { method: "POST", body: {} }
   );
   if (!result.ok) return mapBaError(result);
 

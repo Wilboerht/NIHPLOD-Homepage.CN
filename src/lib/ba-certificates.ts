@@ -1,4 +1,4 @@
-import { resolveBaRole } from "@/lib/admin-permissions";
+import { resolveAdminPermissions, resolveBaRole } from "@/lib/admin-permissions";
 
 export interface BaCertificateAdmin {
   id: string;
@@ -19,6 +19,7 @@ export interface BaCertificateListItem {
   scopeText: string;
   authorizer: string;
   phoneMasked: string | null;
+  phone?: string | null;
   startDate: string;
   endDate: string;
   auditorName: string | null;
@@ -68,6 +69,12 @@ export interface BaCertificateDraft {
 }
 
 const CAPABILITY_BY_PERMISSION: Record<string, string> = {
+  "ba:access": "ba.access",
+  "ba:admin": "ba.admin",
+  "ba:complaints:read": "ba.complaints.read",
+  "ba:complaints:write": "ba.complaints.write",
+  "ba:complaints:delete": "ba.complaints.delete",
+  "ba:complaints:sensitive:read": "ba.complaints.sensitive",
   "ba:certificates:read": "ba.certificates.read",
   "ba:certificates:download": "ba.certificates.download",
   "ba:certificates:submit": "ba.certificates.submit",
@@ -78,18 +85,37 @@ const CAPABILITY_BY_PERMISSION: Record<string, string> = {
   "ba:certificates:sensitive:read": "ba.certificates.sensitive",
 };
 
-export function baCertificateCapabilities(admin: BaCertificateAdmin): string[] {
-  const permissions = new Set(admin.permissions ?? []);
-  if (admin.role === "owner") {
-    return Object.values(CAPABILITY_BY_PERMISSION);
-  }
-  const capabilities = [...permissions]
+export function baEffectivePermissions(admin: BaCertificateAdmin): string[] {
+  if (admin.role === "owner") return resolveAdminPermissions("owner");
+  return resolveAdminPermissions(
+    admin.role,
+    admin.permissionOverrides ?? admin.permissions ?? []
+  );
+}
+
+export function baActorCapabilities(admin: BaCertificateAdmin): string[] {
+  const capabilities = [...new Set(baEffectivePermissions(admin))]
     .map((permission) => CAPABILITY_BY_PERMISSION[permission])
     .filter((capability): capability is string => Boolean(capability));
   if (capabilities.includes("ba.certificates.download")) {
     capabilities.push("ba.certificates.read");
   }
+  if (capabilities.includes("ba.admin")) {
+    capabilities.push(
+      "ba.access",
+      "ba.complaints.read",
+      "ba.complaints.write",
+      "ba.complaints.delete",
+      "ba.complaints.sensitive"
+    );
+  }
   return [...new Set(capabilities)];
+}
+
+export function baCertificateCapabilities(admin: BaCertificateAdmin): string[] {
+  return baActorCapabilities(admin).filter((capability) =>
+    capability.startsWith("ba.certificates.")
+  );
 }
 
 export function baActorHeader(admin: BaCertificateAdmin): string {
@@ -98,7 +124,7 @@ export function baActorHeader(admin: BaCertificateAdmin): string {
     email: admin.email,
     name: admin.name,
     baRole: resolveBaRole(admin.role, admin.permissionOverrides ?? admin.permissions) ?? null,
-    capabilities: baCertificateCapabilities(admin),
+    capabilities: baActorCapabilities(admin),
   };
   return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }

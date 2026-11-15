@@ -1,4 +1,4 @@
-﻿# SSO 生产部署 Runbook
+# SSO 生产部署 Runbook
 
 NIHPLOD 统一认证中心（nihplod.cn）生产部署操作手册。按本文档顺序执行即可完成一次完整的 SSO 上线或升级。
 
@@ -335,6 +335,8 @@ BA_INTERNAL_API_BASE=http://127.0.0.1:3001
 ```
 
 - BA 面板角色：`owner` / `ba:admin` → `super_admin`；`ba:access` → `auditor`。
+- BA 管理员统一由主站创建/授权，BA 工作台不再提供本地管理员 CRUD；仅保留 `npm run init:break-glass` 创建的应急账号。
+- 历史本地管理员用 `npm run audit:local-admins` 检查，完成主站映射后加 `-- --apply` 禁用非 break-glass 本地账号。
 - 迁移映射前，先在主站管理员权限中给 Candy 勾选 `ba:access`；Walter/Hank 为 owner，自动拥有 `ba:admin`。
 - BA 举报处理权限独立：`ba:complaints:read` / `write` / `delete` / `sensitive:read`；`write`、`delete`、`sensitive:read` 隐含 `read`。
 - 只有 `ba:complaints:*` 的管理员可在主站留言页处理举报，**不能进入 BA 面板**（BA 面板仍需 `ba:access` / `ba:admin`）。

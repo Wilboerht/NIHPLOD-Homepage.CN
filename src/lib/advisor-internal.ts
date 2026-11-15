@@ -20,7 +20,7 @@ import { getClientIP } from "@/lib/client-ip";
 import { apiConsole } from "@/lib/logger";
 
 const DEFAULT_TIMEOUT_MS = 5000;
-const DEFAULT_BASE = "https://smart.nihplod.cn";
+const DEFAULT_BASE = "http://127.0.0.1:3002";
 
 export function advisorBaseUrl(): string {
   return (process.env.ADVISOR_API_BASE || DEFAULT_BASE).replace(/\/+$/, "");

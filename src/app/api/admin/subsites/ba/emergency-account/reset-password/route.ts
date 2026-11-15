@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAdminRateLimit, verifyAuth } from "@/lib/auth";
-import { hasAdminPermission, resolveBaRole } from "@/lib/admin-permissions";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
-import { baInternalRequest } from "@/lib/ba-internal";
+import { baActorRequest } from "@/lib/ba-certificate-proxy";
 import { mapBaError } from "@/lib/ba-complaints";
 import { createAuditLog } from "@/lib/audit";
 import { logger } from "@/lib/logger";
@@ -42,18 +42,12 @@ export async function POST(request: NextRequest) {
   const stepUpResponse = await requireAdminStepUp(request, admin);
   if (stepUpResponse) return stepUpResponse;
 
-  const result = await baInternalRequest<ResetEmergencyPasswordData>(
+  const result = await baActorRequest<ResetEmergencyPasswordData>(
+    admin,
     "/api/internal/admin/emergency-account/reset-password",
     {
       method: "POST",
-      body: {
-        actor: {
-          id: admin.id,
-          email: admin.email,
-          name: admin.name,
-          role: resolveBaRole(admin.role, admin.permissionOverrides) ?? admin.role,
-        },
-      },
+      body: {},
       timeoutMs: 8000,
     }
   );

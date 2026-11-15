@@ -8,6 +8,7 @@
  * 推送失败不影响主站保存；每日脚本和产品列表手动按钮会兜底。
  */
 import { after } from "next/server";
+import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { advisorRequest } from "@/lib/advisor-internal";
 import { apiConsole } from "@/lib/logger";
@@ -25,6 +26,8 @@ const MAX_IMAGES = 5;
 const MAX_IMAGE_URL_LENGTH = 500;
 const MAX_DESCRIPTION_LENGTH = 5000;
 const MAX_HOW_TO_USE_LENGTH = 2000;
+const MAX_BATCH_BYTES = 900 * 1024;
+const MAX_BATCH_PRODUCTS = 200;
 
 export interface AdvisorSnapshotPurchaseLink {
   platformKey: PurchasePlatformKey;
@@ -294,6 +297,119 @@ function extractAdvisorError(payload: AdvisorSyncResponse | null): {
 }
 
 /** 推送全量快照到子站；供保存钩子、手动按钮、每日脚本共用 */
+function chunkSnapshotProducts(
+  products: AdvisorProductSnapshotItem[]
+): AdvisorProductSnapshotItem[][] {
+  const batches: AdvisorProductSnapshotItem[][] = [];
+  let current: AdvisorProductSnapshotItem[] = [];
+  let currentBytes = 0;
+  for (const product of products) {
+    const size = Buffer.byteLength(JSON.stringify(product), "utf8");
+    const wouldExceed =
+      current.length > 0 &&
+      (current.length >= MAX_BATCH_PRODUCTS || currentBytes + size > MAX_BATCH_BYTES);
+    if (wouldExceed) {
+      batches.push(current);
+      current = [];
+      currentBytes = 0;
+    }
+    current.push(product);
+    currentBytes += size;
+  }
+  if (current.length > 0 || batches.length === 0) batches.push(current);
+  return batches;
+}
+
+async function pushAdvisorProductSnapshotV2(
+  snapshot: AdvisorProductSnapshot,
+  options: AdvisorProductPushOptions
+): Promise<AdvisorProductPushResult> {
+  const batches = chunkSnapshotProducts(snapshot.products);
+  const syncId = randomUUID();
+  const syncOptions = {
+    trigger: options.trigger,
+    bindByName: options.bindByName === true,
+    force: options.force === true,
+    dryRun: options.dryRun === true,
+  };
+  let finalData: unknown;
+
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+    const payload = {
+      schemaVersion: 2,
+      syncId,
+      generatedAt: snapshot.generatedAt,
+      batchIndex,
+      batchCount: batches.length,
+      totalProducts: snapshot.products.length,
+      products: batches[batchIndex],
+      options: syncOptions,
+    };
+    let lastError: { code: string; message: string; status: number } = {
+      code: "UPSTREAM_ERROR",
+      message: "测肤子站同步失败",
+      status: 0,
+    };
+    let completed = false;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      const result = await advisorRequest<AdvisorSyncResponse>(SYNC_PATH, {
+        method: "POST",
+        body: payload,
+        timeoutMs: SYNC_TIMEOUT_MS,
+      });
+      if (result.ok && result.data?.success !== false) {
+        finalData = result.data?.data ?? result.data;
+        completed = true;
+        break;
+      }
+      if (result.ok && result.data?.success === false) {
+        const error = extractAdvisorError(result.data);
+        return {
+          ok: false,
+          code: error.code,
+          message: error.message,
+          status: result.status,
+          productCount: snapshot.products.length,
+        };
+      }
+      lastError = {
+        code: result.ok ? "UPSTREAM_ERROR" : result.code,
+        message: result.ok ? "测肤子站同步失败" : result.message,
+        status: result.status,
+      };
+      if (attempt < MAX_ATTEMPTS && shouldRetry(lastError)) {
+        await sleep(attempt === 1 ? 400 : 1200);
+        continue;
+      }
+      break;
+    }
+
+    if (!completed) {
+      return {
+        ok: false,
+        code: lastError.code,
+        message: `第 ${batchIndex + 1}/${batches.length} 批同步失败：${lastError.message}`,
+        status: lastError.status,
+        productCount: snapshot.products.length,
+      };
+    }
+  }
+
+  apiConsole.info("[AdvisorProductSync] v2 分批推送完成", {
+    trigger: options.trigger,
+    syncId,
+    batchCount: batches.length,
+    productCount: snapshot.products.length,
+  });
+  return {
+    ok: true,
+    data: finalData,
+    productCount: snapshot.products.length,
+  };
+}
+
+/** 推送全量快照到子站；供保存钩子、手动按钮、每日脚本共用 */
 export async function pushAdvisorProductSnapshot(
   options: AdvisorProductPushOptions
 ): Promise<AdvisorProductPushResult> {
@@ -307,6 +423,10 @@ export async function pushAdvisorProductSnapshot(
   } catch (error) {
     apiConsole.error("[AdvisorProductSync] 构建产品快照失败", error);
     return { ok: false, code: "SNAPSHOT_BUILD_FAILED", message: "构建产品快照失败" };
+  }
+
+  if (process.env.ADVISOR_PRODUCT_SYNC_PROTOCOL !== "v1") {
+    return pushAdvisorProductSnapshotV2(snapshot, options);
   }
 
   const payload = {

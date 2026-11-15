@@ -8,7 +8,7 @@ import { apiConsole } from "@/lib/logger";
 import { pushAdvisorProductSnapshot } from "@/lib/advisor-product-sync";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /** POST /api/admin/products/sync-advisor - 手动全量同步产品基础信息到测肤子站 */
 export async function POST(request: NextRequest) {

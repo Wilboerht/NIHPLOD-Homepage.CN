@@ -175,7 +175,10 @@ describe("pushAdvisorProductSnapshot", () => {
       expect.objectContaining({
         method: "POST",
         body: expect.objectContaining({
-          schemaVersion: 1,
+          schemaVersion: 2,
+          batchIndex: 0,
+          batchCount: 1,
+          totalProducts: 1,
           products: expect.any(Array),
           options: expect.objectContaining({ trigger: "manual" }),
         }),
