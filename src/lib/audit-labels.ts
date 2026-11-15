@@ -134,6 +134,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   ba_certificate_view: "查看 BA 证书详情",
   ba_certificate_preview: "预览 BA 证书",
   ba_complaint_view: "查看 BA 举报详情",
+  ba_step_up_ticket_issued: "签发 BA 高风险操作二次验证凭证",
+  ba_step_up_ticket_denied: "拒绝 BA 高风险操作二次验证",
   admin_sso_logout: "主站管理员同步登出子站",
   break_glass_view: "查看测肤子站应急账号",
   device_force_logout: "强制下线设备",

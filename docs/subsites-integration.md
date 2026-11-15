@@ -97,14 +97,41 @@ ACTOR|timestamp|nonce|actorHeader
 - 证书 PNG/PDF、举报证据、完整联系方式查看写审计。
 - `phoneMasked` 永远保持脱敏；完整手机号使用独立 `phone` 字段。
 
-## 7. 部署顺序
+## 7. BA 证书高风险操作二次验证
+
+以下 BA 工作台操作必须由主站完成一次 TOTP step-up：
+
+- `ba.certificates.issue`（含新建直接核发，资源为 `new`）
+- `ba.certificates.revoke`
+- `ba.certificates.delete`
+
+流程：
+
+1. BA 页面请求 `/api/certificates`，无有效 grant 时返回 `428 STEP_UP_REQUIRED`。
+2. 前端打开 BA `/api/admin/auth/step-up/start`，BA 创建一次性 state 并跳转主站 `/admin/sso/step-up`。
+3. 主站要求已登录管理员输入 TOTP，签发 120 秒 RS256 ticket，通过表单 POST 到 BA callback。
+4. BA 校验 ticket（audience、issuer、state、action、resource、admin、client、exp），一次性消费 state 后写入 HttpOnly grant Cookie，重定向完成页。
+5. 完成页通知父窗口，前端重试原请求；BA 在 `/api/certificates` 消费 grant。
+
+约束：
+
+- ticket/grant 均一次性，绑定管理员、action、resource、state；ticket 不进入 URL。
+- step-up 要求主站管理员 SSO 使用 RS256/JWKS；旧 HS256 兼容模式不支持 step-up。
+- break-glass 本地账号保留登录 TOTP 例外，不参与逐操作 step-up。
+- 上线灰度：BA `BA_STEP_UP_ENFORCEMENT=off` → `warn`（仅日志）→ `enforce`（428）。
+- 未设置时默认 `off`；配置成无法识别的值按 `enforce` 处理（fail-closed）。
+- 切到 `enforce` 前必须确认主站 `BA_ADMIN_STEP_UP_ENABLED=true` 且 TOTP/JWKS 可用。
+- 回滚：将 `BA_STEP_UP_ENFORCEMENT` 设为 `off`；已签发的 grant 会自然过期。
+- 迁移：`db/migrate-20261119-admin-step-up.sql`。
+
+## 8. 部署顺序
 
 1. 测肤：迁移、merge、产品同步 v2、session revoke、内网 `OFFICIAL_API_URL`。
-2. BA：签名 actor、capability、PII、session revoke、下线本地管理员 API/UI。
-3. 主站：capability 修复、preview/PII、举报 step-up、登出 fan-out、积分补发、产品同步 v2、BA 工作台入口。
-4. 清理历史本地管理员，观察一周后移除旧 body actor / v1 兼容。
+2. BA：迁移 `admin_step_up_*`、签名 actor、capability、PII、session revoke、下线本地管理员 API/UI；先保持 step-up `off`。
+3. 主站：capability 修复、preview/PII、举报 step-up、登出 fan-out、积分补发、产品同步 v2、BA 工作台入口、step-up ticket 接口。
+4. BA 切 `warn` 观察，再切 `enforce`；最后清理历史本地管理员，观察一周后移除旧 body actor / v1 兼容。
 
-## 8. 环境变量
+## 9. 环境变量
 
 主站：
 
@@ -112,6 +139,11 @@ ACTOR|timestamp|nonce|actorHeader
 NEXT_PUBLIC_BA_URL=https://ba.nihplod.cn
 ADVISOR_API_BASE=http://127.0.0.1:3002
 BA_INTERNAL_API_BASE=http://127.0.0.1:3001
+BA_ADMIN_STEP_UP_ENABLED=true
+BA_ADMIN_STEP_UP_AUDIENCE=ba-admin-stepup
+# 可选；默认由 BA_ADMIN_SSO_REDIRECT_URI 派生
+# BA_ADMIN_STEP_UP_REDIRECT_URI=https://ba.nihplod.cn/api/admin/auth/step-up/callback
+BA_STEP_UP_TICKET_TTL_SECONDS=120
 ```
 
 BA：
@@ -120,6 +152,11 @@ BA：
 NEXT_PUBLIC_ADVISOR_URL=https://smart.nihplod.cn
 NEXT_PUBLIC_MAIN_ADMIN_URL=https://nihplod.cn/admin
 ADMIN_SSO_LOCAL_LOGIN_MODE=break-glass
+ADMIN_STEP_UP_AUDIENCE=ba-admin-stepup
+BA_STEP_UP_ENFORCEMENT=off
+BA_STEP_UP_GRANT_TTL_SECONDS=120
+# 可选；默认由 ADMIN_SSO_REDIRECT_URI 派生
+# ADMIN_SSO_STEP_UP_REDIRECT_URI=https://ba.nihplod.cn/api/admin/auth/step-up/callback
 ```
 
 测肤：

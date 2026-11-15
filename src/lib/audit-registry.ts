@@ -122,6 +122,8 @@ const SECURITY_ACTIONS = new Set([
   "ba_certificate_view",
   "ba_certificate_preview",
   "ba_complaint_view",
+  "ba_step_up_ticket_issued",
+  "ba_step_up_ticket_denied",
   "advisor_report_view",
   "application_detail_view",
   "application_sensitive_view",

@@ -223,3 +223,51 @@ export async function signAdminSsoAssertion(
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .sign(new TextEncoder().encode(signing.secret));
 }
+
+export interface AdminStepUpTicketInput {
+  adminId: string;
+  clientId: string;
+  audience: string;
+  state: string;
+  action: string;
+  resourceId: string;
+  tokenVersion: number;
+  totpEnabled: boolean;
+  mainSessionExp: number;
+  ttlSeconds: number;
+}
+
+/** 签发短时一次性 BA 高风险操作 ticket；只能用于 step-up，不能用于管理员 SSO 登录。 */
+export async function signAdminStepUpTicket(
+  input: AdminStepUpTicketInput,
+  signing: AdminSsoSigningConfig
+): Promise<string> {
+  if (signing.alg !== "RS256") {
+    throw new Error("[AdminSSO] step-up ticket 仅支持 RS256");
+  }
+  const remaining = input.mainSessionExp - Math.floor(Date.now() / 1000) - 5;
+  if (remaining < 30) {
+    throw new Error("[AdminSSO] 主站登录即将过期，无法签发 step-up ticket");
+  }
+  const ttl = Math.max(30, Math.min(input.ttlSeconds, remaining, 300));
+  const payload: Record<string, unknown> = {
+    client_id: input.clientId,
+    state: input.state,
+    action: input.action,
+    resource_id: input.resourceId,
+    ver: input.tokenVersion,
+    totp: input.totpEnabled,
+    mainSessionExp: input.mainSessionExp,
+    token_use: "admin_step_up",
+  };
+  const privateKey = await importAdminSsoPrivateKey(signing.privateKey);
+  return new SignJWT(payload)
+    .setIssuer(getIssuer())
+    .setAudience(input.audience)
+    .setSubject(input.adminId)
+    .setJti(randomUUID())
+    .setIssuedAt()
+    .setExpirationTime(`${ttl}s`)
+    .setProtectedHeader({ alg: "RS256", typ: "JWT", kid: signing.keyId })
+    .sign(privateKey);
+}

@@ -160,6 +160,15 @@ function getOssImageOrigin(): string | null {
   return null;
 }
 
+function baFormActionSource(): string {
+  const raw = process.env.NEXT_PUBLIC_BA_URL?.trim() || "https://ba.nihplod.cn";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "https://ba.nihplod.cn";
+  }
+}
+
 function buildCspHeader(nonce: string, pathname: string): string {
   const isDev = process.env.NODE_ENV !== "production";
 
@@ -201,7 +210,9 @@ function buildCspHeader(nonce: string, pathname: string): string {
     "connect-src 'self' https://geo.datav.aliyun.com https://cloudflareinsights.com https://*.amap.com https://*.autonavi.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://hm.baidu.com",
     "worker-src 'self' blob:",
     `frame-ancestors ${frameAncestors}`,
-    "form-action 'self'",
+    pathname === "/admin/sso/step-up"
+      ? `form-action 'self' ${baFormActionSource()}`
+      : "form-action 'self'",
     "base-uri 'self'",
     "upgrade-insecure-requests",
   ]

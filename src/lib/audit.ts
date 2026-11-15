@@ -170,6 +170,8 @@ export type AuditAction =
   | "ba_certificate_view"
   | "ba_certificate_preview"
   | "ba_complaint_view"
+  | "ba_step_up_ticket_issued"
+  | "ba_step_up_ticket_denied"
   | "admin_sso_logout"
   | "break_glass_view"
   | "admin_login_failed"
@@ -392,6 +394,8 @@ export const AUDIT_ACTIONS = [
   "ba_certificate_view",
   "ba_certificate_preview",
   "ba_complaint_view",
+  "ba_step_up_ticket_issued",
+  "ba_step_up_ticket_denied",
   "admin_sso_logout",
   "break_glass_view",
   "device_force_logout",

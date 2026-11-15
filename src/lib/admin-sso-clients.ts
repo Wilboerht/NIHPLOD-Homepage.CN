@@ -20,6 +20,14 @@ import {
 
 export type AdminSsoRoleResolver = "advisor" | "ba";
 
+export interface AdminSsoStepUpConfig {
+  enabled: boolean;
+  audience: string;
+  redirectUri: string;
+  actions: string[];
+  ttlSeconds: number;
+}
+
 export interface AdminSsoClient {
   clientId: string;
   clientSecret: string;
@@ -29,6 +37,7 @@ export interface AdminSsoClient {
   permissionPrefix: string;
   roleResolver: AdminSsoRoleResolver;
   signing: AdminSsoSigningConfig;
+  stepUp?: AdminSsoStepUpConfig;
 }
 
 function required(name: string): string {
@@ -59,6 +68,31 @@ function buildAdvisorClient(): AdminSsoClient | null {
   };
 }
 
+const BA_STEP_UP_ACTIONS = [
+  "ba.certificates.issue",
+  "ba.certificates.revoke",
+  "ba.certificates.delete",
+] as const;
+
+function buildBaStepUpConfig(redirectUri: string): AdminSsoStepUpConfig | undefined {
+  if (process.env.BA_ADMIN_STEP_UP_ENABLED === "false") return undefined;
+  const configuredRedirect = process.env.BA_ADMIN_STEP_UP_REDIRECT_URI?.trim();
+  const stepUpRedirect =
+    configuredRedirect ||
+    new URL("/api/admin/auth/step-up/callback", redirectUri).toString();
+  const rawTtl = Number(process.env.BA_STEP_UP_TICKET_TTL_SECONDS ?? "120");
+  const ttlSeconds = Number.isFinite(rawTtl)
+    ? Math.min(300, Math.max(60, Math.floor(rawTtl)))
+    : 120;
+  return {
+    enabled: true,
+    audience: process.env.BA_ADMIN_STEP_UP_AUDIENCE?.trim() || "ba-admin-stepup",
+    redirectUri: stepUpRedirect,
+    actions: [...BA_STEP_UP_ACTIONS],
+    ttlSeconds,
+  };
+}
+
 function buildBaClient(): AdminSsoClient | null {
   if (process.env.BA_ADMIN_SSO_ENABLED !== "true") return null;
 
@@ -76,6 +110,7 @@ function buildBaClient(): AdminSsoClient | null {
     permissionPrefix: "ba:",
     roleResolver: "ba",
     signing: getAdminSsoSigningConfig(),
+    stepUp: buildBaStepUpConfig(required("BA_ADMIN_SSO_REDIRECT_URI")),
   };
 }
 
