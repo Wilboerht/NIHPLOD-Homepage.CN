@@ -49,11 +49,13 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           key: process.env.AMAP_KEY || "",
-          secret: process.env.AMAP_SECRET || "",
+          // 不再返回 AMAP_SECRET：旧版 JS API 配置已废弃，管理端地址搜索
+          // 走服务端代理（/api/admin/amap/search），浏览器无需接触安全密钥。
+          // 保留 key 字段仅为兼容旧版地图组件；secret 永不下发到浏览器。
         },
       },
       {
-        // 含安全密钥，禁止浏览器/代理缓存
+        // 禁止浏览器/代理缓存
         headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache" },
       }
     );

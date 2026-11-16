@@ -19,7 +19,12 @@ import { createSignedInternalRequestHeaders, canonicalizeQuery } from "@/lib/int
 import { getClientIP } from "@/lib/client-ip";
 import { apiConsole } from "@/lib/logger";
 
-const DEFAULT_TIMEOUT_MS = 5000;
+/**
+ * 默认超时（毫秒）：跨公网调用（经 Cloudflare）时 5 秒可能不足，
+ * 提高到 10 秒；内网部署（127.0.0.1）时通常远低于此值。
+ * 可通过 ADVISOR_API_TIMEOUT_MS 环境变量覆盖。
+ */
+const DEFAULT_TIMEOUT_MS = Number(process.env.ADVISOR_API_TIMEOUT_MS) || 10000;
 const DEFAULT_BASE = "http://127.0.0.1:3002";
 
 export function advisorBaseUrl(): string {
