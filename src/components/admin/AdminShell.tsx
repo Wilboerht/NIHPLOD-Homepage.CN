@@ -340,27 +340,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
         )}
       >
         <div className={cn("mx-auto w-full flex-1", CONTENT_MAX_WIDTH_CLASS)}>
-          {breadcrumbs.length > 1 && (
-            <nav
-              aria-label="面包屑"
-              className="mb-3 hidden items-center gap-1 text-xs text-ink-muted lg:flex"
-            >
-              {breadcrumbs.map((crumb, index) => (
-                <span key={`${crumb.href}-${index}`} className="flex items-center gap-1">
-                  {index > 0 && (
-                    <ChevronRight className="h-3 w-3 text-ink-faint" aria-hidden="true" />
-                  )}
-                  {index === breadcrumbs.length - 1 ? (
-                    <span className="text-brand-charcoal/80">{crumb.title}</span>
-                  ) : (
-                    <Link href={crumb.href} className="transition-colors hover:text-brand-charcoal">
-                      {crumb.title}
-                    </Link>
-                  )}
-                </span>
-              ))}
-            </nav>
-          )}
           <Suspense
             fallback={
               <div
