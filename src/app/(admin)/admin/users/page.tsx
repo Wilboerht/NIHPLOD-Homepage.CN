@@ -43,10 +43,8 @@ import { Switch } from "@/components/ui/Switch";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dropdown, type DropdownItem } from "@/components/ui/Dropdown";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPatch, apiPost, apiDelete, ApiError } from "@/lib/api-client";
 import { downloadFromUrl } from "@/lib/client-download";
@@ -60,7 +58,7 @@ import { apiConsole } from "@/lib/logger";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useSensitiveReveal } from "@/hooks/useSensitiveReveal";
 import { useUrlDetail } from "@/hooks/useUrlDetail";
-import { RequirePermission } from "@/components/admin/RequirePermission";
+import { DataTable, RequirePermission, type Column } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { UserAvatar } from "@/components/admin/UserAvatar";
 import { UserAdvisorPanel } from "@/components/admin/UserAdvisorPanel";
@@ -1287,6 +1285,181 @@ function AdminUsersContent() {
     }
   }
 
+  const userColumns: Column<UserItem>[] = [];
+  if (canWriteUsers) {
+    userColumns.push({
+      key: "select",
+      title: (
+        <input
+          type="checkbox"
+          checked={isAllSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = isSelectionIndeterminate;
+          }}
+          onChange={(event) => handleSelectAll(event.target.checked)}
+          className="h-4 w-4 rounded border-line-strong"
+          aria-label="全选"
+        />
+      ),
+      width: "48px",
+      render: (_, user) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(user.id)}
+          onChange={() => userSelection.toggle(user)}
+          className="h-4 w-4 rounded border-line-strong"
+          aria-label={`选择 ${user.nickname || user.phone || user.id}`}
+        />
+      ),
+    });
+  }
+  userColumns.push(
+    {
+      key: "nickname",
+      title: "用户",
+      width: "220px",
+      render: (_, user) => (
+        <div className="flex items-center gap-3">
+          <UserAvatar src={user.avatar} name={user.nickname} size="sm" />
+          <span className="truncate">{user.nickname || "未设置"}</span>
+        </div>
+      ),
+    },
+    {
+      key: "phone",
+      title: "手机号",
+      width: "150px",
+      render: (_, user) => user.phone || "-",
+    },
+    {
+      key: "membershipLevel",
+      title: "会员等级",
+      width: "120px",
+      render: (_, user) =>
+        user.membershipLevel && membershipLevelMap[user.membershipLevel] ? (
+          <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
+            {membershipLevelMap[user.membershipLevel].label}
+          </Badge>
+        ) : (
+          <span className="text-ink-muted">—</span>
+        ),
+    },
+    {
+      key: "status",
+      title: "状态",
+      width: "100px",
+      render: (_, user) => (
+        <Badge variant={userStatusMap[user.status].variant}>
+          {userStatusMap[user.status].label}
+        </Badge>
+      ),
+    },
+    {
+      key: "createdAt",
+      title: "注册时间",
+      width: "130px",
+      render: (_, user) => (
+        <span className="text-ink-muted">
+          {new Date(user.createdAt).toLocaleDateString("zh-CN")}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "100px",
+      align: "right",
+      render: (_, user) => (
+        <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`查看 ${user.nickname || user.phone || "用户"} 详情`}
+            onClick={() => openDetail(user.id)}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          {canDeleteUsers && isOwnerActor && user.status !== "DELETED" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-status-danger-fg hover:bg-status-danger-soft hover:text-status-danger-fg"
+              aria-label={`删除 ${user.nickname || user.phone || "用户"}`}
+              onClick={() =>
+                requestDeleteUser(user.id, user.nickname || user.phone || user.id)
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    }
+  );
+
+  const renderUserMobileCard = (user: UserItem) => (
+    <div>
+      <div className="flex items-start gap-3">
+        {canWriteUsers && (
+          <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
+            <input
+              type="checkbox"
+              checked={selectedIds.has(user.id)}
+              onChange={() => userSelection.toggle(user)}
+              className="h-4 w-4 rounded border-line-strong"
+              aria-label={`选择 ${user.nickname || user.phone || user.id}`}
+            />
+          </label>
+        )}
+        <UserAvatar src={user.avatar} name={user.nickname} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-brand-charcoal">
+            {user.nickname || "未设置"}
+          </p>
+          <p className="truncate text-xs text-ink-muted">{user.phone || "未绑定手机号"}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <Badge variant={userStatusMap[user.status].variant}>
+              {userStatusMap[user.status].label}
+            </Badge>
+            {user.membershipLevel && membershipLevelMap[user.membershipLevel] && (
+              <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
+                {membershipLevelMap[user.membershipLevel].label}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-line pt-2">
+        <span className="text-xs text-ink-muted">
+          注册于 {new Date(user.createdAt).toLocaleDateString("zh-CN")}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`查看 ${user.nickname || user.phone || "用户"} 详情`}
+            onClick={() => openDetail(user.id)}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          {canDeleteUsers && isOwnerActor && user.status !== "DELETED" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-status-danger-fg hover:bg-status-danger-soft hover:text-status-danger-fg"
+              aria-label={`删除 ${user.nickname || user.phone || "用户"}`}
+              onClick={() =>
+                requestDeleteUser(user.id, user.nickname || user.phone || user.id)
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -1432,235 +1605,27 @@ function AdminUsersContent() {
         </div>
       )}
 
-      {/* 加载失败错误态 */}
-      {loadError && (
-        <div className="flex flex-col items-center justify-center gap-3 py-12">
-          <p className="text-sm text-status-danger-fg">{loadError}</p>
-          <button
-            onClick={fetchUsers}
-            className="rounded-lg border border-line-strong px-4 py-2 text-xs hover:bg-status-neutral-soft"
-          >
-            重试
-          </button>
-        </div>
-      )}
-
-      {/* 列表与分页：加载失败时用错误态独占，避免同时出现“暂无用户” */}
-      {!loadError && (
-        <>
-          {/* 用户列表（移动端卡片） */}
-          <div className="md:hidden">
-            {loading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-24 animate-pulse rounded-2xl bg-surface-muted"
-                  />
-                ))}
-              </div>
-            ) : users.length === 0 ? (
-              <div className="rounded-card border border-line bg-white py-10">
-                <Empty title="暂无用户" />
-              </div>
-            ) : (
-              <div className="divide-y divide-line rounded-card border border-line bg-white">
-                {users.map((user) => (
-                  <div key={user.id} className="p-4">
-                    <div className="flex items-start gap-3">
-                      {canWriteUsers && (
-                        <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(user.id)}
-                            onChange={() => userSelection.toggle(user)}
-                            className="h-4 w-4 rounded border-line-strong"
-                            aria-label={`选择 ${user.nickname || user.phone || user.id}`}
-                          />
-                        </label>
-                      )}
-                      <UserAvatar src={user.avatar} name={user.nickname} size="md" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium text-brand-charcoal">
-                          {user.nickname || "未设置"}
-                        </p>
-                        <p className="truncate text-xs text-ink-muted">
-                          {user.phone || "未绑定手机号"}
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <Badge variant={userStatusMap[user.status].variant}>
-                            {userStatusMap[user.status].label}
-                          </Badge>
-                          {user.membershipLevel && membershipLevelMap[user.membershipLevel] && (
-                            <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
-                              {membershipLevelMap[user.membershipLevel].label}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-line pt-2">
-                      <span className="text-xs text-ink-muted">
-                        注册于 {new Date(user.createdAt).toLocaleDateString("zh-CN")}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`查看 ${user.nickname || user.phone || "用户"} 详情`}
-                          onClick={() => openDetail(user.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {canDeleteUsers && isOwnerActor && user.status !== "DELETED" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-status-danger-fg hover:bg-status-danger-soft hover:text-status-danger-fg"
-                            aria-label={`删除 ${user.nickname || user.phone || "用户"}`}
-                            onClick={() =>
-                              requestDeleteUser(user.id, user.nickname || user.phone || user.id)
-                            }
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 用户列表（桌面端表格） */}
-          <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
-            <table className="w-full min-w-[900px] text-sm">
-              <thead>
-                <tr className="border-b border-line bg-surface-subtle text-left text-xs font-medium text-ink-muted">
-                  {canWriteUsers && (
-                    <th scope="col" className="w-10 px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={isAllSelected}
-                        ref={(el) => {
-                          if (el) el.indeterminate = isSelectionIndeterminate;
-                        }}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        className="h-4 w-4 rounded border-line-strong"
-                        aria-label="全选"
-                      />
-                    </th>
-                  )}
-                  <th scope="col" className="px-4 py-3">
-                    用户
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    手机号
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    会员等级
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    状态
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    注册时间
-                  </th>
-                  <th scope="col" className="px-4 py-3">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRowSkeleton key={i} columns={canWriteUsers ? 8 : 7} />
-                  ))
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td colSpan={canWriteUsers ? 8 : 7}>
-                      <div className="flex justify-center py-12">
-                        <Empty title="暂无用户" />
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((user) => (
-                    <tr key={user.id} className="hover:bg-surface-muted">
-                      {canWriteUsers && (
-                        <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(user.id)}
-                            onChange={() => userSelection.toggle(user)}
-                            className="h-4 w-4 rounded border-line-strong"
-                            aria-label={`选择 ${user.nickname || user.phone || user.id}`}
-                          />
-                        </td>
-                      )}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <UserAvatar src={user.avatar} name={user.nickname} size="sm" />
-                          <span>{user.nickname || "未设置"}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">{user.phone || "-"}</td>
-                      <td className="px-4 py-3">
-                        {user.membershipLevel && membershipLevelMap[user.membershipLevel] ? (
-                          <Badge variant={membershipLevelMap[user.membershipLevel].variant}>
-                            {membershipLevelMap[user.membershipLevel].label}
-                          </Badge>
-                        ) : (
-                          <span className="text-ink-muted">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={userStatusMap[user.status].variant}>
-                          {userStatusMap[user.status].label}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-ink-muted">
-                        {new Date(user.createdAt).toLocaleDateString("zh-CN")}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openDetail(user.id)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {canDeleteUsers && isOwnerActor && user.status !== "DELETED" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-status-danger-fg hover:bg-status-danger-soft hover:text-status-danger-fg"
-                              onClick={() =>
-                                requestDeleteUser(user.id, user.nickname || user.phone || user.id)
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 分页 */}
-          <div className="flex justify-center">
-            <Pagination
-              page={pagination.page}
-              pageSize={pagination.pageSize}
-              total={pagination.total}
-              onChange={(p) => updateParams({ page: String(p) })}
-              onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
-            />
-          </div>
-        </>
-      )}
+      <DataTable
+        columns={userColumns}
+        data={users}
+        loading={loading}
+        error={loadError}
+        onRetry={fetchUsers}
+        rowKey="id"
+        tableLayout="fixed"
+        minWidth="900px"
+        emptyText="暂无用户"
+        ariaLabel="用户列表"
+        onRowClick={(user) => openDetail(user.id)}
+        pagination={{
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
+          onChange: (nextPage) => updateParams({ page: String(nextPage) }),
+          onPageSizeChange: (size) => updateParams({ pageSize: String(size), page: "1" }),
+        }}
+        mobileCard={renderUserMobileCard}
+      />
 
       {/* 用户详情抽屉 */}
       <Modal

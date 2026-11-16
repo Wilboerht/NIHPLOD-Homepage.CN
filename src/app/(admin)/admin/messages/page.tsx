@@ -7,13 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
-import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -25,6 +22,7 @@ import { useListQuery } from "@/hooks/useListQuery";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { formatRelativeTime } from "@/lib/format";
+import { DataTable, type Column } from "@/components/admin";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { IconButton } from "@/components/admin/IconButton";
@@ -398,6 +396,238 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
   const isSelectionIndeterminate = selection.isIndeterminate(messages);
   const canSelect = canWriteMessages || canDeleteMessages;
 
+  const messageColumns: Column<Message>[] = [];
+  if (canSelect) {
+    messageColumns.push({
+      key: "select",
+      title: (
+        <input
+          type="checkbox"
+          checked={isAllSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = isSelectionIndeterminate;
+          }}
+          onChange={(event) => handleSelectAll(event.target.checked)}
+          aria-label="全选本页留言"
+          className="h-4 w-4 rounded border-line-strong"
+        />
+      ),
+      width: "48px",
+      render: (_, message) => (
+        <input
+          type="checkbox"
+          checked={selection.isSelected(message)}
+          onChange={() => selection.toggle(message)}
+          aria-label={`选择 ${message.name} 的留言`}
+          className="h-4 w-4 rounded border-line-strong"
+        />
+      ),
+    });
+  }
+  messageColumns.push(
+    {
+      key: "name",
+      title: "留言人",
+      width: "220px",
+      render: (_, message) => (
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+              message.read
+                ? "bg-surface-hover text-brand-charcoal/70"
+                : "bg-brand-primary/10 text-brand-primary"
+            )}
+          >
+            {message.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p
+              className={cn(
+                "truncate text-sm",
+                message.read ? "text-brand-charcoal/70" : "font-medium text-brand-charcoal"
+              )}
+            >
+              {message.name}
+            </p>
+            <p className="truncate text-xs text-ink-muted">{message.phone}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      title: "类型",
+      width: "100px",
+      render: (_, message) =>
+        message.type ? (
+          <Badge variant="secondary" size="sm">
+            {MESSAGE_TYPE_LABELS[message.type] || message.type}
+          </Badge>
+        ) : (
+          <span className="text-ink-muted">—</span>
+        ),
+    },
+    {
+      key: "content",
+      title: "内容",
+      width: "320px",
+      render: (_, message) => (
+        <button
+          type="button"
+          onClick={() => viewDetail(message)}
+          aria-label={`查看 ${message.name} 的留言详情`}
+          className="block max-w-full truncate text-left text-sm text-brand-charcoal/70 hover:text-brand-charcoal"
+          title={message.content}
+        >
+          {message.content}
+        </button>
+      ),
+    },
+    {
+      key: "read",
+      title: "状态",
+      width: "100px",
+      render: (_, message) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant={message.read ? "default" : "warning"} size="sm">
+            {message.read ? "已读" : "未读"}
+          </Badge>
+          {message.internalNote && (
+            <Badge variant="success" size="sm">
+              有备注
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "createdAt",
+      title: "提交时间",
+      width: "120px",
+      render: (_, message) => (
+        <span className="text-ink-muted" title={new Date(message.createdAt).toLocaleString("zh-CN")}>
+          {formatRelativeTime(message.createdAt)}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "140px",
+      align: "right",
+      render: (_, message) => (
+        <div className="flex justify-end gap-1">
+          <IconButton label="查看留言" onClick={() => viewDetail(message)}>
+            <Eye className="h-4 w-4" />
+          </IconButton>
+          {canWriteMessages && (
+            <Tooltip content={message.read ? "标记为未读" : "标记为已读"} side="top">
+              <IconButton
+                label={message.read ? "标记为未读" : "标记为已读"}
+                onClick={() => toggleRead(message)}
+              >
+                {message.read ? <Mail className="h-4 w-4" /> : <MailOpen className="h-4 w-4" />}
+              </IconButton>
+            </Tooltip>
+          )}
+          {canDeleteMessages && (
+            <Tooltip content="删除" side="top">
+              <IconButton
+                label="删除留言"
+                variant="danger"
+                onClick={() => setDeleteTarget(message)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </div>
+      ),
+    }
+  );
+
+  const renderMessageMobileCard = (message: Message) => (
+    <div className={cn(!message.read && "rounded-lg bg-brand-primary/5")}>
+      <div className="flex items-start gap-3">
+        {canSelect && (
+          <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
+            <input
+              type="checkbox"
+              checked={selection.isSelected(message)}
+              onChange={() => selection.toggle(message)}
+              aria-label={`选择 ${message.name} 的留言`}
+              className="h-4 w-4 rounded border-line-strong"
+            />
+          </label>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-brand-charcoal">{message.name}</p>
+              <p className="truncate text-xs text-ink-muted">{message.phone}</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+              {message.type && (
+                <Badge variant="secondary" size="sm">
+                  {MESSAGE_TYPE_LABELS[message.type] || message.type}
+                </Badge>
+              )}
+              <Badge variant={message.read ? "default" : "warning"} size="sm">
+                {message.read ? "已读" : "未读"}
+              </Badge>
+              {message.internalNote && (
+                <Badge variant="success" size="sm">
+                  有备注
+                </Badge>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => viewDetail(message)}
+            aria-label={`查看 ${message.name} 的留言详情`}
+            className="mt-3 block w-full text-left"
+          >
+            <p className="line-clamp-2 text-sm text-brand-charcoal/70">{message.content}</p>
+          </button>
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-2">
+            <span className="flex items-center gap-1 text-xs text-ink-muted">
+              <Clock className="h-3.5 w-3.5" />
+              {formatRelativeTime(message.createdAt)}
+            </span>
+            <div className="flex items-center gap-1">
+              <IconButton label="查看留言" onClick={() => viewDetail(message)}>
+                <Eye className="h-4 w-4" />
+              </IconButton>
+              {canWriteMessages && (
+                <Tooltip content={message.read ? "标记为未读" : "标记为已读"} side="top">
+                  <IconButton
+                    label={message.read ? "标记为未读" : "标记为已读"}
+                    onClick={() => toggleRead(message)}
+                  >
+                    {message.read ? <Mail className="h-4 w-4" /> : <MailOpen className="h-4 w-4" />}
+                  </IconButton>
+                </Tooltip>
+              )}
+              {canDeleteMessages && (
+                <Tooltip content="删除" side="top">
+                  <IconButton
+                    label="删除留言"
+                    variant="danger"
+                    onClick={() => setDeleteTarget(message)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -572,334 +802,33 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
         </div>
       )}
 
-      {/* 留言列表（移动端卡片） */}
-      <div className="md:hidden">
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-2xl bg-surface-muted" />
-            ))}
-          </div>
-        ) : loadError ? (
-          <div className="rounded-card border border-line bg-white py-10 text-center">
-            <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => {
-                setLoadError(false);
-                fetchMessages();
-              }}
-            >
-              重试
-            </Button>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="rounded-card border border-line bg-white py-10">
-            <Empty title="暂无留言" />
-          </div>
-        ) : (
-          <div className="divide-y divide-line rounded-card border border-line bg-white">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn("p-4", !message.read && "bg-brand-primary/5")}
-              >
-                <div className="flex items-start gap-3">
-                  {canSelect && (
-                    <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
-                      <input
-                        type="checkbox"
-                        checked={selection.isSelected(message)}
-                        onChange={() => selection.toggle(message)}
-                        aria-label={`选择 ${message.name} 的留言`}
-                        className="h-4 w-4 rounded border-line-strong"
-                      />
-                    </label>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-brand-charcoal">
-                          {message.name}
-                        </p>
-                        <p className="truncate text-xs text-ink-muted">{message.phone}</p>
-                      </div>
-                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                        {message.type && (
-                          <Badge variant="secondary" size="sm">
-                            {MESSAGE_TYPE_LABELS[message.type] || message.type}
-                          </Badge>
-                        )}
-                        <Badge variant={message.read ? "default" : "warning"} size="sm">
-                          {message.read ? "已读" : "未读"}
-                        </Badge>
-                        {message.internalNote && (
-                          <Badge variant="success" size="sm">
-                            有备注
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => viewDetail(message)}
-                      aria-label={`查看 ${message.name} 的留言详情`}
-                      className="mt-3 block w-full text-left"
-                    >
-                      <p className="line-clamp-2 text-sm text-brand-charcoal/70">
-                        {message.content}
-                      </p>
-                    </button>
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-2">
-                      <span className="flex items-center gap-1 text-xs text-ink-muted">
-                        <Clock className="h-3.5 w-3.5" />
-                        {formatRelativeTime(message.createdAt)}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <IconButton label="查看留言" onClick={() => viewDetail(message)}>
-                          <Eye className="h-4 w-4" />
-                        </IconButton>
-                        {canWriteMessages && (
-                          <Tooltip content={message.read ? "标记为未读" : "标记为已读"} side="top">
-                            <IconButton
-                              label={message.read ? "标记为未读" : "标记为已读"}
-                              onClick={() => toggleRead(message)}
-                            >
-                              {message.read ? (
-                                <Mail className="h-4 w-4" />
-                              ) : (
-                                <MailOpen className="h-4 w-4" />
-                              )}
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                        {canDeleteMessages && (
-                          <Tooltip content="删除" side="top">
-                            <IconButton
-                              label="删除留言"
-                              variant="danger"
-                              onClick={() => setDeleteTarget(message)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 留言列表（桌面端表格） */}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
-        <table className="w-full min-w-[960px] text-sm">
-          <thead>
-            <tr className="border-b border-line bg-surface-subtle text-left text-xs font-medium text-ink-muted">
-              {canSelect && (
-                <th scope="col" className="w-10 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={isAllSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = isSelectionIndeterminate;
-                    }}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    aria-label="全选本页留言"
-                    className="h-4 w-4 rounded border-line-strong"
-                  />
-                </th>
-              )}
-              <th scope="col" className="px-4 py-3">
-                留言人
-              </th>
-              <th scope="col" className="px-4 py-3">
-                类型
-              </th>
-              <th scope="col" className="px-4 py-3">
-                内容
-              </th>
-              <th scope="col" className="px-4 py-3">
-                状态
-              </th>
-              <th scope="col" className="px-4 py-3">
-                提交时间
-              </th>
-              <th scope="col" className="px-4 py-3">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={canSelect ? 7 : 6} />
-              ))
-            ) : loadError ? (
-              <tr>
-                <td colSpan={canSelect ? 7 : 6} className="px-4 py-10 text-center">
-                  <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => {
-                      setLoadError(false);
-                      fetchMessages();
-                    }}
-                  >
-                    重试
-                  </Button>
-                </td>
-              </tr>
-            ) : messages.length === 0 ? (
-              <tr>
-                <td colSpan={canSelect ? 7 : 6}>
-                  <div className="flex justify-center py-12">
-                    <Empty title="暂无留言" />
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              messages.map((message) => (
-                <tr
-                  key={message.id}
-                  className={cn(
-                    "transition-colors hover:bg-surface-muted",
-                    !message.read && "bg-brand-primary/5"
-                  )}
-                >
-                  {canSelect && (
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selection.isSelected(message)}
-                        onChange={() => selection.toggle(message)}
-                        aria-label={`选择 ${message.name} 的留言`}
-                        className="h-4 w-4 rounded border-line-strong"
-                      />
-                    </td>
-                  )}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                          message.read
-                            ? "bg-surface-hover text-brand-charcoal/70"
-                            : "bg-brand-primary/10 text-brand-primary"
-                        )}
-                      >
-                        {message.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p
-                          className={cn(
-                            "truncate text-sm",
-                            message.read
-                              ? "text-brand-charcoal/70"
-                              : "font-medium text-brand-charcoal"
-                          )}
-                        >
-                          {message.name}
-                        </p>
-                        <p className="truncate text-xs text-ink-muted">{message.phone}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {message.type ? (
-                      <Badge variant="secondary" size="sm">
-                        {MESSAGE_TYPE_LABELS[message.type] || message.type}
-                      </Badge>
-                    ) : (
-                      <span className="text-ink-muted">—</span>
-                    )}
-                  </td>
-                  <td className="max-w-[320px] px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => viewDetail(message)}
-                      aria-label={`查看 ${message.name} 的留言详情`}
-                      className="block max-w-full truncate text-left text-sm text-brand-charcoal/70 hover:text-brand-charcoal"
-                      title={message.content}
-                    >
-                      {message.content}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge variant={message.read ? "default" : "warning"} size="sm">
-                        {message.read ? "已读" : "未读"}
-                      </Badge>
-                      {message.internalNote && (
-                        <Badge variant="success" size="sm">
-                          有备注
-                        </Badge>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-ink-muted">
-                    <span title={new Date(message.createdAt).toLocaleString("zh-CN")}>
-                      {formatRelativeTime(message.createdAt)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <IconButton label="查看留言" onClick={() => viewDetail(message)}>
-                        <Eye className="h-4 w-4" />
-                      </IconButton>
-                      {canWriteMessages && (
-                        <Tooltip content={message.read ? "标记为未读" : "标记为已读"} side="top">
-                          <IconButton
-                            label={message.read ? "标记为未读" : "标记为已读"}
-                            onClick={() => toggleRead(message)}
-                          >
-                            {message.read ? (
-                              <Mail className="h-4 w-4" />
-                            ) : (
-                              <MailOpen className="h-4 w-4" />
-                            )}
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {canDeleteMessages && (
-                        <Tooltip content="删除" side="top">
-                          <IconButton
-                            label="删除留言"
-                            variant="danger"
-                            onClick={() => setDeleteTarget(message)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* 分页（始终展示总数与每页条数） */}
-      {total > 0 && (
-        <div className="flex justify-center">
-          <Pagination
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
-            onPageSizeChange={(size) => update({ pageSize: String(size) })}
-          />
-        </div>
-      )}
+      <DataTable
+        columns={messageColumns}
+        data={messages}
+        loading={loading}
+        error={loadError ? "加载失败，请重试" : null}
+        onRetry={() => {
+          setLoadError(false);
+          fetchMessages();
+        }}
+        rowKey="id"
+        tableLayout="fixed"
+        minWidth="960px"
+        emptyText="暂无留言"
+        ariaLabel="留言列表"
+        onRowClick={(message) => viewDetail(message)}
+        rowProps={(message) => ({
+          className: !message.read ? "bg-brand-primary/5" : undefined,
+        })}
+        pagination={{
+          page,
+          pageSize,
+          total,
+          onChange: (nextPage) => update({ page: String(nextPage) }, { resetPage: false }),
+          onPageSizeChange: (size) => update({ pageSize: String(size) }),
+        }}
+        mobileCard={renderMessageMobileCard}
+      />
 
       {/* 留言详情弹窗 */}
       <Modal
