@@ -482,7 +482,7 @@ describe("PATCH /api/oauth/userinfo", () => {
     expect(body.sub).toBe("user-1");
     expect(body.nickname).toBe("新昵称");
     // 未自定义头像：回退默认头像的绝对 URL（SSO 输出口径，子项目跨域可加载）
-    expect(body.avatar).toMatch(/\/images\/default-avatar-soft\.svg$/);
+    expect(body.avatar).toMatch(/\/images\/default-avatar-warm\.svg$/);
     expect(body.gender).toBe("female");
     expect(body.birthday).toBeUndefined();
 

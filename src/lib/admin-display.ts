@@ -51,7 +51,7 @@ export function getPermissionDiff(
 
 /**
  * 角色列显示规则：
- * - owner → 超管
+ * - owner → 主管理员
  * - 非 owner 且有个人权限覆盖 → 自定义管理
  * - 其他 → 基础角色标签
  */

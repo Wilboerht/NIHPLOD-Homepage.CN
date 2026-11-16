@@ -3,7 +3,7 @@ import { isInternalAvatarPath, isRenderableAvatarUrl } from "@/lib/avatar-url";
 
 describe("avatar url 判定", () => {
   it("仅接受 /images 与 /uploads 站内路径", () => {
-    expect(isInternalAvatarPath("/images/default-avatar-soft.svg")).toBe(true);
+    expect(isInternalAvatarPath("/images/default-avatar-warm.svg")).toBe(true);
     expect(isInternalAvatarPath("/uploads/avatars/a.webp")).toBe(true);
     expect(isInternalAvatarPath("//evil.com/a.png")).toBe(false);
     expect(isInternalAvatarPath("/images/../secret")).toBe(false);

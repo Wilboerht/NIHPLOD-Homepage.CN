@@ -9,13 +9,13 @@ import {
 import { resolveAdminPermissions } from "@/lib/admin-permissions";
 
 describe("admin-display", () => {
-  it("owner 显示超管，即使有覆盖也不显示自定义管理", () => {
+  it("owner 显示主管理员，即使有覆盖也不显示自定义管理", () => {
     expect(getAdminRoleDisplay("owner", ["admins:write"])).toMatchObject({
-      label: "超管",
+      label: "主管理员",
       variant: "primary",
     });
     expect(isCustomizedAdmin("owner", ["admins:write"])).toBe(false);
-    expect(getAdminRoleLabel("owner", true)).toBe("超管");
+    expect(getAdminRoleLabel("owner", true)).toBe("主管理员");
   });
 
   it("非 owner 有覆盖时统一显示自定义管理，并带基础角色与差异", () => {

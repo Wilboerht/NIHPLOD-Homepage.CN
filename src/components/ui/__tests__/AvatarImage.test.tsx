@@ -15,7 +15,7 @@ function renderAvatar(src: string | null) {
 describe("AvatarImage", () => {
   it("不可信外链直接回退默认头像（不发起第三方请求）", () => {
     const img = renderAvatar("https://thirdwx.qlogo.cn/mmopen/a.png");
-    expect(img?.getAttribute("src")).toMatch(/\/images\/default-avatar-soft\.svg$/);
+    expect(img?.getAttribute("src")).toMatch(/\/images\/default-avatar-warm\.svg$/);
   });
 
   it("自有域名/站内路径正常渲染", () => {
@@ -28,6 +28,6 @@ describe("AvatarImage", () => {
   });
 
   it("无头像时渲染默认头像", () => {
-    expect(renderAvatar(null)?.getAttribute("src")).toMatch(/\/images\/default-avatar-soft\.svg$/);
+    expect(renderAvatar(null)?.getAttribute("src")).toMatch(/\/images\/default-avatar-warm\.svg$/);
   });
 });

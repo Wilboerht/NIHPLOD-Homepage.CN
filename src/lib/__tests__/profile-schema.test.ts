@@ -4,7 +4,7 @@ import { isAllowedAvatarUrl } from "@/lib/profile-schema";
 describe("isAllowedAvatarUrl", () => {
   it("允许站内相对路径（本地存储模式）", () => {
     expect(isAllowedAvatarUrl("/uploads/avatars/a.webp")).toBe(true);
-    expect(isAllowedAvatarUrl("/images/default-avatar-soft.svg")).toBe(true);
+    expect(isAllowedAvatarUrl("/images/default-avatar-warm.svg")).toBe(true);
   });
 
   it("允许官网域与自有 OSS 的 https 地址", () => {

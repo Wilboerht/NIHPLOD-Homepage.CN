@@ -11,7 +11,7 @@ interface AdminRoleBadgeProps {
 
 /**
  * 管理员角色列：永远只渲染一个徽标。
- * - owner → 超管
+ * - owner → 主管理员
  * - 有个人权限覆盖 → 自定义管理
  * - 其他 → 基础角色标签
  */

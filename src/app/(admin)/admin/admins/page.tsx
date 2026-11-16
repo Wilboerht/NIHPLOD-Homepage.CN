@@ -75,14 +75,31 @@ const EMAIL_HISTORY_REASON_LABELS: Record<string, string> = {
 
 function getAdvisorAccess(admin: AdminItem): {
   label: string;
-  variant: "warning" | "success" | "secondary";
+  variant: "primary" | "success" | "secondary";
 } {
   const permissions = resolveAdminPermissions(admin.role, admin.permissions);
   if (admin.role === "owner" || permissions.includes("advisor:admin")) {
-    return { label: "超管", variant: "warning" };
+    return { label: "全部权限", variant: "primary" };
   }
   if (permissions.includes("advisor:access")) {
     return { label: "管理员", variant: "success" };
+  }
+  return { label: "无", variant: "secondary" };
+}
+
+function getBaAccess(admin: AdminItem): {
+  label: string;
+  variant: "primary" | "success" | "secondary";
+} {
+  const permissions = resolveAdminPermissions(admin.role, admin.permissions);
+  if (admin.role === "owner" || permissions.includes("ba:admin")) {
+    return { label: "全部权限", variant: "primary" };
+  }
+  if (permissions.includes("ba:access")) {
+    return { label: "管理员", variant: "success" };
+  }
+  if (permissions.some((permission) => permission.startsWith("ba:"))) {
+    return { label: "部分权限", variant: "secondary" };
   }
   return { label: "无", variant: "secondary" };
 }
@@ -859,6 +876,7 @@ const selection = useRowSelection<AdminItem>(
         >
           {admins.map((admin) => {
             const advisor = getAdvisorAccess(admin);
+            const ba = getBaAccess(admin);
             return (
               <MobileListCard key={admin.id}>
                 <div className="flex items-start gap-3">
@@ -887,6 +905,7 @@ const selection = useRowSelection<AdminItem>(
                         showLabel
                       />
                       <Badge variant={advisor.variant}>测肤 {advisor.label}</Badge>
+                      <Badge variant={ba.variant}>验真 {ba.label}</Badge>
                     </div>
                     <p className="mt-1 text-xs text-ink-muted">
                       最近登录 {admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "从未"}
@@ -916,7 +935,7 @@ const selection = useRowSelection<AdminItem>(
         <div className="hidden rounded-card border border-line bg-white md:block">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
-              <tr className="border-b border-line bg-surface-subtle text-left">
+              <tr className="border-b border-line bg-surface-subtle text-left text-xs font-medium text-ink-muted">
                 {canManage && isOwnerActor && (
                   <th scope="col" className="w-10 px-4 py-3.5">
                     <input
@@ -960,9 +979,9 @@ const selection = useRowSelection<AdminItem>(
                   <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                     测肤权限
                   </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                  创建时间
-                </th>
+                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
+                    验真权限
+                  </th>
                 <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   操作
                 </th>
@@ -1042,8 +1061,11 @@ const selection = useRowSelection<AdminItem>(
                         return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
                       })()}
                     </td>
-                    <td className="px-5 py-3.5 text-ink-muted">
-                      {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
+                    <td className="px-5 py-3.5">
+                      {(() => {
+                        const ba = getBaAccess(admin);
+                        return <Badge variant={ba.variant}>{ba.label}</Badge>;
+                      })()}
                     </td>
                     <td className="px-5 py-3.5">
                       <AdminRowActions
