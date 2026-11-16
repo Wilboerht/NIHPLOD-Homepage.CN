@@ -108,22 +108,8 @@ export const MEMBERSHIP_LABELS: Record<string, string> = {
   DIAMOND: "钻石卡会员",
 };
 
-export const POINT_TYPE_LABELS: Record<string, string> = {
-  CONSUME: "消费发放",
-  REFUND: "退款冲正",
-  BIRTHDAY: "生日积分",
-  CHECKIN: "打卡奖励",
-  REDEEM: "兑礼扣减",
-  REDEEM_REFUND: "兑换撤销退分",
-  EXPIRE: "过期扣减",
-  ADJUST: "人工调整",
-};
-
-export const REDEMPTION_STATUS_LABELS: Record<string, string> = {
-  PENDING: "待处理",
-  FULFILLED: "已完成",
-  CANCELLED: "已取消",
-};
+export { POINT_LEDGER_TYPE_LABELS as POINT_TYPE_LABELS } from "@/lib/point-meta";
+export { REDEMPTION_STATUS_LABELS } from "@/lib/redemption-meta";
 
 export const SPENT_CHANNEL_LABELS: Record<string, string> = {
   TMALL: "天猫商城",

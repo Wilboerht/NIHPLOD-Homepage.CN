@@ -81,20 +81,20 @@ function requestOverview(userId: string): Promise<AdvisorOverviewPayload> {
 function PanelSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-xl border border-line bg-white p-4">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="space-y-2">
-              <div className="h-3 w-16 animate-pulse rounded bg-brand-charcoal/[0.06]" />
-              <div className="h-6 w-20 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+              <div className="h-3 w-16 animate-pulse rounded bg-surface-hover" />
+              <div className="h-6 w-20 animate-pulse rounded bg-surface-hover" />
             </div>
           ))}
         </div>
       </div>
-      <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-xl border border-line bg-white p-4">
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-10 animate-pulse rounded-lg bg-brand-charcoal/[0.04]" />
+            <div key={index} className="h-10 animate-pulse rounded-lg bg-surface-muted" />
           ))}
         </div>
       </div>
@@ -166,24 +166,24 @@ function OverviewContent({
       <PanelCard title="账号与配额">
         <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-brand-charcoal/65">子站首次登录</dt>
+            <dt className="text-xs text-ink-muted">子站首次登录</dt>
             <dd className="mt-1 text-brand-charcoal">{formatDateTime(account.createdAt)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-brand-charcoal/65">最后活跃</dt>
+            <dt className="text-xs text-ink-muted">最后活跃</dt>
             <dd className="mt-1 text-brand-charcoal">{formatDateTime(account.lastActiveAt)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-brand-charcoal/65">累计测肤</dt>
+            <dt className="text-xs text-ink-muted">累计测肤</dt>
             <dd className="mt-1 text-brand-charcoal">
               {counts.sessions} 次
-              <span className="ml-2 text-xs text-brand-charcoal/65">
+              <span className="ml-2 text-xs text-ink-muted">
                 完成 {counts.completedSessions} 次
               </span>
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-brand-charcoal/65">日记记录</dt>
+            <dt className="text-xs text-ink-muted">日记记录</dt>
             <dd className="mt-1 text-brand-charcoal">{counts.diaryEntries} 条</dd>
           </div>
         </dl>
@@ -191,40 +191,40 @@ function OverviewContent({
           className={cn(
             "mt-4 rounded-lg px-3 py-2 text-xs",
             customLimit
-              ? "border border-amber-200 bg-amber-50 text-amber-800"
-              : "bg-brand-charcoal/[0.03] text-brand-charcoal/70"
+              ? "border border-status-warning-line bg-status-warning-soft text-status-warning-strong"
+              : "bg-surface-muted text-brand-charcoal/70"
           )}
         >
           {customLimit
             ? `管理员已自定义每日测肤上限为 ${account.dailyTestLimit} 次（该设置会解除终身次数限制）`
             : `每日上限与会员等级默认配额一致（${dailyLimitText}），未做单独自定义`}
         </div>
-        {actions && <div className="mt-4 border-t border-brand-charcoal/10 pt-4">{actions}</div>}
+        {actions && <div className="mt-4 border-t border-line pt-4">{actions}</div>}
       </PanelCard>
 
       {canReadReport ? (
         <AdvisorReports userId={userId} />
       ) : (
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white px-3 py-2.5 text-xs text-brand-charcoal/55">
+        <div className="rounded-xl border border-line bg-white px-3 py-2.5 text-xs text-ink-muted">
           需要完整报告权限（advisor:report:read）才能查看报告正文；当前仅展示账号、配额和摘要。
         </div>
       )}
 
-      <details className="rounded-xl border border-brand-charcoal/10 bg-white">
+      <details className="rounded-xl border border-line bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm text-brand-charcoal">
           <span className="inline-flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-brand-charcoal/45" />
+            <CalendarDays className="h-4 w-4 text-ink-faint" />
             最近护肤日记
           </span>
-          <span className="text-[11px] text-brand-charcoal/45">
+          <span className="text-2xs text-ink-faint">
             {overview.recentDiary.length > 0 ? `${overview.recentDiary.length} 条` : "暂无"}
           </span>
         </summary>
-        <div className="border-t border-brand-charcoal/10 px-3 py-2">
+        <div className="border-t border-line px-3 py-2">
           {overview.recentDiary.length === 0 ? (
-            <p className="py-2 text-xs text-brand-charcoal/55">暂无护肤日记</p>
+            <p className="py-2 text-xs text-ink-muted">暂无护肤日记</p>
           ) : (
-            <div className="divide-y divide-brand-charcoal/[0.06]">
+            <div className="divide-y divide-line-subtle">
               {overview.recentDiary.map((entry) => (
                 <div
                   key={`${entry.date}-${entry.skinState}`}
@@ -240,7 +240,7 @@ function OverviewContent({
                     {entry.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full bg-brand-charcoal/[0.04] px-2 py-0.5 text-[11px] text-brand-charcoal/70"
+                        className="rounded-full bg-surface-muted px-2 py-0.5 text-2xs text-brand-charcoal/70"
                       >
                         {tag}
                       </span>
@@ -254,8 +254,8 @@ function OverviewContent({
       </details>
 
       {canOpenAdvisor && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-3 py-2.5">
-          <p className="text-xs text-brand-charcoal/60">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface-subtle px-3 py-2.5">
+          <p className="text-xs text-ink-muted">
             需要调整配额、查看推荐规则或子站其他后台功能时，前往测肤子站。
           </p>
           <a
@@ -407,7 +407,7 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
   if (error) {
     return (
       <Empty
-        icon={<AlertTriangle className="h-8 w-8 text-amber-500" />}
+        icon={<AlertTriangle className="h-8 w-8 text-status-warning-fg" />}
         title="加载测肤档案失败"
         description={error}
         action={
@@ -425,7 +425,7 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
   if (payload.degraded) {
     return (
       <Empty
-        icon={<AlertTriangle className="h-8 w-8 text-amber-500" />}
+        icon={<AlertTriangle className="h-8 w-8 text-status-warning-fg" />}
         title="测肤子站暂不可用"
         description={DEGRADED_MESSAGES[payload.reason || ""] || "请稍后重试"}
         action={
@@ -446,7 +446,7 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
   if (!payload.overview || !payload.overview.account) {
     return (
       <Empty
-        icon={<Sparkles className="h-8 w-8 text-brand-charcoal/65" />}
+        icon={<Sparkles className="h-8 w-8 text-ink-muted" />}
         title="该用户尚未使用过 AI 测肤"
         description="用户在测肤子站首次登录后，这里会显示账号状态、配额和测肤记录。"
         action={
@@ -476,7 +476,7 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-brand-charcoal">每日测肤上限</p>
-            <p className="mt-0.5 text-xs text-brand-charcoal/65">
+            <p className="mt-0.5 text-xs text-ink-muted">
               0–9999 次；设置 10 次即恢复会员默认配额
             </p>
           </div>
@@ -494,7 +494,7 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
                   );
                 }}
                 aria-label="每日测肤上限"
-                className="w-24 rounded-lg border border-brand-charcoal/20 px-2 py-1.5 text-center text-sm tabular-nums focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary/20"
+                className="w-24 rounded-lg border border-line-strong px-2 py-1.5 text-center text-sm tabular-nums focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary/20"
               />
               <Button size="sm" onClick={saveLimit} loading={savingLimit}>
                 保存
@@ -520,10 +520,10 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-charcoal/10 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
           <div>
             <p className="text-sm font-medium text-brand-charcoal">子站账号状态</p>
-            <p className="mt-0.5 text-xs text-brand-charcoal/65">
+            <p className="mt-0.5 text-xs text-ink-muted">
               {account.role === "disabled"
                 ? "用户当前无法在测肤子站测肤或查看历史。"
                 : "禁用仅影响测肤子站，不影响主站账号。"}
@@ -546,7 +546,7 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
         </div>
 
         {!mainActive && (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <p className="rounded-lg border border-status-warning-line bg-status-warning-soft px-3 py-2 text-xs text-status-warning-strong">
             主站账号当前状态为「{MAIN_STATUS_LABELS[mainStatus] || mainStatus}
             」，主站状态变化会同步禁用子站账号；主站恢复正常后才能手动启用。
           </p>
@@ -558,7 +558,7 @@ export function UserAdvisorPanel({ userId, mainStatus }: { userId: string; mainS
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-brand-charcoal/50" />
+          <Activity className="h-4 w-4 text-ink-muted" />
           <h3 className="text-sm font-medium text-brand-charcoal">测肤子站（smart.nihplod.cn）</h3>
         </div>
         <Button size="sm" variant="ghost" onClick={reload}>

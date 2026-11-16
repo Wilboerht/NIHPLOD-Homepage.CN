@@ -285,12 +285,12 @@ function OAuthConsentsPage() {
       <AdminHubTabs section="sso" />
 
       {/* 工具栏：状态分段筛选 + 精确搜索 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div
             role="group"
             aria-label="按授权状态筛选"
-            className="flex flex-wrap items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+            className="flex flex-wrap items-center gap-1 rounded-xl bg-surface-muted p-1"
           >
             {STATUS_TABS.map((tab) => {
               const active = statusFilter === tab.value;
@@ -307,7 +307,7 @@ function OAuthConsentsPage() {
                     "rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
                     active
                       ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                      : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                      : "text-ink-muted hover:bg-white/70 hover:text-brand-charcoal"
                   )}
                 >
                   {tab.label}
@@ -318,7 +318,7 @@ function OAuthConsentsPage() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative w-full sm:w-56">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 aria-label="按用户手机号搜索"
                 placeholder="搜索用户手机号"
@@ -336,7 +336,7 @@ function OAuthConsentsPage() {
                     setPage(1);
                   }}
                   aria-label="清除手机号搜索"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -360,7 +360,7 @@ function OAuthConsentsPage() {
                     setPage(1);
                   }}
                   aria-label="清除 Client ID 搜索"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -381,14 +381,14 @@ function OAuthConsentsPage() {
       </div>
 
       {searchTruncated && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+        <p className="rounded-lg border border-status-warning-line bg-status-warning-soft px-4 py-2 text-sm text-status-warning-strong">
           匹配结果过多，仅统计前 500 个用户/客户端，请使用更精确的搜索条件。
         </p>
       )}
 
       {/* 批量操作栏 */}
       {canWrite && selection.selectedCount > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand-primary/15 bg-brand-primary/[0.03] px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand-primary/15 bg-brand-primary/5 px-4 py-3">
           <span className="text-sm font-medium text-brand-charcoal">
             已选择 {selection.selectedCount} 条授权
           </span>
@@ -402,7 +402,7 @@ function OAuthConsentsPage() {
           </Button>
           <button
             onClick={selection.clear}
-            className="ml-auto text-sm text-brand-charcoal/65 hover:text-brand-charcoal/80"
+            className="ml-auto text-sm text-ink-muted hover:text-brand-charcoal/80"
           >
             取消选择
           </button>
@@ -415,7 +415,7 @@ function OAuthConsentsPage() {
         error={
           loadError ? (
             <>
-              <p className="text-red-500">加载失败</p>
+              <p className="text-status-danger-fg">加载失败</p>
               <Button variant="outline" size="sm" className="mt-3" onClick={fetchConsents}>
                 重试
               </Button>
@@ -435,7 +435,7 @@ function OAuthConsentsPage() {
                     checked={selection.isSelected(c)}
                     onChange={() => selection.toggle(c)}
                     aria-label={`选择 ${c.phone || c.userId} 的授权`}
-                    className="h-4 w-4 rounded border-brand-charcoal/20"
+                    className="h-4 w-4 rounded border-line-strong"
                   />
                 </label>
               )}
@@ -453,7 +453,7 @@ function OAuthConsentsPage() {
                         昵称：{c.nickname}
                       </p>
                     )}
-                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
+                    <p className="mt-0.5 truncate text-xs text-ink-muted">
                       Client：{c.clientName || c.clientId}
                     </p>
                   </div>
@@ -468,13 +468,13 @@ function OAuthConsentsPage() {
                     </Badge>
                   ))}
                   {c.scopes.length > 3 && (
-                    <span className="text-xs text-brand-charcoal/65">+{c.scopes.length - 3}</span>
+                    <span className="text-xs text-ink-muted">+{c.scopes.length - 3}</span>
                   )}
                 </div>
               </div>
             </div>
-            <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-              <span className="text-xs text-brand-charcoal/65">
+            <div className="mt-2 flex items-center justify-between gap-2 border-t border-line pt-2">
+              <span className="text-xs text-ink-muted">
                 授权于 {formatDate(c.grantedAt)}
                 {c.status === "revoked" && c.revokedAt && <> · 撤销于 {formatDate(c.revokedAt)}</>}
               </span>
@@ -483,7 +483,7 @@ function OAuthConsentsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-red-600 hover:bg-red-50"
+                    className="text-status-danger-fg hover:bg-status-danger-soft"
                     onClick={() => {
                       setRevokeTarget({
                         userId: c.userId,
@@ -497,10 +497,10 @@ function OAuthConsentsPage() {
                     撤销授权
                   </Button>
                 ) : (
-                  <span className="text-xs text-brand-charcoal/65">只读</span>
+                  <span className="text-xs text-ink-muted">只读</span>
                 )
               ) : (
-                <span className="text-xs text-brand-charcoal/65">需重新授权</span>
+                <span className="text-xs text-ink-muted">需重新授权</span>
               )}
             </div>
           </MobileListCard>
@@ -508,10 +508,10 @@ function OAuthConsentsPage() {
       </MobileList>
 
       {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+            <tr className="border-b border-line bg-surface-subtle text-left">
               {canWrite && (
                 <th scope="col" className="w-10 px-4 py-3">
                   <input
@@ -524,7 +524,7 @@ function OAuthConsentsPage() {
                       )
                     }
                     aria-label="全选已授权记录"
-                    className="h-4 w-4 rounded border-brand-charcoal/20"
+                    className="h-4 w-4 rounded border-line-strong"
                   />
                 </th>
               )}
@@ -554,7 +554,7 @@ function OAuthConsentsPage() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-charcoal/10">
+          <tbody className="divide-y divide-line">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={canWrite ? 9 : 8} />
@@ -563,7 +563,7 @@ function OAuthConsentsPage() {
               <tr>
                 <td colSpan={canWrite ? 9 : 8}>
                   <div className="flex flex-col items-center justify-center gap-3 py-10">
-                    <p className="text-sm text-red-500">加载失败，请稍后重试</p>
+                    <p className="text-sm text-status-danger-fg">加载失败，请稍后重试</p>
                     <Button variant="outline" size="sm" onClick={fetchConsents}>
                       重新加载
                     </Button>
@@ -580,7 +580,7 @@ function OAuthConsentsPage() {
               </tr>
             ) : (
               consents.map((c) => (
-                <tr key={c.id} className="hover:bg-brand-charcoal/[0.03]">
+                <tr key={c.id} className="hover:bg-surface-muted">
                   {canWrite && (
                     <td className="w-10 px-4 py-3">
                       {c.status === "active" ? (
@@ -589,7 +589,7 @@ function OAuthConsentsPage() {
                           checked={selection.isSelected(c)}
                           onChange={() => selection.toggle(c)}
                           aria-label={`选择 ${c.phone || c.userId} 的授权`}
-                          className="h-4 w-4 rounded border-brand-charcoal/20"
+                          className="h-4 w-4 rounded border-line-strong"
                         />
                       ) : null}
                     </td>
@@ -613,7 +613,7 @@ function OAuthConsentsPage() {
                       >
                         <span>{c.clientName || c.clientId}</span>
                         {c.clientName && (
-                          <span className="font-mono text-xs text-brand-charcoal/65">
+                          <span className="font-mono text-xs text-ink-muted">
                             {c.clientId}
                           </span>
                         )}
@@ -629,10 +629,10 @@ function OAuthConsentsPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-ink-muted">
                     {formatDate(c.grantedAt)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-ink-muted">
                     {c.revokedAt ? formatDate(c.revokedAt) : "-"}
                   </td>
                   <td className="px-4 py-3">
@@ -661,11 +661,11 @@ function OAuthConsentsPage() {
                           </IconButton>
                         </Tooltip>
                       ) : (
-                        <span className="text-xs text-brand-charcoal/65">只读</span>
+                        <span className="text-xs text-ink-muted">只读</span>
                       )
                     ) : (
                       <span
-                        className="text-xs text-brand-charcoal/65"
+                        className="text-xs text-ink-muted"
                         title="用户下次访问该 Client 时需要重新授权"
                       >
                         需重新授权
@@ -716,7 +716,7 @@ function OAuthConsentsPage() {
 export default function OAuthConsentsPageWrapper() {
   return (
     <RequirePermission permission="sso:read">
-      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/65">加载中...</div>}>
+      <Suspense fallback={<div className="py-8 text-center text-ink-muted">加载中...</div>}>
         <OAuthConsentsPage />
       </Suspense>
     </RequirePermission>

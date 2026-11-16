@@ -10,7 +10,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { PointRedemptionStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { adjustPoints, withPointTxRetry } from "@/lib/points-ledger";
+import { adjustPoints, lockPointBalance, withPointTxRetry } from "@/lib/points-ledger";
 import { enqueueNotification } from "@/lib/notification-outbox";
 import { apiConsole } from "@/lib/logger";
 import { getRedemptionProtectionView } from "@/lib/redemption-protection";
@@ -582,6 +582,16 @@ export async function refundAfterSales(params: {
   try {
     return await withPointTxRetry(() =>
       prisma.$transaction(async (tx) => {
+        // 统一锁顺序：先锁积分余额行，再锁兑换单，避免与履约/取消形成反向锁序。
+        const preflight = await tx.pointRedemption.findUnique({
+          where: { id: redemptionId },
+          select: { userId: true },
+        });
+        if (!preflight) {
+          return { ok: false as const, code: "NOT_FOUND", message: "兑换记录不存在" };
+        }
+        await lockPointBalance(tx, preflight.userId);
+
         await tx.$queryRaw`SELECT "id" FROM "PointRedemption" WHERE "id" = ${redemptionId} FOR UPDATE`;
         const redemption = await tx.pointRedemption.findUnique({
           where: { id: redemptionId },

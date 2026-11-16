@@ -10,6 +10,7 @@
     "start": "tsx server.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "check:admin-tokens": "tsx scripts/check-admin-tokens.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
@@ -26,6 +27,7 @@
     "legal:seed": "tsx scripts/seed-legal-documents.ts",
     "migrate:resumes": "tsx scripts/migrate-resumes-private.ts",
     "resumes:cleanup-orphans": "tsx scripts/cleanup-orphan-resumes.ts",
+    "avatars:backfill-social": "tsx scripts/backfill-social-avatars.ts",
     "applications:purge": "tsx scripts/purge-job-applications.ts",
     "check:production-env": "tsx scripts/check-production-env.ts",
     "check:sso-config": "tsx scripts/check-sso-production-config.ts",
@@ -46,6 +48,7 @@
     "spent:repair-claims": "tsx scripts/backfill-spent-refund-claims.ts",
     "spent:audit-refunds": "tsx scripts/audit-spent-refund-duplicates.ts",
     "spent:repair-refunds": "tsx scripts/repair-spent-refund-duplicates.ts",
+    "nickname:scan": "tsx scripts/scan-nickname-violations.ts",
     "admin:reset-totp": "tsx scripts/reset-admin-totp.ts"
   },
   "prisma": {

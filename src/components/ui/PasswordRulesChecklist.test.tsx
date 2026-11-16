@@ -24,7 +24,7 @@ describe("PasswordRulesChecklist", () => {
     const items = screen.getAllByRole("listitem");
     expect(items).toHaveLength(5);
     for (const item of items) {
-      expect(item.className).not.toContain("text-emerald-600");
+      expect(item.className).not.toContain("text-status-success-fg");
     }
   });
 
@@ -32,7 +32,7 @@ describe("PasswordRulesChecklist", () => {
     render(<PasswordRulesChecklist password="Hello123" />);
     const items = screen.getAllByRole("listitem");
     for (const item of items) {
-      expect(item.className).toContain("text-emerald-600");
+      expect(item.className).toContain("text-status-success-fg");
     }
   });
 
@@ -40,12 +40,12 @@ describe("PasswordRulesChecklist", () => {
     const { rerender } = render(<PasswordRulesChecklist password="Hello123456" />);
     // 含 6 位连续数字 → 弱密码项不亮，其余亮
     const weakItem = screen.getByText("不是常见弱密码或连续字符").closest("li")!;
-    expect(weakItem.className).not.toContain("text-emerald-600");
-    expect(screen.getByText("8-32 个字符").closest("li")!.className).toContain("text-emerald-600");
+    expect(weakItem.className).not.toContain("text-status-success-fg");
+    expect(screen.getByText("8-32 个字符").closest("li")!.className).toContain("text-status-success-fg");
 
     rerender(<PasswordRulesChecklist password="123" />);
     expect(screen.getByText("8-32 个字符").closest("li")!.className).not.toContain(
-      "text-emerald-600"
+      "text-status-success-fg"
     );
   });
 });

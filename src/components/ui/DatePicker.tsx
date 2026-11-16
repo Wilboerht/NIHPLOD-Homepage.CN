@@ -46,7 +46,7 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           <label htmlFor={dateId} className="mb-1 block text-sm font-medium text-brand-charcoal/80">
             {label}
             {required && (
-              <span className="ml-0.5 text-red-500" aria-hidden="true">
+              <span className="ml-0.5 text-status-danger-fg" aria-hidden="true">
                 *
               </span>
             )}
@@ -69,9 +69,9 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
               "w-full rounded-lg border bg-white px-4 py-2.5 pr-10 text-brand-charcoal transition-colors",
               "focus:outline-none focus:ring-1",
               error
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                : "border-brand-charcoal/20 focus:border-brand-primary focus:ring-brand-primary",
-              "disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03] disabled:opacity-50",
+                ? "border-status-danger-fg focus:border-status-danger-fg focus:ring-status-danger-fg"
+                : "border-line-strong focus:border-brand-primary focus:ring-brand-primary",
+              "disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-50",
               "dark:[color-scheme:light]",
               !value && "text-transparent", // 隐藏浏览器默认日期格式，显示自定义占位
               className
@@ -82,22 +82,22 @@ export const DatePicker = forwardRef<HTMLInputElement, DatePickerProps>(
           {!value && !disabled && (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-brand-charcoal/65"
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted"
             >
               {props.placeholder || "选择日期"}
             </span>
           )}
           <Calendar
             aria-hidden="true"
-            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65"
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
           />
         </div>
         {error ? (
-          <p id={errorId} className="mt-1 text-sm text-red-500">
+          <p id={errorId} className="mt-1 text-sm text-status-danger-fg">
             {error}
           </p>
         ) : hint ? (
-          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/65">
+          <p id={hintId} className="mt-1 text-xs text-ink-muted">
             {hint}
           </p>
         ) : null}

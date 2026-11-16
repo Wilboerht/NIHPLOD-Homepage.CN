@@ -79,18 +79,18 @@ function LegalDocumentsContent() {
       />
 
       {loadError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-xl border border-status-danger-line bg-status-danger-soft p-4 text-sm text-status-danger-strong">
           {loadError}
         </div>
       ) : null}
 
       {!loading && documents.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-3 text-xs text-brand-charcoal/60">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-surface-subtle px-4 py-3 text-xs text-ink-muted">
           <span>
             共 <strong className="font-semibold text-brand-charcoal">{documents.length}</strong> 份文档
           </span>
           <span>已发布 {publishedCount}</span>
-          <span className={draftCount > 0 ? "text-amber-700" : undefined}>
+          <span className={draftCount > 0 ? "text-status-warning-strong" : undefined}>
             待发布草稿 {draftCount}
           </span>
         </div>
@@ -101,7 +101,7 @@ function LegalDocumentsContent() {
           {[0, 1].map((item) => (
             <div
               key={item}
-              className="h-56 animate-pulse rounded-2xl border border-brand-charcoal/10 bg-white"
+              className="h-56 animate-pulse rounded-card border border-line bg-white"
             />
           ))}
         </div>
@@ -113,7 +113,7 @@ function LegalDocumentsContent() {
             return (
               <section
                 key={document.slug}
-                className="flex flex-col rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-5"
+                className="flex flex-col rounded-card border border-line bg-white p-4 sm:p-5"
               >
                 <div className="flex items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
@@ -128,7 +128,7 @@ function LegalDocumentsContent() {
                         {document.title}
                       </Link>
                     </h2>
-                    <p className="mt-1 text-xs leading-5 text-brand-charcoal/55">
+                    <p className="mt-1 text-xs leading-5 text-ink-muted">
                       {meta.description}
                     </p>
                   </div>
@@ -155,7 +155,7 @@ function LegalDocumentsContent() {
                   ) : null}
                 </div>
 
-                <dl className="mt-3 space-y-1.5 text-xs text-brand-charcoal/55">
+                <dl className="mt-3 space-y-1.5 text-xs text-ink-muted">
                   <div className="flex items-start justify-between gap-3">
                     <dt>最近发布</dt>
                     <dd className="text-right">
@@ -170,7 +170,7 @@ function LegalDocumentsContent() {
                         "—"
                       )}
                       {document.publishedBy ? (
-                        <span className="block text-brand-charcoal/40">
+                        <span className="block text-ink-faint">
                           {document.publishedBy}
                         </span>
                       ) : null}
@@ -190,7 +190,7 @@ function LegalDocumentsContent() {
                         "—"
                       )}
                       {document.draftUpdatedBy ? (
-                        <span className="block text-brand-charcoal/40">
+                        <span className="block text-ink-faint">
                           {document.draftUpdatedBy}
                         </span>
                       ) : null}
@@ -198,12 +198,12 @@ function LegalDocumentsContent() {
                   </div>
                 </dl>
 
-                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-3">
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
                   <a
                     href={meta.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-brand-charcoal/55 hover:text-brand-primary"
+                    className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-brand-primary"
                   >
                     查看线上
                     <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
@@ -224,7 +224,7 @@ function LegalDocumentsContent() {
       )}
 
       {!loading && documents.length === 0 && !loadError ? (
-        <p className="rounded-xl border border-brand-charcoal/10 bg-white p-6 text-center text-sm text-brand-charcoal/55">
+        <p className="rounded-xl border border-line bg-white p-6 text-center text-sm text-ink-muted">
           暂无可管理的法务文档
         </p>
       ) : null}

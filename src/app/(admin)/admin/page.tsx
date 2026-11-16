@@ -53,9 +53,9 @@ export default async function AdminDashboard() {
   if (!hasAdminPermission(admin, "dashboard:read")) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2">
-        <Shield className="h-10 w-10 text-brand-charcoal/65" />
+        <Shield className="h-10 w-10 text-ink-muted" />
         <p className="text-lg font-medium text-brand-charcoal/70">无权访问仪表盘</p>
-        <p className="text-sm text-brand-charcoal/65">请联系超级管理员开通 dashboard:read 权限</p>
+        <p className="text-sm text-ink-muted">请联系超级管理员开通 dashboard:read 权限</p>
       </div>
     );
   }
@@ -312,7 +312,7 @@ const statsUpdatedAt = stats?.generatedAt
   : null;
 
 return (
-  <div className="flex flex-col gap-4">
+  <div className="flex flex-col gap-5">
     <PageHeader
       title="仪表盘"
       description={
@@ -327,15 +327,15 @@ return (
     />
 
       {statsError || !stats ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-12">
-          <div className="rounded-full bg-red-50 p-4">
-            <TrendingUp className="h-8 w-8 text-red-400" />
+        <div className="flex flex-col items-center justify-center rounded-card border border-line bg-white py-12">
+          <div className="rounded-full bg-status-danger-soft p-4">
+            <TrendingUp className="h-8 w-8 text-status-danger-fg" />
           </div>
-          <h2 className="mt-4 text-base font-medium text-brand-charcoal">业务统计加载失败</h2>
-          <p className="mt-1 text-sm text-brand-charcoal/65">无法获取仪表盘统计数据，请稍后重试</p>
+          <h2 className="mt-4 text-base font-medium text-ink">业务统计加载失败</h2>
+          <p className="mt-1 text-sm text-ink-muted">无法获取仪表盘统计数据，请稍后重试</p>
           <a
             href="/admin"
-            className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
+            className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-brand-primary px-4 text-sm font-medium text-white transition-colors hover:bg-brand-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-2"
           >
             重新加载
           </a>
@@ -412,7 +412,7 @@ return (
         !ssoStats &&
         systemAlerts.length === 0 && (
           <Empty
-            className="rounded-2xl border border-brand-charcoal/10 bg-white py-12"
+            className="rounded-card border border-line bg-white py-12"
             title="暂无可查看的统计"
             description="请联系超级管理员分配权限"
           />

@@ -193,7 +193,7 @@ export function ProductsTable({
           }}
           onChange={handleSelectAll}
           aria-label="全选本页产品"
-          className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+          className="h-4 w-4 rounded border-line-strong text-brand-primary focus:ring-brand-primary"
         />
       ),
       width: "48px",
@@ -204,7 +204,7 @@ export function ProductsTable({
           checked={selection.isSelected(record)}
           onChange={() => selection.toggle(record)}
           aria-label={`选择 ${record.name}`}
-          className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+          className="h-4 w-4 rounded border-line-strong text-brand-primary focus:ring-brand-primary"
         />
       ),
     };
@@ -226,7 +226,7 @@ export function ProductsTable({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/65">
+              <div className="flex h-full w-full items-center justify-center text-xs text-ink-muted">
                 无图
               </div>
             )}
@@ -243,7 +243,7 @@ export function ProductsTable({
             <p className="truncate font-medium text-brand-charcoal" title={record.name}>
               {record.name}
             </p>
-            <p className="truncate text-xs text-brand-charcoal/65" title={record.nameEn}>
+            <p className="truncate text-xs text-ink-muted" title={record.nameEn}>
               {record.nameEn}
             </p>
           </div>
@@ -276,7 +276,7 @@ export function ProductsTable({
         width: "88px",
         sortable: true,
         render: (_, record) => (
-          <span className="text-sm text-brand-charcoal/65">{record.order}</span>
+          <span className="text-sm text-ink-muted">{record.order}</span>
         ),
       },
       {
@@ -304,7 +304,7 @@ export function ProductsTable({
         width: "144px",
         sortable: true,
         render: (_, record) => (
-          <span className="text-sm text-brand-charcoal/65">{formatDateTime(record.updatedAt)}</span>
+          <span className="text-sm text-ink-muted">{formatDateTime(record.updatedAt)}</span>
         ),
       },
       {
@@ -405,7 +405,7 @@ export function ProductsTable({
           </div>
           <button
             onClick={selection.clear}
-            className="ml-auto text-sm text-brand-charcoal/65 hover:text-brand-charcoal/80"
+            className="ml-auto text-sm text-ink-muted hover:text-brand-charcoal/80"
           >
             取消选择
           </button>
@@ -431,7 +431,7 @@ export function ProductsTable({
                     checked={selection.isSelected(record)}
                     onChange={() => selection.toggle(record)}
                     aria-label={`选择 ${record.name}`}
-                    className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+                    className="h-4 w-4 rounded border-line-strong text-brand-primary focus:ring-brand-primary"
                   />
                 </label>
               )}
@@ -445,14 +445,14 @@ export function ProductsTable({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-brand-charcoal/65">
+                  <div className="flex h-full w-full items-center justify-center text-xs text-ink-muted">
                     无图
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-brand-charcoal">{record.name}</p>
-                <p className="truncate text-xs text-brand-charcoal/65">{record.nameEn}</p>
+                <p className="truncate text-xs text-ink-muted">{record.nameEn}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <Badge variant="secondary" className="max-w-full">
                     <span className="min-w-0 truncate">{record.category.name}</span>
@@ -476,8 +476,8 @@ export function ProductsTable({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-              <div className="flex items-center gap-3 text-xs text-brand-charcoal/65">
+            <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
+              <div className="flex items-center gap-3 text-xs text-ink-muted">
                 <span className="font-medium text-brand-charcoal">{formatPrice(record.price)}</span>
                 <span>排序 {record.order}</span>
               </div>

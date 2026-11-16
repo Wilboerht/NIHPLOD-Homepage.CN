@@ -34,15 +34,15 @@ export function Pagination({
   if (totalPages <= 1) {
     if (!onPageSizeChange && !showTotal) return null;
     return (
-      <div className={cn("flex flex-wrap items-center gap-2", className)}>
-        {showTotal && <span className="mr-2 text-sm text-brand-charcoal/65">共 {total} 条</span>}
+      <nav aria-label="分页" className={cn("flex flex-wrap items-center gap-2", className)}>
+        {showTotal && <span className="mr-2 text-sm text-ink-muted">共 {total} 条</span>}
         {onPageSizeChange && (
-          <label className="mr-2 flex items-center gap-1 text-sm text-brand-charcoal/65">
+          <label className="mr-2 flex items-center gap-1 text-sm text-ink-muted">
             每页
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="rounded-lg border border-brand-charcoal/20 bg-white px-2 py-1 text-sm text-brand-charcoal focus:border-brand-primary focus:outline-none"
+              className="rounded-lg border border-line-strong bg-white px-2 py-1 text-sm text-brand-charcoal focus:border-brand-primary focus:outline-none"
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={size}>
@@ -53,7 +53,7 @@ export function Pagination({
             条
           </label>
         )}
-      </div>
+      </nav>
     );
   }
 
@@ -100,15 +100,15 @@ export function Pagination({
   const pageButtonStyles =
     "flex h-9 min-w-[36px] items-center justify-center rounded-lg text-sm font-medium transition-colors";
   const compactButtonStyles =
-    "flex h-11 min-w-[44px] items-center justify-center rounded-lg border border-brand-charcoal/20 bg-white text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-[36px]";
+    "flex h-11 min-w-[44px] items-center justify-center rounded-lg border border-line-strong bg-white text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-[36px]";
 
   const pageSizeSelector = onPageSizeChange ? (
-    <label className="flex items-center gap-1 text-sm text-brand-charcoal/65">
+    <label className="flex items-center gap-1 text-sm text-ink-muted">
       每页
       <select
         value={pageSize}
         onChange={(e) => onPageSizeChange(Number(e.target.value))}
-        className="rounded-lg border border-brand-charcoal/20 bg-white px-2 py-1 text-sm text-brand-charcoal focus:border-brand-primary focus:outline-none"
+        className="rounded-lg border border-line-strong bg-white px-2 py-1 text-sm text-brand-charcoal focus:border-brand-primary focus:outline-none"
       >
         {PAGE_SIZE_OPTIONS.map((size) => (
           <option key={size} value={size}>
@@ -121,9 +121,12 @@ export function Pagination({
   ) : null;
 
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-2", className)}>
+    <nav
+      aria-label="分页"
+      className={cn("flex flex-wrap items-center justify-between gap-2", className)}
+    >
       <div className="flex flex-wrap items-center gap-2">
-        {showTotal && <span className="text-sm text-brand-charcoal/65">共 {total} 条</span>}
+        {showTotal && <span className="text-sm text-ink-muted">共 {total} 条</span>}
         {pageSizeSelector}
       </div>
 
@@ -159,8 +162,8 @@ export function Pagination({
               disabled={page === 1}
               className={cn(
                 pageButtonStyles,
-                "border border-brand-charcoal/20 bg-white px-2",
-                page === 1 ? "cursor-not-allowed opacity-50" : "hover:bg-brand-charcoal/[0.03]"
+                "border border-line-strong bg-white px-2",
+                page === 1 ? "cursor-not-allowed opacity-50" : "hover:bg-surface-muted"
               )}
               aria-label="上一页"
             >
@@ -173,7 +176,7 @@ export function Pagination({
                   <span
                     key={`ellipsis-${index}`}
                     aria-hidden="true"
-                    className="flex h-9 w-9 items-center justify-center text-brand-charcoal/65"
+                    className="flex h-9 w-9 items-center justify-center text-ink-muted"
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </span>
@@ -188,7 +191,7 @@ export function Pagination({
                       "px-3",
                       page === item
                         ? "bg-brand-primary text-white"
-                        : "border border-brand-charcoal/20 bg-white hover:bg-brand-charcoal/[0.03]"
+                        : "border border-line-strong bg-white hover:bg-surface-muted"
                     )}
                   >
                     {item}
@@ -202,10 +205,10 @@ export function Pagination({
               disabled={page === totalPages}
               className={cn(
                 pageButtonStyles,
-                "border border-brand-charcoal/20 bg-white px-2",
+                "border border-line-strong bg-white px-2",
                 page === totalPages
                   ? "cursor-not-allowed opacity-50"
-                  : "hover:bg-brand-charcoal/[0.03]"
+                  : "hover:bg-surface-muted"
               )}
               aria-label="下一页"
             >
@@ -214,6 +217,6 @@ export function Pagination({
           </div>
         </>
       )}
-    </div>
+    </nav>
   );
 }

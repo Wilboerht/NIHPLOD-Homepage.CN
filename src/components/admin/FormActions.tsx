@@ -13,7 +13,7 @@ interface FormActionsProps {
 
 export function FormActions({ children, start, sticky = false, className }: FormActionsProps) {
   const stickyBar =
-    "sticky bottom-0 -mx-4 border-t border-brand-charcoal/10 bg-white/95 px-4 py-3 backdrop-blur-sm pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]";
+    "sticky bottom-0 -mx-4 border-t border-line bg-white/95 px-4 py-3 backdrop-blur-sm pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]";
   return (
     <div
       className={cn(

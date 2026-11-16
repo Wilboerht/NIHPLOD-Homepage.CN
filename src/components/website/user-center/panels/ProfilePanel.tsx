@@ -5,7 +5,6 @@
  * 支持头像上传和昵称编辑 - 品牌风格版
  */
 import { useState, useRef, useEffect, useCallback } from "react";
-import Image from "next/image";
 import {
   Camera,
   Loader2,
@@ -26,6 +25,7 @@ import { SecurityPanel } from "./SecurityPanel";
 import { PanelShell } from "../PanelShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { LogoutConfirmDialog } from "@/components/ui/LogoutConfirmDialog";
+import { AvatarImage } from "@/components/ui/AvatarImage";
 import { deferInEffect } from "@/hooks/deferInEffect";
 
 const phoneInputClass =
@@ -393,13 +393,11 @@ export function ProfilePanel() {
           {/* 可点击上传头像 */}
           <div className="group relative">
             <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-brand-cream/20 transition-all group-hover:border-stone-300 md:h-20 md:w-20">
-              {/* 未自定义头像的新用户使用默认头像 */}
-              <Image
-                src={user.avatar || "/images/default-avatar.png"}
-                alt="Avatar"
-                fill
-                unoptimized
-                className="h-full w-full object-cover transition-all"
+              {/* 未自定义头像或外链不可渲染时使用默认头像 */}
+              <AvatarImage
+                src={user.avatar}
+                alt={user.nickname || "用户头像"}
+                className="h-full w-full transition-all"
               />
             </div>
 
@@ -461,6 +459,7 @@ export function ProfilePanel() {
                   <input
                     type="text"
                     value={nickname}
+                    maxLength={20}
                     onChange={(e) => setNickname(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") saveField("nickname");

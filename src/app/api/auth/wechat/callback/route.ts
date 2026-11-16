@@ -27,12 +27,17 @@ import {
 } from "@/types/auth";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { upsertIdentity } from "@/lib/external-identity";
+import { prepareAvatarReplacement } from "@/lib/avatar-assets";
+import { resolveSsoAvatar } from "@/lib/default-avatar";
+import { discardMirroredAvatar, mirrorSocialAvatarForLogin } from "@/lib/social-avatar";
 import { signWechatBindToken, signWechatExchangeToken } from "@/lib/jwt";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { rateLimit } from "@/lib/ratelimit";
 import { checkUserStatus } from "@/lib/auth";
+import { sanitizeProviderNickname } from "@/lib/nickname-policy";
+import { auditNicknameBlocked } from "@/lib/nickname-audit";
 
 // ============================================
 // stateCallback 白名单校验（防开放重定向）
@@ -290,6 +295,10 @@ export async function GET(request: NextRequest) {
     // 获取用户信息
     const wechatUser = await getWechatUserInfo(tokenData.accessToken, tokenData.openid);
 
+    // 第三方昵称合规兜底：违规昵称不落库、不进 token/日志，回退默认昵称
+    const providerNickname = sanitizeProviderNickname(wechatUser.nickname);
+    const safeWechatNickname = providerNickname.nickname ?? undefined;
+
     logAuthEvent("wechat_bind", {
       success: true,
       step: "oauth_callback",
@@ -299,7 +308,8 @@ export async function GET(request: NextRequest) {
       unionid: wechatUser.unionid
         ? `${wechatUser.unionid.slice(0, 4)}****${wechatUser.unionid.slice(-4)}`
         : undefined,
-      nickname: wechatUser.nickname,
+      nickname: safeWechatNickname,
+      nicknameBlocked: providerNickname.blocked || undefined,
       ip: getClientIP(request),
     });
 
@@ -309,6 +319,16 @@ export async function GET(request: NextRequest) {
         ? { OR: [{ wechatUnionId: wechatUser.unionid }, { wechatOpenId: wechatUser.openid }] }
         : { wechatOpenId: wechatUser.openid },
     });
+
+    if (providerNickname.blocked && providerNickname.reason) {
+      await auditNicknameBlocked({
+        request,
+        userId: user?.id,
+        source: "wechat_callback",
+        reason: providerNickname.reason,
+        category: providerNickname.category,
+      });
+    }
 
     // 情况1：已有账户且已绑定微信 → 直接登录
     if (user && !user.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
@@ -332,25 +352,46 @@ export async function GET(request: NextRequest) {
 
       // 更新微信信息 + 双写 ExternalIdentity（多平台聚合框架）：
       // provider 按登录类型区分；同事务执行保证双写一致性
-      await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: user.id },
-          data: {
-            wechatOpenId: wechatUser.openid,
-            wechatUnionId: wechatUser.unionid || user.wechatUnionId,
-            nickname: user.nickname || wechatUser.nickname || null,
-            avatar: user.avatar || wechatUser.headimgurl || null,
-          },
+      // 微信头像为第三方热链（CSP 拦截/会过期）：镜像到自有存储后再落库，
+      // 失败则保留现有头像（新用户保持 null → 默认头像）
+      const mirroredAvatar = await mirrorSocialAvatarForLogin(
+        wechatUser.headimgurl,
+        user.avatar,
+        "wechat"
+      );
+      const nextAvatar = mirroredAvatar ? mirroredAvatar.url : user.avatar;
+      try {
+        await prisma.$transaction(async (tx) => {
+          if (mirroredAvatar) {
+            await prepareAvatarReplacement(tx, {
+              userId: user.id,
+              nextAvatar: mirroredAvatar.url,
+              newUpload: mirroredAvatar,
+              allowInactive: true,
+            });
+          }
+          await tx.user.update({
+            where: { id: user.id },
+            data: {
+              wechatOpenId: wechatUser.openid,
+              wechatUnionId: wechatUser.unionid || user.wechatUnionId,
+              nickname: user.nickname || safeWechatNickname || null,
+              avatar: nextAvatar,
+            },
+          });
+          await upsertIdentity(
+            user.id,
+            loginType === "mp" ? "wechat_mp" : "wechat_open",
+            wechatUser.openid,
+            wechatUser.unionid || user.wechatUnionId,
+            { nickname: safeWechatNickname ?? null, avatar: wechatUser.headimgurl },
+            tx
+          );
         });
-        await upsertIdentity(
-          user.id,
-          loginType === "mp" ? "wechat_mp" : "wechat_open",
-          wechatUser.openid,
-          wechatUser.unionid || user.wechatUnionId,
-          { nickname: wechatUser.nickname, avatar: wechatUser.headimgurl },
-          tx
-        );
-      });
+      } catch (error) {
+        await discardMirroredAvatar(mirroredAvatar);
+        throw error;
+      }
 
       // 子站场景：通过 URL 传递一次性 exchange token，由子站完成本地 Cookie/session 写入
       if (safeCallback && isSubsiteCallback(safeCallback)) {
@@ -358,8 +399,9 @@ export async function GET(request: NextRequest) {
           {
             openid: wechatUser.openid,
             unionid: wechatUser.unionid,
-            nickname: wechatUser.nickname,
-            avatar: wechatUser.headimgurl,
+            nickname: safeWechatNickname,
+            // 头像已在上面镜像/落库；输出绝对 URL，避免子站拿到相对路径
+            avatar: resolveSsoAvatar(nextAvatar),
           },
           // 自动登录路径 token 会在子站落地页立即被兑换：使用短 TTL 降低泄漏窗口
           { expiresIn: getSuccessExchangeTtl() }
@@ -423,7 +465,7 @@ export async function GET(request: NextRequest) {
       const exchangeToken = await signWechatExchangeToken({
         openid: wechatUser.openid,
         unionid: wechatUser.unionid,
-        nickname: wechatUser.nickname,
+        nickname: safeWechatNickname,
         avatar: wechatUser.headimgurl,
       });
 
@@ -435,7 +477,7 @@ export async function GET(request: NextRequest) {
     const bindToken = await signWechatBindToken({
       openid: wechatUser.openid,
       unionid: wechatUser.unionid,
-      nickname: wechatUser.nickname,
+      nickname: safeWechatNickname,
       avatar: wechatUser.headimgurl,
       provider: loginType === "mp" ? "wechat_mp" : "wechat_open",
     });

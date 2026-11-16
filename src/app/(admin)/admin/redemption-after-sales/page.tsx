@@ -5,10 +5,11 @@
  * 审核售后、确认收到退货、执行退分、关闭售后。
  */
 import { useCallback, useEffect, useState } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, MoreHorizontal, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { Dropdown, type DropdownItem } from "@/components/ui/Dropdown";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { Textarea } from "@/components/ui/Textarea";
@@ -119,7 +120,7 @@ const columns: Column<Item>[] = [
     render: (_, row) => (
       <div className="min-w-0">
         <p className="truncate font-medium text-brand-charcoal">{row.productName}</p>
-        <p className="truncate text-xs text-brand-charcoal/60">
+        <p className="truncate text-xs text-ink-muted">
           {row.user.nickname ?? row.user.phone} · {row.user.id}
         </p>
       </div>
@@ -159,7 +160,7 @@ const columns: Column<Item>[] = [
     title: "申请时间",
     width: "150px",
     render: (_, row) => (
-      <span className="text-xs text-brand-charcoal/65">
+      <span className="text-xs text-ink-muted">
         {formatDateTimeNumeric(row.afterSalesRequestedAt ?? row.createdAt)}
       </span>
     ),
@@ -301,83 +302,87 @@ function AfterSalesContent() {
     if (ok) setAction(null);
   };
 
-  const renderActions = (item: Item) => (
-    <div className="flex flex-wrap justify-end gap-1">
-      <Button size="sm" variant="ghost" onClick={() => setTimelineId(item.id)}>
-        详情
-      </Button>
-      {canReview && item.status === "AFTER_SALES_REQUESTED" && (
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={actingId === item.id}
-            onClick={() => openAction("approve", item)}
-          >
-            通过
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={actingId === item.id}
-            onClick={() => openAction("reject", item)}
-          >
-            驳回
-          </Button>
-        </>
-      )}
-      {canReview && item.status === "AFTER_SALES_APPROVED" && (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={actingId === item.id}
-          onClick={() => openAction("receive", item)}
-        >
-          确认收货
+  const renderActions = (item: Item) => {
+    const items: DropdownItem[] = [];
+    const canDirectRefund =
+      canRefund && (isOwner || item.points < APPROVAL_THRESHOLDS.redemptionRefund);
+    if (canReview) {
+      if (item.status === "AFTER_SALES_REQUESTED") {
+        items.push(
+          {
+            label: "通过售后",
+            disabled: actingId === item.id,
+            onClick: () => openAction("approve", item),
+          },
+          {
+            label: "驳回售后",
+            danger: true,
+            disabled: actingId === item.id,
+            onClick: () => openAction("reject", item),
+          }
+        );
+      }
+      if (item.status === "AFTER_SALES_APPROVED" || item.status === "RETURNING") {
+        items.push({
+          label: "确认收货",
+          disabled: actingId === item.id,
+          onClick: () => openAction("receive", item),
+        });
+      }
+      if (item.status === "RETURNED" && canDirectRefund) {
+        items.push({
+          label: "退款",
+          disabled: actingId === item.id,
+          onClick: () => openAction("refund", item),
+        });
+      }
+      if (
+        ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING"].includes(item.status)
+      ) {
+        items.push({
+          label: "关闭售后",
+          danger: true,
+          disabled: actingId === item.id,
+          onClick: () => openAction("close", item),
+        });
+      }
+    }
+
+    const needsRefundApproval =
+      canReview &&
+      item.status === "RETURNED" &&
+      !canDirectRefund &&
+      item.points >= APPROVAL_THRESHOLDS.redemptionRefund &&
+      canRequestApproval;
+
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <Button size="sm" variant="ghost" onClick={() => setTimelineId(item.id)}>
+          详情
         </Button>
-      )}
-      {canReview && item.status === "RETURNING" && (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={actingId === item.id}
-          onClick={() => openAction("receive", item)}
-        >
-          确认收货
-        </Button>
-      )}
-      {canReview && item.status === "RETURNED" && (
-        <>
-          {canRefund && (isOwner || item.points < APPROVAL_THRESHOLDS.redemptionRefund) ? (
-            <Button
-              size="sm"
-              disabled={actingId === item.id}
-              onClick={() => openAction("refund", item)}
-            >
-              退款
-            </Button>
-          ) : item.points >= APPROVAL_THRESHOLDS.redemptionRefund && canRequestApproval ? (
-            <ApprovalRequestAction
-              policyKey="redemption.refund"
-              initialValues={{ redemptionId: item.id }}
-              label="申请退分审批"
-            />
-          ) : null}
-        </>
-      )}
-      {canReview &&
-        ["AFTER_SALES_REQUESTED", "AFTER_SALES_APPROVED", "RETURNING"].includes(item.status) && (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={actingId === item.id}
-            onClick={() => openAction("close", item)}
-          >
-            关闭
-          </Button>
+        {items.length > 0 && (
+          <Dropdown
+            trigger={
+              <span className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm text-brand-charcoal/65 transition-colors hover:bg-surface-hover hover:text-brand-charcoal sm:h-9 sm:min-w-9">
+                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only">更多操作</span>
+              </span>
+            }
+            items={items}
+          />
         )}
-    </div>
-  );
+        {needsRefundApproval && (
+          <ApprovalRequestAction
+            policyKey="redemption.refund"
+            initialValues={{ redemptionId: item.id }}
+            label="申请退分审批"
+            variant="ghost"
+            size="sm"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -410,9 +415,9 @@ function AfterSalesContent() {
 
       <AdminHubTabs section="points" />
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex flex-wrap gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1">
+          <div className="flex flex-wrap gap-1 rounded-xl bg-surface-muted p-1">
             {TABS.map((item) => (
               <button
                 key={item.key}
@@ -422,11 +427,11 @@ function AfterSalesContent() {
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 ${
                   tab === item.key
                     ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                    : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                    : "text-ink-muted hover:bg-white/70 hover:text-brand-charcoal"
                 }`}
               >
                 {item.label}
-                <span className="min-w-[1.25rem] rounded-full bg-brand-charcoal/[0.06] px-1.5 py-0.5 text-center text-xs tabular-nums text-brand-charcoal/65">
+                <span className="min-w-[1.25rem] rounded-full bg-surface-hover px-1.5 py-0.5 text-center text-xs tabular-nums text-ink-muted">
                   {data?.counts[item.key] ?? 0}
                 </span>
               </button>
@@ -476,11 +481,11 @@ function AfterSalesContent() {
               <span className="font-medium">{item.productName}</span>
               <Badge variant="warning">{STATUS_LABELS[item.status]}</Badge>
             </div>
-            <p className="text-xs text-brand-charcoal/65">
+            <p className="text-xs text-ink-muted">
               {item.user.nickname ?? item.user.phone} · {formatDateTimeNumeric(item.createdAt)}
             </p>
-            <p className="text-xs text-brand-charcoal/65">{item.afterSalesReason ?? "-"}</p>
-            <p className="text-xs text-brand-charcoal/65">积分：{item.points}</p>
+            <p className="text-xs text-ink-muted">{item.afterSalesReason ?? "-"}</p>
+            <p className="text-xs text-ink-muted">积分：{item.points}</p>
             {renderActions(item)}
           </div>
         )}
@@ -507,7 +512,7 @@ function AfterSalesContent() {
       >
         {action && (
           <div className="space-y-4">
-            <div className="rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-sm text-brand-charcoal/70">
+            <div className="rounded-lg bg-surface-muted px-3 py-2 text-sm text-brand-charcoal/70">
               {action.item.productName} · {action.item.points} 积分
               {action.kind === "refund" ? " · 确认后积分将退回用户" : ""}
             </div>

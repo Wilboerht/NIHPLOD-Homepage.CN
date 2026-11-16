@@ -54,7 +54,7 @@ export function UserAccountSecurityTools({
           </Button>
         )}
       </div>
-      <p className="text-xs text-brand-charcoal/65">
+      <p className="text-xs text-ink-muted">
         手机号换绑和账户合并会先预检；非 owner 提交后必须由另一位 owner
         审批。合并会停用源账户，目标账户密码不变。
       </p>
@@ -177,7 +177,7 @@ function PhoneChangeModal({
         </Button>
         {preflight && (
           <div
-            className={`rounded-lg p-3 text-sm ${preflight.available ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
+            className={`rounded-lg p-3 text-sm ${preflight.available ? "bg-status-success-soft text-status-success-strong" : "bg-status-danger-soft text-status-danger-strong"}`}
           >
             {preflight.available
               ? "号码可用，已锁定当前账户快照。"
@@ -251,7 +251,7 @@ function IdentityBindModal({
   return (
     <Modal open onClose={onClose} title="绑定外部身份" size="md" closeOnBackdrop={false}>
       <div className="space-y-4">
-        <p className="text-xs text-amber-700">
+        <p className="text-xs text-status-warning-strong">
           仅用于核验过身份归属的客服纠错。若标识已经属于另一账户，系统会拒绝，不能覆盖。
         </p>
         <Select
@@ -390,7 +390,7 @@ function AccountMergeModal({
   return (
     <Modal open onClose={onClose} title="合并重复账户" size="lg" closeOnBackdrop={false}>
       <div className="space-y-4">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-lg border border-status-danger-line bg-status-danger-soft p-3 text-sm text-status-danger-strong">
           当前账户是保留的目标账户；源账户将被停用。积分与消费额相加，目标密码不变，源会话及 OAuth
           授权全部撤销。
         </div>
@@ -406,21 +406,21 @@ function AccountMergeModal({
           执行全站预检
         </Button>
         {preflight && (
-          <div className="space-y-2 rounded-lg border border-brand-charcoal/10 p-3 text-sm">
+          <div className="space-y-2 rounded-lg border border-line p-3 text-sm">
             <p>源账户：{preflight.source.nickname || preflight.source.phone}</p>
             <p>
               合并后：{preflight.preview.pointsAfter} 积分，累计消费 ¥{preflight.preview.spentAfter}
               ，{preflight.preview.levelAfter}，地址 {preflight.preview.addressesAfter} 条
             </p>
             {preflight.conflicts.length > 0 && (
-              <ul className="list-disc pl-5 text-red-600">
+              <ul className="list-disc pl-5 text-status-danger-fg">
                 {preflight.conflicts.map((conflict) => (
                   <li key={conflict.code}>{conflict.message}</li>
                 ))}
               </ul>
             )}
             {preflight.canMerge && (
-              <p className="text-emerald-700">主站与全部已配置子站均通过预检。</p>
+              <p className="text-status-success-strong">主站与全部已配置子站均通过预检。</p>
             )}
           </div>
         )}
@@ -505,7 +505,7 @@ function DeviceAdminList({
     }
   };
   return (
-    <div className="rounded-lg border border-brand-charcoal/10">
+    <div className="rounded-lg border border-line">
       <div className="flex items-center justify-between px-3 py-2">
         <p className="text-sm font-medium">活跃设备</p>
         <Button size="sm" variant="ghost" loading={loading} onClick={() => void load()}>
@@ -513,21 +513,21 @@ function DeviceAdminList({
         </Button>
       </div>
       {devices && (
-        <div className="divide-y divide-brand-charcoal/10 border-t border-brand-charcoal/10">
+        <div className="divide-y divide-line border-t border-line">
           {devices.length === 0 && (
-            <p className="px-3 py-4 text-xs text-brand-charcoal/65">暂无活跃设备</p>
+            <p className="px-3 py-4 text-xs text-ink-muted">暂无活跃设备</p>
           )}
           {devices.map((device) => (
             <div key={device.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-xs">
               <span className="font-medium text-brand-charcoal">{device.deviceName}</span>
-              <span className="text-brand-charcoal/65">{device.ipAddress}</span>
-              <span className="text-brand-charcoal/65">
+              <span className="text-ink-muted">{device.ipAddress}</span>
+              <span className="text-ink-muted">
                 最近活跃 {new Date(device.lastActiveAt).toLocaleString("zh-CN")}
               </span>
               <Button
                 size="sm"
                 variant="ghost"
-                className="ml-auto text-red-600"
+                className="ml-auto text-status-danger-fg"
                 onClick={() => setTarget(device)}
               >
                 强制下线

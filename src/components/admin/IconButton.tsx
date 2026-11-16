@@ -6,8 +6,8 @@ type IconButtonVariant = "ghost" | "danger";
 type IconButtonSize = "md" | "lg";
 
 const variantCls: Record<IconButtonVariant, string> = {
-  ghost: "text-brand-charcoal/65 hover:text-brand-charcoal hover:bg-brand-charcoal/[0.06]",
-  danger: "text-brand-charcoal/65 hover:text-red-500 hover:bg-red-500/10",
+  ghost: "text-ink-muted hover:text-brand-charcoal hover:bg-surface-hover",
+  danger: "text-ink-muted hover:text-status-danger-fg hover:bg-status-danger-fg/10",
 };
 
 const sizeCls: Record<IconButtonSize, string> = {
@@ -45,7 +45,7 @@ export function IconButton({
     "inline-flex items-center justify-center rounded-lg transition-colors",
     variantCls[variant],
     sizeCls[size],
-    disabled && "pointer-events-none opacity-40",
+    disabled && "cursor-not-allowed opacity-40",
     className
   );
   if (href) {

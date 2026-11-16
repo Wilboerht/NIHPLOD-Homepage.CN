@@ -46,15 +46,15 @@ export function LegalPublishStatusCard({
     .join(" · ");
 
   return (
-    <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+    <section className="rounded-card border border-line bg-white p-4">
       <h2 className="text-sm font-semibold text-brand-charcoal">发布状态</h2>
-      <dl className="mt-3 space-y-2 text-xs text-brand-charcoal/65">
+      <dl className="mt-3 space-y-2 text-xs text-ink-muted">
         <div className="flex items-start justify-between gap-3">
           <dt>线上版本</dt>
           <dd className="text-right font-medium text-brand-charcoal">
             {document.publishedVersion > 0 ? `v${document.publishedVersion}` : "尚未发布"}
             {document.publishedAt ? (
-              <span className="mt-0.5 block font-normal text-brand-charcoal/45">
+              <span className="mt-0.5 block font-normal text-ink-faint">
                 {formatDateTime(document.publishedAt)}
               </span>
             ) : null}
@@ -69,13 +69,13 @@ export function LegalPublishStatusCard({
           <dd className="text-right">
             {document.hasDraft ? "待发布" : "无草稿"}
             {draftMeta ? (
-              <span className="mt-0.5 block text-brand-charcoal/45">{draftMeta}</span>
+              <span className="mt-0.5 block text-ink-faint">{draftMeta}</span>
             ) : null}
           </dd>
         </div>
         <div className="flex items-start justify-between gap-3">
           <dt>当前编辑</dt>
-          <dd className={cn("text-right", isDirty && "font-medium text-amber-700")}>
+          <dd className={cn("text-right", isDirty && "font-medium text-status-warning-strong")}>
             {isDirty ? "有未保存修改" : "已同步"}
           </dd>
         </div>
@@ -84,7 +84,7 @@ export function LegalPublishStatusCard({
           <dd className="text-right">{document.content.lastUpdated || "—"}</dd>
         </div>
         {localDraft ? (
-          <div className="flex items-start justify-between gap-3 border-t border-amber-200 pt-2 text-amber-700">
+          <div className="flex items-start justify-between gap-3 border-t border-status-warning-line pt-2 text-status-warning-strong">
             <dt>本地备份</dt>
             <dd className="text-right">
               {localDraft.savedAt ? formatDateTime(new Date(localDraft.savedAt)) : "已检测到"}
@@ -92,7 +92,7 @@ export function LegalPublishStatusCard({
           </div>
         ) : null}
       </dl>
-      <p className="mt-3 border-t border-brand-charcoal/10 pt-3 text-[11px] leading-5 text-brand-charcoal/50">
+      <p className="mt-3 border-t border-line pt-3 text-2xs leading-5 text-ink-muted">
         发布需要 TOTP 二次验证并写入审计日志；历史版本永久保留，可恢复为草稿。
       </p>
     </section>

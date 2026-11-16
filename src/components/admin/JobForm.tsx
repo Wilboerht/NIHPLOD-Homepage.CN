@@ -24,7 +24,7 @@ const RichTextEditor = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[260px] animate-pulse rounded-lg bg-stone-200/50" aria-hidden />
+      <div className="h-[260px] animate-pulse rounded-lg bg-surface-muted" aria-hidden />
     ),
   }
 );
@@ -339,7 +339,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
           />
           {/* 发布状态由底部「保存草稿 / 保存并发布」按钮显式决定，避免开关与按钮语义冲突 */}
           {isEdit && (
-            <p className="self-end pb-2 text-xs text-brand-charcoal/65">
+            <p className="self-end pb-2 text-xs text-ink-muted">
               {formData.published
                 ? "当前状态：已发布（点击「保存草稿」将转为未发布）"
                 : "当前状态：草稿（点击「保存并发布」将上线）"}
@@ -348,7 +348,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         </div>
       </FormSection>
 
-      <FormActions>
+      <FormActions sticky>
         <Button
           type="button"
           variant="outline"
@@ -388,6 +388,7 @@ export function JobForm({ jobId, initialData }: JobFormProps) {
         title="保存为草稿并下架？"
         description="该职位当前已发布。保存为草稿会立即从招聘页下架，用户将无法继续查看或投递。"
         type="warning"
+        confirmVariant="danger"
         confirmText="确认下架并保存"
         loading={submitting === "draft"}
       />

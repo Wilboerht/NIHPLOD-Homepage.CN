@@ -208,6 +208,9 @@ export async function POST(request: NextRequest) {
     };
 
     // 6. 入账（事务内写幂等记录 + 更新消费额 + 重算等级，reference 幂等）
+    // 注意：applyExternalSpentSync 的 P2002 幂等恢复依赖独立事务，不能由外层事务
+    // 包住（P2002 会使外层事务进入 aborted 状态）。因此审计在提交后写入；
+    // 审计失败时返回 503，商城用同一 reference 重试会命中幂等分支并再次尝试审计。
     let result: Awaited<ReturnType<typeof applyExternalSpentSync>>;
     try {
       result = await applyExternalSpentSync(
@@ -277,7 +280,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await auditInternalPoints({
+    const audited = await auditInternalPoints({
       action: "points_internal_sync",
       targetType: "spent_sync",
       targetId: reference,
@@ -293,6 +296,18 @@ export async function POST(request: NextRequest) {
         duplicated: result.duplicated,
       },
     });
+    if (!audited) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "AUDIT_UNAVAILABLE",
+            message: "审计服务不可用，请使用同一单据号重试",
+          },
+        },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

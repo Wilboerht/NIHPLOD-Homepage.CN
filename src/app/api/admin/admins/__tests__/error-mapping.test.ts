@@ -99,6 +99,27 @@ describe("管理员管理 API 错误映射", () => {
     expect(data.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("GET ?customized=1 只筛非 owner 且有权限覆盖的管理员", async () => {
+    prismaMock.admin.findMany.mockResolvedValue([]);
+    const res = await GET(createRequest("/api/admin/admins?customized=1"), undefined!);
+    expect(res.status).toBe(200);
+
+    const query = prismaMock.admin.findMany.mock.calls[0][0] as {
+      where: { AND?: unknown[] };
+    };
+    expect(query.where.AND).toEqual(
+      expect.arrayContaining([
+        { role: { not: "owner" } },
+        { permissions: { isEmpty: false } },
+      ])
+    );
+  });
+
+  it("GET ?customized=abc 非法值应返回 400", async () => {
+    const res = await GET(createRequest("/api/admin/admins?customized=abc"), undefined!);
+    expect(res.status).toBe(400);
+  });
+
   it("POST 参数不合法（邮箱格式错误）应返回 400", async () => {
     const res = await POST(
       createRequest("/api/admin/admins", {

@@ -67,9 +67,15 @@ export async function handleBaCertificateAction(
     parsed.data.idempotencyKey || request.headers.get("x-idempotency-key") || crypto.randomUUID();
 
   const body: Record<string, unknown> = { reason, idempotencyKey };
-  if (options.includeDraft && parsed.data.draft && typeof parsed.data.draft === "object") {
+  const draftInput =
+    options.includeDraft && parsed.data.draft && typeof parsed.data.draft === "object"
+      ? (parsed.data.draft as { sealImage?: unknown })
+      : null;
+  if (draftInput) {
     body.draft = parsed.data.draft;
   }
+  const sealSource =
+    draftInput?.sealImage === undefined ? "existing" : draftInput.sealImage ? "custom" : "default";
 
   const result = await baCertificateRequest<BaCertificateListItem>(
     admin,
@@ -89,7 +95,11 @@ export async function handleBaCertificateAction(
     actorName: admin.name,
     actorRole: admin.role,
     adminId: admin.id,
-    detail: { action: options.action, idempotencyKey },
+    detail: {
+      action: options.action,
+      idempotencyKey,
+      ...(options.includeDraft ? { sealSource } : {}),
+    },
     request,
   }).catch((error) => apiConsole.error("[BaCertificateAction] 审计写入失败", error));
 

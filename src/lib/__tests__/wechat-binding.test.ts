@@ -76,6 +76,11 @@ vi.mock("@/lib/client-ip", () => ({
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
 }));
 
+const mockAuditNicknameBlocked = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/lib/nickname-audit", () => ({
+  auditNicknameBlocked: (...args: unknown[]) => mockAuditNicknameBlocked(...args),
+}));
+
 import { prisma } from "@/lib/prisma";
 import { verifySmsCodeWithLimit, recordSmsCodeFailure } from "@/lib/sms";
 import { signUserToken, signRefreshToken, signOAuthAccessToken } from "@/lib/jwt";
@@ -199,6 +204,29 @@ describe("resolveWechatBinding provider 写入语义", () => {
     expect(mockPrisma.__tx.externalIdentity.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { provider_subjectId: { provider: "wechat_open", subjectId: "mini-openid" } },
+      })
+    );
+  });
+
+  it("第三方昵称命中违规词：回退默认昵称、不落库原始昵称并写审计", async () => {
+    const input = buildInput();
+    input.wechatInfo = { ...input.wechatInfo, nickname: "色情" };
+
+    const result = await resolveWechatBinding(input);
+
+    expect(result.success).toBe(true);
+    const createData = mockPrisma.__tx.user.create.mock.calls[0][0].data;
+    expect(createData.nickname).toBe("用户_8000");
+
+    const upsertArg = mockPrisma.__tx.externalIdentity.upsert.mock.calls[0][0];
+    expect(upsertArg.create.metadata.nickname).toBeNull();
+
+    expect(mockAuditNicknameBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        source: "wechat_bind",
+        reason: "banned",
+        category: "porn",
       })
     );
   });

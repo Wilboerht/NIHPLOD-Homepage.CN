@@ -11,18 +11,22 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
-import { apiPost, apiGet, ApiError } from "@/lib/api-client";
+import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
+import { apiPost, apiGet, ApiError, getApiErrorMessage } from "@/lib/api-client";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { cn } from "@/lib/utils";
 import {
+  AlertTriangle,
   Check,
+  CheckCircle2,
   Copy,
   ArrowRight,
   ArrowLeft,
@@ -31,6 +35,8 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+
+const STEP_TITLES = ["应用信息", "数据权限", "确认创建", "接入凭据", "连接测试"] as const;
 
 /** 校验回调 URL（https、无 hash）；通过返回 null，否则返回错误文案 */
 function validateRedirectUri(value: string): string | null {
@@ -100,27 +106,49 @@ function OAuthWizardContent() {
   };
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [appNameError, setAppNameError] = useState("");
+  const [redirectUriError, setRedirectUriError] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [testError, setTestError] = useState("");
+  const appNameRef = useRef<HTMLInputElement>(null);
+  const redirectUriRef = useRef<HTMLInputElement>(null);
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const initialStepRef = useRef(true);
+
+  useEffect(() => {
+    if (initialStepRef.current) {
+      initialStepRef.current = false;
+      return;
+    }
+    stepHeadingRef.current?.focus();
+  }, [step]);
 
   // Step 1: App Info
   const [appName, setAppName] = useState("");
   const [redirectUri, setRedirectUri] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const wizardDirty = step < 4 && Boolean(appName.trim() || redirectUri.trim() || step > 1);
+  const { confirmClose } = useUnsavedChanges(wizardDirty);
 
   // Step 2: Scopes
   const [selectedScopes, setSelectedScopes] = useState<string[]>(["openid", "profile"]);
   const [availableScopes, setAvailableScopes] = useState<ScopeDef[]>([]);
   const [scopesLoadFailed, setScopesLoadFailed] = useState(false);
 
-  useEffect(() => {
+  const loadScopes = useCallback(() => {
     apiGet<{ scopes: ScopeDef[] }>("/api/admin/oauth/scopes")
       .then((d) => {
         if (d.scopes) setAvailableScopes(d.scopes);
+        setScopesLoadFailed(false);
       })
       .catch(() => {
         setScopesLoadFailed(true);
-        toast.error("权限范围加载失败，请刷新页面重试");
       });
-  }, [toast]);
+  }, []);
+
+  useEffect(() => {
+    loadScopes();
+  }, [loadScopes]);
 
   // Step 3: Result
   const [result, setResult] = useState<StepResult>({});
@@ -151,16 +179,25 @@ function OAuthWizardContent() {
     );
   };
 
-  const handleCreate = async () => {
-    if (!appName.trim()) {
-      toast.error("请输入应用名称");
-      return;
+  const validateStepOne = () => {
+    const nameError = appName.trim() ? "" : "请输入应用名称";
+    const uriError = validateRedirectUri(redirectUri) ?? "";
+    setAppNameError(nameError);
+    setRedirectUriError(uriError);
+    if (nameError) {
+      appNameRef.current?.focus();
+      return false;
     }
-    const uriError = validateRedirectUri(redirectUri);
     if (uriError) {
-      toast.error(uriError);
-      return;
+      redirectUriRef.current?.focus();
+      return false;
     }
+    return true;
+  };
+
+  const handleCreate = async () => {
+    if (!validateStepOne() || loading) return;
+    setCreateError("");
 
     setLoading(true);
     try {
@@ -183,16 +220,17 @@ function OAuthWizardContent() {
       setStep(4);
       toast.success("Client 创建成功");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "创建 Client 失败");
+      setCreateError(getApiErrorMessage(err, "创建 Client 失败"));
     } finally {
       setLoading(false);
     }
   };
 
   const handleTest = async () => {
-    if (!result.clientId || !result.plainSecret) return;
+    if (!result.clientId || !result.plainSecret || testLoading) return;
     setTestLoading(true);
     setTestResult(null);
+    setTestError("");
 
     try {
       const data = await withStepUp(() =>
@@ -211,8 +249,8 @@ function OAuthWizardContent() {
       } else {
         toast.warning("连接测试未完全通过，请检查配置");
       }
-    } catch {
-      toast.error("测试请求失败");
+    } catch (error) {
+      setTestError(getApiErrorMessage(error, "测试请求失败"));
     } finally {
       setTestLoading(false);
     }
@@ -291,47 +329,94 @@ const user = await userRes.json();`;
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="SSO 接入向导" />
+      <PageHeader
+        title="SSO 接入向导"
+        description="按步骤完成应用信息、权限、凭据与连接测试"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<ArrowLeft className="h-4 w-4" />}
+            onClick={() => {
+              if (confirmClose()) router.push("/admin/oauth-clients");
+            }}
+          >
+            退出向导
+          </Button>
+        }
+      />
 
       {/* Steps indicator */}
-      <div className="mb-8 flex items-center">
-        {[1, 2, 3, 4, 5].map((s) => (
-          <div key={s} className="flex items-center">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                step >= s
-                  ? "bg-brand-primary text-white"
-                  : "bg-brand-charcoal/10 text-brand-charcoal/65"
-              }`}
-            >
-              {step > s ? <Check className="h-4 w-4" /> : s}
-            </div>
-            {s < 5 && (
-              <div
-                className={`h-0.5 w-6 sm:w-12 ${step > s ? "bg-brand-primary" : "bg-brand-charcoal/10"}`}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+      <ol className="mb-8 flex items-start" aria-label="接入步骤">
+        {STEP_TITLES.map((title, index) => {
+          const stepNumber = index + 1;
+          const active = step === stepNumber;
+          return (
+            <li key={title} className="flex items-start">
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  aria-current={active ? "step" : undefined}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium",
+                    step >= stepNumber
+                      ? "bg-brand-primary text-white"
+                      : "bg-surface-muted text-ink-muted"
+                  )}
+                >
+                  {step > stepNumber ? <Check className="h-4 w-4" /> : stepNumber}
+                </div>
+                <span
+                  className={cn(
+                    "text-2xs",
+                    active ? "font-medium text-brand-primary" : "text-ink-muted"
+                  )}
+                >
+                  {title}
+                </span>
+              </div>
+              {stepNumber < STEP_TITLES.length && (
+                <div
+                  aria-hidden="true"
+                  className={cn(
+                    "mx-1 mt-4 h-0.5 w-4 sm:mx-2 sm:w-10",
+                    step > stepNumber ? "bg-brand-primary" : "bg-surface-active"
+                  )}
+                />
+              )}
+            </li>
+          );
+        })}
+      </ol>
 
       {/* Step 1: App Info */}
       {step === 1 && (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
-          <h2 className="mb-4 text-lg font-semibold">① 填写应用信息</h2>
+        <div className="rounded-card border border-line bg-white p-4 sm:p-6">
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="mb-4 text-lg font-semibold outline-none">
+            ① 填写应用信息
+          </h2>
           <div className="max-w-md space-y-4">
             <Input
+              ref={appNameRef}
               label="应用名称"
               required
               value={appName}
-              onChange={(e) => setAppName(e.target.value)}
+              error={appNameError}
+              onChange={(e) => {
+                setAppName(e.target.value);
+                if (appNameError) setAppNameError("");
+              }}
               placeholder="如：Advisor 顾问系统"
             />
             <Input
+              ref={redirectUriRef}
               label="回调 URL"
               required
               value={redirectUri}
-              onChange={(e) => setRedirectUri(e.target.value)}
+              error={redirectUriError}
+              onChange={(e) => {
+                setRedirectUri(e.target.value);
+                if (redirectUriError) setRedirectUriError("");
+              }}
               placeholder="https://smart.nihplod.cn/api/auth/callback"
               hint="用户授权后，主站将把授权码发送到此 URL。"
             />
@@ -341,7 +426,7 @@ const user = await userRes.json();`;
               </label>
               <div className="space-y-2">
                 <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${!isPublic ? "border-brand-primary bg-brand-primary/5" : "border-brand-charcoal/15 hover:border-brand-charcoal/30"}`}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${!isPublic ? "border-brand-primary bg-brand-primary/5" : "border-line-strong hover:border-brand-charcoal/30"}`}
                 >
                   <input
                     type="radio"
@@ -352,13 +437,13 @@ const user = await userRes.json();`;
                   />
                   <div>
                     <p className="text-sm font-medium text-brand-charcoal">Confidential Client</p>
-                    <p className="text-xs text-brand-charcoal/65">
+                    <p className="text-xs text-ink-muted">
                       Next.js / 服务端应用，后端保密 client_secret
                     </p>
                   </div>
                 </label>
                 <label
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${isPublic ? "border-brand-primary bg-brand-primary/5" : "border-brand-charcoal/15 hover:border-brand-charcoal/30"}`}
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${isPublic ? "border-brand-primary bg-brand-primary/5" : "border-line-strong hover:border-brand-charcoal/30"}`}
                 >
                   <input
                     type="radio"
@@ -369,7 +454,7 @@ const user = await userRes.json();`;
                   />
                   <div>
                     <p className="text-sm font-medium text-brand-charcoal">Public Client</p>
-                    <p className="text-xs text-brand-charcoal/65">
+                    <p className="text-xs text-ink-muted">
                       SPA / 移动端 / 桌面端，不传输 client_secret，必须使用 PKCE
                     </p>
                   </div>
@@ -379,17 +464,7 @@ const user = await userRes.json();`;
             <div className="flex justify-end">
               <Button
                 onClick={() => {
-                  // 第①步即校验回调 URL，避免走到确认页才发现格式错误
-                  if (!appName.trim()) {
-                    toast.error("请输入应用名称");
-                    return;
-                  }
-                  const uriError = validateRedirectUri(redirectUri);
-                  if (uriError) {
-                    toast.error(uriError);
-                    return;
-                  }
-                  setStep(2);
+                  if (validateStepOne()) setStep(2);
                 }}
                 disabled={!appName.trim() || !redirectUri.trim()}
                 leftIcon={<ArrowRight className="h-4 w-4" />}
@@ -403,16 +478,28 @@ const user = await userRes.json();`;
 
       {/* Step 2: Select Scopes */}
       {step === 2 && (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
-          <h2 className="mb-4 text-lg font-semibold">② 选择数据权限</h2>
-          <p className="mb-4 text-sm text-brand-charcoal/65">
+        <div className="rounded-card border border-line bg-white p-4 sm:p-6">
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="mb-4 text-lg font-semibold outline-none">
+            ② 选择数据权限
+          </h2>
+          <p className="mb-4 text-sm text-ink-muted">
             选择你的应用需要获取的用户信息权限。仅选择必需的最小权限。
           </p>
           <div className="mb-6 max-w-md space-y-3">
             {availableScopes.length === 0 && scopesLoadFailed && (
-              <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                权限范围加载失败，请刷新页面重试。
-              </p>
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-status-danger-line bg-status-danger-soft p-3 text-sm text-status-danger-strong">
+                <span className="min-w-0 flex-1">权限范围加载失败，请重试。</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setScopesLoadFailed(false);
+                    loadScopes();
+                  }}
+                >
+                  重试
+                </Button>
+              </div>
             )}
             {availableScopes.map((s) => (
               <label
@@ -420,7 +507,7 @@ const user = await userRes.json();`;
                 className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
                   selectedScopes.includes(s.value)
                     ? "border-brand-primary bg-brand-primary/5"
-                    : "border-brand-charcoal/15 hover:border-brand-charcoal/30"
+                    : "border-line-strong hover:border-brand-charcoal/30"
                 } ${s.value === "openid" ? "opacity-70" : ""}`}
               >
                 <input
@@ -432,8 +519,8 @@ const user = await userRes.json();`;
                 />
                 <div>
                   <span className="text-sm font-medium text-brand-charcoal">{s.label}</span>
-                  <span className="ml-2 font-mono text-xs text-brand-charcoal/65">{s.value}</span>
-                  <p className="mt-0.5 text-xs text-brand-charcoal/65">{s.desc}</p>
+                  <span className="ml-2 font-mono text-xs text-ink-muted">{s.value}</span>
+                  <p className="mt-0.5 text-xs text-ink-muted">{s.desc}</p>
                 </div>
               </label>
             ))}
@@ -455,26 +542,28 @@ const user = await userRes.json();`;
 
       {/* Step 3: Confirm */}
       {step === 3 && (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
-          <h2 className="mb-4 text-lg font-semibold">③ 确认并创建</h2>
-          <div className="mb-6 max-w-md rounded-lg bg-brand-charcoal/[0.03] p-4">
+        <div className="rounded-card border border-line bg-white p-4 sm:p-6">
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="mb-4 text-lg font-semibold outline-none">
+            ③ 确认并创建
+          </h2>
+          <div className="mb-6 max-w-md rounded-lg bg-surface-muted p-4">
             <div className="space-y-2 text-sm">
               <div>
-                <span className="text-brand-charcoal/65">应用名称：</span>
+                <span className="text-ink-muted">应用名称：</span>
                 <span className="font-medium text-brand-charcoal">{appName}</span>
               </div>
               <div>
-                <span className="text-brand-charcoal/65">应用类型：</span>
+                <span className="text-ink-muted">应用类型：</span>
                 <span className="font-medium text-brand-charcoal">
                   {isPublic ? "Public Client" : "Confidential Client"}
                 </span>
               </div>
               <div>
-                <span className="text-brand-charcoal/65">回调 URL：</span>
+                <span className="text-ink-muted">回调 URL：</span>
                 <span className="font-mono text-xs text-brand-charcoal">{redirectUri}</span>
               </div>
               <div>
-                <span className="text-brand-charcoal/65">权限范围：</span>
+                <span className="text-ink-muted">权限范围：</span>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {selectedScopes.map((s) => (
                     <Badge key={s} variant="secondary" className="text-xs">
@@ -485,6 +574,15 @@ const user = await userRes.json();`;
               </div>
             </div>
           </div>
+          {createError ? (
+            <div
+              role="alert"
+              className="mb-4 flex items-start gap-2 rounded-lg border border-status-danger-line bg-status-danger-soft px-3 py-2 text-sm text-status-danger-strong"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">{createError}</span>
+            </div>
+          ) : null}
           <div className="flex justify-between">
             <Button
               variant="outline"
@@ -506,27 +604,30 @@ const user = await userRes.json();`;
 
       {/* Step 4: Show Credentials + Code */}
       {step === 4 && (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
-          <h2 className="mb-4 text-lg font-semibold">④ 接入凭据与代码</h2>
+        <div className="rounded-card border border-line bg-white p-4 sm:p-6">
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="mb-4 text-lg font-semibold outline-none">
+            ④ 接入凭据与代码
+          </h2>
 
           {/* Credentials */}
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="mb-2 text-sm font-medium text-green-800">
+          <div className="mb-6 rounded-lg border border-status-success-line bg-status-success-soft p-4">
+            <p className="mb-2 text-sm font-medium text-status-success-strong">
               请立即复制并安全保存 Client Secret！
             </p>
-            <p className="mb-3 text-xs text-green-600">
+            <p className="mb-3 text-xs text-status-success-fg">
               以下凭据仅显示一次，关闭页面后无法再次查看 Secret。
             </p>
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-brand-charcoal/70">Client ID：</span>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <code className="rounded bg-green-100 px-2 py-1 font-mono text-xs">
+                  <code className="rounded bg-status-success-soft px-2 py-1 font-mono text-xs">
                     {result.clientId}
                   </code>
                   <button
                     onClick={() => copyCode(result.clientId || "")}
-                    className="text-brand-charcoal/65 hover:text-brand-charcoal/70"
+                    aria-label="复制 Client ID"
+                    className="text-ink-muted hover:text-brand-charcoal/70"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -535,20 +636,20 @@ const user = await userRes.json();`;
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-brand-charcoal/70">Client Secret：</span>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <code className="max-w-full break-all rounded bg-green-100 px-2 py-1 font-mono text-xs sm:max-w-[280px]">
+                  <code className="max-w-full break-all rounded bg-status-success-soft px-2 py-1 font-mono text-xs sm:max-w-[280px]">
                     {showSecret ? result.plainSecret : "••••••••••••••••••••"}
                   </code>
                   <button
                     onClick={() => setShowSecret((v) => !v)}
                     aria-label={showSecret ? "隐藏密钥" : "显示密钥"}
-                    className="text-brand-charcoal/65 hover:text-brand-charcoal/70"
+                    className="text-ink-muted hover:text-brand-charcoal/70"
                   >
                     {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                   <button
                     onClick={() => copyCode(result.plainSecret || "")}
                     aria-label="复制密钥"
-                    className="text-brand-charcoal/65 hover:text-brand-charcoal/70"
+                    className="text-ink-muted hover:text-brand-charcoal/70"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -590,7 +691,7 @@ const user = await userRes.json();`;
             </pre>
           </div>
 
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="mb-6 rounded-lg border border-status-warning-line bg-status-warning-soft p-4">
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
@@ -599,8 +700,8 @@ const user = await userRes.json();`;
                 className="mt-0.5"
               />
               <div>
-                <p className="text-sm font-medium text-amber-800">我已安全保存 Client Secret</p>
-                <p className="mt-0.5 text-xs text-amber-600">
+                <p className="text-sm font-medium text-status-warning-strong">我已安全保存 Client Secret</p>
+                <p className="mt-0.5 text-xs text-status-warning-fg">
                   Secret 仅显示一次，关闭页面后无法再次查看。未完成保存前请勿继续。
                 </p>
               </div>
@@ -625,9 +726,11 @@ const user = await userRes.json();`;
 
       {/* Step 5: Connection Test */}
       {step === 5 && (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
-          <h2 className="mb-4 text-lg font-semibold">⑤ 在线连接测试</h2>
-          <p className="mb-4 text-sm text-brand-charcoal/65">
+        <div className="rounded-card border border-line bg-white p-4 sm:p-6">
+          <h2 ref={stepHeadingRef} tabIndex={-1} className="mb-4 text-lg font-semibold outline-none">
+            ⑤ 在线连接测试
+          </h2>
+          <p className="mb-4 text-sm text-ink-muted">
             模拟完整 SSO 流程，验证配置是否正确。
           </p>
 
@@ -642,16 +745,34 @@ const user = await userRes.json();`;
             </Button>
           </div>
 
+          {testError ? (
+            <div
+              role="alert"
+              className="mb-4 flex items-start gap-2 rounded-lg border border-status-danger-line bg-status-danger-soft px-3 py-2 text-sm text-status-danger-strong"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">{testError}</span>
+            </div>
+          ) : null}
+
           {testResult && (
             <div
-              className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "border border-emerald-200 bg-emerald-50" : "border border-amber-200 bg-amber-50"}`}
+              className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "border border-status-success-line bg-status-success-soft" : "border border-status-warning-line bg-status-warning-soft"}`}
             >
               <p
-                className={`mb-2 text-sm font-medium ${testResult.steps.every((s) => s.status === "passed") ? "text-emerald-800" : "text-amber-800"}`}
+                className={`mb-2 flex items-center gap-2 text-sm font-medium ${testResult.steps.every((s) => s.status === "passed") ? "text-status-success-strong" : "text-status-warning-strong"}`}
               >
-                {testResult.steps.every((s) => s.status === "passed")
-                  ? "✅ 连接测试全部通过"
-                  : "⚠️ 测试未完全通过"}
+                {testResult.steps.every((s) => s.status === "passed") ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    连接测试全部通过
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                    测试未完全通过
+                  </>
+                )}
               </p>
               {testResult.summary && (
                 <p className="mb-2 text-xs text-brand-charcoal/70">{testResult.summary}</p>

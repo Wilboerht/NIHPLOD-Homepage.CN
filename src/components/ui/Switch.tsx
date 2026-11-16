@@ -34,7 +34,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
           disabled={disabled}
           onClick={handleChange}
           className={cn(
-            "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200",
+            "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-base",
             "focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2",
             "disabled:cursor-not-allowed disabled:opacity-50",
             checked ? "bg-brand-primary" : "bg-brand-charcoal/15"
@@ -42,7 +42,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
         >
           <span
             className={cn(
-              "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200",
+              "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-base",
               checked ? "translate-x-5" : "translate-x-0"
             )}
           />
@@ -75,7 +75,7 @@ export const Switch = forwardRef<HTMLInputElement, SwitchProps>(
                 {label}
               </label>
             )}
-            {description && <p className="text-sm text-brand-charcoal/65">{description}</p>}
+            {description && <p className="text-sm text-ink-muted">{description}</p>}
           </div>
         )}
       </div>

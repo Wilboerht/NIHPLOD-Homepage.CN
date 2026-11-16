@@ -74,8 +74,8 @@ export function DateRangeFilter({
         className={cn(
           "flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors [&::-webkit-details-marker]:hidden",
           active
-            ? "border-brand-primary/40 bg-brand-primary/[0.04] text-brand-primary"
-            : "border-brand-charcoal/20 bg-white text-brand-charcoal/75 hover:border-brand-charcoal/35"
+            ? "border-brand-primary/40 bg-brand-primary/5 text-brand-primary"
+            : "border-line-strong bg-white text-brand-charcoal/75 hover:border-brand-charcoal/35"
         )}
         aria-label={label}
         aria-disabled={disabled}
@@ -88,7 +88,7 @@ export function DateRangeFilter({
           <button
             type="button"
             aria-label="清除日期范围"
-            className="ml-1 rounded-full p-0.5 hover:bg-brand-charcoal/[0.08]"
+            className="ml-1 rounded-full p-0.5 hover:bg-surface-active"
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -99,7 +99,7 @@ export function DateRangeFilter({
           </button>
         )}
       </summary>
-      <div className="absolute left-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-brand-charcoal/10 bg-white p-3 shadow-lg">
+      <div className="absolute left-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-line bg-white p-3 shadow-popover">
         <div className="mb-3 flex flex-wrap gap-1.5">
           {DATE_PRESETS.map((preset) => (
             <button
@@ -108,7 +108,7 @@ export function DateRangeFilter({
               onClick={() =>
                 "month" in preset ? applyMonth() : applyPreset(preset.days)
               }
-              className="rounded-full border border-brand-charcoal/10 px-2.5 py-1 text-xs text-brand-charcoal/70 transition-colors hover:border-brand-primary/30 hover:text-brand-primary"
+              className="rounded-full border border-line px-2.5 py-1 text-xs text-brand-charcoal/70 transition-colors hover:border-brand-primary/30 hover:text-brand-primary"
             >
               {preset.label}
             </button>
@@ -132,7 +132,7 @@ export function DateRangeFilter({
             disabled={disabled}
           />
         </div>
-        <p className="mt-2 text-[11px] text-brand-charcoal/65">按北京时间（UTC+8）统计</p>
+        <p className="mt-2 text-2xs text-ink-muted">按北京时间（UTC+8）统计</p>
       </div>
     </details>
   );

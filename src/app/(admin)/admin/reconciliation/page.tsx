@@ -13,7 +13,6 @@ import { RefreshCw, Scale } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
-import { useToast } from "@/components/ui/Toast";
 import { apiGet } from "@/lib/api-client";
 import { formatDateTimeSeconds } from "@/lib/format";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -25,6 +24,48 @@ import {
   StatStrip,
   type Column,
 } from "@/components/admin";
+
+function getCellValue<T extends object>(record: T, key: string): unknown {
+  const keys = key.split(".");
+  let value: unknown = record;
+  for (const part of keys) {
+    if (value && typeof value === "object" && part in value) {
+      value = (value as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+  return value;
+}
+
+/** 对账中心六张宽表的统一移动端卡片：逐列展示 label/value */
+function ReconciliationMobileCard<T extends object>({
+  columns,
+  record,
+}: {
+  columns: Column<T>[];
+  record: T;
+}) {
+  return (
+    <dl className="space-y-2 text-sm">
+      {columns.map((column, index) => {
+        const value = getCellValue(record, String(column.key));
+        return (
+          <div key={String(column.key)} className="flex items-start justify-between gap-3">
+            <dt className="shrink-0 text-xs text-ink-muted">{column.title}</dt>
+            <dd className="min-w-0 break-words text-right text-brand-charcoal">
+              {column.render
+                ? column.render(value, record, index)
+                : value !== undefined && value !== null
+                  ? String(value)
+                  : "-"}
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
 
 interface Capped<T> {
   items: T[];
@@ -227,7 +268,7 @@ const invariantColumns: Column<PointInvariantIssue>[] = [
     width: "110px",
     align: "right",
     render: (_, row) => (
-      <span className={row.available < 0 ? "font-medium text-red-600" : ""}>
+      <span className={row.available < 0 ? "font-medium text-status-danger-fg" : ""}>
         {number(row.available)}
       </span>
     ),
@@ -304,7 +345,7 @@ const redemptionLinkColumns: Column<PointRedemptionLinkIssue>[] = [
     title: "发生时间",
     width: "170px",
     render: (_, row) => (
-      <span className="text-xs text-brand-charcoal/65">
+      <span className="text-xs text-ink-muted">
         {formatDateTimeSeconds(row.happenedAt)}
       </span>
     ),
@@ -338,7 +379,7 @@ const totalMismatchColumns: Column<SpentTotalMismatch>[] = [
     width: "110px",
     align: "right",
     render: (_, row) => (
-      <span className={row.diff === 0 ? "" : "font-medium text-red-600"}>{signed(row.diff)}</span>
+      <span className={row.diff === 0 ? "" : "font-medium text-status-danger-fg"}>{signed(row.diff)}</span>
     ),
   },
   {
@@ -488,7 +529,7 @@ const unlinkedRefundColumns: Column<UnlinkedRefundRow>[] = [
     title: "导入时间",
     width: "170px",
     render: (_, row) => (
-      <span className="text-xs text-brand-charcoal/65">{formatDateTimeSeconds(row.createdAt)}</span>
+      <span className="text-xs text-ink-muted">{formatDateTimeSeconds(row.createdAt)}</span>
     ),
   },
 ];
@@ -555,7 +596,7 @@ const conflictColumns: Column<SpentOrderConflictItem>[] = [
         .sort()
         .at(-1);
       return (
-        <span className="text-xs text-brand-charcoal/65">{formatDateTimeSeconds(latest)}</span>
+        <span className="text-xs text-ink-muted">{formatDateTimeSeconds(latest)}</span>
       );
     },
   },
@@ -564,7 +605,7 @@ const conflictColumns: Column<SpentOrderConflictItem>[] = [
 function SummaryCard({ data }: { data: ReconciliationData }) {
   const { summary } = data;
   return (
-    <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-5">
+    <div className="rounded-card border border-line bg-white p-4 sm:p-5">
       <StatStrip
         items={[
           {
@@ -600,7 +641,6 @@ function SummaryCard({ data }: { data: ReconciliationData }) {
 }
 
 function ReconciliationContent() {
-  const toast = useToast();
   const [data, setData] = useState<ReconciliationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -617,11 +657,10 @@ function ReconciliationContent() {
       setLoadError(false);
     } catch {
       setLoadError(true);
-      toast.error("加载对账数据失败");
     } finally {
       setLoading(false);
     }
-  }, [sinceDays, toast]);
+  }, [sinceDays]);
 
   useEffect(() => {
     deferInEffect(load);
@@ -670,7 +709,7 @@ function ReconciliationContent() {
       {data && <SummaryCard data={data} />}
 
       {data?.summary.hasIssues && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-status-warning-line bg-status-warning-soft p-3 text-xs text-status-warning-strong">
           <span className="font-medium">处理入口：</span>
           {data.summary.pointIssueCount > 0 && (
             <>
@@ -694,27 +733,27 @@ function ReconciliationContent() {
       )}
 
       {loadError && data && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <div className="rounded-xl border border-status-warning-line bg-status-warning-soft p-3 text-xs text-status-warning-strong">
           刷新失败，当前展示的是上一次巡检结果。请稍后重试。
         </div>
       )}
 
       {loadError && !data ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-brand-charcoal/10 bg-white py-12">
-          <p className="text-sm text-red-500">加载失败，请检查服务状态后重试</p>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-card border border-line bg-white py-12">
+          <p className="text-sm text-status-danger-fg">加载失败，请检查服务状态后重试</p>
           <Button variant="outline" size="sm" onClick={load}>
             重新加载
           </Button>
         </div>
       ) : !data ? (
-        <div className="flex items-center gap-2 text-sm text-brand-charcoal/60">
+        <div className="flex items-center gap-2 text-sm text-ink-muted">
           <Scale className="h-4 w-4" />
           正在巡检...
         </div>
       ) : (
         <>
           {data.summary.truncated && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            <div className="rounded-xl border border-status-warning-line bg-status-warning-soft p-3 text-xs text-status-warning-strong">
               异常数量超过单类展示上限，以下列表只展示前 {data.scope.limit}{" "}
               条；请缩小范围或直接运行脚本获取完整结果。
             </div>
@@ -735,6 +774,9 @@ function ReconciliationContent() {
                 density="compact"
                 emptyText="余额与流水一致"
                 minWidth="720px"
+                mobileCard={(row) => (
+                  <ReconciliationMobileCard columns={invariantColumns} record={row} />
+                )}
               />
             </CollapsiblePanel>
 
@@ -753,6 +795,9 @@ function ReconciliationContent() {
                 density="compact"
                 emptyText="兑换记录与扣分/退分流水一致"
                 minWidth="1120px"
+                mobileCard={(row) => (
+                  <ReconciliationMobileCard columns={redemptionLinkColumns} record={row} />
+                )}
               />
             </CollapsiblePanel>
           </section>
@@ -775,6 +820,9 @@ function ReconciliationContent() {
                 density="compact"
                 emptyText="累计消费与同步流水一致"
                 minWidth="900px"
+                mobileCard={(row) => (
+                  <ReconciliationMobileCard columns={totalMismatchColumns} record={row} />
+                )}
               />
             </CollapsiblePanel>
 
@@ -793,6 +841,9 @@ function ReconciliationContent() {
                 density="compact"
                 emptyText="退款占用与退款行一致"
                 minWidth="1050px"
+                mobileCard={(row) => (
+                  <ReconciliationMobileCard columns={claimIssueColumns} record={row} />
+                )}
               />
             </CollapsiblePanel>
 
@@ -811,6 +862,9 @@ function ReconciliationContent() {
                 density="compact"
                 emptyText="没有重复退款行"
                 minWidth="860px"
+                mobileCard={(row) => (
+                  <ReconciliationMobileCard columns={duplicateRefundColumns} record={row} />
+                )}
               />
             </CollapsiblePanel>
 
@@ -829,6 +883,9 @@ function ReconciliationContent() {
                 density="compact"
                 emptyText="所有退款行均已绑定原始订单"
                 minWidth="1020px"
+                mobileCard={(row) => (
+                  <ReconciliationMobileCard columns={unlinkedRefundColumns} record={row} />
+                )}
               />
             </CollapsiblePanel>
 
@@ -847,11 +904,14 @@ function ReconciliationContent() {
                 density="compact"
                 emptyText="没有跨来源订单冲突"
                 minWidth="1100px"
+                mobileCard={(row) => (
+                  <ReconciliationMobileCard columns={conflictColumns} record={row} />
+                )}
               />
             </CollapsiblePanel>
           </section>
 
-          <p className="text-xs text-brand-charcoal/50">
+          <p className="text-xs text-ink-muted">
             生成时间：{formatDateTimeSeconds(data.generatedAt)} ·
             对账中心不提供修复操作；确认异常后请使用对应修复脚本或人工流程。
           </p>

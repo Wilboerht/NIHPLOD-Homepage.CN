@@ -92,7 +92,7 @@ function statusIcon(status: BaComplaintStatus) {
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid gap-1 text-sm sm:grid-cols-[7rem_1fr]">
-      <span className="text-brand-charcoal/50">{label}</span>
+      <span className="text-ink-muted">{label}</span>
       <div className="min-w-0 text-brand-charcoal">{children}</div>
     </div>
   );
@@ -313,7 +313,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
       <PanelCard className="p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative w-full md:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
             <Input
               aria-label="搜索举报编号、渠道或描述"
               placeholder="搜索编号 / 渠道 / 描述"
@@ -354,7 +354,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
       </PanelCard>
 
       {loadError && (
-        <PanelCard className="border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <PanelCard className="border-status-danger-line bg-status-danger-soft p-4 text-sm text-status-danger-strong">
           {loadError}
         </PanelCard>
       )}
@@ -363,19 +363,19 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
         {loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 5 }).map((_, index) => (
-              <div key={index} className="h-12 animate-pulse rounded-lg bg-brand-charcoal/[0.04]" />
+              <div key={index} className="h-12 animate-pulse rounded-lg bg-surface-muted" />
             ))}
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
-            <FileSearch className="h-8 w-8 text-brand-charcoal/30" />
-            <p className="text-sm text-brand-charcoal/60">暂无 BA 举报</p>
+            <FileSearch className="h-8 w-8 text-ink-faint" />
+            <p className="text-sm text-ink-muted">暂无 BA 举报</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
               <thead>
-                <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs text-brand-charcoal/55">
+                <tr className="border-b border-line bg-surface-subtle text-left text-xs text-ink-muted">
                   <th className="px-4 py-3 font-medium">举报编号</th>
                   <th className="px-4 py-3 font-medium">渠道</th>
                   <th className="px-4 py-3 font-medium">摘要</th>
@@ -389,9 +389,9 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                 {items.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-b border-brand-charcoal/5 last:border-0 hover:bg-brand-charcoal/[0.02]"
+                    className="border-b border-brand-charcoal/5 last:border-0 hover:bg-surface-subtle"
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-brand-charcoal/65">
+                    <td className="px-4 py-3 font-mono text-xs text-ink-muted">
                       {item.id.slice(0, 8)}
                     </td>
                     <td className="max-w-[10rem] truncate px-4 py-3">{item.channel || "—"}</td>
@@ -404,8 +404,8 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                         {STATUS_LABELS[item.status]}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-brand-charcoal/65">{item.handledBy || "—"}</td>
-                    <td className="px-4 py-3 text-xs text-brand-charcoal/55">
+                    <td className="px-4 py-3 text-ink-muted">{item.handledBy || "—"}</td>
+                    <td className="px-4 py-3 text-xs text-ink-muted">
                       {formatDateTime(item.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -422,7 +422,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
       </PanelCard>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-end gap-2 text-sm text-brand-charcoal/60">
+        <div className="flex items-center justify-end gap-2 text-sm text-ink-muted">
           <Button
             variant="outline"
             size="sm"
@@ -455,11 +455,11 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
         {detailLoading ? (
           <div className="space-y-3 py-4">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="h-4 animate-pulse rounded bg-brand-charcoal/[0.05]" />
+              <div key={index} className="h-4 animate-pulse rounded bg-surface-hover" />
             ))}
           </div>
         ) : detailError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="rounded-xl border border-status-danger-line bg-status-danger-soft p-4 text-sm text-status-danger-strong">
             {detailError}
           </div>
         ) : detail ? (
@@ -469,15 +469,15 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                 <span className="mr-1 inline-flex">{statusIcon(detail.complaint.status)}</span>
                 {STATUS_LABELS[detail.complaint.status]}
               </Badge>
-              <span className="font-mono text-xs text-brand-charcoal/55">
+              <span className="font-mono text-xs text-ink-muted">
                 #{detail.complaint.id.slice(0, 8)}
               </span>
-              <span className="text-xs text-brand-charcoal/45">
+              <span className="text-xs text-ink-faint">
                 提交于 {formatDateTime(detail.complaint.createdAt)}
               </span>
             </div>
 
-            <div className="space-y-3 rounded-xl border border-brand-charcoal/10 p-4">
+            <div className="space-y-3 rounded-xl border border-line p-4">
               <DetailRow label="举报内容">
                 <p className="whitespace-pre-wrap break-words">{detail.complaint.description}</p>
               </DetailRow>
@@ -509,7 +509,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                     </Button>
                   )
                 ) : (
-                  <span className="text-brand-charcoal/45">
+                  <span className="text-ink-faint">
                     {detailSensitive ? "未填写" : "无权限查看（需敏感信息权限）"}
                   </span>
                 )}
@@ -531,7 +531,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                       href={image.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block overflow-hidden rounded-lg border border-brand-charcoal/10"
+                      className="block overflow-hidden rounded-lg border border-line"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -543,7 +543,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-brand-charcoal/50">
+                <p className="text-sm text-ink-muted">
                   {detailSensitive
                     ? detail.complaint.evidenceCount > 0
                       ? sensitiveReveal.revealed
@@ -563,7 +563,7 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                 rows={3}
                 maxLength={2000}
                 disabled={!canWrite || Boolean(actionLoading)}
-                className="w-full rounded-xl border border-brand-charcoal/15 bg-white p-3 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 disabled:bg-brand-charcoal/[0.03]"
+                className="w-full rounded-xl border border-line-strong bg-white p-3 text-sm outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 disabled:bg-surface-muted"
                 placeholder="内部审核备注（不会直接发送给举报人）"
               />
               {canWrite && (
@@ -594,24 +594,24 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                 </div>
               )}
               {!canWrite && (
-                <p className="text-xs text-brand-charcoal/50">无权限修改举报状态或审核备注。</p>
+                <p className="text-xs text-ink-muted">无权限修改举报状态或审核备注。</p>
               )}
             </div>
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-brand-charcoal">状态历史</p>
               {auditLogs.length > 0 ? (
-                <ul className="space-y-2 border-l-2 border-brand-charcoal/10 pl-3">
+                <ul className="space-y-2 border-l-2 border-line pl-3">
                   {auditLogs.map((log) => (
                     <li key={log.id} className="text-sm">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-brand-charcoal">{log.action}</span>
-                        <span className="text-xs text-brand-charcoal/50">
+                        <span className="text-xs text-ink-muted">
                           {log.actorName || "系统"} · {formatDateTime(log.createdAt)}
                         </span>
                       </div>
                       {log.comment && (
-                        <p className="mt-0.5 whitespace-pre-wrap text-xs text-brand-charcoal/60">
+                        <p className="mt-0.5 whitespace-pre-wrap text-xs text-ink-muted">
                           {log.comment}
                         </p>
                       )}
@@ -619,12 +619,12 @@ export function BaComplaintsContent({ sourceTabs }: { sourceTabs?: ReactNode }) 
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-brand-charcoal/50">暂无状态历史</p>
+                <p className="text-sm text-ink-muted">暂无状态历史</p>
               )}
             </div>
 
             {canDelete && (
-              <div className="flex justify-end border-t border-brand-charcoal/10 pt-4">
+              <div className="flex justify-end border-t border-line pt-4">
                 <Button
                   variant="danger"
                   size="sm"

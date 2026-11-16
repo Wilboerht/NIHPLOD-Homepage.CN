@@ -88,11 +88,11 @@ export function UserDiaryAdminPanel({
     }
   };
   return (
-    <section className="rounded-xl border border-brand-charcoal/10 bg-white">
-      <div className="flex items-center justify-between border-b border-brand-charcoal/10 px-4 py-3">
+    <section className="rounded-xl border border-line bg-white">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <div>
           <h3 className="text-sm font-semibold">测肤日记代办</h3>
-          <p className="mt-0.5 text-xs text-brand-charcoal/65">
+          <p className="mt-0.5 text-xs text-ink-muted">
             按日期补录、纠错或删除；当日首次手动打卡仍按原规则发分。
           </p>
         </div>
@@ -108,9 +108,9 @@ export function UserDiaryAdminPanel({
         </div>
       </div>
       {entries && (
-        <div className="divide-y divide-brand-charcoal/10">
+        <div className="divide-y divide-line">
           {entries.length === 0 && (
-            <p className="px-4 py-6 text-center text-xs text-brand-charcoal/65">暂无日记</p>
+            <p className="px-4 py-6 text-center text-xs text-ink-muted">暂无日记</p>
           )}
           {entries.map((entry) => (
             <div key={entry.id} className="flex flex-wrap items-start gap-3 px-4 py-3 text-sm">
@@ -119,7 +119,7 @@ export function UserDiaryAdminPanel({
                 {stateOptions.find((item) => item.value === entry.skinState)?.label ||
                   entry.skinState}
               </span>
-              <div className="min-w-0 flex-1 text-xs text-brand-charcoal/65">
+              <div className="min-w-0 flex-1 text-xs text-ink-muted">
                 {entry.tags?.join("、") || "无标签"}
                 {entry.note && (
                   <p className="mt-1 whitespace-pre-wrap text-brand-charcoal">{entry.note}</p>
@@ -133,7 +133,7 @@ export function UserDiaryAdminPanel({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-red-600"
+                    className="text-status-danger-fg"
                     onClick={() => setDeleting(entry)}
                   >
                     删除

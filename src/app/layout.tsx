@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { ViewTransitions } from "next-view-transitions";
+import { ViewTransitionsGate } from "@/components/providers/ViewTransitionsGate";
 import "./globals.css";
 import { MotionProvider } from "@/components/providers/MotionProvider";
 import { ChunkErrorBoundary } from "@/components/providers/ChunkErrorBoundary";
@@ -156,7 +156,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ViewTransitions>
+    <ViewTransitionsGate>
       <html lang="zh-CN">
         <head>
           {/* iOS 状态栏样式 - 透明背景 */}
@@ -200,6 +200,6 @@ export default function RootLayout({
           </ChunkErrorBoundary>
         </body>
       </html>
-    </ViewTransitions>
+    </ViewTransitionsGate>
   );
 }

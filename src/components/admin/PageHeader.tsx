@@ -18,10 +18,10 @@ export function PageHeader({ title, description, accessory, actions }: PageHeade
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold tracking-tight text-brand-charcoal">{title}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
           {accessory}
         </div>
-        {description && <p className="text-sm text-brand-charcoal/65">{description}</p>}
+        {description && <p className="text-sm text-ink-muted">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

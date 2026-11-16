@@ -75,6 +75,8 @@ const querySchema = z.object({
   status: z.enum(["ACTIVE", "DISABLED"]).optional(),
   role: roleSchema.optional(),
   totp: z.enum(["enabled", "disabled"]).optional(),
+  /** customized=1：非 owner 且存在个人权限覆盖 */
+  customized: z.enum(["1"]).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -100,6 +102,7 @@ const params = querySchema.parse({
   status: searchParams.get("status") || undefined,
   role: searchParams.get("role") || undefined,
   totp: searchParams.get("totp") || undefined,
+  customized: searchParams.get("customized") || undefined,
 });
 
 const where: Record<string, unknown> = { deletedAt: null };
@@ -110,8 +113,15 @@ if (params.search) {
   ];
 }
 if (params.status) where.status = params.status;
-if (params.role) where.role = params.role;
 if (params.totp) where.totpEnabled = params.totp === "enabled";
+
+// 角色与“自定义管理”组合：customized 是权限覆盖筛选，不是角色
+const and: Record<string, unknown>[] = [];
+if (params.role) and.push({ role: params.role });
+if (params.customized === "1") {
+  and.push({ role: { not: "owner" } }, { permissions: { isEmpty: false } });
+}
+if (and.length > 0) where.AND = and;
 
 const [admins, total] = await Promise.all([
   prisma.admin.findMany({

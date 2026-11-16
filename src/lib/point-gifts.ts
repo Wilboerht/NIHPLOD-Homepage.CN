@@ -10,7 +10,13 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import type { MembershipLevel } from "@/generated/prisma/client";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
-import { adjustPoints, redeemPoints, withPointTxRetry } from "@/lib/points-ledger";
+import {
+  adjustPoints,
+  getPointBalanceView,
+  lockPointBalance,
+  redeemPoints,
+  withPointTxRetry,
+} from "@/lib/points-ledger";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 import { enqueueNotification } from "@/lib/notification-outbox";
@@ -127,6 +133,21 @@ export async function redeemGiftForUser(params: {
   }
   const reference = `redeem:${userId}:${requestId}`;
 
+  const duplicatedResult = async (
+    tx: Prisma.TransactionClient,
+    existing: { id: string; points: number }
+  ) => {
+    // 幂等响应也按物化后的余额返回，避免过期积分尚未清理时展示虚高余额。
+    const balance = await getPointBalanceView(tx, userId);
+    return {
+      ok: true as const,
+      duplicated: true as const,
+      points: existing.points,
+      available: balance.available,
+      redemptionId: existing.id,
+    };
+  };
+
   try {
     return await withPointTxRetry(() =>
       prisma.$transaction(async (tx) => {
@@ -135,20 +156,23 @@ export async function redeemGiftForUser(params: {
           where: { userId_reference: { userId, reference } },
         });
         if (existing) {
-          const balance = await tx.pointBalance.findUnique({
-            where: { userId },
-            select: { available: true },
-          });
-          return {
-            ok: true,
-            duplicated: true,
-            points: existing.points,
-            available: balance?.available ?? 0,
-            redemptionId: existing.id,
-          };
+          return duplicatedResult(tx, existing);
         }
 
         await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+        // 并发同一 requestId：后到事务在等待用户锁期间，首个事务可能已提交。
+        // 必须在拿到锁后重新检查，否则会走到 redeemPoints 的“已存在流水”分支，
+        // 被误判为 REFERENCE_CONFLICT（幂等重试应当成功返回 duplicated）。
+        const lockedExisting = await tx.pointRedemption.findUnique({
+          where: { userId_reference: { userId, reference } },
+        });
+        if (lockedExisting) {
+          return duplicatedResult(tx, lockedExisting);
+        }
+        // 统一锁顺序：User -> PointBalance -> Product -> PointRedemption。
+        // 取消兑换也会先锁余额再归还库存，先锁余额可避免与取消形成
+        // “兑换持有商品等余额、取消持有余额等商品”的死锁。
+        await lockPointBalance(tx, userId);
         // 锁定产品行，避免确认价格后管理员并发改价导致按旧价扣分
         await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${productId} FOR UPDATE`;
         const product = await tx.product.findUnique({
@@ -272,8 +296,14 @@ export async function redeemGiftForUser(params: {
           throw new RedeemRollback("INSUFFICIENT", "可用积分不足");
         }
         if (result.spent !== points) {
-          // 幂等分支理论上已在上面 pointRedemption 查找中返回；走到这里说明
-          // 命中了其它端/类型的积分流水，不能创建免费兑换单。
+          // 幂等重试：redeemPoints 命中了同一兑换请求的 REDEEM 流水（spent=0）。
+          // 此时应返回首次兑换结果；只有流水被其它业务占用时才报引用冲突。
+          const duplicate = await tx.pointRedemption.findUnique({
+            where: { userId_reference: { userId, reference } },
+          });
+          if (duplicate) {
+            return duplicatedResult(tx, duplicate);
+          }
           throw new RedeemRollback("REFERENCE_CONFLICT", "兑换请求号已被其他业务占用");
         }
 
@@ -326,15 +356,14 @@ export async function redeemGiftForUser(params: {
         select: { id: true, points: true },
       });
       if (existing) {
-        const balance = await prisma.pointBalance.findUnique({
-          where: { userId },
-          select: { available: true },
-        });
+        const balance = await prisma.$transaction((txBalance) =>
+          getPointBalanceView(txBalance, userId)
+        );
         return {
           ok: true,
           duplicated: true,
           points: existing.points,
-          available: balance?.available ?? 0,
+          available: balance.available,
           redemptionId: existing.id,
         };
       }
@@ -516,10 +545,22 @@ export async function cancelRedemption(params: {
       if (!redemption) return { ok: false, code: "NOT_FOUND" };
       if (redemption.status !== "PENDING") return { ok: false, code: "ALREADY_PROCESSED" };
 
+      // 统一锁顺序：先锁余额行，再改兑换单（与履约/账户合并一致），
+      // 避免“取消持有兑换单等余额、履约持有余额等兑换单”的死锁。
+      await lockPointBalance(tx, redemption.userId);
+
       const cancelNote = note?.trim() || null;
+      const cancelledAt = new Date();
+      const willRefund = redemption.user.status !== "DELETED";
       const claimed = await tx.pointRedemption.updateMany({
         where: { id: redemptionId, status: "PENDING" },
-        data: { status: "CANCELLED", cancelledAt: new Date(), cancelNote },
+        data: {
+          status: "CANCELLED",
+          cancelledAt,
+          cancelNote,
+          // 与售后退款口径一致，记录实际退还积分，便于后台列表/导出核对。
+          ...(willRefund ? { refundedPoints: redemption.points, refundedAt: cancelledAt } : {}),
+        },
       });
       if (claimed.count === 0) return { ok: false, code: "ALREADY_PROCESSED" };
 
@@ -633,8 +674,12 @@ export async function expirePendingRedemptions(
   failed: number;
   refundedPoints: number;
 }> {
-  const configuredDays = options.days ?? Number(process.env.POINT_REDEMPTION_PENDING_DAYS ?? "30");
-  const days = Number.isFinite(configuredDays) ? configuredDays : 30;
+  const rawDays = options.days ?? process.env.POINT_REDEMPTION_PENDING_DAYS;
+  // 空字符串会被 Number("") 转成 0；必须与未配置一样回退默认值。
+  // 显式 0（options 或 env）仍表示关闭自动取消。
+  const configuredDays =
+    rawDays === undefined || rawDays === null || rawDays === "" ? 30 : Number(rawDays);
+  const days = Number.isFinite(configuredDays) && configuredDays >= 0 ? configuredDays : 30;
   if (days <= 0) {
     return { scanned: 0, cancelled: 0, skipped: 0, failed: 0, refundedPoints: 0 };
   }

@@ -202,25 +202,25 @@ export default function LoginPage() {
       <main className="flex flex-1 items-center justify-center px-4 py-8">
         <div
           className={cn(
-            "flex w-full max-w-sm flex-col gap-6 transition-all duration-700",
+            "flex w-full max-w-sm flex-col gap-6 transition-all duration-slow",
             mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           )}
         >
           {/* 标题区：锁形徽章 + 管理面板 */}
           <div className="flex flex-col items-center gap-3 text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.04]">
-              <Lock className="h-5 w-5 text-brand-charcoal/65" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-surface-muted">
+              <Lock className="h-5 w-5 text-ink-muted" />
             </div>
             <div className="flex flex-col gap-1">
-              <h1 className="text-xl font-semibold tracking-tight text-brand-charcoal">管理面板</h1>
-              <p className="text-sm text-brand-charcoal/65">请输入您的管理账号</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-ink">管理面板</h1>
+              <p className="text-sm text-ink-muted">请输入您的管理账号</p>
             </div>
           </div>
 
           {passwordChanged && (
             <div
               role="status"
-              className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+              className="rounded-lg border border-status-success-line bg-status-success-soft px-4 py-3 text-sm text-status-success-strong"
             >
               密码已修改，请使用新密码重新登录。
             </div>
@@ -230,7 +230,7 @@ export default function LoginPage() {
           <form
             onSubmit={handleSubmit}
             noValidate
-            className="flex flex-col gap-4 rounded-2xl border border-brand-charcoal/10 bg-white p-6"
+            className="flex flex-col gap-4 rounded-card border border-line bg-white p-6"
           >
             <Input
               id="email"
@@ -261,7 +261,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-muted hover:text-brand-charcoal/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                   aria-label={showPassword ? "隐藏密码" : "显示密码"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -293,7 +293,7 @@ export default function LoginPage() {
               <div
                 role="alert"
                 aria-live="polite"
-                className="flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-600"
+                className="flex items-center gap-2 rounded-lg border border-status-danger-line bg-status-danger-soft px-4 py-3 text-xs text-status-danger-fg"
               >
                 <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>{error}</span>
@@ -315,17 +315,17 @@ export default function LoginPage() {
             </Button>
 
             {/* 找回指引 */}
-            <p className="text-center text-xs text-brand-charcoal/65">
+            <p className="text-center text-xs text-ink-muted">
               忘记密码或丢失验证器？请联系超级管理员重置
             </p>
           </form>
 
           {/* 子站切换（面包屑下拉） */}
-          <div className="flex items-center justify-center gap-2 text-xs text-brand-charcoal/65">
+          <div className="flex items-center justify-center gap-2 text-xs text-ink-muted">
             <Link href="/" className="transition-colors hover:text-brand-charcoal/70">
               首页
             </Link>
-            <span className="text-brand-charcoal/65">/</span>
+            <span className="text-ink-muted">/</span>
             <div className="relative" ref={breadcrumbRef}>
               <button
                 onClick={() => setBreadcrumbOpen((v) => !v)}
@@ -334,15 +334,15 @@ export default function LoginPage() {
                 后台登录（官网）
                 <ChevronDown
                   className={cn(
-                    "h-3 w-3 transition-transform duration-200",
+                    "h-3 w-3 transition-transform duration-base",
                     breadcrumbOpen && "rotate-180"
                   )}
                 />
               </button>
               {breadcrumbOpen && (
-                <div className="absolute bottom-full left-1/2 z-30 mb-2 flex -translate-x-1/2 flex-col gap-2 whitespace-nowrap rounded-xl border border-brand-charcoal/10 bg-white p-3 text-xs shadow-lg">
+                <div className="absolute bottom-full left-1/2 z-30 mb-2 flex -translate-x-1/2 flex-col gap-2 whitespace-nowrap rounded-xl border border-line bg-white p-3 text-xs shadow-popover">
                   <div className="flex items-center gap-2">
-                    <span className="select-none text-brand-charcoal/65">/</span>
+                    <span className="select-none text-ink-muted">/</span>
                     <a
                       href="https://smart.nihplod.cn/admin"
                       target="_blank"
@@ -351,11 +351,11 @@ export default function LoginPage() {
                       onClick={() => setBreadcrumbOpen(false)}
                     >
                       后台登录（AI 护肤顾问）
-                      <ExternalLink className="h-3 w-3 text-brand-charcoal/65" />
+                      <ExternalLink className="h-3 w-3 text-ink-muted" />
                     </a>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="select-none text-brand-charcoal/65">/</span>
+                    <span className="select-none text-ink-muted">/</span>
                     <a
                       href="https://ba.nihplod.cn/admin"
                       target="_blank"
@@ -364,7 +364,7 @@ export default function LoginPage() {
                       onClick={() => setBreadcrumbOpen(false)}
                     >
                       后台登录（授权管理）
-                      <ExternalLink className="h-3 w-3 text-brand-charcoal/65" />
+                      <ExternalLink className="h-3 w-3 text-ink-muted" />
                     </a>
                   </div>
                 </div>
@@ -376,10 +376,10 @@ export default function LoginPage() {
 
       {/* 页脚 */}
       <footer className="flex flex-col items-center gap-1 px-6 pb-6">
-        <p className="text-[11px] font-light tracking-widest text-brand-charcoal/65">
+        <p className="text-2xs font-light tracking-widest text-ink-muted">
           &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
         </p>
-        <div className="flex items-center justify-center gap-2 whitespace-nowrap text-[11px] font-light tracking-normal text-brand-charcoal/65">
+        <div className="flex items-center justify-center gap-2 whitespace-nowrap text-2xs font-light tracking-normal text-ink-muted">
           <Link
             href="https://beian.miit.gov.cn/"
             target="_blank"
@@ -387,7 +387,7 @@ export default function LoginPage() {
           >
             沪ICP备2026014764号-1
           </Link>
-          <span className="text-brand-charcoal/20">|</span>
+          <span className="text-ink-faint">|</span>
           <Link
             href="http://www.beian.gov.cn/portal/registerSystemInfo"
             target="_blank"

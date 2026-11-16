@@ -399,7 +399,7 @@ code_challenge 通过 SHA-256 哈希计算。回调时 SDK 自动完成 verifier
 ### Scope 最小权限
 
 - `openid` — 仅返回用户 ID
-- `profile` — 昵称、头像（用户未自定义头像时，`avatar` 返回主站默认头像的绝对 URL，子项目可直接渲染，无需自行兜底）
+- `profile` — 昵称、头像（`avatar` 始终为绝对 URL：未自定义时为默认头像；本地上传模式的相对路径也会补全为绝对地址。子项目可直接渲染，无需自行兜底）
 - `phone` — 手机号（脱敏）
 - `membership` — 会员等级（`membership_level`）、累计消费金额（`total_spent`，number，单位元）、积分兑礼率（`points_redeem_rate`）；同时是积分余额/流水、兑换与收货地址、消费补录等资源端点的准入 scope（**高敏感，授予前请评估**）
 - `birthday` — 生日（ISO 8601 格式，未设置时为 `null`）
@@ -616,7 +616,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 ## 消费额/等级/积分同步（商城对接）
 
-官网是消费额/等级/积分权威账本。商城侧的消费额变动通过签名内部 API 上报入账，官网联动更新等级（四档）与积分（消费 1 元 = 1 分，银卡及以上）。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret）。
+官网是消费额/等级/积分权威账本。商城侧的消费额变动通过签名内部 API 上报入账，官网联动更新等级（四档）与积分（消费 1 元 = 1 分，所有等级均累积；兑礼仅银卡及以上）。鉴权方式与其他 `/api/v1/internal/*` 端点一致（`INTERNAL_API_KEYS` 中 `project=mall` 的 key/secret）。
 
 **secret 轮换宽限（2026-09 新增）**：官网 `INTERNAL_API_KEYS` 条目可带可选 `previousSecrets`（上一代 secret 数组），轮换窗口期内新旧 secret 的签名均可通过验签；子站只保存当前 key/secret，无需配置该字段。轮换步骤见 `docs/sso-deployment.md` §2.4。
 
@@ -784,7 +784,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 
 | 方法 | 端点 | 说明 |
 | --- | --- | --- |
-| GET | `/api/oauth/points` | 积分余额（含物化过期处理）、`expiringSoon` 30 天过期汇总与最近 20 条流水（`frozen`/`nextReleaseAt` 为废弃兼容字段） |
+| GET | `/api/oauth/points` | 积分余额（含物化过期处理）、`expiringSoon` 30 天内**最早到期批次**（按可用余额封顶）与最近 20 条流水（`frozen`/`nextReleaseAt` 为废弃兼容字段） |
 | GET | `/api/oauth/points/ledger?offset=` | 近一年积分流水（offset 分页每页 20 条，含业务流水号 `reference`） |
 | GET | `/api/oauth/points/rules` | 积分获取比例、有效期、等级门槛、兑礼率、生日积分（全站统一规则） |
 | GET | `/api/oauth/points/gifts` | 可兑换礼品（按当前等级兑礼率折算所需积分 + 产品详情 + `stock` 库存） |
@@ -984,7 +984,7 @@ function verifyWebhookSignature(rawBody, signatureHeader, secret) {
 - 账号注销：小程序端可自助提交/撤回（`/api/oauth/account/deletion`，冷静期默认 7 天、期间账号可用且可随时撤回）；与官网安全中心自助注销共用同一申请记录与频控桶（申请 3 次/天、撤回 5 次/天）；到期统一由官网执行任务匿名化；
 - 换绑手机号不影响 `userId` 与积分数据；商城/对账请使用 `userId` 定位（详见「会员套餐/等级/积分同步」章节），不要依赖手机号。
 - 兑换幂等：`requestId` 为**永久**唯一键（`userId + requestId`），重放返回原兑换结果且不比较新 payload；客户端应持久化未决 key，成功后再清除，避免页面重载后重复扣分。
-- 即将过期积分：优先使用 `/api/oauth/points` 的 `expiringSoon`（服务端全量计算、按可用余额封顶），不要用最近 20 条流水自行推算。
+- 即将过期积分：优先使用 `/api/oauth/points` 的 `expiringSoon`（服务端按最早到期批次计算、按可用余额封顶），不要用最近 20 条流水自行推算。
 - 规则展示：使用 `/api/oauth/points/rules`，不要在客户端写死等级门槛/兑礼率/有效期。
 - 安全中心：四个端点均需 `security:manage`；未在 `MINIPROGRAM_CLIENTS.oauthScopes` 与 OAuth Client scopes 同时开通时返回 403 `insufficient_scope`。
 - 订阅消息：官网 env 的 `MP_POINTS_TEMPLATE_SHIPPED` / `MP_POINTS_TEMPLATE_SPENT_REVIEW` 必须与小程序 `SUBSCRIBE_TMPL_SHIPPED` / `SUBSCRIBE_TMPL_SPENT_REVIEW` 完全一致，否则服务端静默跳过。

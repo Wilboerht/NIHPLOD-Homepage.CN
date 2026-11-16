@@ -55,6 +55,11 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
+vi.mock("@/lib/internal-points-audit", () => ({
+  auditInternalPoints: vi.fn().mockResolvedValue(true),
+  auditInternalPointsFailure: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("next/cache", () => ({
   revalidateTag: vi.fn(),
 }));
@@ -242,6 +247,7 @@ describe("POST /api/v1/internal/points/sync（消费额同步）", () => {
         userId: "user-1",
         reference: "mall-order-N001",
         spentDelta: 150,
+        requestedDelta: 150,
         note: "商城订单消费",
         orderNo: "mall-order-N001",
         orderNoKey: "MALL-ORDER-N001",

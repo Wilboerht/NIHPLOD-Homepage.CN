@@ -1,10 +1,11 @@
 "use client";
 
 import { ReactNode, useState, type HTMLAttributes } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, Plus, Inbox } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/Button";
+import { Empty } from "@/components/ui/Empty";
 import { cn } from "@/lib/utils";
 
 // 列定义接口
@@ -15,6 +16,8 @@ export interface Column<T> {
   render?: (value: unknown, record: T, index: number) => ReactNode;
   sortable?: boolean;
   align?: "left" | "center" | "right";
+  /** 数字列：默认右对齐并使用等宽数字 */
+  numeric?: boolean;
 }
 
 // 分页配置接口
@@ -48,11 +51,18 @@ interface DataTableProps<T> {
     label: string;
     onClick: () => void;
   };
+  /** 当前是否处于筛选状态；为 true 时空态展示“清除筛选” */
+  isFiltered?: boolean;
+  onClearFilters?: () => void;
   onSort?: (key: string, order: "asc" | "desc") => void;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   className?: string;
-  /** 行密度：compact 36px / default 44px 行高 */
+  /** 表格无障碍名称，默认“数据表格” */
+  ariaLabel?: string;
+  /** 固定表头：容器使用 max-height 内部滚动，避免 sticky 失效 */
+  stickyHeader?: boolean;
+  /** 行密度：compact 40px / default 44px 行高 */
   density?: "compact" | "default";
   /** 固定列宽布局；配合 Column.width 使用，避免宽屏下短列被拉宽 */
   tableLayout?: "auto" | "fixed";
@@ -78,17 +88,21 @@ export function DataTable<T extends object>({
   onRowClick,
   emptyText = "暂无数据",
   emptyAction,
+  isFiltered = false,
+  onClearFilters,
   onSort,
   sortBy,
   sortOrder,
   className,
+  ariaLabel = "数据表格",
+  stickyHeader = false,
   density = "default",
   tableLayout = "auto",
   minWidth,
   mobileCard,
   rowProps,
 }: DataTableProps<T>) {
-  const cellDensityCls = density === "compact" ? "px-3 py-2" : "px-4 py-3";
+  const cellDensityCls = density === "compact" ? "px-3 py-2.5" : "px-4 py-3";
   const [sortConfig, setSortConfig] = useState<SortConfig | null>(
     sortBy && sortOrder ? { key: sortBy, order: sortOrder } : null
   );
@@ -150,7 +164,7 @@ export function DataTable<T extends object>({
 
     const key = String(column.key);
     if (sortConfig?.key !== key) {
-      return <ArrowUpDown className="h-4 w-4 text-brand-charcoal/65" />;
+      return <ArrowUpDown className="h-4 w-4 text-ink-muted" />;
     }
     return sortConfig.order === "asc" ? (
       <ArrowUp className="h-4 w-4 text-brand-primary" />
@@ -171,14 +185,14 @@ export function DataTable<T extends object>({
     <div
       aria-busy={loading}
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white",
+        "relative overflow-hidden rounded-card border border-line bg-white",
         className
       )}
     >
       {error && data.length > 0 && (
         <div
           role="alert"
-          className="flex flex-wrap items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700"
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-status-danger-line bg-status-danger-soft px-4 py-2 text-sm text-status-danger-strong"
         >
           <span>{error}</span>
           {onRetry && (
@@ -195,14 +209,14 @@ export function DataTable<T extends object>({
               {Array.from({ length: 3 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-28 animate-pulse rounded-xl bg-brand-charcoal/[0.04]"
+                  className="h-28 animate-pulse rounded-xl bg-surface-muted"
                 />
               ))}
             </div>
           ) : showErrorState ? (
             <div
               role="alert"
-              className="flex flex-col items-center gap-3 px-4 py-12 text-center text-red-600"
+              className="flex flex-col items-center gap-3 px-4 py-12 text-center text-status-danger-fg"
             >
               <span>{error}</span>
               {onRetry && (
@@ -212,22 +226,24 @@ export function DataTable<T extends object>({
               )}
             </div>
           ) : data.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 px-4 py-12 text-center text-brand-charcoal/65">
-              <Inbox className="h-10 w-10 text-brand-charcoal/65" />
-              <span>{emptyText}</span>
-              {emptyAction && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={emptyAction.onClick}
-                  leftIcon={<Plus className="h-4 w-4" />}
-                >
-                  {emptyAction.label}
-                </Button>
-              )}
-            </div>
+            <Empty
+              className="py-10"
+              title={isFiltered ? "没有符合条件的数据" : emptyText}
+              description={isFiltered ? "试试调整或清除筛选条件" : undefined}
+              action={
+                isFiltered && onClearFilters ? (
+                  <Button variant="outline" size="sm" onClick={onClearFilters}>
+                    清除筛选
+                  </Button>
+                ) : emptyAction ? (
+                  <Button variant="outline" size="sm" onClick={emptyAction.onClick}>
+                    {emptyAction.label}
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
-            <div className="divide-y divide-brand-charcoal/10">
+            <div className="divide-y divide-line">
               {data.map((record, index) => (
                 <div key={getRowKey(record, index)} className="p-4">
                   {mobileCard(record, index)}
@@ -238,16 +254,27 @@ export function DataTable<T extends object>({
         </div>
       )}
 
-      <div className={cn("overflow-x-auto", mobileCard && "hidden md:block")}>
+      <div
+        className={cn(
+          "overflow-x-auto",
+          stickyHeader && "max-h-[calc(100dvh-16rem)] overflow-y-auto",
+          mobileCard && "hidden md:block"
+        )}
+      >
         <table
           className={cn(
-            "w-full divide-y divide-brand-charcoal/10",
+            "w-full divide-y divide-line",
             tableLayout === "fixed" && "table-fixed"
           )}
           style={minWidth ? { minWidth } : undefined}
-          aria-label="数据表格"
+          aria-label={ariaLabel}
         >
-          <thead className="sticky top-0 z-10 bg-brand-charcoal/[0.02]">
+          <thead
+            className={cn(
+              "z-10 bg-surface-subtle text-xs font-medium tracking-wide text-brand-charcoal/70",
+              stickyHeader && "sticky top-0 backdrop-blur"
+            )}
+          >
             <tr>
               {columns.map((column) => {
                 const sortState =
@@ -256,16 +283,16 @@ export function DataTable<T extends object>({
                       ? ("ascending" as const)
                       : ("descending" as const)
                     : ("none" as const);
+                const columnAlign = column.align ?? (column.numeric ? "right" : "left");
                 return (
                   <th
                     key={String(column.key)}
                     scope="col"
                     style={{ width: column.width }}
                     className={cn(
-                      "text-sm font-normal text-brand-charcoal",
                       cellDensityCls,
-                      alignStyles[column.align || "left"],
-                      column.sortable && "cursor-pointer select-none hover:bg-brand-charcoal/[0.06]"
+                      alignStyles[columnAlign],
+                      column.sortable && "cursor-pointer select-none hover:bg-surface-hover"
                     )}
                     aria-sort={column.sortable ? sortState : undefined}
                     tabIndex={column.sortable ? 0 : undefined}
@@ -280,8 +307,8 @@ export function DataTable<T extends object>({
                     <div
                       className={cn(
                         "flex items-center gap-1",
-                        column.align === "center" && "justify-center",
-                        column.align === "right" && "justify-end"
+                        columnAlign === "center" && "justify-center",
+                        columnAlign === "right" && "justify-end"
                       )}
                     >
                       <span>{column.title}</span>
@@ -292,7 +319,7 @@ export function DataTable<T extends object>({
               })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-charcoal/10 bg-white">
+          <tbody className="divide-y divide-line bg-white">
             {loading ? (
               // 加载状态
               Array.from({ length: 5 }).map((_, i) => (
@@ -300,7 +327,7 @@ export function DataTable<T extends object>({
               ))
             ) : showErrorState ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-red-600">
+                <td colSpan={columns.length} className="px-4 py-12 text-center text-status-danger-fg">
                   <div role="alert" className="flex flex-col items-center gap-3">
                     <span>{error}</span>
                     {onRetry && (
@@ -314,24 +341,23 @@ export function DataTable<T extends object>({
             ) : data.length === 0 ? (
               // 空状态
               <tr>
-                <td
-                  colSpan={columns.length}
-                  className="px-4 py-12 text-center text-brand-charcoal/65"
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <Inbox className="h-10 w-10 text-brand-charcoal/65" />
-                    <span>{emptyText}</span>
-                    {emptyAction && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={emptyAction.onClick}
-                        leftIcon={<Plus className="h-4 w-4" />}
-                      >
-                        {emptyAction.label}
-                      </Button>
-                    )}
-                  </div>
+                <td colSpan={columns.length} className="px-4 py-8">
+                  <Empty
+                    className="py-8"
+                    title={isFiltered ? "没有符合条件的数据" : emptyText}
+                    description={isFiltered ? "试试调整或清除筛选条件" : undefined}
+                    action={
+                      isFiltered && onClearFilters ? (
+                        <Button variant="outline" size="sm" onClick={onClearFilters}>
+                          清除筛选
+                        </Button>
+                      ) : emptyAction ? (
+                        <Button variant="outline" size="sm" onClick={emptyAction.onClick}>
+                          {emptyAction.label}
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 </td>
               </tr>
             ) : (
@@ -367,21 +393,23 @@ export function DataTable<T extends object>({
                       if (!e.defaultPrevented) onRowClick?.(record);
                     }}
                     className={cn(
-                      "transition-colors even:bg-brand-charcoal/[0.02]",
+                      "transition-colors",
                       rowClassName,
                       onRowClick &&
-                        "cursor-pointer hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                        "cursor-pointer hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
                     )}
                   >
                     {columns.map((column) => {
                       const value = getCellValue(record, String(column.key));
+                      const columnAlign = column.align ?? (column.numeric ? "right" : "left");
                       return (
                         <td
                           key={String(column.key)}
                           className={cn(
                             "whitespace-nowrap text-sm text-brand-charcoal",
                             cellDensityCls,
-                            alignStyles[column.align || "left"]
+                            alignStyles[columnAlign],
+                            column.numeric && "tabular-nums"
                           )}
                         >
                           {column.render
@@ -402,7 +430,7 @@ export function DataTable<T extends object>({
 
       {/* 分页：即使只有一页也展示总数/每页条数（Pagination 内部按需隐藏页码） */}
       {pagination && (pagination.total > 0 || pagination.onPageSizeChange) && (
-        <div className="border-t border-brand-charcoal/10 px-4 py-3">
+        <div className="border-t border-line px-4 py-3">
           <Pagination
             page={pagination.page}
             pageSize={pagination.pageSize}

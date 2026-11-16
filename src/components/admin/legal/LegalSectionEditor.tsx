@@ -42,7 +42,7 @@ export function LegalSectionEditor({
   return (
     <section
       id={`legal-section-${section.id}`}
-      className="group scroll-mt-24 rounded-xl border border-brand-charcoal/10 bg-white"
+      className="group scroll-mt-24 rounded-xl border border-line bg-white"
     >
       <div className="flex items-center gap-2 px-3 py-2 sm:px-4">
         <button
@@ -51,7 +51,7 @@ export function LegalSectionEditor({
           aria-expanded={expanded}
           className="flex min-h-[44px] flex-1 items-center gap-2 text-left sm:min-h-0"
         >
-          <span className="w-7 shrink-0 text-xs tabular-nums text-brand-charcoal/45">
+          <span className="w-7 shrink-0 text-xs tabular-nums text-ink-faint">
             {String(index + 1).padStart(2, "0")}
           </span>
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-brand-charcoal">
@@ -71,9 +71,9 @@ export function LegalSectionEditor({
             </Badge>
           ) : null}
           {expanded ? (
-            <ChevronUp className="h-4 w-4 shrink-0 text-brand-charcoal/45" aria-hidden="true" />
+            <ChevronUp className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
           ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 text-brand-charcoal/45" aria-hidden="true" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-ink-faint" aria-hidden="true" />
           )}
         </button>
 
@@ -104,11 +104,11 @@ export function LegalSectionEditor({
       </div>
 
       {expanded ? (
-        <div className="space-y-4 border-t border-brand-charcoal/10 px-3 pb-4 pt-4 sm:px-4">
+        <div className="space-y-4 border-t border-line px-3 pb-4 pt-4 sm:px-4">
           <div>
             <label
               htmlFor={`legal-section-title-${section.id}`}
-              className="mb-1 block text-xs font-medium text-brand-charcoal/65"
+              className="mb-1 block text-xs font-medium text-ink-muted"
             >
               章节标题
             </label>
@@ -120,10 +120,10 @@ export function LegalSectionEditor({
               onChange={(event) => onChange({ title: event.target.value })}
               aria-invalid={titleInvalid || undefined}
               className={cn(
-                "w-full rounded-lg border bg-white px-3 py-2 text-sm text-brand-charcoal focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03]",
+                "w-full rounded-lg border bg-white px-3 py-2 text-sm text-brand-charcoal focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-surface-muted",
                 titleInvalid
-                  ? "border-amber-400 focus:border-amber-500 focus:ring-amber-500"
-                  : "border-brand-charcoal/20 focus:border-brand-primary focus:ring-brand-primary"
+                  ? "border-status-warning-fg focus:border-status-warning-fg focus:ring-status-warning-fg"
+                  : "border-line-strong focus:border-brand-primary focus:ring-brand-primary"
               )}
               placeholder="例如：一、个人信息处理者信息"
             />
@@ -133,11 +133,11 @@ export function LegalSectionEditor({
             <div className="mb-1 flex items-center justify-between gap-2">
               <label
                 htmlFor={`legal-section-body-${section.id}`}
-                className="block text-xs font-medium text-brand-charcoal/65"
+                className="block text-xs font-medium text-ink-muted"
               >
                 正文（空行分段，支持 **粗体** 与 [文字](链接)）
               </label>
-              <span className="text-[11px] tabular-nums text-brand-charcoal/45">
+              <span className="text-2xs tabular-nums text-ink-faint">
                 {section.body.length.toLocaleString("zh-CN")} 字
               </span>
             </div>
@@ -150,10 +150,10 @@ export function LegalSectionEditor({
               spellCheck={false}
               aria-invalid={bodyInvalid || undefined}
               className={cn(
-                "w-full resize-y rounded-lg border bg-white px-3 py-2.5 font-sans text-[14px] leading-7 text-brand-charcoal focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03]",
+                "w-full resize-y rounded-lg border bg-white px-3 py-2.5 font-sans text-sm leading-7 text-brand-charcoal focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-surface-muted",
                 bodyInvalid
-                  ? "border-amber-400 focus:border-amber-500 focus:ring-amber-500"
-                  : "border-brand-charcoal/20 focus:border-brand-primary focus:ring-brand-primary"
+                  ? "border-status-warning-fg focus:border-status-warning-fg focus:ring-status-warning-fg"
+                  : "border-line-strong focus:border-brand-primary focus:ring-brand-primary"
               )}
               placeholder="请输入章节正文，段落之间用空行分隔"
             />
@@ -165,7 +165,7 @@ export function LegalSectionEditor({
               variant="ghost"
               size="sm"
               onClick={onToggle}
-              className="text-brand-charcoal/60"
+              className="text-ink-muted"
             >
               收起
             </Button>

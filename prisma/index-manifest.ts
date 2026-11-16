@@ -128,4 +128,11 @@ export const concurrentIndexes: ConcurrentIndexDefinition[] = [
     table: "User",
     columns: '"status", "createdAt" DESC, "id" ASC',
   },
+  // 生日积分 cron 按 MM-DD 匹配生日：函数索引避免每日全表扫描。
+  {
+    name: "User_birthday_md_idx",
+    table: "User",
+    columns: `(to_char("birthday", 'MM-DD'))`,
+    where: '"birthday" IS NOT NULL',
+  },
 ];

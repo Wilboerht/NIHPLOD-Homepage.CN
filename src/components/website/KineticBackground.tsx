@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { AvatarImage } from "@/components/ui/AvatarImage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLayout } from "@/contexts/LayoutContext";
 import { isCurrentPage } from "@/lib/utils";
@@ -346,13 +347,11 @@ export function KineticBackground() {
                 {/* 头像圆：手机端 56px，sm+ 80px；整卡即点击热区 */}
                 <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-brand-charcoal/20 bg-white/30 sm:h-20 sm:w-20">
                   {user ? (
-                    /* 已登录：自定义头像，未自定义则用默认头像 */
-                    <Image
-                      src={user.avatar || "/images/default-avatar.png"}
+                    /* 已登录：自定义头像，未自定义或外链不可渲染时回退默认头像 */
+                    <AvatarImage
+                      src={user.avatar}
                       alt={user.nickname || "用户头像"}
-                      fill
-                      unoptimized
-                      className="rounded-full object-cover"
+                      className="rounded-full"
                     />
                   ) : (
                     /* 未登录：通用登录入口图标 */

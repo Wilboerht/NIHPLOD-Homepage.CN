@@ -105,24 +105,24 @@ function DiffBody({ oldBody, newBody }: { oldBody: string; newBody: string }) {
   const lines = useMemo(() => diffLines(oldBody, newBody), [oldBody, newBody]);
   if (!lines) {
     return (
-      <p className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-xs text-brand-charcoal/55">
+      <p className="rounded-lg bg-surface-muted p-3 text-xs text-ink-muted">
         章节内容过长，已省略逐行对比。可分别查看版本内容。
       </p>
     );
   }
   return (
-    <div className="max-h-80 overflow-auto rounded-lg border border-brand-charcoal/10 bg-white p-3 font-mono text-[12px] leading-6">
+    <div className="max-h-80 overflow-auto rounded-lg border border-line bg-white p-3 font-mono text-xs leading-6">
       {lines.map((line, index) => (
         <div
           key={index}
           className={cn(
             "whitespace-pre-wrap break-words px-1",
-            line.type === "add" && "bg-emerald-50 text-emerald-800",
-            line.type === "remove" && "bg-red-50 text-red-700 line-through decoration-red-300",
-            line.type === "same" && "text-brand-charcoal/60"
+            line.type === "add" && "bg-status-success-soft text-status-success-strong",
+            line.type === "remove" && "bg-status-danger-soft text-status-danger-strong line-through decoration-red-300",
+            line.type === "same" && "text-ink-muted"
           )}
         >
-          <span className="mr-2 select-none text-brand-charcoal/30">
+          <span className="mr-2 select-none text-ink-faint">
             {line.type === "add" ? "+" : line.type === "remove" ? "-" : " "}
           </span>
           {line.text || "\u00a0"}
@@ -185,14 +185,14 @@ export function LegalVersionDiff({
     <Modal open={open} onClose={onClose} title="版本对比" size="xl">
       {!baseContent || !targetContent ? null : (
         <div className="space-y-5">
-          <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-4 text-sm text-brand-charcoal/70">
+          <div className="rounded-xl border border-line bg-surface-subtle p-4 text-sm text-brand-charcoal/70">
             <p>
-              <span className="text-brand-charcoal/50">基准：</span>
+              <span className="text-ink-muted">基准：</span>
               {baseLabel}
               {baseMeta ? ` · ${formatVersionMeta(baseMeta)}` : ""}
             </p>
             <p>
-              <span className="text-brand-charcoal/50">对比：</span>
+              <span className="text-ink-muted">对比：</span>
               {targetLabel}
               {targetMeta ? ` · ${formatVersionMeta(targetMeta)}` : ""}
             </p>
@@ -214,7 +214,7 @@ export function LegalVersionDiff({
                 </Badge>
               ) : null}
             </div>
-            <p className="mt-2 text-xs text-brand-charcoal/50">
+            <p className="mt-2 text-xs text-ink-muted">
               {changedCount > 0 ? `${changedCount} 个章节有变化` : "两个版本内容一致"}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -236,14 +236,14 @@ export function LegalVersionDiff({
 
           <div className="space-y-2">
             {visibleItems.length === 0 ? (
-              <p className="rounded-xl border border-brand-charcoal/10 bg-white p-6 text-center text-sm text-brand-charcoal/55">
+              <p className="rounded-xl border border-line bg-white p-6 text-center text-sm text-ink-muted">
                 两个版本没有章节变化
               </p>
             ) : null}
             {visibleItems.map((item) => {
               const isOpen = !collapsed.has(item.id);
               return (
-                <div key={item.id} className="rounded-xl border border-brand-charcoal/10 bg-white">
+                <div key={item.id} className="rounded-xl border border-line bg-white">
                   <div className="flex items-center gap-2 px-3 py-2">
                     <Badge variant={CHANGE_BADGE[item.change]} size="sm">
                       {CHANGE_LABEL[item.change]}
@@ -258,7 +258,7 @@ export function LegalVersionDiff({
                     ) : null}
                   </div>
                   {isOpen && item.change !== "unchanged" ? (
-                    <div className="border-t border-brand-charcoal/10 p-3">
+                    <div className="border-t border-line p-3">
                       <DiffBody oldBody={item.oldBody} newBody={item.newBody} />
                     </div>
                   ) : null}

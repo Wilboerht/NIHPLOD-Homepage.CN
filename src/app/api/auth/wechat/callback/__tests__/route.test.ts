@@ -66,12 +66,21 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
+const mockAuditNicknameBlocked = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/lib/nickname-audit", () => ({
+  auditNicknameBlocked: (...args: unknown[]) => mockAuditNicknameBlocked(...args),
+}));
+
 import { prisma } from "@/lib/prisma";
+import { getWechatUserInfo } from "@/lib/wechat";
+import { signWechatExchangeToken } from "@/lib/jwt";
 import { WECHAT_NONCE_COOKIE_NAME } from "@/types/auth";
 import { GET } from "@/app/api/auth/wechat/callback/route";
 
 const mockOAuthClientFindMany = prisma.oAuthClient.findMany as ReturnType<typeof vi.fn>;
 const mockUserFindFirst = prisma.user.findFirst as ReturnType<typeof vi.fn>;
+const mockGetWechatUserInfo = getWechatUserInfo as ReturnType<typeof vi.fn>;
+const mockSignWechatExchangeToken = signWechatExchangeToken as ReturnType<typeof vi.fn>;
 
 const NONCE = "nonce-1";
 const SUBSITE = "https://sub.example.com";
@@ -151,6 +160,30 @@ describe("GET /api/auth/wechat/callback 子站 exchange token 重定向", () => 
     const hash = new URLSearchParams(location.hash.slice(1));
     expect(hash.get("wechat_exchange_token")).toBe("exchange-token");
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+  });
+
+  it("第三方昵称命中违规词：不写入 exchange token，并写审计", async () => {
+    mockUserFindFirst.mockResolvedValue(null);
+    mockGetWechatUserInfo.mockResolvedValueOnce({
+      openid: "openid-123",
+      unionid: "unionid-123",
+      nickname: "色情",
+      headimgurl: "https://example.com/avatar.png",
+    });
+
+    const res = await GET(createRequest());
+
+    expect(res.status).toBe(302);
+    expect(mockSignWechatExchangeToken).toHaveBeenCalledWith(
+      expect.objectContaining({ nickname: undefined })
+    );
+    expect(mockAuditNicknameBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "wechat_callback",
+        reason: "banned",
+        category: "porn",
+      })
+    );
   });
 
   it("官网场景（非子站）：不设 exchange token，无需 Referrer-Policy", async () => {

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="默认头像">
+  <defs>
+    <clipPath id="avatar-circle">
+      <circle cx="64" cy="64" r="64" />
+    </clipPath>
+    <radialGradient id="avatar-bg" cx="36%" cy="24%" r="95%">
+      <stop offset="0" stop-color="#FDFBF6" />
+      <stop offset="1" stop-color="#EEE7DB" />
+    </radialGradient>
+    <linearGradient id="avatar-fg" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#C6D4DE" />
+      <stop offset="1" stop-color="#A9BECC" />
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#avatar-circle)">
+    <rect width="128" height="128" fill="url(#avatar-bg)" />
+    <circle cx="64" cy="64" r="61.5" fill="none" stroke="#E4DFD9" stroke-width="1.5" />
+    <circle cx="64" cy="49" r="19" fill="url(#avatar-fg)" />
+    <path d="M17 128c4-25 21-41 47-41s43 16 47 41Z" fill="url(#avatar-fg)" />
+  </g>
+</svg>

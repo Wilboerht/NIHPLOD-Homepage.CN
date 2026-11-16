@@ -10,7 +10,7 @@
  *
  * Body：
  *   userId: string      （必填，官网 User.id——子站本地用户 id 与 SSO sub 同源）
- *   points: number      （必填，整数 1..10，单次发放分值）
+ *   points: number      （必填，整数 1..3，单次发放分值）
  *   reference: string   （必填，幂等键，如 checkin:{userId}:{date}；重复上报返回 duplicated: true）
  *   note?: string       （可选，备注，如 "打卡奖励·连续第 3 天"）
  *
@@ -45,7 +45,7 @@ const grantSchema = z.object({
     .number()
     .int("积分必须为整数")
     .min(1, "积分必须为正数")
-    .max(10, "单次发放积分超出允许范围"),
+    .max(3, "单次发放积分超出打卡规则上限（3 分）"),
   reference: z.string().min(1, "缺少幂等键").max(128),
   note: z.string().max(500).optional(),
 });
@@ -226,28 +226,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. 入账（事务内写幂等流水 + 更新余额，reference 幂等），返回最新可用余额
+    // 6. 入账（事务内写幂等流水 + 更新余额 + 审计），返回最新可用余额
     const result = await prisma.$transaction(async (tx) => {
       const grant = await grantCheckinPoints(tx, { userId, amount: points, reference, note });
       const balance = await getPointBalanceView(tx, userId);
+      const audited = await auditInternalPoints({
+        action: "points_internal_grant",
+        targetType: "point_ledger",
+        targetId: reference,
+        userId,
+        project: config.project,
+        key,
+        request,
+        tx,
+        detail: {
+          points,
+          reference,
+          duplicated: grant.duplicated,
+          granted: grant.duplicated ? 0 : grant.amount,
+          available: balance.available,
+        },
+      });
+      if (!audited) {
+        // 审计不可用时回滚入账，避免出现无审计的资金类变更。
+        throw new Error("POINTS_AUDIT_UNAVAILABLE");
+      }
       return { ...grant, available: balance.available };
-    });
-
-    await auditInternalPoints({
-      action: "points_internal_grant",
-      targetType: "point_ledger",
-      targetId: reference,
-      userId,
-      project: config.project,
-      key,
-      request,
-      detail: {
-        points,
-        reference,
-        duplicated: result.duplicated,
-        granted: result.duplicated ? 0 : result.amount,
-        available: result.available,
-      },
     });
 
     return NextResponse.json({

@@ -157,7 +157,12 @@ export function notifyPointInvariantIssues(result: PointInvariantResult): void {
   const samples = result.issues.slice(0, 5).map((issue) => `- ${issue.kind} · ${issue.userId}`);
   notifyWithCooldown({
     ruleKey: "point-invariants",
-    count: result.issues.length + result.negativeBalances + result.deletedUsersWithRemaining,
+    count:
+      result.issues.length +
+      result.negativeBalances +
+      result.deletedUsersWithRemaining +
+      result.legacyUnreleasedGrants +
+      result.legacyMissingExpiryGrants,
     cooldownMs: 6 * HOUR,
     type: "admin",
     title: "积分账本对账异常",
@@ -165,6 +170,8 @@ export function notifyPointInvariantIssues(result: PointInvariantResult): void {
       `- 已检查账户：${result.checked}`,
       `- 负余额账户：${result.negativeBalances}`,
       `- 已注销但仍有积分：${result.deletedUsersWithRemaining}`,
+      `- 历史未释放流水：${result.legacyUnreleasedGrants}`,
+      `- 历史缺少过期时间流水：${result.legacyMissingExpiryGrants}`,
       `- 对账异常：${result.issues.length}${result.truncated ? "（已截断）" : ""}`,
       ...(samples.length > 0 ? ["", "异常样例：", ...samples] : []),
       "- 请运行 `npm run points:check-invariants` 查看并人工处理",

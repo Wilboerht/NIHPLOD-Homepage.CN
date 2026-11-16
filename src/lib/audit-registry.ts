@@ -266,6 +266,7 @@ const HIGH_ACTIONS = new Set([
 
 const MEDIUM_ACTIONS = new Set([
   "user_profile_admin_update",
+  "user_nickname_blocked",
   "user_address_admin_create",
   "user_address_admin_update",
   "user_address_admin_delete",

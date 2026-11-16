@@ -28,7 +28,7 @@ export function StatStrip({ items, className, layout = "strip" }: StatStripProps
       className={cn(
         "grid gap-x-4 gap-y-4",
         layout === "strip"
-          ? "grid-cols-2 sm:auto-cols-fr sm:grid-flow-col sm:gap-x-0 sm:gap-y-0 sm:divide-x sm:divide-brand-charcoal/10"
+          ? "grid-cols-2 sm:auto-cols-fr sm:grid-flow-col sm:gap-x-0 sm:gap-y-0 sm:divide-x sm:divide-line"
           : "grid-cols-2",
         items.length === 1 && "grid-cols-1",
         className
@@ -39,22 +39,20 @@ export function StatStrip({ items, className, layout = "strip" }: StatStripProps
           key={item.label}
           className={cn("min-w-0", layout === "strip" && "sm:px-4 sm:first:pl-0 sm:last:pr-0")}
         >
-          <dt className="flex items-center gap-1.5 text-xs text-brand-charcoal/65">
+          <dt className="flex items-center gap-1.5 text-xs text-ink-muted">
             {item.icon && <span className="shrink-0">{item.icon}</span>}
             <span className="truncate">{item.label}</span>
           </dt>
           <dd
             className={cn(
-              "mt-1 text-xl font-semibold tabular-nums tracking-tight",
-              item.muted ? "text-brand-charcoal/65" : "text-brand-charcoal"
+              "mt-1 font-num text-xl font-semibold tabular-nums tracking-tight",
+              item.muted ? "text-ink-muted" : "text-brand-charcoal"
             )}
           >
             {item.value}
           </dd>
           {item.description && (
-            <dd className="mt-0.5 truncate text-[11px] text-brand-charcoal/65">
-              {item.description}
-            </dd>
+            <dd className="mt-0.5 truncate text-2xs text-ink-muted">{item.description}</dd>
           )}
         </div>
       ))}

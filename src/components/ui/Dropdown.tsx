@@ -149,7 +149,7 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
           }
         }}
         onKeyDown={handleTriggerKeyDown}
-        className="inline-flex"
+        className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-2"
       >
         {trigger}
       </button>
@@ -160,7 +160,7 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
           role="menu"
           onKeyDown={handleMenuKeyDown}
           className={cn(
-            "absolute z-[9998] mt-1 min-w-[160px] overflow-hidden rounded-lg border border-brand-charcoal/10 bg-white py-1 shadow-xl",
+            "absolute z-dropdown mt-1 min-w-[160px] overflow-hidden rounded-surface border border-line bg-white py-1 shadow-popover",
             align === "end" ? "right-0" : "left-0"
           )}
         >
@@ -169,9 +169,9 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
               <div key={`divider-${index}`}>
                 {/* divider 带 label 时渲染为菜单头部信息块 */}
                 {item.label !== undefined && item.label !== null && (
-                  <div className="px-3 py-2 text-xs text-brand-charcoal/65">{item.label}</div>
+                  <div className="px-3 py-2 text-xs text-ink-muted">{item.label}</div>
                 )}
-                <div role="separator" className="my-1 border-t border-brand-charcoal/10" />
+                <div role="separator" className="my-1 border-t border-line" />
               </div>
             ) : (
               <button
@@ -183,11 +183,11 @@ export function Dropdown({ trigger, items, align = "end", className }: DropdownP
                 onClick={() => handleItemClick(item)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={cn(
-                  "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
-                  activeIndex === index && "bg-brand-charcoal/[0.06]",
+                  "flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors sm:min-h-9",
+                  activeIndex === index && "bg-surface-hover",
                   item.danger
-                    ? "text-red-600 hover:bg-red-50"
-                    : "text-brand-charcoal/80 hover:bg-brand-charcoal/[0.06]",
+                    ? "text-status-danger-fg hover:bg-status-danger-soft"
+                    : "text-brand-charcoal/80 hover:bg-surface-hover",
                   item.disabled && "cursor-not-allowed opacity-40"
                 )}
               >

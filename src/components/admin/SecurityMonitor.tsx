@@ -26,7 +26,7 @@ function outcomeBadge(event: MonitorEventView) {
 function EventList({ events, emptyText }: { events: MonitorEventView[]; emptyText: string }) {
   if (events.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-xl bg-emerald-50/70 px-3 py-3 text-sm text-emerald-700">
+      <div className="flex items-center gap-2 rounded-xl bg-status-success-soft/70 px-3 py-3 text-sm text-status-success-strong">
         <ShieldCheck className="h-4 w-4 shrink-0" />
         {emptyText}
       </div>
@@ -39,11 +39,11 @@ function EventList({ events, emptyText }: { events: MonitorEventView[]; emptyTex
         <li key={event.id}>
           <Link
             href={event.href}
-            className="group -mx-1 flex items-start gap-2.5 rounded-lg px-1 py-2.5 transition-colors hover:bg-brand-charcoal/[0.03]"
+            className="group -mx-1 flex items-start gap-2.5 rounded-lg px-1 py-2.5 transition-colors hover:bg-surface-muted"
           >
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-charcoal/[0.04] text-brand-charcoal/65">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-muted">
               {event.kind === "auth" ? (
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                <AlertTriangle className="h-3.5 w-3.5 text-status-warning-fg" />
               ) : event.kind === "funds" || event.kind === "spent" ? (
                 <Wallet className="h-3.5 w-3.5" />
               ) : (
@@ -63,7 +63,7 @@ function EventList({ events, emptyText }: { events: MonitorEventView[]; emptyTex
                   </span>
                 )}
               </span>
-              <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-brand-charcoal/65">
+              <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-muted">
                 <span className="truncate">{event.actor}</span>
                 {event.actorRole && <span className="shrink-0">· {event.actorRole}</span>}
                 {event.target && (
@@ -78,7 +78,7 @@ function EventList({ events, emptyText }: { events: MonitorEventView[]; emptyTex
                 </time>
               </span>
             </span>
-            <ChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-brand-charcoal/40 transition-transform group-hover:translate-x-0.5" />
+            <ChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-ink-faint transition-transform group-hover:translate-x-0.5" />
           </Link>
         </li>
       ))}
@@ -92,16 +92,16 @@ function StatRow({
   items: { label: string; value: number; tone?: "danger" | "warning" }[];
 }) {
   return (
-    <dl className="mb-3 grid grid-cols-3 gap-2 rounded-xl bg-brand-charcoal/[0.03] px-3 py-2.5">
+    <dl className="mb-3 grid grid-cols-3 gap-2 rounded-xl bg-surface-muted px-3 py-2.5">
       {items.map((item) => (
         <div key={item.label} className="min-w-0">
-          <dt className="truncate text-[11px] text-brand-charcoal/65">{item.label}</dt>
+          <dt className="truncate text-2xs text-ink-muted">{item.label}</dt>
           <dd
             className={
               item.value > 0 && item.tone === "danger"
-                ? "mt-0.5 text-lg font-semibold tabular-nums text-red-600"
+                ? "mt-0.5 text-lg font-semibold tabular-nums text-status-danger-fg"
                 : item.value > 0 && item.tone === "warning"
-                  ? "mt-0.5 text-lg font-semibold tabular-nums text-amber-700"
+                  ? "mt-0.5 text-lg font-semibold tabular-nums text-status-warning-strong"
                   : "mt-0.5 text-lg font-semibold tabular-nums text-brand-charcoal"
             }
           >
@@ -131,7 +131,7 @@ function MonitorCard({
   viewAllLabel: string;
 }) {
   return (
-    <section className="rounded-xl bg-brand-charcoal/[0.02] p-3">
+    <section className="rounded-xl bg-surface-subtle p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-brand-charcoal">
           {icon}
@@ -142,7 +142,7 @@ function MonitorCard({
         </Link>
       </div>
       <StatRow items={stats} />
-      <div className="mb-2 flex items-center justify-between text-[11px] text-brand-charcoal/65">
+      <div className="mb-2 flex items-center justify-between text-2xs text-ink-muted">
         <span>近 24 小时</span>
         <span>{group.total} 条</span>
       </div>
@@ -166,11 +166,11 @@ export function SecurityMonitor({
         summary="监控数据加载失败"
         modalSize="lg"
       >
-        <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-3 text-sm text-amber-800">
+        <div className="flex items-start gap-2 rounded-xl bg-status-warning-soft px-3 py-3 text-sm text-status-warning-strong">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p>监控数据加载失败</p>
-            <p className="mt-1 text-xs text-amber-700/80">请刷新页面，或前往审计日志查看。</p>
+            <p className="mt-1 text-xs text-status-warning-strong/80">请刷新页面，或前往审计日志查看。</p>
           </div>
         </div>
       </DashboardModalCard>

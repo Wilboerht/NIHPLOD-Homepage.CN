@@ -165,7 +165,7 @@ export function ContentParagraph({
       elements.push(
         <div
           key={index}
-          className="rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-4 text-[15px] text-brand-charcoal/90"
+          className="rounded-lg border border-line bg-surface-muted p-4 text-[15px] text-brand-charcoal/90"
         >
           <strong className="font-bold text-brand-charcoal">重要提示：</strong>
           <span>{renderTextWithLinks(trimmed.replace(HIGHLIGHT_PREFIX_RE, ""))}</span>

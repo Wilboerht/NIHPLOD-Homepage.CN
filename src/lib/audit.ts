@@ -84,6 +84,8 @@ export type AuditAction =
   | "user_identity_unbind"
   | "user_identity_bind"
   | "user_profile_admin_update"
+  | "user_nickname_blocked"
+  | "user_nickname_update"
   | "user_address_admin_create"
   | "user_address_admin_update"
   | "user_address_admin_delete"
@@ -307,6 +309,8 @@ export const AUDIT_ACTIONS = [
   "user_identity_unbind",
   "user_identity_bind",
   "user_profile_admin_update",
+  "user_nickname_blocked",
+  "user_nickname_update",
   "user_address_admin_create",
   "user_address_admin_update",
   "user_address_admin_delete",

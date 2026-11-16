@@ -28,9 +28,9 @@ export function AdminAccessDenied({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
-      <ShieldAlert className="h-12 w-12 text-brand-charcoal/65" />
+      <ShieldAlert className="h-12 w-12 text-ink-muted" />
       <p className="text-lg font-medium text-brand-charcoal/70">无权访问</p>
-      <p className="text-sm text-brand-charcoal/65">{text}</p>
+      <p className="text-sm text-ink-muted">{text}</p>
     </div>
   );
 }

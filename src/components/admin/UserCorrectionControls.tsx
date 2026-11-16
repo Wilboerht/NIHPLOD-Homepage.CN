@@ -68,16 +68,22 @@ function ProfileCorrectionModal({
   const [saving, setSaving] = useState(false);
   const save = async () => {
     if (reason.trim().length < 2) return toast.error("请填写操作原因或工单号");
+    // 只提交实际变更的字段：避免把存量头像（历史社交外链/本地相对路径）回传触发校验
+    const payload: Record<string, unknown> = { reason: reason.trim() };
+    if (nickname.trim() !== (user.nickname ?? "")) payload.nickname = nickname.trim();
+    if (avatar.trim() !== (user.avatar ?? "")) payload.avatar = avatar.trim();
+    if ((birthday || null) !== (user.birthday?.slice(0, 10) ?? null)) {
+      payload.birthday = birthday || null;
+    }
+    if ((gender || null) !== (user.gender ?? null)) payload.gender = gender || null;
+    if (Object.keys(payload).length === 1) {
+      toast.info("未检测到资料变更");
+      return;
+    }
     setSaving(true);
     try {
       const result = await runWithStepUp(() =>
-        apiPatch(`/api/admin/users/${user.id}/profile`, {
-          nickname: nickname.trim(),
-          avatar: avatar.trim(),
-          birthday: birthday || null,
-          gender: gender || null,
-          reason: reason.trim(),
-        })
+        apiPatch(`/api/admin/users/${user.id}/profile`, payload)
       );
       if (result === null) return;
       toast.success("用户资料已更新");
@@ -190,22 +196,22 @@ export function AddressCorrectionPanel({
   };
   return (
     <>
-      <div className="flex justify-end border-b border-brand-charcoal/10 px-4 py-3">
+      <div className="flex justify-end border-b border-line px-4 py-3">
         <Button size="sm" disabled={!canReadSensitive} onClick={() => setEditing(null)}>
           新增地址
         </Button>
       </div>
       {!canReadSensitive && (
-        <p className="px-4 py-3 text-xs text-amber-700">
+        <p className="px-4 py-3 text-xs text-status-warning-strong">
           地址纠错需要完整手机号与地址查看权限，请先完成敏感信息访问验证。
         </p>
       )}
-      <div className="divide-y divide-brand-charcoal/10">
+      <div className="divide-y divide-line">
         {addresses.map((address) => (
           <div key={address.id} className="px-4 py-3">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-medium text-brand-charcoal">{address.recipient}</p>
-              <span className="text-xs text-brand-charcoal/65">{address.phone}</span>
+              <span className="text-xs text-ink-muted">{address.phone}</span>
               {address.isDefault && <span className="text-xs text-brand-primary">默认地址</span>}
               <div className="ml-auto flex gap-2">
                 <Button
@@ -219,7 +225,7 @@ export function AddressCorrectionPanel({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-red-600"
+                  className="text-status-danger-fg"
                   disabled={!canReadSensitive}
                   onClick={() => setDeleting(address)}
                 >
@@ -498,7 +504,7 @@ function RecipientModal({
   };
   return (
     <Modal open onClose={onClose} title="修改兑换收货快照" size="lg" closeOnBackdrop={false}>
-      <p className="mb-4 text-xs text-brand-charcoal/65">
+      <p className="mb-4 text-xs text-ink-muted">
         仅待履约订单可修改；不会改动地址簿，也不会影响已发货运单。
       </p>
       <div className="grid gap-4 sm:grid-cols-2">

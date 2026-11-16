@@ -158,7 +158,7 @@ describe("LegalDocumentEditor", () => {
 
     await screen.findByText("服务条款 · 法务文档");
     fireEvent.click(screen.getByRole("button", { name: "丢弃草稿" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "丢弃草稿" }));
 
     expect(await screen.findByText("草稿已被其他管理员修改，正在刷新最新内容")).toBeInTheDocument();

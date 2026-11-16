@@ -4,11 +4,14 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { RecentMessagesList } from "@/components/admin/RecentMessagesList";
-
-const push = vi.fn();
+import { ToastProvider } from "@/components/ui/Toast";
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
+vi.mock("@/lib/api-client", () => ({
+  apiPatch: vi.fn().mockResolvedValue({}),
 }));
 
 const messages = [
@@ -22,25 +25,33 @@ const messages = [
   },
 ];
 
+function renderList() {
+  return render(
+    <ToastProvider>
+      <RecentMessagesList messages={messages} />
+    </ToastProvider>
+  );
+}
+
 describe("RecentMessagesList", () => {
-  it("点击最近留言直接打开详情弹窗，而不是跳转页面", () => {
-    render(<RecentMessagesList messages={messages} />);
+  it("点击最近留言就地展开详情，而不是跳转页面", () => {
+    renderList();
 
     fireEvent.click(screen.getByRole("button", { name: "查看 张三 的留言" }));
 
-    const dialog = screen.getByRole("dialog", { name: "留言详情" });
-    expect(within(dialog).getByText("张三")).toBeInTheDocument();
-    expect(within(dialog).getByText("138****8000")).toBeInTheDocument();
-    expect(within(dialog).getByText("想咨询一下产品的使用方法。")).toBeInTheDocument();
-    expect(within(dialog).getByText("未读")).toBeInTheDocument();
+    const region = screen.getByRole("region", { name: "张三 的留言详情" });
+    expect(within(region).getByText("张三")).toBeInTheDocument();
+    expect(within(region).getByText("138****8000")).toBeInTheDocument();
+    expect(within(region).getByText("想咨询一下产品的使用方法。")).toBeInTheDocument();
+    expect(within(region).getByText("已读")).toBeInTheDocument();
   });
 
-  it("弹窗内可前往留言管理", () => {
-    render(<RecentMessagesList messages={messages} />);
+  it("展开后可前往留言管理", () => {
+    renderList();
 
     fireEvent.click(screen.getByRole("button", { name: "查看 张三 的留言" }));
-    fireEvent.click(screen.getByRole("button", { name: "前往留言管理" }));
+    const link = screen.getByRole("link", { name: "前往留言管理" });
 
-    expect(push).toHaveBeenCalledWith("/admin/messages");
+    expect(link).toHaveAttribute("href", "/admin/messages");
   });
 });

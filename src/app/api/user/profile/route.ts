@@ -9,6 +9,12 @@ import { prisma } from "@/lib/prisma";
 import { verifyUserAuth, withUserAuth } from "@/lib/auth";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { isAllowedAvatarUrl, updateProfileSchema } from "@/lib/profile-schema";
+import {
+  checkNicknameContent,
+  NICKNAME_BANNED_MESSAGE,
+  NICKNAME_INVALID_CHARS_MESSAGE,
+} from "@/lib/nickname-policy";
+import { auditNicknameBlocked, auditNicknameChange } from "@/lib/nickname-audit";
 import { processAndSaveImage, validateUploadServer, validateFileBuffer } from "@/lib/upload";
 import { rateLimit } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
@@ -100,6 +106,45 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
 
   try {
     const body = await readJsonBody(request, BODY_LIMITS.authJson);
+
+    // 昵称内容风控：在 schema 校验前显式检查，便于写审计/告警并返回明确错误码
+    const rawNickname = (body as { nickname?: unknown } | null)?.nickname;
+    if (typeof rawNickname === "string" && rawNickname.trim()) {
+      const nicknameCheck = checkNicknameContent(rawNickname);
+      if (!nicknameCheck.ok) {
+        const nicknameLimit = await rateLimit(`user:${payload.id}`, "nickname-change");
+        if (!nicknameLimit.success) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: { code: "RATE_LIMITED", message: "昵称修改过于频繁，请稍后再试" },
+            },
+            { status: 429 }
+          );
+        }
+        await auditNicknameBlocked({
+          request,
+          userId: payload.id,
+          source: "profile_update",
+          reason: nicknameCheck.reason,
+          category: nicknameCheck.category,
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "NICKNAME_REJECTED",
+              message:
+                nicknameCheck.reason === "invalid_chars"
+                  ? NICKNAME_INVALID_CHARS_MESSAGE
+                  : NICKNAME_BANNED_MESSAGE,
+            },
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const result = updateProfileSchema.safeParse(body);
     if (!result.success) {
       return NextResponse.json(
@@ -113,14 +158,6 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
 
     const { nickname, avatar, birthday, gender } = result.data;
 
-    // 头像只允许自有域名/OSS/站内路径，禁止任意外链（防追踪像素与子站加载风险）
-    if (avatar && !isAllowedAvatarUrl(avatar)) {
-      return NextResponse.json(
-        { success: false, error: { code: "INVALID_AVATAR", message: "头像地址不合法" } },
-        { status: 400 }
-      );
-    }
-
     // 更新前读取旧值，用于判断资料是否实际变更（无实际变更不触发 webhook）
     const previous = await prisma.user.findUnique({
       where: { id: payload.id },
@@ -131,6 +168,31 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
       return NextResponse.json(
         { success: false, error: { code: "USER_NOT_FOUND", message: "用户不存在" } },
         { status: 404 }
+      );
+    }
+
+    // 昵称实际变更才消耗改名配额（避免客户端全量回写未变昵称时误伤其他字段保存）
+    const nicknameChanged = nickname !== undefined && (nickname || null) !== previous.nickname;
+    if (nicknameChanged) {
+      const nicknameLimit = await rateLimit(`user:${payload.id}`, "nickname-change");
+      if (!nicknameLimit.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: { code: "RATE_LIMITED", message: "昵称修改过于频繁，请稍后再试" },
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    // 头像只允许自有域名/OSS/站内路径，禁止任意外链（防追踪像素与子站加载风险）。
+    // 未变更的存量值（历史微信/抖音外链）放行回显，避免客户端 read-modify-write 被误拒。
+    const avatarChanged = avatar !== undefined && (avatar || null) !== previous.avatar;
+    if (avatarChanged && avatar && !isAllowedAvatarUrl(avatar)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_AVATAR", message: "头像地址不合法" } },
+        { status: 400 }
       );
     }
 
@@ -212,6 +274,16 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
     // 资料变更后立即失效缓存：{ expire: 0 } 表示下一次请求阻塞重取（不返回陈旧数据），
     // 保证前端保存后紧跟的 refreshUser 能读到新值（"max" 会先把旧资料再服务一次）
     revalidateTag(USER_PROFILE_TAG, { expire: 0 });
+
+    if (nicknameChanged) {
+      await auditNicknameChange({
+        request,
+        userId: payload.id,
+        oldNickname: previous.nickname,
+        newNickname: user.nickname,
+        source: "profile_update",
+      });
+    }
 
     // 昵称/头像/生日/性别有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
     // 事件（fire-and-forget：after 注册保证响应返回后执行，失败不影响本次响应）

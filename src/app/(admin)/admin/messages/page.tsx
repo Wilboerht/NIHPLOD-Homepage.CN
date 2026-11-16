@@ -422,10 +422,10 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
       />
 
       {/* 工具栏：搜索 + 筛选，与用户管理保持一致的单行布局 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative w-full md:w-64 lg:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
             <Input
               aria-label="搜索姓名、完整手机号或留言内容"
               placeholder="搜索姓名 / 完整手机号 / 内容"
@@ -441,7 +441,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                   update({ search: null }, { replace: true });
                 }}
                 aria-label="清除搜索"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -451,7 +451,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
           <div
             role="group"
             aria-label="按阅读状态筛选"
-            className="flex shrink-0 items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+            className="flex shrink-0 items-center gap-1 rounded-xl bg-surface-muted p-1"
           >
             {STATUS_TABS.map((t) => {
               const active = statusFilter === t.key;
@@ -465,7 +465,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                     "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
                     active
                       ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                      : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                      : "text-ink-muted hover:bg-white/70 hover:text-brand-charcoal"
                   )}
                 >
                   {t.label}
@@ -474,7 +474,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                       "min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs tabular-nums",
                       active
                         ? "bg-brand-primary/10 text-brand-primary"
-                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
+                        : "bg-surface-hover text-ink-muted"
                     )}
                   >
                     {tabCounts[t.key]}
@@ -554,7 +554,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
               <Button
                 size="sm"
                 variant="outline"
-                className="text-red-600 hover:bg-red-50"
+                className="text-status-danger-fg hover:bg-status-danger-soft"
                 onClick={() => setShowBatchDeleteConfirm(true)}
                 disabled={batchActionLoading !== null}
               >
@@ -565,7 +565,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
           <button
             type="button"
             onClick={selection.clear}
-            className="ml-auto text-sm text-brand-charcoal/65 hover:text-brand-charcoal/80"
+            className="ml-auto text-sm text-ink-muted hover:text-brand-charcoal/80"
           >
             取消选择
           </button>
@@ -577,12 +577,12 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
+              <div key={i} className="h-28 animate-pulse rounded-2xl bg-surface-muted" />
             ))}
           </div>
         ) : loadError ? (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center">
-            <p className="text-sm text-red-500">加载失败，请重试</p>
+          <div className="rounded-card border border-line bg-white py-10 text-center">
+            <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
             <Button
               variant="outline"
               size="sm"
@@ -596,15 +596,15 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
             </Button>
           </div>
         ) : messages.length === 0 ? (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10">
+          <div className="rounded-card border border-line bg-white py-10">
             <Empty title="暂无留言" />
           </div>
         ) : (
-          <div className="divide-y divide-brand-charcoal/10 rounded-2xl border border-brand-charcoal/10 bg-white">
+          <div className="divide-y divide-line rounded-card border border-line bg-white">
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={cn("p-4", !message.read && "bg-brand-primary/[0.03]")}
+                className={cn("p-4", !message.read && "bg-brand-primary/5")}
               >
                 <div className="flex items-start gap-3">
                   {canSelect && (
@@ -614,7 +614,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                         checked={selection.isSelected(message)}
                         onChange={() => selection.toggle(message)}
                         aria-label={`选择 ${message.name} 的留言`}
-                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        className="h-4 w-4 rounded border-line-strong"
                       />
                     </label>
                   )}
@@ -624,7 +624,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                         <p className="truncate text-sm font-medium text-brand-charcoal">
                           {message.name}
                         </p>
-                        <p className="truncate text-xs text-brand-charcoal/65">{message.phone}</p>
+                        <p className="truncate text-xs text-ink-muted">{message.phone}</p>
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                         {message.type && (
@@ -652,8 +652,8 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                         {message.content}
                       </p>
                     </button>
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-                      <span className="flex items-center gap-1 text-xs text-brand-charcoal/65">
+                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-2">
+                      <span className="flex items-center gap-1 text-xs text-ink-muted">
                         <Clock className="h-3.5 w-3.5" />
                         {formatRelativeTime(message.createdAt)}
                       </span>
@@ -697,12 +697,12 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
       </div>
 
       {/* 留言列表（桌面端表格） */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
         <table className="w-full min-w-[960px] text-sm">
           <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+            <tr className="border-b border-line bg-surface-subtle text-left text-xs font-medium text-ink-muted">
               {canSelect && (
-                <th scope="col" className="w-10 px-4 py-3 font-normal">
+                <th scope="col" className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={isAllSelected}
@@ -711,31 +711,31 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                     }}
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     aria-label="全选本页留言"
-                    className="h-4 w-4 rounded border-brand-charcoal/20"
+                    className="h-4 w-4 rounded border-line-strong"
                   />
                 </th>
               )}
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="px-4 py-3">
                 留言人
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="px-4 py-3">
                 类型
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="px-4 py-3">
                 内容
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="px-4 py-3">
                 状态
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="px-4 py-3">
                 提交时间
               </th>
-              <th scope="col" className="px-4 py-3 font-normal">
+              <th scope="col" className="px-4 py-3">
                 操作
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-charcoal/10">
+          <tbody className="divide-y divide-line">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={canSelect ? 7 : 6} />
@@ -743,7 +743,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
             ) : loadError ? (
               <tr>
                 <td colSpan={canSelect ? 7 : 6} className="px-4 py-10 text-center">
-                  <p className="text-sm text-red-500">加载失败，请重试</p>
+                  <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -770,8 +770,8 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                 <tr
                   key={message.id}
                   className={cn(
-                    "transition-colors hover:bg-brand-charcoal/[0.03]",
-                    !message.read && "bg-brand-primary/[0.03]"
+                    "transition-colors hover:bg-surface-muted",
+                    !message.read && "bg-brand-primary/5"
                   )}
                 >
                   {canSelect && (
@@ -781,7 +781,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                         checked={selection.isSelected(message)}
                         onChange={() => selection.toggle(message)}
                         aria-label={`选择 ${message.name} 的留言`}
-                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        className="h-4 w-4 rounded border-line-strong"
                       />
                     </td>
                   )}
@@ -791,7 +791,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                         className={cn(
                           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
                           message.read
-                            ? "bg-brand-charcoal/[0.06] text-brand-charcoal/70"
+                            ? "bg-surface-hover text-brand-charcoal/70"
                             : "bg-brand-primary/10 text-brand-primary"
                         )}
                       >
@@ -808,7 +808,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                         >
                           {message.name}
                         </p>
-                        <p className="truncate text-xs text-brand-charcoal/65">{message.phone}</p>
+                        <p className="truncate text-xs text-ink-muted">{message.phone}</p>
                       </div>
                     </div>
                   </td>
@@ -818,7 +818,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                         {MESSAGE_TYPE_LABELS[message.type] || message.type}
                       </Badge>
                     ) : (
-                      <span className="text-brand-charcoal/65">—</span>
+                      <span className="text-ink-muted">—</span>
                     )}
                   </td>
                   <td className="max-w-[320px] px-4 py-3">
@@ -844,7 +844,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-ink-muted">
                     <span title={new Date(message.createdAt).toLocaleString("zh-CN")}>
                       {formatRelativeTime(message.createdAt)}
                     </span>
@@ -916,7 +916,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
         footer={
           detailMessage && canWriteMessages ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-brand-charcoal/65">
+              <span className="text-xs text-ink-muted">
                 {internalNoteDraft.length}/5000
               </span>
               <div className="flex flex-wrap justify-end gap-3">
@@ -947,7 +947,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
         {detailMessage && (
           <div className="space-y-4">
             {/* 发送者与基本信息 */}
-            <div className="space-y-3 rounded-lg bg-brand-charcoal/[0.03] p-4 text-sm">
+            <div className="space-y-3 rounded-lg bg-surface-muted p-4 text-sm">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-medium text-brand-primary">
                   {detailMessage.name.charAt(0).toUpperCase()}
@@ -964,7 +964,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                       </Badge>
                     )}
                   </div>
-                  <span className="mt-0.5 flex items-center gap-1.5 text-xs text-brand-charcoal/65">
+                  <span className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-muted">
                     {revealedPhone ?? detailMessage.phone}
                     {canReadSensitivePhone && !phoneRevealed && (
                       <Button variant="outline" size="sm" onClick={() => void revealPhone()}>
@@ -981,7 +981,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                         >
                           隐藏
                         </button>
-                        <span className="text-brand-charcoal/65">
+                        <span className="text-ink-muted">
                           {Math.floor(phoneRevealRemaining / 60)}:
                           {String(phoneRevealRemaining % 60).padStart(2, "0")} 后自动隐藏
                         </span>
@@ -998,9 +998,9 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 border-t border-brand-charcoal/15 pt-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 border-t border-line-strong pt-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">类型</p>
+                  <p className="text-xs text-ink-muted">类型</p>
                   <p className="mt-0.5 text-brand-charcoal/70">
                     {detailMessage.type
                       ? MESSAGE_TYPE_LABELS[detailMessage.type] || detailMessage.type
@@ -1008,14 +1008,14 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">提交时间</p>
+                  <p className="text-xs text-ink-muted">提交时间</p>
                   <p className="mt-0.5 text-brand-charcoal/70">
                     {new Date(detailMessage.createdAt).toLocaleString("zh-CN")}
                   </p>
                 </div>
                 {detailMessage.notedAt && (
                   <div className="sm:col-span-2">
-                    <p className="text-xs text-brand-charcoal/65">上次备注</p>
+                    <p className="text-xs text-ink-muted">上次备注</p>
                     <p className="mt-0.5 text-brand-charcoal/70">
                       {new Date(detailMessage.notedAt).toLocaleString("zh-CN")}
                     </p>
@@ -1025,8 +1025,8 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
             </div>
 
             {/* 留言内容 */}
-            <div className="rounded-lg border border-brand-charcoal/10 p-4">
-              <p className="text-xs text-brand-charcoal/65">留言内容</p>
+            <div className="rounded-lg border border-line p-4">
+              <p className="text-xs text-ink-muted">留言内容</p>
               <p className="mt-1 whitespace-pre-wrap text-sm text-brand-charcoal/80">
                 {detailMessage.content}
               </p>
@@ -1037,7 +1037,7 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-brand-charcoal">内部备注</h3>
                 {detailMessage.notedAt && (
-                  <span className="text-xs text-brand-charcoal/65">
+                  <span className="text-xs text-ink-muted">
                     上次备注：{new Date(detailMessage.notedAt).toLocaleString("zh-CN")}
                   </span>
                 )}
@@ -1049,10 +1049,10 @@ function AdminMessagesContent({ sourceTabs }: { sourceTabs?: ReactNode }) {
                 maxLength={5000}
                 disabled={!canWriteMessages}
                 placeholder="仅供后台回访跟进，不会发送给用户"
-                className="w-full resize-y rounded-lg border border-brand-charcoal/15 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/65 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full resize-y rounded-lg border border-line-strong bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-ink-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
               />
               {!canWriteMessages && (
-                <p className="text-xs text-brand-charcoal/65">只读查看（无备注权限）</p>
+                <p className="text-xs text-ink-muted">只读查看（无备注权限）</p>
               )}
             </div>
           </div>

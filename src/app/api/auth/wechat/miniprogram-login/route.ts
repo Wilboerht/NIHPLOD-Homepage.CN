@@ -42,6 +42,7 @@ import {
 } from "@/lib/miniprogram-clients";
 import { getOAuthClientByClientId } from "@/lib/oauth-client";
 import { checkUserStatus } from "@/lib/auth";
+import { resolveSsoAvatar } from "@/lib/default-avatar";
 import { WECHAT_PLACEHOLDER_PHONE_PREFIX } from "@/types/auth";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
@@ -396,7 +397,8 @@ export async function POST(request: NextRequest) {
           id: user.id,
           phone: user.phone,
           nickname: user.nickname,
-          avatar: user.avatar,
+          // 小程序跨域消费：相对路径补全为绝对 URL；null 保持 null 由前端兜底
+          avatar: user.avatar ? resolveSsoAvatar(user.avatar) : null,
         },
       },
     });

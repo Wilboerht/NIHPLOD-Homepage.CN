@@ -16,6 +16,8 @@ async function main() {
           checked: result.checked,
           negativeBalances: result.negativeBalances,
           deletedUsersWithRemaining: result.deletedUsersWithRemaining,
+          legacyUnreleasedGrants: result.legacyUnreleasedGrants,
+          legacyMissingExpiryGrants: result.legacyMissingExpiryGrants,
           issueCount: result.issues.length,
           truncated: result.truncated,
           issues: result.issues,
@@ -24,7 +26,12 @@ async function main() {
         2
       )
     );
-    if (result.issues.length > 0 || result.deletedUsersWithRemaining > 0) {
+    if (
+      result.issues.length > 0 ||
+      result.deletedUsersWithRemaining > 0 ||
+      result.legacyUnreleasedGrants > 0 ||
+      result.legacyMissingExpiryGrants > 0
+    ) {
       process.exitCode = 1;
     }
   } finally {

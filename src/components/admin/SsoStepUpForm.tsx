@@ -82,24 +82,24 @@ export function SsoStepUpForm({
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-brand-cream px-4 py-8">
-      <div className="w-full max-w-md rounded-2xl border border-brand-charcoal/10 bg-white p-6 shadow-sm sm:p-8">
+      <div className="w-full max-w-md rounded-card border border-line bg-white p-6 shadow-sm sm:p-8">
         <div className="flex items-start gap-3">
-          <span className="rounded-xl bg-brand-primary/[0.08] p-2.5 text-brand-primary">
+          <span className="rounded-xl bg-brand-primary/10 p-2.5 text-brand-primary">
             <ShieldCheck className="h-5 w-5" />
           </span>
           <div>
             <h1 className="text-lg font-semibold text-brand-charcoal">高风险操作验证</h1>
-            <p className="mt-1 text-sm text-brand-charcoal/65">
+            <p className="mt-1 text-sm text-ink-muted">
               {clientName} · {actionLabel}
             </p>
           </div>
         </div>
 
-        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+        <div className="mt-5 rounded-xl border border-status-warning-line bg-status-warning-soft px-4 py-3 text-xs leading-relaxed text-status-warning-strong">
           这是一次性、短时有效的操作授权，仅对当前证书有效。完成后页面会自动返回 {clientName}。
         </div>
 
-        <div className="mt-3 rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.03] px-3 py-2 text-xs text-brand-charcoal/65">
+        <div className="mt-3 rounded-lg border border-line bg-surface-muted px-3 py-2 text-xs text-ink-muted">
           <span className="font-medium">操作对象：</span>
           <code className="break-all font-mono">
             {resourceId === "new" ? "新证书（核发后生成）" : resourceId}
@@ -124,7 +124,7 @@ export function SsoStepUpForm({
         />
 
         {error && (
-          <p role="alert" className="mt-3 text-sm text-red-600">
+          <p role="alert" className="mt-3 text-sm text-status-danger-fg">
             {error}
           </p>
         )}
@@ -133,7 +133,7 @@ export function SsoStepUpForm({
           验证并继续
         </Button>
 
-        <div className="mt-4 text-center text-xs text-brand-charcoal/55">
+        <div className="mt-4 text-center text-xs text-ink-muted">
           <Link href="/admin/settings/totp" className="text-brand-primary hover:underline">
             管理主站二次验证
           </Link>

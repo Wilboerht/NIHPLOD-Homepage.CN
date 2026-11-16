@@ -29,6 +29,58 @@ const config: Config = {
           ecru: "#E6DCC3",
           sage: "#C3BC9F",
         },
+        /* 管理端语义表面/线条/文字：替代页面内散落的透明度类 */
+        surface: {
+          DEFAULT: "#FFFFFF",
+          subtle: "rgb(0 38 62 / 0.02)",
+          muted: "rgb(0 38 62 / 0.04)",
+          hover: "rgb(0 38 62 / 0.06)",
+          active: "rgb(0 38 62 / 0.10)",
+        },
+        line: {
+          DEFAULT: "rgb(0 38 62 / 0.10)",
+          subtle: "rgb(0 38 62 / 0.06)",
+          strong: "rgb(0 38 62 / 0.18)",
+        },
+        ink: {
+          DEFAULT: "#00263E",
+          secondary: "#4A6272",
+          muted: "rgb(0 38 62 / 0.65)",
+          faint: "rgb(0 38 62 / 0.45)",
+        },
+        /* 状态色统一放在 status 命名空间，避免覆盖 Tailwind 默认 neutral 色板 */
+        status: {
+          success: {
+            soft: "#ECFDF5",
+            fg: "#047857",
+            strong: "#065F46",
+            line: "#A7F3D0",
+          },
+          warning: {
+            soft: "#FFFBEB",
+            fg: "#B45309",
+            strong: "#92400E",
+            line: "#FDE68A",
+          },
+          danger: {
+            soft: "#FEF2F2",
+            fg: "#B91C1C",
+            strong: "#991B1B",
+            line: "#FECACA",
+          },
+          info: {
+            soft: "#F0F9FF",
+            fg: "#0369A1",
+            strong: "#075985",
+            line: "#BAE6FD",
+          },
+          neutral: {
+            soft: "#F5F5F4",
+            fg: "#57534E",
+            strong: "#44403C",
+            line: "#E7E5E4",
+          },
+        },
       },
       fontFamily: {
         serif: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
@@ -43,6 +95,34 @@ const config: Config = {
           "sans-serif",
         ],
         sans: ["Futura LT", "Futura", "PingFang SC", "Source Han Sans", "Microsoft YaHei", "sans-serif"],
+      },
+      fontSize: {
+        /* 管理端元信息字号；正文最小使用 text-xs，10px 仅图表轴保留 */
+        "2xs": ["11px", { lineHeight: "16px", letterSpacing: "0.02em" }],
+      },
+      borderRadius: {
+        control: "8px",
+        surface: "12px",
+        card: "16px",
+      },
+      boxShadow: {
+        hairline: "0 1px 2px 0 rgb(0 38 62 / 0.04)",
+        popover: "0 8px 24px -8px rgb(0 38 62 / 0.16)",
+        modal: "0 24px 48px -12px rgb(0 38 62 / 0.22)",
+      },
+      zIndex: {
+        nav: "40",
+        "drawer-backdrop": "90",
+        drawer: "95",
+        dropdown: "100",
+        modal: "110",
+        tooltip: "120",
+        toast: "130",
+      },
+      transitionDuration: {
+        fast: "150ms",
+        base: "200ms",
+        slow: "300ms",
       },
       spacing: {
         xs: "8px",
@@ -95,6 +175,8 @@ const config: Config = {
       transitionTimingFunction: {
         luxury: "cubic-bezier(0.4, 0, 0.2, 1)",
         "bounce-soft": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        standard: "cubic-bezier(0.4, 0, 0.2, 1)",
+        emphasized: "cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },
   },

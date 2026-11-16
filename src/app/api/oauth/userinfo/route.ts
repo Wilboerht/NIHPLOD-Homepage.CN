@@ -21,6 +21,13 @@ import { maskPhone } from "@/lib/mask-phone";
 import { POINT_REDEEM_RATES } from "@/lib/membership";
 import { authenticateOAuthResourceRequest, isM2mPayload } from "@/lib/oauth-resource-auth";
 import { isAllowedAvatarUrl, updateProfileSchema } from "@/lib/profile-schema";
+import {
+  checkNicknameContent,
+  NICKNAME_BANNED_MESSAGE,
+  NICKNAME_INVALID_CHARS_MESSAGE,
+} from "@/lib/nickname-policy";
+import { auditNicknameBlocked, auditNicknameChange } from "@/lib/nickname-audit";
+import { rateLimit } from "@/lib/ratelimit";
 import { BODY_LIMITS } from "@/lib/body-limits";
 import {
   isBodyTooLargeError,
@@ -188,6 +195,42 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
 
     // 请求体校验（与主站自用 PUT /api/user/profile 共用 schema）
     const body = await readJsonBodyOrDefault(request, BODY_LIMITS.authJson, undefined);
+
+    // 昵称内容风控：在 schema 校验前显式检查，便于写审计/告警并返回明确错误
+    const rawNickname =
+      body && typeof body === "object" && "nickname" in body
+        ? (body as Record<string, unknown>).nickname
+        : undefined;
+    if (typeof rawNickname === "string" && rawNickname.trim()) {
+      const nicknameCheck = checkNicknameContent(rawNickname);
+      if (!nicknameCheck.ok) {
+        const nicknameLimit = await rateLimit(`user:${payload.id}`, "nickname-change");
+        if (!nicknameLimit.success) {
+          return resJson(
+            { error: "rate_limited", error_description: "昵称修改过于频繁，请稍后再试" },
+            429
+          );
+        }
+        await auditNicknameBlocked({
+          request,
+          userId: payload.id,
+          source: "oauth_userinfo",
+          reason: nicknameCheck.reason,
+          category: nicknameCheck.category,
+        });
+        return resJson(
+          {
+            error: "invalid_request",
+            error_description:
+              nicknameCheck.reason === "invalid_chars"
+                ? NICKNAME_INVALID_CHARS_MESSAGE
+                : NICKNAME_BANNED_MESSAGE,
+          },
+          400
+        );
+      }
+    }
+
     const result = updateProfileSchema.safeParse(body);
     if (!result.success) {
       return resJson(
@@ -200,14 +243,6 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
     }
 
     const { nickname, avatar, birthday, gender } = result.data;
-
-    // 头像仅允许官网域/OSS 域：防止外链头像进入 SSO 头像声明被子站加载
-    if (avatar && !isAllowedAvatarUrl(avatar)) {
-      return resJson(
-        { error: "invalid_request", error_description: "头像地址不合法，请使用官网头像上传接口" },
-        400
-      );
-    }
 
     // 更新前读取旧值，用于判断资料是否实际变更（无实际变更不触发 webhook）
     // 以及生日锁定判定
@@ -234,6 +269,28 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
         detail: { action: "profile_update", reason: "account_disabled" },
       });
       return resJson({ error: "account_disabled", error_description: "账户已被封禁或冻结" }, 403);
+    }
+
+    // 昵称实际变更才消耗改名配额（避免子站全量回写未变昵称时误伤其他字段保存）
+    const nicknameChanged = nickname !== undefined && (nickname || null) !== previous.nickname;
+    if (nicknameChanged) {
+      const nicknameLimit = await rateLimit(`user:${payload.id}`, "nickname-change");
+      if (!nicknameLimit.success) {
+        return resJson(
+          { error: "rate_limited", error_description: "昵称修改过于频繁，请稍后再试" },
+          429
+        );
+      }
+    }
+
+    // 头像仅允许官网域/OSS 域/站内相对路径：防止外链头像进入 SSO 头像声明被子站加载。
+    // 未变更的存量值（历史社交外链）放行回显，避免客户端 read-modify-write 被误拒。
+    const avatarChanged = avatar !== undefined && (avatar || null) !== previous.avatar;
+    if (avatarChanged && avatar && !isAllowedAvatarUrl(avatar)) {
+      return resJson(
+        { error: "invalid_request", error_description: "头像地址不合法，请使用官网头像上传接口" },
+        400
+      );
     }
 
     // 生日锁定：与主站自用一致——生日是生日积分发放依据，首次设置后锁定，修改需人工客服
@@ -321,6 +378,16 @@ async function handlePatch(request: NextRequest, method: "PATCH" | "PUT") {
     // 资料变更后立即失效缓存，与主站 PUT 一致：
     // 主站个人中心（unstable_cache 30s + user-profile tag）不会读到陈旧资料
     revalidateTag("user-profile", { expire: 0 });
+
+    if (nicknameChanged) {
+      await auditNicknameChange({
+        request,
+        userId: payload.id,
+        oldNickname: previous.nickname,
+        newNickname: user.nickname,
+        source: "oauth_userinfo",
+      });
+    }
 
     // 昵称/头像/生日/性别有实际变更时，向已授权且配置 webhookUri 的子项目推送 profile_update
     // 事件（fire-and-forget：after 注册保证响应返回后执行，失败不影响本次响应）

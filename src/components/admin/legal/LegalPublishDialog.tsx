@@ -56,9 +56,9 @@ export function LegalPublishDialog({
   return (
     <Modal open={open} onClose={onClose} title="发布新版本" size="lg" closeOnBackdrop={!loading}>
       <div className="space-y-5">
-        <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-4 text-sm text-brand-charcoal/70">
+        <div className="rounded-xl border border-line bg-surface-subtle p-4 text-sm text-brand-charcoal/70">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-brand-charcoal/50">版本</span>
+            <span className="text-ink-muted">版本</span>
             <strong className="font-semibold text-brand-charcoal">
               {nextVersion > 1 ? `v${nextVersion - 1} → ` : "首次发布 → "}v{nextVersion}
             </strong>
@@ -79,13 +79,13 @@ export function LegalPublishDialog({
               </Badge>
             ) : null}
           </div>
-          <p className="mt-3 text-xs text-brand-charcoal/50">
+          <p className="mt-3 text-xs text-ink-muted">
             共 {content.sections.length} 章，变更 {changedSections} 章；“最近更新”将自动更新为今天（UTC+8）。
           </p>
         </div>
 
         {baseContent ? (
-          <p className="text-xs text-brand-charcoal/50">
+          <p className="text-xs text-ink-muted">
             发布后可在版本历史中查看与当前线上内容的章节级/逐行差异。
           </p>
         ) : null}
@@ -103,7 +103,7 @@ export function LegalPublishDialog({
           hint={noteValid ? `${note.length}/200` : "必填，用于审计记录与版本历史"}
         />
 
-        <p className="text-xs text-brand-charcoal/50">
+        <p className="text-xs text-ink-muted">
           发布属于高风险操作，确认后会要求输入动态验证码，并写入审计日志与版本历史。
         </p>
 

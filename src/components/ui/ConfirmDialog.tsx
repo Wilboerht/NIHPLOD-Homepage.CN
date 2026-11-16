@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/Toast";
 
 type DialogType = "info" | "warning" | "danger" | "success";
+type ConfirmVariant = "primary" | "danger";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -17,6 +18,8 @@ interface ConfirmDialogProps {
   description?: string;
   children?: ReactNode;
   type?: DialogType;
+  /** 覆盖确认按钮样式：warning 类型也可用于不可逆的状态移除 */
+  confirmVariant?: ConfirmVariant;
   confirmText?: string;
   cancelText?: string;
   loading?: boolean;
@@ -32,16 +35,16 @@ const iconMap = {
 
 const iconColorMap = {
   info: "text-brand-primary bg-brand-primary/10",
-  warning: "text-amber-500 bg-amber-50",
-  danger: "text-red-500 bg-red-50",
-  success: "text-emerald-500 bg-emerald-50",
+  warning: "text-status-warning-fg bg-status-warning-soft",
+  danger: "text-status-danger-fg bg-status-danger-soft",
+  success: "text-status-success-fg bg-status-success-soft",
 };
 
-const confirmButtonVariant = {
-  info: "primary" as const,
-  warning: "primary" as const,
-  danger: "danger" as const,
-  success: "primary" as const,
+const defaultConfirmVariant: Record<DialogType, ConfirmVariant> = {
+  info: "primary",
+  warning: "primary",
+  danger: "danger",
+  success: "primary",
 };
 
 /**
@@ -55,6 +58,7 @@ export function ConfirmDialog({
   description,
   children,
   type = "warning",
+  confirmVariant,
   confirmText = "确认",
   cancelText = "取消",
   loading = false,
@@ -81,6 +85,7 @@ export function ConfirmDialog({
       size="sm"
       showCloseButton={false}
       ariaLabel={title}
+      role={type === "danger" || type === "warning" ? "alertdialog" : "dialog"}
       // 请求进行中禁止遮罩/Esc 关闭，避免操作结果丢失上下文
       closeOnBackdrop={!loading}
       closeOnEscape={!loading}
@@ -95,7 +100,7 @@ export function ConfirmDialog({
           </Button>
           <Button
             ref={confirmRef}
-            variant={confirmButtonVariant[type]}
+            variant={confirmVariant ?? defaultConfirmVariant[type]}
             onClick={handleConfirm}
             loading={loading}
             disabled={confirmDisabled}
@@ -116,7 +121,7 @@ export function ConfirmDialog({
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-brand-charcoal">{title}</h3>
-          {description && <p className="mt-1 text-sm text-brand-charcoal/65">{description}</p>}
+          {description && <p className="mt-1 text-sm text-ink-muted">{description}</p>}
           {children && <div className="mt-3">{children}</div>}
         </div>
       </div>

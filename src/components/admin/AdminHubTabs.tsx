@@ -29,40 +29,62 @@ export function AdminHubTabs({
   className?: string;
 }) {
   const pathname = usePathname();
-  const { permissions } = useAdminPermissions();
+  const { permissions, loading } = useAdminPermissions();
   const tabs = useMemo(
     () => getVisibleSectionTabs(section, Array.from(permissions ?? [])),
     [permissions, section]
   );
 
+  if (loading) {
+    return (
+      <div
+        aria-hidden="true"
+        className={cn(
+          "flex items-center gap-1 rounded-xl bg-surface-muted p-1",
+          className
+        )}
+      >
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-9 flex-1 animate-pulse rounded-lg bg-brand-charcoal/10 sm:flex-none sm:w-24"
+          />
+        ))}
+      </div>
+    );
+  }
+
   if (tabs.length < 2) return null;
 
   return (
-    <nav
-      aria-label={`${ADMIN_SECTIONS[section].title}分区`}
-      className={cn(
-        "scrollbar-hide flex items-center gap-1 overflow-x-auto rounded-xl bg-brand-charcoal/[0.04] p-1",
-        className
-      )}
-    >
-      {tabs.map((tab) => {
-        const active = isActive(tab, pathname);
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
-              active
-                ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className={cn("relative", className)}>
+      <nav
+        aria-label={`${ADMIN_SECTIONS[section].title}分区`}
+        className="scrollbar-hide flex items-center gap-1 overflow-x-auto rounded-xl bg-surface-muted p-1"
+      >
+        {tabs.map((tab) => {
+          const active = isActive(tab, pathname);
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 sm:min-h-9",
+                active
+                  ? "bg-white font-medium text-brand-charcoal shadow-sm"
+                  : "text-ink-muted hover:bg-white/70 hover:text-brand-charcoal"
+              )}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </nav>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-1 right-1 w-8 rounded-r-xl bg-gradient-to-l from-surface-muted to-transparent"
+      />
+    </div>
   );
 }

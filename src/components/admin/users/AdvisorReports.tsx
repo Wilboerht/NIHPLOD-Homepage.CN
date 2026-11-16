@@ -114,10 +114,10 @@ function versionLabel(version: number | null | undefined): string {
 
 function scoreTone(score: number | null | undefined): string {
   if (typeof score !== "number") return "text-brand-charcoal";
-  if (score >= 85) return "text-emerald-700";
+  if (score >= 85) return "text-status-success-strong";
   if (score >= 70) return "text-brand-charcoal";
-  if (score >= 55) return "text-amber-700";
-  return "text-red-600";
+  if (score >= 55) return "text-status-warning-strong";
+  return "text-status-danger-fg";
 }
 
 function Section({
@@ -130,7 +130,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="border-t border-brand-charcoal/10 pt-4 first:border-t-0 first:pt-0">
+    <section className="border-t border-line pt-4 first:border-t-0 first:pt-0">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-brand-charcoal">{title}</h3>
         {extra}
@@ -143,7 +143,7 @@ function Section({
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-2 py-1.5 text-xs">
-      <dt className="text-brand-charcoal/55">{label}</dt>
+      <dt className="text-ink-muted">{label}</dt>
       <dd className="min-w-0 text-brand-charcoal">{value || "—"}</dd>
     </div>
   );
@@ -151,12 +151,12 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
 
 function ProductTable({ products }: { products: AdvisorReportProduct[] }) {
   if (products.length === 0) {
-    return <p className="text-xs text-brand-charcoal/55">暂无产品推荐。</p>;
+    return <p className="text-xs text-ink-muted">暂无产品推荐。</p>;
   }
   return (
-    <div className="overflow-x-auto rounded-lg border border-brand-charcoal/10">
+    <div className="overflow-x-auto rounded-lg border border-line">
       <table className="w-full min-w-[560px] text-left text-xs">
-        <thead className="bg-brand-charcoal/[0.03] text-brand-charcoal/55">
+        <thead className="bg-surface-muted text-ink-muted">
           <tr>
             <th className="px-3 py-2 font-medium">产品</th>
             <th className="px-3 py-2 font-medium">分类</th>
@@ -164,11 +164,11 @@ function ProductTable({ products }: { products: AdvisorReportProduct[] }) {
             <th className="px-3 py-2 font-medium">价格</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-brand-charcoal/[0.06]">
+        <tbody className="divide-y divide-line-subtle">
           {products.map((product) => (
             <tr key={product.id}>
               <td className="px-3 py-2 font-medium text-brand-charcoal">{product.name}</td>
-              <td className="px-3 py-2 text-brand-charcoal/65">{product.category || "—"}</td>
+              <td className="px-3 py-2 text-ink-muted">{product.category || "—"}</td>
               <td className="px-3 py-2 text-brand-charcoal/75">{product.reason || "—"}</td>
               <td className="px-3 py-2 font-mono text-brand-charcoal/75">
                 {product.price ? `¥${product.price}` : "—"}
@@ -183,7 +183,7 @@ function ProductTable({ products }: { products: AdvisorReportProduct[] }) {
 
 function Questionnaire({ data }: { data: AdvisorReportQuestionnaire | undefined }) {
   if (!data) {
-    return <p className="text-xs text-brand-charcoal/55">本报告没有可展示的问卷档案。</p>;
+    return <p className="text-xs text-ink-muted">本报告没有可展示的问卷档案。</p>;
   }
   return (
     <dl className="grid gap-x-6 sm:grid-cols-2">
@@ -238,7 +238,7 @@ export function AdvisorReportDetailView({
               </Badge>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-brand-charcoal/55">
+          <p className="mt-0.5 text-xs text-ink-muted">
             {formatDate(detail.completedAt)}
             {summary.dataSource
               ? ` · ${DATA_SOURCE_LABELS[summary.dataSource] || summary.dataSource}`
@@ -259,8 +259,8 @@ export function AdvisorReportDetailView({
           { label: "肤质", value: summary.skinTypeLabel || "—", tone: "" },
           { label: "派系", value: detail.personaLabel || "—", tone: "" },
         ].map((item) => (
-          <div key={item.label} className="rounded-lg border border-brand-charcoal/10 px-3 py-2">
-            <p className="text-[11px] text-brand-charcoal/55">{item.label}</p>
+          <div key={item.label} className="rounded-lg border border-line px-3 py-2">
+            <p className="text-2xs text-ink-muted">{item.label}</p>
             <p className={`mt-0.5 text-base font-semibold tabular-nums ${item.tone}`}>
               {item.value}
             </p>
@@ -305,16 +305,16 @@ export function AdvisorReportDetailView({
       {consultant?.issues && consultant.issues.length > 0 && (
         <Section
           title="顾问诊断"
-          extra={<span className="text-[11px] text-brand-charcoal/45">展开查看完整推理</span>}
+          extra={<span className="text-2xs text-ink-faint">展开查看完整推理</span>}
         >
           <div className="space-y-2">
             {consultant.issues.map((issue, index) => (
               <details
                 key={`${issue.title}-${index}`}
-                className="rounded-lg border border-brand-charcoal/10 bg-white"
+                className="rounded-lg border border-line bg-white"
               >
                 <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs">
-                  <span className="font-mono text-[11px] text-brand-charcoal/40">
+                  <span className="font-mono text-2xs text-ink-faint">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <span className="font-medium text-brand-charcoal">{issue.title}</span>
@@ -367,11 +367,11 @@ export function AdvisorReportDetailView({
 
       <Section title="十维评分">
         {!faceAnalysis || !dimensions ? (
-          <p className="text-xs text-brand-charcoal/55">该报告为问卷模式，没有面部十维数据。</p>
+          <p className="text-xs text-ink-muted">该报告为问卷模式，没有面部十维数据。</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-brand-charcoal/10">
+          <div className="overflow-x-auto rounded-lg border border-line">
             <table className="w-full min-w-[520px] text-left text-xs">
-              <thead className="bg-brand-charcoal/[0.03] text-brand-charcoal/55">
+              <thead className="bg-surface-muted text-ink-muted">
                 <tr>
                   <th className="px-3 py-2 font-medium">维度</th>
                   <th className="px-3 py-2 font-medium">分数</th>
@@ -379,7 +379,7 @@ export function AdvisorReportDetailView({
                   <th className="px-3 py-2 font-medium">说明</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-charcoal/[0.06]">
+              <tbody className="divide-y divide-line-subtle">
                 {DIMENSION_ORDER.map((key) => {
                   const item = dimensions[key];
                   if (!item || typeof item.score !== "number") return null;
@@ -395,10 +395,10 @@ export function AdvisorReportDetailView({
                       >
                         {item.score}
                       </td>
-                      <td className="px-3 py-2 text-brand-charcoal/65">
+                      <td className="px-3 py-2 text-ink-muted">
                         {item.grade ? GRADE_LABELS[item.grade] || item.grade : "—"}
                       </td>
-                      <td className="px-3 py-2 text-brand-charcoal/65">{item.details || "—"}</td>
+                      <td className="px-3 py-2 text-ink-muted">{item.details || "—"}</td>
                     </tr>
                   );
                 })}
@@ -442,7 +442,7 @@ export function AdvisorReportDetailView({
             {faceAnalysis.skinConditions && faceAnalysis.skinConditions.length > 0 && (
               <div>
                 <p className="mb-1 font-medium text-brand-charcoal">肌肤问题</p>
-                <div className="divide-y divide-brand-charcoal/[0.06] rounded-lg border border-brand-charcoal/10">
+                <div className="divide-y divide-line-subtle rounded-lg border border-line">
                   {faceAnalysis.skinConditions.map((condition, index) => (
                     <div key={`${condition.condition}-${index}`} className="px-3 py-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -464,11 +464,11 @@ export function AdvisorReportDetailView({
                           </Badge>
                         )}
                         {condition.area && (
-                          <span className="text-brand-charcoal/55">{condition.area}</span>
+                          <span className="text-ink-muted">{condition.area}</span>
                         )}
                       </div>
                       {condition.description && (
-                        <p className="mt-0.5 text-brand-charcoal/65">{condition.description}</p>
+                        <p className="mt-0.5 text-ink-muted">{condition.description}</p>
                       )}
                     </div>
                   ))}
@@ -487,14 +487,14 @@ export function AdvisorReportDetailView({
                     return (
                       <div
                         key={key}
-                        className="rounded-lg border border-brand-charcoal/10 px-3 py-2"
+                        className="rounded-lg border border-line px-3 py-2"
                       >
                         <p className="font-medium text-brand-charcoal">{label}</p>
                         {zone.condition && (
                           <p className="mt-0.5 text-brand-charcoal/75">{zone.condition}</p>
                         )}
                         {zone.advice && (
-                          <p className="mt-1 text-brand-charcoal/60">建议：{zone.advice}</p>
+                          <p className="mt-1 text-ink-muted">建议：{zone.advice}</p>
                         )}
                       </div>
                     );
@@ -549,7 +549,7 @@ export function AdvisorReportDetailView({
         <Questionnaire data={summary.questionnaire} />
       </Section>
 
-      <p className="border-t border-brand-charcoal/10 pt-3 text-[11px] text-brand-charcoal/40">
+      <p className="border-t border-line pt-3 text-2xs text-ink-faint">
         报告完成于 {formatDate(detail.completedAt)}
         {detail.expiresAt ? ` · 有效期至 ${formatDay(detail.expiresAt)}` : ""}
       </p>
@@ -641,16 +641,16 @@ export function AdvisorReports({ userId }: { userId: string }) {
   if (detailOpen) {
     return (
       <>
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-3 sm:p-4">
+        <div className="rounded-xl border border-line bg-white p-3 sm:p-4">
         {detailLoading ? (
           <div className="space-y-3">
-            <div className="h-8 w-40 animate-pulse rounded bg-brand-charcoal/[0.06]" />
-            <div className="h-24 animate-pulse rounded-lg bg-brand-charcoal/[0.04]" />
-            <div className="h-40 animate-pulse rounded-lg bg-brand-charcoal/[0.04]" />
+            <div className="h-8 w-40 animate-pulse rounded bg-surface-hover" />
+            <div className="h-24 animate-pulse rounded-lg bg-surface-muted" />
+            <div className="h-40 animate-pulse rounded-lg bg-surface-muted" />
           </div>
         ) : detailError ? (
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-red-600">{detailError}</p>
+            <p className="text-sm text-status-danger-fg">{detailError}</p>
             <Button size="sm" variant="outline" onClick={() => setDetailOpen(false)}>
               返回
             </Button>
@@ -666,11 +666,11 @@ export function AdvisorReports({ userId }: { userId: string }) {
 
   return (
     <>
-      <div className="rounded-xl border border-brand-charcoal/10 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-charcoal/10 px-3 py-2.5 sm:px-4">
+      <div className="rounded-xl border border-line bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2.5 sm:px-4">
         <div>
           <h3 className="text-sm font-semibold text-brand-charcoal">测肤报告</h3>
-          <p className="mt-0.5 text-[11px] text-brand-charcoal/55">
+          <p className="mt-0.5 text-2xs text-ink-muted">
             {payload ? `共 ${payload.pagination.total} 份可查看报告` : "已完成报告"}
           </p>
         </div>
@@ -687,24 +687,24 @@ export function AdvisorReports({ userId }: { userId: string }) {
       {loading ? (
         <div className="space-y-2 p-3 sm:p-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-9 animate-pulse rounded-lg bg-brand-charcoal/[0.04]" />
+            <div key={index} className="h-9 animate-pulse rounded-lg bg-surface-muted" />
           ))}
         </div>
       ) : error ? (
         <div className="flex flex-col items-center gap-3 px-4 py-6 text-center">
-          <AlertTriangle className="h-6 w-6 text-amber-500" />
-          <p className="text-xs text-brand-charcoal/65">{error}</p>
+          <AlertTriangle className="h-6 w-6 text-status-warning-fg" />
+          <p className="text-xs text-ink-muted">{error}</p>
           <Button size="sm" variant="outline" onClick={() => loadList(page)}>
             重试
           </Button>
         </div>
       ) : !payload || payload.reports.length === 0 ? (
-        <p className="px-4 py-6 text-center text-xs text-brand-charcoal/55">暂无已完成测肤报告。</p>
+        <p className="px-4 py-6 text-center text-xs text-ink-muted">暂无已完成测肤报告。</p>
       ) : (
         <>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-xs">
-              <thead className="bg-brand-charcoal/[0.03] text-brand-charcoal/55">
+              <thead className="bg-surface-muted text-ink-muted">
                 <tr>
                   <th className="px-3 py-2 font-medium">完成时间</th>
                   <th className="px-3 py-2 font-medium">评分</th>
@@ -714,9 +714,9 @@ export function AdvisorReports({ userId }: { userId: string }) {
                   <th className="px-3 py-2 text-right font-medium">操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-charcoal/[0.06]">
+              <tbody className="divide-y divide-line-subtle">
                 {payload.reports.map((report) => (
-                  <tr key={report.sessionId} className="hover:bg-brand-charcoal/[0.015]">
+                  <tr key={report.sessionId} className="hover:bg-surface-subtle">
                     <td className="whitespace-nowrap px-3 py-2 text-brand-charcoal/75">
                       {formatDate(report.completedAt)}
                     </td>
@@ -730,7 +730,7 @@ export function AdvisorReports({ userId }: { userId: string }) {
                     <td className="px-3 py-2 text-brand-charcoal/75">
                       {report.skinTypeLabel || "—"}
                     </td>
-                    <td className="px-3 py-2 text-brand-charcoal/55">
+                    <td className="px-3 py-2 text-ink-muted">
                       {versionLabel(report.reportVersion)}
                     </td>
                     <td className="px-3 py-2">
@@ -760,7 +760,7 @@ export function AdvisorReports({ userId }: { userId: string }) {
           </div>
 
           {payload.pagination.totalPages > 1 && (
-            <div className="flex items-center justify-end gap-2 border-t border-brand-charcoal/10 px-3 py-2 sm:px-4">
+            <div className="flex items-center justify-end gap-2 border-t border-line px-3 py-2 sm:px-4">
               <Button
                 size="sm"
                 variant="ghost"
@@ -769,7 +769,7 @@ export function AdvisorReports({ userId }: { userId: string }) {
               >
                 上一页
               </Button>
-              <span className="text-xs tabular-nums text-brand-charcoal/55">
+              <span className="text-xs tabular-nums text-ink-muted">
                 {page}/{payload.pagination.totalPages}
               </span>
               <Button

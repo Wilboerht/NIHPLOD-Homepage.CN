@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   balanceCount: vi.fn(),
+  ledgerCount: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $queryRaw: mocks.queryRaw,
     pointBalance: { count: mocks.balanceCount },
+    pointLedger: { count: mocks.ledgerCount },
   },
 }));
 
@@ -25,6 +27,7 @@ describe("财务对账核心 SQL 边界", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.balanceCount.mockResolvedValue(0);
+    mocks.ledgerCount.mockResolvedValue(0);
     mocks.queryRaw.mockResolvedValue([]);
   });
 
@@ -45,6 +48,6 @@ describe("财务对账核心 SQL 边界", () => {
     const sql = sqlText(mocks.queryRaw.mock.calls[0][0]);
     expect(sql).toContain('FROM "SpentSyncRecord"');
     expect(sql).toContain('c."refundedAmount" <> COALESCE(s.refunded, 0)');
-    expect(sql).not.toContain('c."source" = \'SPENT_IMPORT\'');
+    expect(sql).not.toContain("c.\"source\" = 'SPENT_IMPORT'");
   });
 });

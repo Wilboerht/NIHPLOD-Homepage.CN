@@ -7,7 +7,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: {
-    absolute: "NIHPLOD 旎柏 | 中国官网",
+    absolute: "NIHPLOD 旎柏中国官网",
   },
   description:
     "NIHPLOD 旎柏，源自摩纳哥的专业护肤品牌，通过前沿科技与珍贵成分，致力于打造简单、高效的护肤体验。",

@@ -238,9 +238,9 @@ export function ImageUploader({
 
       {/* 错误提示 */}
       {uploadErrors.length > 0 && (
-        <div className="mb-3 rounded-lg bg-red-50 p-3">
+        <div className="mb-3 rounded-lg bg-status-danger-soft p-3">
           {uploadErrors.map((err, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-red-500">
+            <div key={i} className="flex items-center gap-2 text-sm text-status-danger-fg">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <span>{err}</span>
             </div>
@@ -279,7 +279,7 @@ export function ImageUploader({
                 type="button"
                 onClick={() => removeImage(index)}
                 aria-label={`删除第 ${index + 1} 张图片`}
-                className="absolute right-1 top-1 rounded-full bg-black/50 p-1.5 opacity-100 transition-opacity hover:bg-red-500 focus:opacity-100 focus-visible:opacity-100 sm:p-1 sm:opacity-0 sm:group-hover:opacity-100"
+                className="absolute right-1 top-1 rounded-full bg-black/50 p-1.5 opacity-100 transition-opacity hover:bg-status-danger-fg focus:opacity-100 focus-visible:opacity-100 sm:p-1 sm:opacity-0 sm:group-hover:opacity-100"
               >
                 <X className="h-4 w-4 text-white" />
               </button>
@@ -335,8 +335,8 @@ export function ImageUploader({
             dragActive
               ? "border-brand-primary bg-brand-primary/5"
               : error
-                ? "border-red-300 bg-red-50"
-                : "border-brand-charcoal/20 hover:border-brand-primary hover:bg-brand-cream/30"
+                ? "border-status-danger-line bg-status-danger-soft"
+                : "border-line-strong hover:border-brand-primary hover:bg-brand-cream/30"
           )}
         >
           <input
@@ -357,22 +357,22 @@ export function ImageUploader({
             ) : dragActive ? (
               <Upload className="h-6 w-6 text-brand-primary" />
             ) : (
-              <ImageIcon className="h-6 w-6 text-brand-charcoal/65" />
+              <ImageIcon className="h-6 w-6 text-ink-muted" />
             )}
           </div>
           <p className="mb-1 text-sm font-medium text-brand-charcoal/80">
             {isCompressing ? "正在处理图片..." : dragActive ? "释放以上传" : "点击或拖拽上传图片"}
           </p>
-          <p className="text-xs text-brand-charcoal/65">
+          <p className="text-xs text-ink-muted">
             支持 JPG, PNG, WebP，单个文件最大 {maxSize}MB
           </p>
-          <p className="mt-1 text-xs text-brand-charcoal/65">
+          <p className="mt-1 text-xs text-ink-muted">
             已上传 {value.length}/{maxImages} 张
           </p>
         </div>
       )}
 
-      {error && <p className="mt-1.5 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-1.5 text-sm text-status-danger-fg">{error}</p>}
     </div>
   );
 }

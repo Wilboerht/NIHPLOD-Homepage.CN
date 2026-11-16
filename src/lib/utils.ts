@@ -1,9 +1,18 @@
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
 
 /**
  * 合并 Tailwind CSS 类名
+ * - 注册自定义 `text-2xs` 字号，避免与 text-xs/text-sm 去重失效
  */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [{ text: ["2xs"] }],
+    },
+  },
+});
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

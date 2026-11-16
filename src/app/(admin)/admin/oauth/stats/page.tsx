@@ -189,12 +189,12 @@ function OAuthStatsContent() {
         <AdminHubTabs section="sso" />
 
         {error ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-charcoal/10 bg-white py-12">
-            <div className="rounded-full bg-red-50 p-4">
-              <ShieldAlert className="h-8 w-8 text-red-400" />
+          <div className="flex flex-col items-center justify-center rounded-card border border-line bg-white py-12">
+            <div className="rounded-full bg-status-danger-soft p-4">
+              <ShieldAlert className="h-8 w-8 text-status-danger-fg" />
             </div>
             <h2 className="mt-4 text-base font-medium text-brand-charcoal">统计加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/65">{error}</p>
+            <p className="mt-1 text-sm text-ink-muted">{error}</p>
             <Button variant="outline" size="sm" className="mt-4" onClick={fetchStats}>
               重试
             </Button>
@@ -242,7 +242,7 @@ function OAuthStatsContent() {
               title="本月事件类型分布"
               action={
                 !loading && eventTotal > 0 ? (
-                  <span className="text-xs tabular-nums text-brand-charcoal/65">
+                  <span className="text-xs tabular-nums text-ink-muted">
                     共 {formatCount(eventTotal)} 次
                   </span>
                 ) : undefined
@@ -253,7 +253,7 @@ function OAuthStatsContent() {
                   {[0, 1, 2, 3].map((index) => (
                     <div
                       key={index}
-                      className="h-6 animate-pulse rounded bg-brand-charcoal/[0.04]"
+                      className="h-6 animate-pulse rounded bg-surface-muted"
                     />
                   ))}
                 </div>
@@ -266,10 +266,10 @@ function OAuthStatsContent() {
                     .map(([type, count]) => (
                       <div key={type} className="flex items-center gap-3">
                         <div className="flex w-28 shrink-0 items-center gap-1.5 text-xs text-brand-charcoal/70 sm:w-32">
-                          <Activity className="h-3.5 w-3.5 shrink-0 text-brand-charcoal/65" />
+                          <Activity className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
                           <span className="truncate">{EVENT_LABELS[type] || type}</span>
                         </div>
-                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-charcoal/[0.06]">
+                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-hover">
                           <div
                             className="h-full rounded-full bg-brand-primary/70 transition-all"
                             style={{ width: `${(count / maxEventCount) * 100}%` }}

@@ -179,6 +179,33 @@ describe("applyExternalSpentSync 会员信息 webhook 触发", () => {
     expect(mockSendProfileUpdateWebhook).not.toHaveBeenCalled();
   });
 
+  it("退款被 0 下限钳制后重试：按请求值比较，仍幂等成功", async () => {
+    // 首次请求 -100 被钳制为 -50（totalSpent 只有 50）；重试仍是同请求值 -100。
+    mockTxSpentSyncFindUnique.mockResolvedValue({
+      id: "rec-refund-1",
+      spentDelta: -50,
+      requestedDelta: -100,
+      orderNoKey: "ORDER-REFUND-1",
+      source: "MALL_SYNC",
+    });
+    mockTxUserFindUnique.mockResolvedValue({ totalSpent: 0, membershipLevel: "REGULAR" });
+
+    const result = await applyExternalSpentSync({
+      userId: "user-1",
+      spentDelta: -100,
+      reference: "REFUND-1",
+      orderNo: "ORDER-REFUND-1",
+    });
+
+    expect(result).toEqual({
+      totalSpent: 0,
+      membershipLevel: "REGULAR",
+      appliedDelta: 0,
+      duplicated: true,
+    });
+    expect(mockTxSpentSyncCreate).not.toHaveBeenCalled();
+  });
+
   it("webhook 推送失败不影响入账主流程", async () => {
     mockTxUserFindUnique.mockResolvedValue({
       totalSpent: 800,

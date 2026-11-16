@@ -88,6 +88,12 @@ export async function POST(request: NextRequest) {
 
   const idempotencyKey =
     parsed.data.idempotencyKey || request.headers.get("x-idempotency-key") || crypto.randomUUID();
+  const sealSource =
+    mode === "issue"
+      ? (parsed.data.draft as { sealImage?: unknown }).sealImage
+        ? "custom"
+        : "default"
+      : undefined;
   const result = await baCertificateRequest<unknown>(admin, "/api/internal/admin/certificates", {
     method: "POST",
     idempotencyKey,
@@ -111,7 +117,11 @@ export async function POST(request: NextRequest) {
     actorName: admin.name,
     actorRole: admin.role,
     adminId: admin.id,
-    detail: { mode, idempotencyKey },
+    detail: {
+      mode,
+      idempotencyKey,
+      ...(sealSource ? { sealSource } : {}),
+    },
     request,
   }).catch((error) => apiConsole.error("[BaCertificateCreate] 审计写入失败", error));
 

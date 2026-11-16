@@ -115,10 +115,10 @@ export function AmapLocationPicker({
         htmlFor="amap-location-input"
         className="mb-1.5 block text-sm font-medium text-brand-charcoal/80"
       >
-        工作地点 <span className="text-red-500">*</span>
+        工作地点 <span className="text-status-danger-fg">*</span>
       </label>
       <div className="relative">
-        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
         <input
           id="amap-location-input"
           type="text"
@@ -156,17 +156,17 @@ export function AmapLocationPicker({
           autoComplete="off"
           className={`h-10 w-full rounded-lg border pl-9 pr-9 text-sm outline-none transition-colors focus:ring-1 ${
             error
-              ? "border-red-400 focus:border-red-400 focus:ring-red-400"
-              : "border-brand-charcoal/15 focus:border-brand-primary focus:ring-brand-primary"
+              ? "border-status-danger-fg focus:border-status-danger-fg focus:ring-status-danger-fg"
+              : "border-line-strong focus:border-brand-primary focus:ring-brand-primary"
           }`}
         />
         {loading && (
-          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-brand-charcoal/50" />
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-ink-muted" />
         )}
       </div>
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {error && <p className="mt-1 text-xs text-status-danger-fg">{error}</p>}
       {unavailable && !error && (
-        <p className="mt-1 text-xs text-brand-charcoal/65">
+        <p className="mt-1 text-xs text-ink-muted">
           地点搜索由服务端代理，当前未配置
           AMAP_WEB_SERVICE_KEY；可直接填写地点，并手动录入经纬度（选填）。
         </p>
@@ -176,7 +176,7 @@ export function AmapLocationPicker({
         <ul
           id="amap-suggestion-list"
           role="listbox"
-          className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-brand-charcoal/15 bg-white shadow-xl"
+          className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-line-strong bg-white shadow-popover"
         >
           {suggestions.map((tip, index) => (
             <li
@@ -190,14 +190,14 @@ export function AmapLocationPicker({
               }}
               onMouseEnter={() => setSelectedIndex(index)}
               className={`flex cursor-pointer flex-col px-4 py-2 ${
-                index === selectedIndex ? "bg-brand-primary/10" : "hover:bg-brand-charcoal/[0.03]"
+                index === selectedIndex ? "bg-brand-primary/10" : "hover:bg-surface-muted"
               }`}
             >
               <div className="flex items-center gap-2 text-sm font-medium text-brand-charcoal">
-                <Search className="h-3.5 w-3.5 text-brand-charcoal/65" />
+                <Search className="h-3.5 w-3.5 text-ink-muted" />
                 {tip.name}
               </div>
-              <div className="ml-5 text-xs text-brand-charcoal/65">
+              <div className="ml-5 text-xs text-ink-muted">
                 {tip.district}
                 {tip.address || ""}
               </div>

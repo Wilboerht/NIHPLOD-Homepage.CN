@@ -46,18 +46,18 @@ function AdminSsoDeniedContent() {
   return (
     <div className="space-y-6">
       <PageHeader title={`无法访问${site}`} description="主站管理员 SSO" />
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
+      <div className="rounded-xl border border-status-warning-line bg-status-warning-soft p-6">
         <div className="flex items-start gap-3">
-          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-status-warning-fg" />
           <div className="space-y-2">
-            <p className="text-sm font-medium text-amber-900">{message}</p>
-            <p className="text-xs text-amber-700">
+            <p className="text-sm font-medium text-status-warning-strong">{message}</p>
+            <p className="text-xs text-status-warning-strong">
               子站管理员账号由主站统一管理，子站不再提供管理员新增/改密入口。
             </p>
             <div className="flex flex-wrap items-center gap-4 pt-1">
               <Link
                 href="/admin"
-                className="text-sm font-medium text-amber-900 underline underline-offset-4"
+                className="text-sm font-medium text-status-warning-strong underline underline-offset-4"
               >
                 返回主站管理后台
               </Link>
@@ -66,7 +66,7 @@ function AdminSsoDeniedContent() {
                   type="button"
                   onClick={handleSwitchAccount}
                   disabled={loggingOut}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-900 underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-status-warning-strong underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   {loggingOut ? "正在退出..." : "退出当前账号后换号登录"}
@@ -82,7 +82,7 @@ function AdminSsoDeniedContent() {
 
 export default function AdminSsoDeniedPage() {
   return (
-    <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/65">加载中...</div>}>
+    <Suspense fallback={<div className="py-8 text-center text-ink-muted">加载中...</div>}>
       <AdminSsoDeniedContent />
     </Suspense>
   );

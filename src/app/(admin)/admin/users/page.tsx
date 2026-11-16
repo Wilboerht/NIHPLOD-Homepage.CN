@@ -158,11 +158,11 @@ function DetailSection({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white",
+        "overflow-hidden rounded-xl border border-line bg-white",
         className
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-subtle px-4 py-2.5">
         <h3 className="text-sm font-semibold text-brand-charcoal">{title}</h3>
         {action}
       </div>
@@ -182,7 +182,7 @@ function DetailField({
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <dt className="text-xs text-brand-charcoal/65">{label}</dt>
+      <dt className="text-xs text-ink-muted">{label}</dt>
       <dd className="mt-1 text-sm text-brand-charcoal">{children}</dd>
     </div>
   );
@@ -205,7 +205,7 @@ function DetailRow({
         className
       )}
     >
-      <dt className="text-xs leading-5 text-brand-charcoal/65">{label}</dt>
+      <dt className="text-xs leading-5 text-ink-muted">{label}</dt>
       <dd className="min-w-0 text-sm leading-5 text-brand-charcoal">{children}</dd>
     </div>
   );
@@ -214,35 +214,35 @@ function DetailRow({
 function UserDetailSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 rounded-xl border border-brand-charcoal/10 bg-white p-4">
-        <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-brand-charcoal/[0.06]" />
+      <div className="flex items-center gap-3 rounded-xl border border-line bg-white p-4">
+        <div className="h-12 w-12 shrink-0 animate-pulse rounded-full bg-surface-hover" />
         <div className="flex-1 space-y-2">
           <div className="flex gap-2">
-            <div className="h-5 w-16 animate-pulse rounded-full bg-brand-charcoal/[0.06]" />
-            <div className="h-5 w-16 animate-pulse rounded-full bg-brand-charcoal/[0.06]" />
+            <div className="h-5 w-16 animate-pulse rounded-full bg-surface-hover" />
+            <div className="h-5 w-16 animate-pulse rounded-full bg-surface-hover" />
           </div>
-          <div className="h-3 w-48 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+          <div className="h-3 w-48 animate-pulse rounded bg-surface-hover" />
         </div>
       </div>
       <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="flex shrink-0 gap-1 overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white p-1 lg:w-44 lg:flex-col">
+        <div className="flex shrink-0 gap-1 overflow-hidden rounded-xl border border-line bg-white p-1 lg:w-44 lg:flex-col">
           {Array.from({ length: DETAIL_TABS.length }).map((_, index) => (
             <div
               key={index}
-              className="h-8 w-20 shrink-0 animate-pulse rounded-lg bg-brand-charcoal/[0.06] lg:w-full"
+              className="h-8 w-20 shrink-0 animate-pulse rounded-lg bg-surface-hover lg:w-full"
             />
           ))}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="overflow-hidden rounded-xl border border-brand-charcoal/10 bg-white">
-            <div className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-2.5">
-              <div className="h-4 w-20 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+          <div className="overflow-hidden rounded-xl border border-line bg-white">
+            <div className="border-b border-line bg-surface-subtle px-4 py-2.5">
+              <div className="h-4 w-20 animate-pulse rounded bg-surface-hover" />
             </div>
             <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
               {Array.from({ length: 8 }).map((_, index) => (
                 <div key={index} className="space-y-2">
-                  <div className="h-3 w-16 animate-pulse rounded bg-brand-charcoal/[0.06]" />
-                  <div className="h-4 w-24 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+                  <div className="h-3 w-16 animate-pulse rounded bg-surface-hover" />
+                  <div className="h-4 w-24 animate-pulse rounded bg-surface-hover" />
                 </div>
               ))}
             </div>
@@ -429,23 +429,23 @@ const REDEMPTION_STATUS_LABELS: Record<string, string> = {
 };
 
 const REDEMPTION_STATUS_BADGES: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  FULFILLED: "bg-emerald-100 text-emerald-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-  CANCELLED: "bg-gray-100 text-gray-500",
-  AFTER_SALES_REQUESTED: "bg-amber-100 text-amber-700",
-  AFTER_SALES_APPROVED: "bg-blue-100 text-blue-700",
-  AFTER_SALES_REJECTED: "bg-red-100 text-red-600",
-  RETURNING: "bg-blue-100 text-blue-700",
-  RETURNED: "bg-indigo-100 text-indigo-700",
-  REFUNDED: "bg-emerald-100 text-emerald-700",
-  AFTER_SALES_CLOSED: "bg-gray-100 text-gray-500",
+  PENDING: "bg-status-warning-soft text-status-warning-strong",
+  FULFILLED: "bg-status-success-soft text-status-success-strong",
+  COMPLETED: "bg-status-success-soft text-status-success-strong",
+  CANCELLED: "bg-status-neutral-soft text-status-neutral-fg",
+  AFTER_SALES_REQUESTED: "bg-status-warning-soft text-status-warning-strong",
+  AFTER_SALES_APPROVED: "bg-status-info-soft text-status-info-strong",
+  AFTER_SALES_REJECTED: "bg-status-danger-soft text-status-danger-fg",
+  RETURNING: "bg-status-info-soft text-status-info-strong",
+  RETURNED: "bg-status-info-soft text-status-info-strong",
+  REFUNDED: "bg-status-success-soft text-status-success-strong",
+  AFTER_SALES_CLOSED: "bg-status-neutral-soft text-status-neutral-fg",
 };
 
 const ADJUSTMENT_STATUS_BADGES: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-red-100 text-red-600",
+  PENDING: "bg-status-warning-soft text-status-warning-strong",
+  APPROVED: "bg-status-success-soft text-status-success-strong",
+  REJECTED: "bg-status-danger-soft text-status-danger-fg",
 };
 
 // 外部身份平台标签（与后端 ExternalIdentity.provider 枚举一一对应；未知 provider 原样显示）
@@ -1318,10 +1318,10 @@ function AdminUsersContent() {
       />
 
       {/* 工具栏：搜索 + 筛选保持同一行，避免筛选器堆叠产生大片空白 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative w-full md:max-w-sm md:flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
             <Input
               aria-label="搜索用户"
               placeholder="搜索用户 ID/完整手机号/昵称..."
@@ -1338,7 +1338,7 @@ function AdminUsersContent() {
                   updateParams({ search: "" });
                 }}
                 aria-label="清除搜索"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/65 hover:text-brand-charcoal"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-brand-charcoal"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1389,7 +1389,7 @@ function AdminUsersContent() {
             )}
           </div>
 
-          <span className="hidden text-sm text-brand-charcoal/65 md:ml-auto md:inline">
+          <span className="hidden text-sm text-ink-muted md:ml-auto md:inline">
             共 {pagination.total} 位用户
           </span>
         </div>
@@ -1397,7 +1397,7 @@ function AdminUsersContent() {
 
       {/* 批量操作独立一行，避免勾选后把筛选器挤到第二行 */}
       {canWriteUsers && isOwnerActor && selectedIds.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand-primary/15 bg-brand-primary/[0.03] px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand-primary/15 bg-brand-primary/5 px-4 py-3">
           <span className="mr-1 text-sm font-medium text-brand-charcoal">
             已选 {selectedCount} 项
           </span>
@@ -1412,7 +1412,7 @@ function AdminUsersContent() {
           <Button
             size="sm"
             variant="outline"
-            className="border-amber-200 text-amber-700 hover:bg-amber-50"
+            className="border-status-warning-line text-status-warning-strong hover:bg-status-warning-soft"
             leftIcon={<Lock className="h-4 w-4" />}
             onClick={() => setBatchTarget({ status: "SUSPENDED" })}
           >
@@ -1435,10 +1435,10 @@ function AdminUsersContent() {
       {/* 加载失败错误态 */}
       {loadError && (
         <div className="flex flex-col items-center justify-center gap-3 py-12">
-          <p className="text-sm text-red-500">{loadError}</p>
+          <p className="text-sm text-status-danger-fg">{loadError}</p>
           <button
             onClick={fetchUsers}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-xs hover:bg-gray-50"
+            className="rounded-lg border border-line-strong px-4 py-2 text-xs hover:bg-status-neutral-soft"
           >
             重试
           </button>
@@ -1455,16 +1455,16 @@ function AdminUsersContent() {
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-24 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]"
+                    className="h-24 animate-pulse rounded-2xl bg-surface-muted"
                   />
                 ))}
               </div>
             ) : users.length === 0 ? (
-              <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10">
+              <div className="rounded-card border border-line bg-white py-10">
                 <Empty title="暂无用户" />
               </div>
             ) : (
-              <div className="divide-y divide-brand-charcoal/10 rounded-2xl border border-brand-charcoal/10 bg-white">
+              <div className="divide-y divide-line rounded-card border border-line bg-white">
                 {users.map((user) => (
                   <div key={user.id} className="p-4">
                     <div className="flex items-start gap-3">
@@ -1474,7 +1474,7 @@ function AdminUsersContent() {
                             type="checkbox"
                             checked={selectedIds.has(user.id)}
                             onChange={() => userSelection.toggle(user)}
-                            className="h-4 w-4 rounded border-brand-charcoal/20"
+                            className="h-4 w-4 rounded border-line-strong"
                             aria-label={`选择 ${user.nickname || user.phone || user.id}`}
                           />
                         </label>
@@ -1484,7 +1484,7 @@ function AdminUsersContent() {
                         <p className="truncate font-medium text-brand-charcoal">
                           {user.nickname || "未设置"}
                         </p>
-                        <p className="truncate text-xs text-brand-charcoal/65">
+                        <p className="truncate text-xs text-ink-muted">
                           {user.phone || "未绑定手机号"}
                         </p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -1499,8 +1499,8 @@ function AdminUsersContent() {
                         </div>
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-                      <span className="text-xs text-brand-charcoal/65">
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-line pt-2">
+                      <span className="text-xs text-ink-muted">
                         注册于 {new Date(user.createdAt).toLocaleDateString("zh-CN")}
                       </span>
                       <div className="flex items-center gap-1">
@@ -1516,7 +1516,7 @@ function AdminUsersContent() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                            className="text-status-danger-fg hover:bg-status-danger-soft hover:text-status-danger-fg"
                             aria-label={`删除 ${user.nickname || user.phone || "用户"}`}
                             onClick={() =>
                               requestDeleteUser(user.id, user.nickname || user.phone || user.id)
@@ -1534,12 +1534,12 @@ function AdminUsersContent() {
           </div>
 
           {/* 用户列表（桌面端表格） */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+          <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
-                <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+                <tr className="border-b border-line bg-surface-subtle text-left text-xs font-medium text-ink-muted">
                   {canWriteUsers && (
-                    <th scope="col" className="w-10 px-4 py-3 font-normal">
+                    <th scope="col" className="w-10 px-4 py-3">
                       <input
                         type="checkbox"
                         checked={isAllSelected}
@@ -1547,27 +1547,27 @@ function AdminUsersContent() {
                           if (el) el.indeterminate = isSelectionIndeterminate;
                         }}
                         onChange={(e) => handleSelectAll(e.target.checked)}
-                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        className="h-4 w-4 rounded border-line-strong"
                         aria-label="全选"
                       />
                     </th>
                   )}
-                  <th scope="col" className="px-4 py-3 font-normal">
+                  <th scope="col" className="px-4 py-3">
                     用户
                   </th>
-                  <th scope="col" className="px-4 py-3 font-normal">
+                  <th scope="col" className="px-4 py-3">
                     手机号
                   </th>
-                  <th scope="col" className="px-4 py-3 font-normal">
+                  <th scope="col" className="px-4 py-3">
                     会员等级
                   </th>
-                  <th scope="col" className="px-4 py-3 font-normal">
+                  <th scope="col" className="px-4 py-3">
                     状态
                   </th>
-                  <th scope="col" className="px-4 py-3 font-normal">
+                  <th scope="col" className="px-4 py-3">
                     注册时间
                   </th>
-                  <th scope="col" className="px-4 py-3 font-normal">
+                  <th scope="col" className="px-4 py-3">
                     操作
                   </th>
                 </tr>
@@ -1587,14 +1587,14 @@ function AdminUsersContent() {
                   </tr>
                 ) : (
                   users.map((user) => (
-                    <tr key={user.id} className="hover:bg-brand-charcoal/[0.03]">
+                    <tr key={user.id} className="hover:bg-surface-muted">
                       {canWriteUsers && (
                         <td className="px-4 py-3">
                           <input
                             type="checkbox"
                             checked={selectedIds.has(user.id)}
                             onChange={() => userSelection.toggle(user)}
-                            className="h-4 w-4 rounded border-brand-charcoal/20"
+                            className="h-4 w-4 rounded border-line-strong"
                             aria-label={`选择 ${user.nickname || user.phone || user.id}`}
                           />
                         </td>
@@ -1612,7 +1612,7 @@ function AdminUsersContent() {
                             {membershipLevelMap[user.membershipLevel].label}
                           </Badge>
                         ) : (
-                          <span className="text-brand-charcoal/65">—</span>
+                          <span className="text-ink-muted">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -1620,7 +1620,7 @@ function AdminUsersContent() {
                           {userStatusMap[user.status].label}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-brand-charcoal/65">
+                      <td className="px-4 py-3 text-ink-muted">
                         {new Date(user.createdAt).toLocaleDateString("zh-CN")}
                       </td>
                       <td className="px-4 py-3">
@@ -1632,7 +1632,7 @@ function AdminUsersContent() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                              className="text-status-danger-fg hover:bg-status-danger-soft hover:text-status-danger-fg"
                               onClick={() =>
                                 requestDeleteUser(user.id, user.nickname || user.phone || user.id)
                               }
@@ -1679,7 +1679,7 @@ function AdminUsersContent() {
           <UserDetailSkeleton />
         ) : !detailUser ? (
           <Empty
-            icon={<User className="h-8 w-8 text-brand-charcoal/65" />}
+            icon={<User className="h-8 w-8 text-ink-muted" />}
             title="无法加载用户详情"
             description={detailError || "用户不存在或已被删除"}
             className="py-10"
@@ -1699,7 +1699,7 @@ function AdminUsersContent() {
         ) : (
           <div className="space-y-4">
             {/* 用户摘要：身份/状态 + 全局操作，切换分区时保持可见 */}
-            <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 sm:p-4">
+            <div className="rounded-xl border border-line bg-surface-subtle p-3 sm:p-4">
               <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap sm:gap-4">
                 <UserAvatar src={detailUser.avatar} name={detailUser.nickname} size="md" />
                 <div className="min-w-0 flex-1 space-y-2">
@@ -1714,14 +1714,14 @@ function AdminUsersContent() {
                         </Badge>
                       )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-brand-charcoal/65">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-ink-muted">
                     <span className="inline-flex items-center gap-1">
                       <Smartphone className="h-3.5 w-3.5" />
                       <span className="font-mono">
                         {revealedPhone || detailUser.phone || "未绑定手机号"}
                       </span>
                       {detailUser.phoneVerified && (
-                        <Badge variant="success" className="ml-1 px-1.5 py-0 text-[11px]">
+                        <Badge variant="success" className="ml-1 px-1.5 py-0 text-2xs">
                           已验证
                         </Badge>
                       )}
@@ -1749,7 +1749,7 @@ function AdminUsersContent() {
                   >
                     隐藏
                   </button>
-                  <span className="text-brand-charcoal/65">
+                  <span className="text-ink-muted">
                     {Math.floor(phoneRevealRemaining / 60)}:
                     {String(phoneRevealRemaining % 60).padStart(2, "0")} 后自动隐藏
                   </span>
@@ -1757,7 +1757,7 @@ function AdminUsersContent() {
               )}
                     </span>
                     <span className="inline-flex min-w-0 items-center gap-1">
-                      <span className="shrink-0 text-brand-charcoal/65">ID</span>
+                      <span className="shrink-0 text-ink-muted">ID</span>
                       <code className="max-w-[16rem] truncate font-mono" title={detailUser.id}>
                         {detailUser.id}
                       </code>
@@ -1766,7 +1766,7 @@ function AdminUsersContent() {
                           type="button"
                           aria-label="复制用户 ID"
                           onClick={() => void copyText(detailUser.id, "用户 ID")}
-                          className="inline-flex shrink-0 rounded p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80"
+                          className="inline-flex shrink-0 rounded p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal/80"
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </button>
@@ -1791,7 +1791,7 @@ function AdminUsersContent() {
                   {detailMoreItems.length > 0 && (
                     <Dropdown
                       trigger={
-                        <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-brand-charcoal/20 bg-white px-3 text-sm font-medium text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]">
+                        <span className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-white px-3 text-sm font-medium text-brand-charcoal/80 transition-colors hover:bg-surface-muted">
                           更多操作
                           <MoreHorizontal className="h-4 w-4" />
                         </span>
@@ -1809,7 +1809,7 @@ function AdminUsersContent() {
                 <div
                   role="tablist"
                   aria-label="用户详情分区"
-                  className="scrollbar-hide flex gap-1 overflow-x-auto rounded-xl border border-brand-charcoal/10 bg-white p-1 lg:flex-col"
+                  className="scrollbar-hide flex gap-1 overflow-x-auto rounded-xl border border-line bg-white p-1 lg:flex-col"
                 >
                   {visibleDetailTabs.map((tab) => {
                     const Icon = tab.icon;
@@ -1829,7 +1829,7 @@ function AdminUsersContent() {
                           "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-primary/40",
                           active
                             ? "bg-brand-primary/10 font-medium text-brand-primary"
-                            : "text-brand-charcoal/65 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal"
+                            : "text-ink-muted hover:bg-surface-muted hover:text-brand-charcoal"
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -1863,7 +1863,7 @@ function AdminUsersContent() {
                               {membershipLevelMap[detailUser.membershipLevel].label}
                             </Badge>
                           ) : (
-                            <span className="text-brand-charcoal/65">未设置</span>
+                            <span className="text-ink-muted">未设置</span>
                           )}
                         </DetailField>
                         <DetailField label="累计消费">
@@ -1959,7 +1959,7 @@ function AdminUsersContent() {
                                 : "未设置"}
                             </span>
                             {detailUser.birthdayLocked && (
-                              <Badge variant="secondary" className="px-1.5 py-0 text-[11px]">
+                              <Badge variant="secondary" className="px-1.5 py-0 text-2xs">
                                 已锁定
                               </Badge>
                             )}
@@ -1999,20 +1999,20 @@ function AdminUsersContent() {
                                   onClick={() =>
                                     void copyText(detailUser.wechatUnionId ?? "", "微信 UnionID")
                                   }
-                                  className="inline-flex shrink-0 rounded p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80"
+                                  className="inline-flex shrink-0 rounded p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal/80"
                                 >
                                   <Copy className="h-3.5 w-3.5" />
                                 </button>
                               </Tooltip>
                             </div>
                           ) : (
-                            <span className="text-brand-charcoal/65">未绑定</span>
+                            <span className="text-ink-muted">未绑定</span>
                           )}
                         </DetailRow>
                         <DetailRow label="第三方平台绑定" className="sm:col-span-2">
                           {detailUser.externalIdentities &&
                           detailUser.externalIdentities.length > 0 ? (
-                            <div className="divide-y divide-brand-charcoal/[0.06] overflow-hidden rounded-lg border border-brand-charcoal/10">
+                            <div className="divide-y divide-line-subtle overflow-hidden rounded-lg border border-line">
                               {detailUser.externalIdentities.map((identity) => {
                                 // 小程序渠道无昵称快照：优先显示来源小程序名称（新数据），
                                 // 其次平台昵称快照（网页扫码绑定）
@@ -2023,7 +2023,7 @@ function AdminUsersContent() {
                                     key={identity.id}
                                     className="flex flex-wrap items-center gap-2 px-3 py-2"
                                   >
-                                    <Badge variant="outline" className="px-1.5 py-0 text-[11px]">
+                                    <Badge variant="outline" className="px-1.5 py-0 text-2xs">
                                       {providerLabelMap[identity.provider] || identity.provider}
                                     </Badge>
                                     {identityLabel && (
@@ -2033,12 +2033,12 @@ function AdminUsersContent() {
                                     )}
                                     {/* OpenID：无 users:sensitive:read 时由服务端脱敏，明文仅见于敏感权限 */}
                                     <code
-                                      className="max-w-[12rem] truncate font-mono text-[11px] text-brand-charcoal/65"
+                                      className="max-w-[12rem] truncate font-mono text-2xs text-ink-muted"
                                       title={`OpenID: ${identity.subjectId}`}
                                     >
                                       {identity.subjectId}
                                     </code>
-                                    <span className="ml-auto text-xs text-brand-charcoal/65">
+                                    <span className="ml-auto text-xs text-ink-muted">
                                       {formatDate(identity.createdAt)}
                                     </span>
                                     {canWriteUsers && (
@@ -2052,7 +2052,7 @@ function AdminUsersContent() {
                                               identity.provider,
                                           })
                                         }
-                                        className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50"
+                                        className="rounded px-1.5 py-0.5 text-xs text-status-danger-fg hover:bg-status-danger-soft"
                                       >
                                         解绑
                                       </button>
@@ -2063,11 +2063,11 @@ function AdminUsersContent() {
                             </div>
                           ) : detailUser.wechatOpenId ? (
                             // 双写过渡期兜底：迁移前历史数据可能仅有旧列
-                            <Badge variant="success" className="px-1.5 py-0 text-[11px]">
+                            <Badge variant="success" className="px-1.5 py-0 text-2xs">
                               微信已绑定（历史数据）
                             </Badge>
                           ) : (
-                            <span className="text-brand-charcoal/65">未绑定</span>
+                            <span className="text-ink-muted">未绑定</span>
                           )}
                         </DetailRow>
                       </dl>
@@ -2101,14 +2101,14 @@ function AdminUsersContent() {
                 {/* 积分与兑换 */}
                 {activeDetailTab === "points" && (
                   <div className="space-y-4">
-                    <div className="flex flex-col gap-3 rounded-xl border border-brand-charcoal/10 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-xs text-brand-charcoal/65">可用积分</p>
+                        <p className="text-xs text-ink-muted">可用积分</p>
                         <p className="mt-1 font-mono text-3xl font-semibold tabular-nums text-brand-charcoal">
                           {detailPoints ? detailPoints.available.toLocaleString() : "—"}
                         </p>
                         {detailPoints && detailPoints.redemptionTotal > 0 && (
-                          <p className="mt-1 text-xs text-brand-charcoal/65">
+                          <p className="mt-1 text-xs text-ink-muted">
                             累计兑换 {detailPoints.redemptionTotal} 次
                           </p>
                         )}
@@ -2134,14 +2134,14 @@ function AdminUsersContent() {
                           {Array.from({ length: 3 }).map((_, index) => (
                             <div
                               key={index}
-                              className="h-10 animate-pulse rounded-lg bg-brand-charcoal/[0.04]"
+                              className="h-10 animate-pulse rounded-lg bg-surface-muted"
                             />
                           ))}
                         </div>
                       ) : ledgerItems.length === 0 ? (
                         <Empty title="暂无积分流水" className="py-8" />
                       ) : (
-                        <div className="divide-y divide-brand-charcoal/10">
+                        <div className="divide-y divide-line">
                           {ledgerItems.map((item) => (
                             <div
                               key={item.id}
@@ -2152,7 +2152,7 @@ function AdminUsersContent() {
                                   {POINT_TYPE_LABELS[item.type] || item.type}
                                 </span>
                                 {item.note && (
-                                  <span className="truncate text-xs text-brand-charcoal/65">
+                                  <span className="truncate text-xs text-ink-muted">
                                     {item.note}
                                   </span>
                                 )}
@@ -2161,12 +2161,12 @@ function AdminUsersContent() {
                                 <span
                                   className={cn(
                                     "font-mono text-sm font-medium tabular-nums",
-                                    item.amount > 0 ? "text-emerald-600" : "text-red-500"
+                                    item.amount > 0 ? "text-status-success-fg" : "text-status-danger-fg"
                                   )}
                                 >
                                   {item.amount > 0 ? `+${item.amount}` : item.amount}
                                 </span>
-                                <span className="text-xs text-brand-charcoal/65">
+                                <span className="text-xs text-ink-muted">
                                   {formatDate(item.createdAt)}
                                 </span>
                               </div>
@@ -2175,7 +2175,7 @@ function AdminUsersContent() {
                         </div>
                       )}
                       {ledgerTotalPages > 1 && (
-                        <div className="flex items-center justify-end gap-2 border-t border-brand-charcoal/10 px-4 py-2">
+                        <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-2">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -2184,7 +2184,7 @@ function AdminUsersContent() {
                           >
                             上一页
                           </Button>
-                          <span className="text-xs tabular-nums text-brand-charcoal/65">
+                          <span className="text-xs tabular-nums text-ink-muted">
                             {ledgerPage}/{ledgerTotalPages}
                           </span>
                           <Button
@@ -2204,7 +2204,7 @@ function AdminUsersContent() {
                         <span>
                           积分兑换记录
                           {detailPoints && detailPoints.redemptionTotal > 0 && (
-                            <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
+                            <span className="ml-2 text-xs font-normal text-ink-muted">
                               共 {detailPoints.redemptionTotal} 条，展示最近{" "}
                               {detailPoints.redemptions.length} 条
                             </span>
@@ -2216,7 +2216,7 @@ function AdminUsersContent() {
                       {!detailPoints || detailPoints.redemptions.length === 0 ? (
                         <Empty title="暂无兑换记录" className="py-8" />
                       ) : (
-                        <div className="divide-y divide-brand-charcoal/10">
+                        <div className="divide-y divide-line">
                           {detailPoints.redemptions.map((r) => (
                             <div key={r.id} className="px-4 py-3">
                               <div className="flex items-center justify-between gap-3">
@@ -2224,7 +2224,7 @@ function AdminUsersContent() {
                                   <p className="truncate text-sm font-medium text-brand-charcoal">
                                     {r.productName}
                                   </p>
-                                  <span className="shrink-0 text-xs text-brand-charcoal/65">
+                                  <span className="shrink-0 text-xs text-ink-muted">
                                     {r.points.toLocaleString()} 分
                                   </span>
                                 </div>
@@ -2236,7 +2236,7 @@ function AdminUsersContent() {
                                   {REDEMPTION_STATUS_LABELS[r.status]}
                                 </span>
                               </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/65">
+                              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
                                 <span>{formatDate(r.createdAt)}</span>
                                 <span>参考价 ¥{r.priceYuan.toLocaleString()}</span>
                                 {r.waybillNo && (
@@ -2246,7 +2246,7 @@ function AdminUsersContent() {
                                 )}
                               </div>
                               {r.address && (
-                                <p className="mt-1 text-xs text-brand-charcoal/65">
+                                <p className="mt-1 text-xs text-ink-muted">
                                   快照收货：{r.recipient} {r.phone} {r.address}
                                 </p>
                               )}
@@ -2284,12 +2284,12 @@ function AdminUsersContent() {
                     ) : detailAddresses.length === 0 ? (
                       <Empty title="暂无收货地址" className="py-8" />
                     ) : (
-                      <div className="divide-y divide-brand-charcoal/10">
+                      <div className="divide-y divide-line">
                         {detailAddresses.map((a) => (
                           <div key={a.id} className="px-4 py-3">
                             <p className="text-sm font-medium text-brand-charcoal">
                               {a.recipient}{" "}
-                              <span className="text-xs text-brand-charcoal/65">{a.phone}</span>
+                              <span className="text-xs text-ink-muted">{a.phone}</span>
                             </p>
                             <p className="mt-1 text-xs text-brand-charcoal/70">
                               {a.region} {a.detail}
@@ -2308,7 +2308,7 @@ function AdminUsersContent() {
                       <span>
                         消费补录记录
                         {detailAdjustmentTotal > 0 && (
-                          <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
+                          <span className="ml-2 text-xs font-normal text-ink-muted">
                             共 {detailAdjustmentTotal} 条，展示最近 {detailAdjustments.length} 条
                           </span>
                         )}
@@ -2319,7 +2319,7 @@ function AdminUsersContent() {
                     {detailAdjustments.length === 0 ? (
                       <Empty title="暂无消费记录" className="py-8" />
                     ) : (
-                      <div className="divide-y divide-brand-charcoal/10">
+                      <div className="divide-y divide-line">
                         {detailAdjustments.map((a) => (
                           <div key={a.id} className="px-4 py-3">
                             <div className="flex items-center justify-between gap-3">
@@ -2327,13 +2327,13 @@ function AdminUsersContent() {
                                 <p className="truncate font-mono text-sm text-brand-charcoal">
                                   {a.orderNo}
                                 </p>
-                                <span className="shrink-0 text-xs text-brand-charcoal/65">
+                                <span className="shrink-0 text-xs text-ink-muted">
                                   {SPENT_CHANNEL_LABELS[
                                     a.channel as keyof typeof SPENT_CHANNEL_LABELS
                                   ] ?? a.channel}
                                 </span>
                                 {a.source === "ADMIN" && (
-                                  <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                                  <span className="shrink-0 rounded-full bg-status-warning-soft px-1.5 py-0.5 text-2xs text-status-warning-strong">
                                     {SPENT_SOURCE_LABELS.ADMIN}
                                     {a.createdByAdminName ? ` · ${a.createdByAdminName}` : ""}
                                   </span>
@@ -2347,19 +2347,19 @@ function AdminUsersContent() {
                                 {SPENT_STATUS_LABELS[a.status]}
                               </span>
                             </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-brand-charcoal/65">
+                            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
                               <span>{formatDate(a.createdAt)}</span>
                               {a.amountClaimed != null && (
                                 <span>申报 ¥{a.amountClaimed.toLocaleString()}</span>
                               )}
                               {a.reviewAmount != null && (
-                                <span className="text-emerald-700">
+                                <span className="text-status-success-strong">
                                   入账 ¥{a.reviewAmount.toLocaleString()}
                                 </span>
                               )}
                             </div>
                             {a.status === "REJECTED" && a.reviewNote && (
-                              <p className="mt-1 text-xs text-red-600">驳回原因：{a.reviewNote}</p>
+                              <p className="mt-1 text-xs text-status-danger-fg">驳回原因：{a.reviewNote}</p>
                             )}
                           </div>
                         ))}
@@ -2380,7 +2380,7 @@ function AdminUsersContent() {
                               {membershipLevelMap[detailUser.membershipLevel].label}
                             </Badge>
                           ) : (
-                            <span className="text-brand-charcoal/65">未设置</span>
+                            <span className="text-ink-muted">未设置</span>
                           )}
                         </DetailField>
                         <DetailField label="累计消费">
@@ -2406,7 +2406,7 @@ function AdminUsersContent() {
                             : "—"}
                         </DetailField>
                       </dl>
-                      <p className="mt-4 border-t border-brand-charcoal/10 pt-3 text-xs text-brand-charcoal/65">
+                      <p className="mt-4 border-t border-line pt-3 text-xs text-ink-muted">
                         激活时间为首次达到该等级的时间（等级按累计消费实时判定，可升可降）
                       </p>
                     </DetailSection>
@@ -2419,7 +2419,7 @@ function AdminUsersContent() {
                           className="py-8"
                         />
                       ) : (
-                        <div className="divide-y divide-brand-charcoal/10">
+                        <div className="divide-y divide-line">
                           {detailLevelChanges.map((c) => (
                             <div
                               key={c.id}
@@ -2431,7 +2431,7 @@ function AdminUsersContent() {
                                 >
                                   {membershipLevelMap[c.fromLevel]?.label ?? c.fromLevel}
                                 </Badge>
-                                <span className="text-brand-charcoal/65">→</span>
+                                <span className="text-ink-muted">→</span>
                                 <Badge
                                   variant={membershipLevelMap[c.toLevel]?.variant ?? "secondary"}
                                 >
@@ -2439,14 +2439,14 @@ function AdminUsersContent() {
                                 </Badge>
                                 {c.note && (
                                   <span
-                                    className="max-w-[16rem] truncate text-xs text-brand-charcoal/65"
+                                    className="max-w-[16rem] truncate text-xs text-ink-muted"
                                     title={c.note}
                                   >
                                     {c.note}
                                   </span>
                                 )}
                               </div>
-                              <span className="shrink-0 text-xs text-brand-charcoal/65">
+                              <span className="shrink-0 text-xs text-ink-muted">
                                 {formatDate(c.createdAt)}
                               </span>
                             </div>
@@ -2464,7 +2464,7 @@ function AdminUsersContent() {
                       <span>
                         登录历史
                         {detailLoginAttempts.length > 0 && (
-                          <span className="ml-2 text-xs font-normal text-brand-charcoal/65">
+                          <span className="ml-2 text-xs font-normal text-ink-muted">
                             最近 {detailLoginAttempts.length} 条
                           </span>
                         )}
@@ -2491,31 +2491,31 @@ function AdminUsersContent() {
                         return visibleAttempts.length === 0 ? (
                           <Empty title="最近记录中没有失败登录" className="py-8" />
                         ) : (
-                          <div className="divide-y divide-brand-charcoal/10">
+                          <div className="divide-y divide-line">
                             {visibleAttempts.map((a) => (
                               <div key={a.id} className="px-4 py-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div className="flex min-w-0 items-center gap-2">
                                     <span
                                       className={`inline-flex h-2 w-2 flex-shrink-0 rounded-full ${
-                                        a.success ? "bg-emerald-500" : "bg-red-500"
+                                        a.success ? "bg-status-success-fg" : "bg-status-danger-fg"
                                       }`}
                                     />
                                     <span className="text-sm text-brand-charcoal/80">
                                       {LOGIN_TYPE_LABELS[a.type] || a.type}
                                     </span>
                                     {!a.success && (
-                                      <Badge variant="danger" className="px-1.5 py-0 text-[11px]">
+                                      <Badge variant="danger" className="px-1.5 py-0 text-2xs">
                                         {a.reason || "失败"}
                                       </Badge>
                                     )}
                                     {a.clientId && (
-                                      <span className="truncate text-xs text-brand-charcoal/65">
+                                      <span className="truncate text-xs text-ink-muted">
                                         {a.clientId}
                                       </span>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-3 text-xs text-brand-charcoal/65">
+                                  <div className="flex items-center gap-3 text-xs text-ink-muted">
                                     {a.ipAddress && (
                                       <span className="font-mono">{a.ipAddress}</span>
                                     )}
@@ -2524,7 +2524,7 @@ function AdminUsersContent() {
                                 </div>
                                 {a.userAgent && (
                                   <p
-                                    className="mt-1 w-full truncate text-xs text-brand-charcoal/65"
+                                    className="mt-1 w-full truncate text-xs text-ink-muted"
                                     title={a.userAgent}
                                   >
                                     {a.userAgent}
@@ -2589,7 +2589,7 @@ function AdminUsersContent() {
           />
           <div>
             <label className="mb-1 block text-sm font-medium text-brand-charcoal/80">
-              调整原因<span className="ml-0.5 text-red-500">*</span>
+              调整原因<span className="ml-0.5 text-status-danger-fg">*</span>
             </label>
             <textarea
               value={adjustNote}
@@ -2597,7 +2597,7 @@ function AdminUsersContent() {
               rows={3}
               maxLength={200}
               placeholder="如：客服补偿 / 退款冲正 / 活动奖励"
-              className="w-full resize-y rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-brand-charcoal/65 focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+              className="w-full resize-y rounded-lg border border-line-strong bg-white px-3 py-2 text-sm text-brand-charcoal placeholder:text-ink-muted focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
             />
           </div>
         </div>
@@ -2719,7 +2719,7 @@ function AdminUsersContent() {
             请立即通过安全渠道将临时密码告知用户，关闭本窗口后无法再次查看。
             用户所有会话已被强制下线。临时密码 24 小时内有效，首次登录后必须修改密码。
           </p>
-          <div className="flex items-center gap-2 rounded-lg bg-brand-charcoal/[0.04] px-4 py-3">
+          <div className="flex items-center gap-2 rounded-lg bg-surface-muted px-4 py-3">
             <code className="flex-1 select-all break-all font-mono text-sm text-brand-charcoal">
               {tempPassword}
             </code>
@@ -2740,7 +2740,7 @@ function AdminUsersContent() {
               复制
             </Button>
           </div>
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-status-warning-line bg-status-warning-soft p-4">
             <input
               type="checkbox"
               checked={tempPasswordSaved}
@@ -2748,8 +2748,8 @@ function AdminUsersContent() {
               className="mt-0.5"
             />
             <div>
-              <p className="text-sm font-medium text-amber-800">我已安全保存临时密码</p>
-              <p className="mt-0.5 text-xs text-amber-600">
+              <p className="text-sm font-medium text-status-warning-strong">我已安全保存临时密码</p>
+              <p className="mt-0.5 text-xs text-status-warning-fg">
                 临时密码仅显示一次，关闭后无法再次查看。
               </p>
             </div>
@@ -2831,7 +2831,7 @@ function AdminUsersContent() {
         loading={deleteLoading}
       >
         {deletePreflightError ? (
-          <div className="rounded-lg bg-red-50 p-3 text-xs text-red-600">
+          <div className="rounded-lg bg-status-danger-soft p-3 text-xs text-status-danger-fg">
             资产预检失败，不能执行删除。
             <Button
               className="ml-2"
@@ -2843,7 +2843,7 @@ function AdminUsersContent() {
             </Button>
           </div>
         ) : deletePreflight ? (
-          <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <div className="space-y-1 rounded-lg border border-status-warning-line bg-status-warning-soft p-3 text-xs text-status-warning-strong">
             <p>
               剩余积分 {deletePreflight.pointsAvailable}；待履约{" "}
               {deletePreflight.pendingRedemptions} 笔；进行中售后 {deletePreflight.activeAfterSales}{" "}
@@ -2863,7 +2863,7 @@ function AdminUsersContent() {
             )}
           </div>
         ) : (
-          <p className="text-xs text-brand-charcoal/60">正在核对积分、兑换、售后和关联数据...</p>
+          <p className="text-xs text-ink-muted">正在核对积分、兑换、售后和关联数据...</p>
         )}
         <Input
           label="删除原因 / 工单号（必填）"

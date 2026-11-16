@@ -6,15 +6,14 @@
  * - 支持立即重投（忽略退避时间）与丢弃单条记录
  */
 import { useCallback, useEffect, useState } from "react";
-import { Webhook, RefreshCw, RotateCw, Trash2, AlertCircle } from "lucide-react";
+import { Webhook, RefreshCw, RotateCw, Trash2 } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
+import { DataTable, type Column } from "@/components/admin";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -54,7 +53,7 @@ function QueueInfoHint() {
       >
         <Webhook className="h-4 w-4" aria-hidden="true" />
       </summary>
-      <div className="absolute left-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-brand-charcoal/10 bg-white p-3 text-xs leading-relaxed text-brand-charcoal/80 shadow-lg">
+      <div className="absolute left-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-line bg-white p-3 text-xs leading-relaxed text-brand-charcoal/80 shadow-popover">
         <p className="font-medium text-brand-charcoal">队列处理说明</p>
         <p className="mt-1.5">
           重投会立即向目标地址发起一次投递（忽略退避时间）；失败则按指数退避安排下次自动重试。
@@ -89,6 +88,7 @@ function AdminWebhookFailuresContent() {
   const page = getNumber("page", 1);
   const [items, setItems] = useState<FailureItem[]>([]);
   const [counts, setCounts] = useState<Record<Kind, number>>({ webhook: 0, backchannel: 0 });
+  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -104,7 +104,7 @@ function AdminWebhookFailuresContent() {
       try {
         const data = await apiGet<{
           items: FailureItem[];
-          pagination: { totalPages: number };
+          pagination: { total: number; totalPages: number };
           counts: Record<Kind, number>;
         }>("/api/admin/webhook-failures", {
           kind: targetKind,
@@ -113,6 +113,7 @@ function AdminWebhookFailuresContent() {
         });
         if (!isLatest()) return;
         setItems(data.items);
+        setTotal(data.pagination.total);
         setTotalPages(data.pagination.totalPages);
         setCounts(data.counts);
         setLoadError(false);
@@ -206,6 +207,106 @@ function AdminWebhookFailuresContent() {
     }
   };
 
+  const columns: Column<FailureItem>[] = [
+    {
+      key: "clientName",
+      title: "目标 Client",
+      width: "200px",
+      render: (_, item) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-brand-charcoal">{item.clientName || "—"}</p>
+          <p className="truncate font-mono text-xs text-ink-muted">{item.clientId}</p>
+        </div>
+      ),
+    },
+    {
+      key: "userId",
+      title: "用户",
+      width: "200px",
+      render: (_, item) => (
+        <div className="min-w-0">
+          <p className="truncate text-brand-charcoal/80">{item.userNickname || "未设置昵称"}</p>
+          <p className="truncate font-mono text-xs text-ink-muted">
+            {item.userPhone || item.userId}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "attempts",
+      title: "已重试",
+      width: "80px",
+      numeric: true,
+      render: (value) => `${value ?? 0} 次`,
+    },
+    {
+      key: "nextRetryAt",
+      title: "下次重试",
+      width: "160px",
+      render: (value) => (
+        <span className="text-xs text-brand-charcoal/70">{formatDateTime(String(value))}</span>
+      ),
+    },
+    {
+      key: "createdAt",
+      title: "首次失败",
+      width: "160px",
+      render: (value) => (
+        <span className="text-xs text-brand-charcoal/70">{formatDateTime(String(value))}</span>
+      ),
+    },
+    {
+      key: "hasPayload",
+      title: "载荷摘要",
+      width: "220px",
+      render: (_, item) => (
+        <div className="min-w-0">
+          <p className="truncate text-xs text-ink-muted">
+            {item.hasPayload ? "已保存（含用户资料）" : "无"}
+          </p>
+          {item.lastError ? (
+            <p className="truncate text-xs text-status-danger-fg" title={item.lastError}>
+              {item.lastError}
+            </p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: "id",
+      title: "操作",
+      width: "180px",
+      align: "right",
+      render: (_, item) =>
+        canWrite ? (
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              loading={actioningId === item.id}
+              disabled={actioningId !== null && actioningId !== item.id}
+              leftIcon={<RotateCw className="h-3.5 w-3.5" />}
+              onClick={() => setRetryTarget(item)}
+            >
+              重投
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-status-danger-fg hover:bg-status-danger-soft"
+              disabled={actioningId !== null}
+              leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+              onClick={() => setDropTarget(item)}
+            >
+              丢弃
+            </Button>
+          </div>
+        ) : (
+          <span className="text-xs text-ink-muted">只读</span>
+        ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -238,7 +339,7 @@ function AdminWebhookFailuresContent() {
               "flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm transition-colors",
               kind === tab.key
                 ? "border-brand-charcoal bg-brand-charcoal text-white"
-                : "border-brand-charcoal/15 bg-white text-brand-charcoal/70 hover:border-brand-charcoal/30"
+                : "border-line-strong bg-white text-brand-charcoal/70 hover:border-brand-charcoal/30"
             )}
           >
             {tab.label}
@@ -254,37 +355,37 @@ function AdminWebhookFailuresContent() {
         ))}
       </div>
 
-      {/* 移动端卡片 */}
-      <MobileList
+            <DataTable
+        columns={columns}
+        data={items}
         loading={loading}
-        error={
-          loadError ? (
-            <>
-              <p className="text-red-500">加载失败</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => fetchItems(kind, page)}
-              >
-                重试
-              </Button>
-            </>
-          ) : undefined
-        }
-        empty={<Empty title="队列为空" description="当前没有投递失败的记录" />}
-        isEmpty={!loading && !loadError && items.length === 0}
-      >
-        {items.map((item) => (
-          <MobileListCard key={item.id}>
+        error={loadError ? "无法获取失败队列，请检查网络连接" : null}
+        onRetry={() => {
+          setLoadError(false);
+          fetchItems(kind, page);
+        }}
+        rowKey="id"
+        density="compact"
+        tableLayout="fixed"
+        minWidth="1000px"
+        emptyText="队列为空，当前没有投递失败的记录"
+        ariaLabel="通知失败队列"
+        pagination={{
+          page,
+          pageSize: 20,
+          total,
+          onChange: (nextPage) => update({ page: String(nextPage) }, { resetPage: false }),
+        }}
+        mobileCard={(item) => (
+          <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate font-medium text-brand-charcoal">{item.clientName || "—"}</p>
-                <p className="truncate font-mono text-xs text-brand-charcoal/65">{item.clientId}</p>
+                <p className="truncate font-mono text-xs text-ink-muted">{item.clientId}</p>
               </div>
-              <span className="shrink-0 text-xs text-brand-charcoal/65">{item.attempts} 次</span>
+              <span className="shrink-0 text-xs text-ink-muted">{item.attempts} 次</span>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
+            <div className="grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
               <span className="col-span-2 truncate">
                 用户：{item.userNickname || item.userPhone || item.userId}
               </span>
@@ -294,12 +395,12 @@ function AdminWebhookFailuresContent() {
                 载荷：{item.hasPayload ? "已保存（含用户资料）" : "无"}
               </span>
               {item.lastError && (
-                <span className="col-span-2 text-red-600" title={item.lastError}>
+                <span className="col-span-2 text-status-danger-fg" title={item.lastError}>
                   最近错误：{item.lastError}
                 </span>
               )}
             </div>
-            <div className="mt-2 flex justify-end gap-2 border-t border-brand-charcoal/10 pt-2">
+            <div className="flex justify-end gap-2 border-t border-line pt-2">
               {canWrite ? (
                 <>
                   <Button
@@ -315,7 +416,7 @@ function AdminWebhookFailuresContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-red-600 hover:bg-red-50"
+                    className="text-status-danger-fg hover:bg-status-danger-soft"
                     disabled={actioningId !== null}
                     onClick={() => setDropTarget(item)}
                   >
@@ -323,145 +424,14 @@ function AdminWebhookFailuresContent() {
                   </Button>
                 </>
               ) : (
-                <span className="text-xs text-brand-charcoal/65">只读</span>
+                <span className="text-xs text-ink-muted">只读</span>
               )}
             </div>
-          </MobileListCard>
-        ))}
-      </MobileList>
-
-      {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-        {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
-        ) : loadError ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="rounded-full bg-red-50 p-4">
-              <AlertCircle className="h-8 w-8 text-red-400" />
-            </div>
-            <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/65">无法获取失败队列，请检查网络连接</p>
-            <button
-              onClick={() => {
-                setLoadError(false);
-                fetchItems(kind, page);
-              }}
-              className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
-            >
-              重试
-            </button>
-          </div>
-        ) : items.length === 0 ? (
-          <Empty className="h-64" title="队列为空" description="当前没有投递失败的记录" />
-        ) : (
-          <table className="w-full min-w-[860px] text-sm">
-            <thead>
-              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/65">
-                <th className="px-4 py-3 font-medium">目标 Client</th>
-                <th className="px-4 py-3 font-medium">用户</th>
-                <th className="px-4 py-3 font-medium">已重试</th>
-                <th className="px-4 py-3 font-medium">下次重试</th>
-                <th className="px-4 py-3 font-medium">首次失败</th>
-                <th className="px-4 py-3 font-medium">载荷摘要</th>
-                <th className="px-4 py-3 font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brand-charcoal/10">
-              {items.map((item) => (
-                <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-brand-charcoal">{item.clientName || "—"}</p>
-                    <p className="font-mono text-xs text-brand-charcoal/65">{item.clientId}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-brand-charcoal/80">{item.userNickname || "未设置昵称"}</p>
-                    <p className="font-mono text-xs text-brand-charcoal/65">
-                      {item.userPhone || item.userId}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 text-brand-charcoal/70">{item.attempts} 次</td>
-                  <td className="px-4 py-3 text-brand-charcoal/70">
-                    {formatDateTime(item.nextRetryAt)}
-                  </td>
-                  <td className="px-4 py-3 text-brand-charcoal/70">
-                    {formatDateTime(item.createdAt)}
-                  </td>
-                  <td className="max-w-[16rem] px-4 py-3">
-                    <p className="truncate text-xs text-brand-charcoal/65">
-                      {item.hasPayload ? "已保存（含用户资料）" : "无"}
-                    </p>
-                    {item.lastError && (
-                      <p className="truncate text-xs text-red-600" title={item.lastError}>
-                        {item.lastError}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {canWrite ? (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          loading={actioningId === item.id}
-                          disabled={actioningId !== null && actioningId !== item.id}
-                          leftIcon={<RotateCw className="h-3.5 w-3.5" />}
-                          onClick={() => setRetryTarget(item)}
-                        >
-                          重投
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50"
-                          disabled={actioningId !== null}
-                          leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                          onClick={() => setDropTarget(item)}
-                        >
-                          丢弃
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-brand-charcoal/65">只读</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         )}
-      </div>
+      />
 
-      {/* 分页 */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-brand-charcoal/65">
-          <span>
-            第 {page}/{totalPages} 页
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => update({ page: String(page - 1) }, { resetPage: false })}
-            >
-              上一页
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => update({ page: String(page + 1) }, { resetPage: false })}
-            >
-              下一页
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* 重投确认 */}
-      <ConfirmDialog
+<ConfirmDialog
         open={!!retryTarget}
         onClose={() => setRetryTarget(null)}
         onConfirm={() => {

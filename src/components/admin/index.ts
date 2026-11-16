@@ -1,4 +1,6 @@
 export { AdminShell } from "./AdminShell";
+export { AdminRoleBadge } from "./AdminRoleBadge";
+export { AdminStatusIcon, TotpStatusIcon } from "./StatusIcon";
 export { PageHeader } from "./PageHeader";
 export { PanelCard } from "./PanelCard";
 export { PendingQueue, type PendingQueueItem } from "./PendingQueue";

@@ -13,7 +13,7 @@ export function TermsArticle({ content }: TermsArticleProps) {
       <PolicyDocument
         content={content}
         afterFirstSection={
-          <div className="mt-6 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-4 md:p-5">
+          <div className="mt-6 rounded-xl border border-line bg-surface-muted p-4 md:p-5">
             <p className="text-[14px] leading-relaxed text-brand-charcoal/70">
               有关我们如何收集、使用和保护您的个人信息的详细说明，请参阅我们的{" "}
               <Link

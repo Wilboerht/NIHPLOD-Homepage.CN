@@ -1,5 +1,11 @@
 import { createHash } from "crypto";
-import { createAuditLog, type AuditAction, type AuditTargetType } from "@/lib/audit";
+import type { Prisma } from "@/generated/prisma/client";
+import {
+  createAuditLog,
+  createAuditLogTx,
+  type AuditAction,
+  type AuditTargetType,
+} from "@/lib/audit";
 import { apiConsole } from "@/lib/logger";
 
 export function fingerprintInternalKey(key: string): string {
@@ -16,29 +22,38 @@ export async function auditInternalPoints(params: {
   request: Request;
   detail: Record<string, unknown>;
   outcome?: "SUCCESS" | "FAILURE";
+  /** 传入时与业务写入同事务；审计失败会抛错并回滚业务变更。 */
+  tx?: Prisma.TransactionClient;
 }): Promise<boolean> {
-  const ok = await createAuditLog({
+  const input = {
     action: params.action,
     targetType: params.targetType,
     targetId: params.targetId,
     targetLabel: params.project,
     userId: params.userId,
-    actorType: "SYSTEM",
+    actorType: "SYSTEM" as const,
     authMethod: "internal_api",
-    outcome: params.outcome ?? "SUCCESS",
+    outcome: params.outcome ?? ("SUCCESS" as const),
     request: params.request,
     detail: {
       project: params.project,
       keyFingerprint: fingerprintInternalKey(params.key),
       ...params.detail,
     },
-  });
-  if (!ok) {
+  };
+  try {
+    if (params.tx) {
+      await createAuditLogTx(params.tx, input);
+      return true;
+    }
+    return await createAuditLog(input);
+  } catch (error) {
     apiConsole.error(
-      `[InternalPointsAudit] 审计写入失败 action=${params.action} project=${params.project} userId=${params.userId}`
+      `[InternalPointsAudit] 审计写入失败 action=${params.action} project=${params.project} userId=${params.userId}`,
+      error
     );
+    return false;
   }
-  return ok;
 }
 
 export async function auditInternalPointsFailure(params: {

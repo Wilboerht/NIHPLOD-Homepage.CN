@@ -300,6 +300,12 @@ function parseDeepPath(pathname: string): { title: string; href: string } | null
 export function getBreadcrumbs(pathname: string): { title: string; href: string }[] {
   const breadcrumbs = [{ title: "管理后台", href: "/admin" }];
 
+  // 仪表盘是 /admin 本身：补一级“仪表盘”，避免移动端标题与 document.title 只剩“管理后台”
+  if (pathname === "/admin") {
+    breadcrumbs.push({ title: "仪表盘", href: "/admin" });
+    return breadcrumbs;
+  }
+
   const activeItem = getActiveNavItem(pathname);
   if (activeItem && activeItem.href !== "/admin") {
     breadcrumbs.push({ title: activeItem.title, href: activeItem.href });

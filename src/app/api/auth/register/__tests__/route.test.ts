@@ -66,6 +66,11 @@ vi.mock("@/lib/csrf", () => ({
   csrfForbiddenResponse: vi.fn(),
 }));
 
+const mockAuditNicknameBlocked = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/lib/nickname-audit", () => ({
+  auditNicknameBlocked: (...args: unknown[]) => mockAuditNicknameBlocked(...args),
+}));
+
 vi.mock("@/lib/password-policy", () => ({
   recordPasswordHistory: vi.fn().mockResolvedValue(undefined),
 }));
@@ -165,6 +170,26 @@ describe("POST /api/auth/register 防枚举（查重后置）", () => {
     expect(signRefreshToken).toHaveBeenCalledWith({ id: "user-1" });
     expect(signRefreshToken).toHaveBeenCalledWith(
       expect.not.objectContaining({ phone: expect.anything() })
+    );
+  });
+});
+
+describe("POST /api/auth/register 昵称内容风控", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuditNicknameBlocked.mockResolvedValue(undefined);
+  });
+
+  it("注册姓名命中违规词：返回 NICKNAME_REJECTED，不进入验证码/建号流程", async () => {
+    const res = await POST(createRequest({ ...registerBody, name: "色情" }));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.error.code).toBe("NICKNAME_REJECTED");
+    expect(mockSmsFindFirst).not.toHaveBeenCalled();
+    expect(mockTxUserCreate).not.toHaveBeenCalled();
+    expect(mockAuditNicknameBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "register", reason: "banned", category: "porn" })
     );
   });
 });

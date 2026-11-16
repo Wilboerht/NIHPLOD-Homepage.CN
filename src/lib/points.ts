@@ -134,8 +134,10 @@ export async function applyExternalSpentSync(
         where: { userId_reference: { userId, reference } },
       });
       if (existing) {
+        // spentDelta 保存的是钳制后的实际生效值；幂等重试必须比较原始请求值，
+        // 否则“退款被 0 下限钳制后重试”会被误判为单据冲突。
         if (
-          existing.spentDelta !== spentDelta ||
+          (existing.requestedDelta ?? existing.spentDelta) !== spentDelta ||
           (existing.orderNoKey ?? null) !== normalizedOrder.orderNoKey ||
           (existing.source !== null && existing.source !== source)
         ) {
@@ -242,6 +244,7 @@ export async function applyExternalSpentSync(
             userId,
             reference,
             spentDelta: appliedDelta,
+            requestedDelta: spentDelta,
             note,
             ...(normalizedOrder.orderNoKey
               ? {

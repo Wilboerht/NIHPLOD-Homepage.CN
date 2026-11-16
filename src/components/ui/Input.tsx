@@ -24,11 +24,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="mb-1 block text-sm font-medium text-brand-charcoal/80"
+            className="mb-1.5 block text-sm font-medium text-brand-charcoal/80"
           >
             {label}
             {required && (
-              <span className="ml-0.5 text-red-500" aria-hidden="true">
+              <span className="ml-0.5 text-status-danger-fg" aria-hidden="true">
                 *
               </span>
             )}
@@ -44,12 +44,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={describedBy}
             className={cn(
               "w-full rounded-lg border bg-white px-4 py-2.5 text-brand-charcoal transition-colors",
-              "placeholder:text-brand-charcoal/65",
-              "focus:outline-none focus:ring-1",
+              "placeholder:text-ink-muted",
+              "focus:outline-none focus:ring-2",
               error
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                : "border-brand-charcoal/20 focus:border-brand-primary focus:ring-brand-primary",
-              disabled && "cursor-not-allowed bg-brand-charcoal/[0.03] opacity-50",
+                ? "border-status-danger-fg focus:border-status-danger-fg focus:ring-status-danger-fg/25"
+                : "border-line-strong focus:border-brand-primary focus:ring-brand-primary/20",
+              disabled && "cursor-not-allowed bg-surface-muted opacity-50",
               rightElement && "pr-12",
               className
             )}
@@ -60,11 +60,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error ? (
-          <p id={errorId} className="mt-1 text-sm text-red-500">
+          <p id={errorId} className="mt-1.5 text-sm text-status-danger-fg">
             {error}
           </p>
         ) : hint ? (
-          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/65">
+          <p id={hintId} className="mt-1.5 text-xs text-ink-muted">
             {hint}
           </p>
         ) : null}

@@ -29,6 +29,11 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
+vi.mock("@/lib/internal-points-audit", () => ({
+  auditInternalPoints: vi.fn().mockResolvedValue(true),
+  auditInternalPointsFailure: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/points-ledger", () => ({
   refundRedeemPoints: vi.fn(),
   getPointBalanceView: vi.fn(),

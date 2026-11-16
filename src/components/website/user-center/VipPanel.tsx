@@ -351,6 +351,9 @@ export function VipPanel() {
                       <p className="mt-1 text-xl font-light text-stone-800">
                         {pointsData ? pointsData.available.toLocaleString() : "—"}
                       </p>
+                      {pointsData && pointsData.available < 0 && (
+                        <p className="mt-0.5 text-[10px] text-amber-600">退款冲正待抵扣</p>
+                      )}
                     </button>
                   </div>
                 </div>

@@ -107,7 +107,7 @@ export function ApplicationBoard({
 
   if (loading && columns.length === 0) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-brand-charcoal/65">
+      <div className="flex items-center justify-center gap-2 py-16 text-sm text-ink-muted">
         <Loader2 className="h-4 w-4 animate-spin" />
         加载招聘看板...
       </div>
@@ -115,8 +115,8 @@ export function ApplicationBoard({
   }
   if (error && columns.length === 0) {
     return (
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-12 text-center">
-        <p className="text-sm text-red-500">招聘看板加载失败</p>
+      <div className="rounded-card border border-line bg-white py-12 text-center">
+        <p className="text-sm text-status-danger-fg">招聘看板加载失败</p>
         <button
           type="button"
           className="mt-3 text-xs text-brand-primary hover:underline"
@@ -133,7 +133,7 @@ export function ApplicationBoard({
       {columns.map((column) => (
         <section
           key={column.status}
-          className="flex w-72 shrink-0 snap-start flex-col rounded-2xl border border-brand-charcoal/10 bg-brand-charcoal/[0.015]"
+          className="flex w-72 shrink-0 snap-start flex-col rounded-card border border-line bg-surface-subtle"
           onDragOver={(event) => {
             if (canWrite) event.preventDefault();
           }}
@@ -146,17 +146,17 @@ export function ApplicationBoard({
             if (card) void moveCard(card, column.status);
           }}
         >
-          <header className="flex items-center justify-between gap-2 border-b border-brand-charcoal/10 px-3 py-2.5">
+          <header className="flex items-center justify-between gap-2 border-b border-line px-3 py-2.5">
             <h3 className="text-sm font-semibold text-brand-charcoal">
               {STAGE_LABELS[column.status] ?? column.status}
             </h3>
-            <span className="rounded-full bg-brand-charcoal/[0.06] px-2 py-0.5 text-xs tabular-nums text-brand-charcoal/65">
+            <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs tabular-nums text-ink-muted">
               {column.count}
             </span>
           </header>
           <div className="flex flex-1 flex-col gap-2 p-2">
             {column.items.length === 0 ? (
-              <p className="py-6 text-center text-xs text-brand-charcoal/65">暂无候选人</p>
+              <p className="py-6 text-center text-xs text-ink-muted">暂无候选人</p>
             ) : (
               column.items.map((card) => (
                 <article
@@ -170,12 +170,12 @@ export function ApplicationBoard({
                   onDragEnd={() => setDraggingId(null)}
                   className={`rounded-xl border bg-white p-3 shadow-sm transition-opacity ${
                     draggingId === card.id ? "opacity-50" : ""
-                  } ${movingId === card.id ? "pointer-events-none opacity-60" : ""} border-brand-charcoal/10`}
+                  } ${movingId === card.id ? "pointer-events-none opacity-60" : ""} border-line`}
                 >
                   <div className="flex items-start gap-2">
                     {canWrite && (
                       <GripVertical
-                        className="mt-0.5 h-4 w-4 shrink-0 cursor-grab text-brand-charcoal/35"
+                        className="mt-0.5 h-4 w-4 shrink-0 cursor-grab text-ink-faint"
                         aria-hidden="true"
                       />
                     )}
@@ -189,32 +189,32 @@ export function ApplicationBoard({
                           {card.name}
                         </span>
                         {card.rating ? (
-                          <span className="text-xs text-amber-600" aria-label={`${card.rating} 星`}>
+                          <span className="text-xs text-status-warning-fg" aria-label={`${card.rating} 星`}>
                             {"★".repeat(card.rating)}
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
+                      <p className="mt-0.5 truncate text-xs text-ink-muted">
                         {card.job.title}
                       </p>
-                      <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
+                      <p className="mt-0.5 truncate text-xs text-ink-muted">
                         {card.phone}
                       </p>
                       {card.tags.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {card.tags.slice(0, 3).map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-[10px]">
+                            <Badge key={tag} variant="secondary" className="text-2xs">
                               {tag}
                             </Badge>
                           ))}
                         </div>
                       )}
                       {card.nextInterviewAt && (
-                        <p className="mt-1.5 text-[11px] text-brand-primary">
+                        <p className="mt-1.5 text-2xs text-brand-primary">
                           面试 {formatDateTime(card.nextInterviewAt)}
                         </p>
                       )}
-                      <p className="mt-1 text-[10px] text-brand-charcoal/65">
+                      <p className="mt-1 text-2xs text-ink-muted">
                         更新 {formatDateTime(card.updatedAt)}
                       </p>
                     </button>
@@ -223,7 +223,7 @@ export function ApplicationBoard({
               ))
             )}
             {column.count > column.items.length && (
-              <p className="pb-1 text-center text-[11px] text-brand-charcoal/65">
+              <p className="pb-1 text-center text-2xs text-ink-muted">
                 仅显示前 {column.items.length} 条，请在列表中查看全部
               </p>
             )}

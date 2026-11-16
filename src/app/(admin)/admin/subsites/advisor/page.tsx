@@ -83,35 +83,35 @@ function PageSkeleton() {
       <PanelCard className="p-3 sm:p-4">
         <div className="grid gap-4 xl:grid-cols-12">
           <div className="xl:col-span-7">
-            <div className="mb-2 h-3 w-16 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+            <div className="mb-2 h-3 w-16 animate-pulse rounded bg-surface-hover" />
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="space-y-2">
-                  <div className="h-3 w-14 animate-pulse rounded bg-brand-charcoal/[0.06]" />
-                  <div className="h-6 w-20 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+                  <div className="h-3 w-14 animate-pulse rounded bg-surface-hover" />
+                  <div className="h-6 w-20 animate-pulse rounded bg-surface-hover" />
                 </div>
               ))}
             </div>
           </div>
-          <div className="border-t border-brand-charcoal/10 pt-3 xl:col-span-5 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
-            <div className="mb-3 h-3 w-14 animate-pulse rounded bg-brand-charcoal/[0.06]" />
+          <div className="border-t border-line pt-3 xl:col-span-5 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
+            <div className="mb-3 h-3 w-14 animate-pulse rounded bg-surface-hover" />
             <div className="space-y-3">
               {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-5 animate-pulse rounded bg-brand-charcoal/[0.04]" />
+                <div key={index} className="h-5 animate-pulse rounded bg-surface-muted" />
               ))}
             </div>
           </div>
         </div>
-        <div className="mt-3 border-t border-brand-charcoal/10 pt-3">
-          <div className="h-5 w-full animate-pulse rounded bg-brand-charcoal/[0.04]" />
+        <div className="mt-3 border-t border-line pt-3">
+          <div className="h-5 w-full animate-pulse rounded bg-surface-muted" />
         </div>
       </PanelCard>
       <PanelCard className="p-3 sm:p-4">
         <div className="grid gap-4 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
             <div key={index} className="space-y-3">
-              <div className="h-3 w-20 animate-pulse rounded bg-brand-charcoal/[0.06]" />
-              <div className="h-24 animate-pulse rounded-lg bg-brand-charcoal/[0.04]" />
+              <div className="h-3 w-20 animate-pulse rounded bg-surface-hover" />
+              <div className="h-24 animate-pulse rounded-lg bg-surface-muted" />
             </div>
           ))}
         </div>
@@ -123,7 +123,7 @@ function PageSkeleton() {
 function QuickLinks({ canOpenAdvisor }: { canOpenAdvisor: boolean }) {
   if (!canOpenAdvisor) {
     return (
-      <p className="text-xs text-brand-charcoal/65">
+      <p className="text-xs text-ink-muted">
         需要测肤子站访问权限（advisor:access）才能打开子站后台，请联系超级管理员授权。
       </p>
     );
@@ -138,10 +138,10 @@ function QuickLinks({ canOpenAdvisor }: { canOpenAdvisor: boolean }) {
           target="_blank"
           rel="noopener noreferrer"
           title={link.description}
-          className="group inline-flex items-center gap-1.5 rounded-lg border border-brand-charcoal/10 px-2.5 py-1.5 text-xs font-medium text-brand-charcoal/75 transition-colors hover:border-brand-primary/30 hover:bg-brand-primary/[0.03] hover:text-brand-primary"
+          className="group inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-brand-charcoal/75 transition-colors hover:border-brand-primary/30 hover:bg-brand-primary/5 hover:text-brand-primary"
         >
           {link.label}
-          <ExternalLink className="h-3 w-3 text-brand-charcoal/35 group-hover:text-brand-primary" />
+          <ExternalLink className="h-3 w-3 text-ink-faint group-hover:text-brand-primary" />
         </a>
       ))}
     </div>
@@ -161,18 +161,18 @@ function BudgetBar({
 }) {
   const configured = budget > 0;
   const width = configured ? Math.min(Math.max(percent, 0), 100) : 0;
-  const color = percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-amber-500" : "bg-emerald-500";
+  const color = percent >= 100 ? "bg-status-danger-fg" : percent >= 80 ? "bg-status-warning-fg" : "bg-status-success-fg";
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-2 text-[11px]">
-        <span className="text-brand-charcoal/65">{label}</span>
+      <div className="flex items-baseline justify-between gap-2 text-2xs">
+        <span className="text-ink-muted">{label}</span>
         <span className="font-mono tabular-nums text-brand-charcoal/80">
           ¥{usage.toFixed(2)}
           {configured ? ` / ¥${budget.toFixed(2)} · ${percent}%` : " · 未配置"}
         </span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-brand-charcoal/[0.06]">
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-hover">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${width}%` }} />
       </div>
     </div>
@@ -189,7 +189,7 @@ function AIHealthSummary({ health }: { health: AdvisorAIHealth | null }) {
             未知
           </Badge>
         </div>
-        <p className="mt-2 text-xs text-brand-charcoal/65">AI 健康数据暂不可用。</p>
+        <p className="mt-2 text-xs text-ink-muted">AI 健康数据暂不可用。</p>
       </div>
     );
   }
@@ -220,12 +220,12 @@ function AIHealthSummary({ health }: { health: AdvisorAIHealth | null }) {
           budget={health.budget.monthlyCost}
           percent={health.monthlyUsagePercent}
         />
-        <div className="flex items-center justify-between gap-2 text-[11px]">
-          <span className="text-brand-charcoal/65">熔断器</span>
+        <div className="flex items-center justify-between gap-2 text-2xs">
+          <span className="text-ink-muted">熔断器</span>
           {activeCircuits.length === 0 ? (
-            <span className="text-emerald-700">全部正常</span>
+            <span className="text-status-success-strong">全部正常</span>
           ) : (
-            <span className="text-amber-700">{activeCircuits.length} 个异常</span>
+            <span className="text-status-warning-strong">{activeCircuits.length} 个异常</span>
           )}
         </div>
         {activeCircuits.length > 0 && (
@@ -235,8 +235,8 @@ function AIHealthSummary({ health }: { health: AdvisorAIHealth | null }) {
               return (
                 <span
                   key={circuit.service}
-                  className={`rounded-md px-1.5 py-0.5 text-[11px] ${
-                    blocked ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"
+                  className={`rounded-md px-1.5 py-0.5 text-2xs ${
+                    blocked ? "bg-status-danger-soft text-status-danger-strong" : "bg-status-warning-soft text-status-warning-strong"
                   }`}
                 >
                   {circuit.service}
@@ -251,7 +251,7 @@ function AIHealthSummary({ health }: { health: AdvisorAIHealth | null }) {
           </div>
         )}
         {health.exhausted && (
-          <p className="text-[11px] text-red-600">
+          <p className="text-2xs text-status-danger-fg">
             预算已耗尽{health.exhaustedReason ? `：${health.exhaustedReason}` : ""}
           </p>
         )}
@@ -264,12 +264,12 @@ function SkinDistribution({ items }: { items: AdvisorSubsiteDashboard["skinTypeD
   const total = items.reduce((sum, item) => sum + item.value, 0);
 
   if (total === 0) {
-    return <p className="text-xs text-brand-charcoal/65">暂无肤质数据</p>;
+    return <p className="text-xs text-ink-muted">暂无肤质数据</p>;
   }
 
   return (
     <div>
-      <div className="flex h-2.5 overflow-hidden rounded-full bg-brand-charcoal/[0.06]">
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-surface-hover">
         {items.map((item) => {
           const percent = (item.value / total) * 100;
           if (percent <= 0) return null;
@@ -286,7 +286,7 @@ function SkinDistribution({ items }: { items: AdvisorSubsiteDashboard["skinTypeD
         {items.map((item) => {
           const percent = Math.round((item.value / total) * 100);
           return (
-            <div key={item.key} className="flex items-center justify-between gap-2 text-[11px]">
+            <div key={item.key} className="flex items-center justify-between gap-2 text-2xs">
               <span className="flex min-w-0 items-center gap-1.5">
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
@@ -296,7 +296,7 @@ function SkinDistribution({ items }: { items: AdvisorSubsiteDashboard["skinTypeD
                   {SKIN_TYPE_LABELS[item.key] || item.name}
                 </span>
               </span>
-              <span className="font-mono tabular-nums text-brand-charcoal/65">
+              <span className="font-mono tabular-nums text-ink-muted">
                 {item.value} · {percent}%
               </span>
             </div>
@@ -311,44 +311,44 @@ function WeeklyTrend({ items }: { items: AdvisorSubsiteDashboard["weeklyGrowth"]
   const max = Math.max(1, ...items.map((item) => Math.max(item.started, item.completed)));
 
   if (items.length === 0) {
-    return <p className="text-xs text-brand-charcoal/65">暂无趋势数据</p>;
+    return <p className="text-xs text-ink-muted">暂无趋势数据</p>;
   }
 
   return (
     <div>
       <div className="space-y-1.5">
         {items.map((item) => (
-          <div key={item.day} className="flex items-center gap-2 text-[11px]">
-            <span className="w-8 shrink-0 text-brand-charcoal/65">
+          <div key={item.day} className="flex items-center gap-2 text-2xs">
+            <span className="w-8 shrink-0 text-ink-muted">
               {WEEKDAY_LABELS[item.day] || item.day}
             </span>
             <div className="flex flex-1 items-center gap-1">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-charcoal/[0.06]">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-hover">
                 <div
                   className="h-full rounded-full bg-brand-charcoal/40"
                   style={{ width: `${(item.started / max) * 100}%` }}
                 />
               </div>
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-charcoal/[0.06]">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-hover">
                 <div
-                  className="h-full rounded-full bg-emerald-500"
+                  className="h-full rounded-full bg-status-success-fg"
                   style={{ width: `${(item.completed / max) * 100}%` }}
                 />
               </div>
             </div>
-            <span className="w-12 shrink-0 text-right font-mono tabular-nums text-brand-charcoal/65">
+            <span className="w-12 shrink-0 text-right font-mono tabular-nums text-ink-muted">
               {item.started}/{item.completed}
             </span>
           </div>
         ))}
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[11px] text-brand-charcoal/65">
+      <div className="mt-2 flex items-center gap-3 text-2xs text-ink-muted">
         <span className="inline-flex items-center gap-1">
           <span className="h-1.5 w-2.5 rounded-full bg-brand-charcoal/40" />
           开始
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-1.5 w-2.5 rounded-full bg-emerald-500" />
+          <span className="h-1.5 w-2.5 rounded-full bg-status-success-fg" />
           完成
         </span>
       </div>
@@ -373,7 +373,7 @@ function DashboardContent({
           <div className="xl:col-span-7">
             <div className="mb-2 flex items-center justify-between gap-2">
               <h2 className="text-xs font-semibold text-brand-charcoal">运行概览</h2>
-              <span className="text-[11px] text-brand-charcoal/45">子站实时数据</span>
+              <span className="text-2xs text-ink-faint">子站实时数据</span>
             </div>
             <StatStrip
               items={[
@@ -400,16 +400,16 @@ function DashboardContent({
               ]}
             />
           </div>
-          <div className="border-t border-brand-charcoal/10 pt-3 xl:col-span-5 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
+          <div className="border-t border-line pt-3 xl:col-span-5 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
             <AIHealthSummary health={health} />
           </div>
         </div>
 
-        <div className="mt-3 border-t border-brand-charcoal/10 pt-3">
+        <div className="mt-3 border-t border-line pt-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="text-xs font-semibold text-brand-charcoal">子站后台</h2>
             {canOpenAdvisor && (
-              <span className="text-[11px] text-brand-charcoal/45">新标签页打开</span>
+              <span className="text-2xs text-ink-faint">新标签页打开</span>
             )}
           </div>
           <QuickLinks canOpenAdvisor={canOpenAdvisor} />
@@ -421,14 +421,14 @@ function DashboardContent({
           <section>
             <div className="mb-2 flex items-center justify-between gap-2">
               <h2 className="text-xs font-semibold text-brand-charcoal">肤质分布</h2>
-              <span className="text-[11px] text-brand-charcoal/45">共 {skinTotal} 条</span>
+              <span className="text-2xs text-ink-faint">共 {skinTotal} 条</span>
             </div>
             <SkinDistribution items={dashboard.skinTypeDistribution} />
           </section>
-          <section className="border-t border-brand-charcoal/10 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+          <section className="border-t border-line pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
             <div className="mb-2 flex items-center justify-between gap-2">
               <h2 className="text-xs font-semibold text-brand-charcoal">近 7 日趋势</h2>
-              <span className="text-[11px] text-brand-charcoal/45">开始 / 完成</span>
+              <span className="text-2xs text-ink-faint">开始 / 完成</span>
             </div>
             <WeeklyTrend items={dashboard.weeklyGrowth} />
           </section>
@@ -458,12 +458,12 @@ function NoticePanel({
           <span className="mt-0.5 shrink-0">{icon}</span>
           <div>
             <p className="text-sm font-medium text-brand-charcoal">{title}</p>
-            <p className="mt-0.5 text-xs text-brand-charcoal/65">{description}</p>
+            <p className="mt-0.5 text-xs text-ink-muted">{description}</p>
           </div>
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>
-      <div className="mt-3 border-t border-brand-charcoal/10 pt-3">
+      <div className="mt-3 border-t border-line pt-3">
         <h2 className="mb-2 text-xs font-semibold text-brand-charcoal">子站后台</h2>
         <QuickLinks canOpenAdvisor={canOpenAdvisor} />
       </div>
@@ -493,7 +493,7 @@ function PageFrame({
           canReadStats && onRefresh ? (
             <div className="flex items-center gap-2">
               {updatedAt && (
-                <span className="hidden text-[11px] text-brand-charcoal/45 md:inline">
+                <span className="hidden text-2xs text-ink-faint md:inline">
                   更新 {formatDateTime(updatedAt)}
                 </span>
               )}
@@ -576,7 +576,7 @@ export default function AdvisorSubsitePage() {
     return (
       <PageFrame canReadStats={false} loading={false}>
         <NoticePanel
-          icon={<Lock className="h-4 w-4 text-brand-charcoal/45" />}
+          icon={<Lock className="h-4 w-4 text-ink-faint" />}
           title="无权查看测肤子站概览"
           description="需要测肤子站概览权限（advisor:stats:read），请联系超级管理员授权。"
           canOpenAdvisor={canOpenAdvisor}
@@ -597,7 +597,7 @@ export default function AdvisorSubsitePage() {
     return (
       <PageFrame canReadStats loading={false} onRefresh={reload}>
         <NoticePanel
-          icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+          icon={<AlertTriangle className="h-4 w-4 text-status-warning-fg" />}
           title="加载测肤子站概览失败"
           description={error}
           action={
@@ -615,7 +615,7 @@ export default function AdvisorSubsitePage() {
     return (
       <PageFrame canReadStats loading={false} onRefresh={reload}>
         <NoticePanel
-          icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+          icon={<AlertTriangle className="h-4 w-4 text-status-warning-fg" />}
           title="测肤子站暂不可用"
           description={DEGRADED_MESSAGES[payload?.reason || ""] || "请稍后重试"}
           action={

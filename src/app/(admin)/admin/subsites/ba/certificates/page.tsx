@@ -12,6 +12,11 @@ import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { PanelCard } from "@/components/admin/PanelCard";
 import { RequirePermission } from "@/components/admin/RequirePermission";
+import { BaCertificateSealField } from "@/components/admin/BaCertificateSealField";
+import {
+  BaCertificateIssueDialog,
+  type BaCertificateIssueResult,
+} from "@/components/admin/BaCertificateIssueDialog";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -92,12 +97,27 @@ function CertificatesContent() {
   const [detail, setDetail] = useState<BaCertificateDetail | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [sealUploading, setSealUploading] = useState(false);
+  const [sealFieldSessionKey, setSealFieldSessionKey] = useState(0);
+  const [previewStale, setPreviewStale] = useState(false);
+  const [issueOpen, setIssueOpen] = useState(false);
+  const [issueCertificate, setIssueCertificate] = useState<BaCertificateListItem | null>(null);
+  const [issueSessionKey, setIssueSessionKey] = useState(0);
   const loadRequestRef = useRef(0);
+  const previewRequestRef = useRef(0);
+  const previewInFlightRef = useRef(false);
   const submitKeyRef = useRef<{ signature: string; key: string } | null>(null);
   const detailLoadingRef = useRef<string | null>(null);
   const phoneReveal = useSensitiveReveal();
 
   const pageSize = 20;
+
+  // 详情抽屉通过 ?certificate= 控制，只属于页面局部状态；
+  // 不能让它的 URL 变化导致 update/load 身份变化并重新拉取列表。
+  const updateRef = useRef(update);
+  useEffect(() => {
+    updateRef.current = update;
+  }, [update]);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequestRef.current;
@@ -113,7 +133,7 @@ function CertificatesContent() {
       if (requestId !== loadRequestRef.current) return;
       const nextTotalPages = Math.max(1, Math.ceil(data.total / pageSize));
       if (page > nextTotalPages) {
-        update({ page: String(nextTotalPages) }, { replace: true, resetPage: false });
+        updateRef.current({ page: String(nextTotalPages) }, { replace: true, resetPage: false });
         return;
       }
       setItems(data.items);
@@ -125,7 +145,7 @@ function CertificatesContent() {
     } finally {
       if (requestId === loadRequestRef.current) setLoading(false);
     }
-  }, [page, search, status, update]);
+  }, [page, search, status]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => deferInEffect(load), 300);
@@ -175,31 +195,43 @@ function CertificatesContent() {
       endDate: "",
     });
     setPreviewUrl(null);
+    setPreviewStale(false);
+    setSealUploading(false);
+    setSealFieldSessionKey((key) => key + 1);
+    previewRequestRef.current += 1;
+    previewInFlightRef.current = false;
+    setPreviewLoading(false);
     setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setFormOpen(false);
+    setEditingId(null);
+    setPreviewUrl(null);
+    setPreviewStale(false);
+    setSealUploading(false);
+    setSealFieldSessionKey((key) => key + 1);
+    previewRequestRef.current += 1;
+    previewInFlightRef.current = false;
+    setPreviewLoading(false);
+    submitKeyRef.current = null;
   };
 
   const updateDraft = (key: keyof BaCertificateDraft, value: string) => {
     setDraft((current) => ({ ...current, [key]: value }));
-  };
-
-  const uploadSeal = async (file: File | null) => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const data = await apiRequest<{ url: string }>("/api/admin/subsites/ba/certificates/seal", {
-        method: "POST",
-        body: formData,
-        timeoutMs: 60000,
-      });
-      updateDraft("sealImage", data.url);
-      toast.success("签章已上传");
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, "签章上传失败"));
+    if (previewUrl || previewInFlightRef.current) {
+      previewRequestRef.current += 1;
+      previewInFlightRef.current = false;
+      setPreviewLoading(false);
+      setPreviewUrl(null);
+      setPreviewStale(true);
     }
   };
 
   const preview = async () => {
+    if (sealUploading) return;
+    const requestId = ++previewRequestRef.current;
+    previewInFlightRef.current = true;
     setPreviewLoading(true);
     try {
       const csrf = document.cookie.match(/(?:^|;\s*)__Host-csrf_token=([^;]+)/)?.[1];
@@ -217,12 +249,18 @@ function CertificatesContent() {
         throw new Error(payload?.error?.message || "预览失败");
       }
       const blob = await response.blob();
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (requestId !== previewRequestRef.current) return;
       setPreviewUrl(URL.createObjectURL(blob));
+      setPreviewStale(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "预览失败");
+      if (requestId === previewRequestRef.current) {
+        toast.error(err instanceof Error ? err.message : "预览失败");
+      }
     } finally {
-      setPreviewLoading(false);
+      if (requestId === previewRequestRef.current) {
+        previewInFlightRef.current = false;
+        setPreviewLoading(false);
+      }
     }
   };
 
@@ -251,6 +289,7 @@ function CertificatesContent() {
   };
 
   const submitDraft = async () => {
+    if (sealUploading) return;
     setActionLoading(true);
     try {
       const signature = JSON.stringify({ editingId, formMode, draft });
@@ -276,7 +315,7 @@ function CertificatesContent() {
       if (!result) return;
       submitKeyRef.current = null;
       toast.success(editingId ? "证书已更新" : formMode === "issue" ? "证书已核发" : "证书已提报");
-      setFormOpen(false);
+      closeForm();
       await load();
     } catch (err) {
       toast.error(getApiErrorMessage(err, "提交失败"));
@@ -316,23 +355,20 @@ function CertificatesContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [certificateParam]);
 
-  const runAction = async (action: "issue" | "reject" | "revoke" | "delete") => {
+  const runAction = async (action: "reject" | "revoke" | "delete") => {
     if (!detail) return;
-    let reason = "";
-    if (action !== "issue") {
-      reason =
-        window
-          .prompt(
-            action === "delete"
-              ? "请输入删除原因"
-              : action === "revoke"
-                ? "请输入吊销原因"
-                : "请输入拒绝原因",
-            ""
-          )
-          ?.trim() ?? "";
-      if (!reason) return;
-    }
+    const reason =
+      window
+        .prompt(
+          action === "delete"
+            ? "请输入删除原因"
+            : action === "revoke"
+              ? "请输入吊销原因"
+              : "请输入拒绝原因",
+          ""
+        )
+        ?.trim() ?? "";
+    if (!reason) return;
     setActionLoading(true);
     try {
       const result = await withStepUp(() =>
@@ -346,6 +382,7 @@ function CertificatesContent() {
       );
       if (result === null) return;
       toast.success("操作成功");
+      phoneReveal.hide();
       setDetailOpen(false);
       await load();
     } catch (err) {
@@ -353,6 +390,37 @@ function CertificatesContent() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const openIssueDialog = (certificate: BaCertificateListItem) => {
+    phoneReveal.hide();
+    setIssueSessionKey((key) => key + 1);
+    setIssueCertificate(certificate);
+    setIssueOpen(true);
+    setDetailOpen(false);
+    closeCertificateUrl();
+  };
+
+  const handleIssueConfirm = async ({
+    draft: issueDraft,
+    idempotencyKey,
+  }: {
+    draft: BaCertificateDraft;
+    idempotencyKey: string;
+  }): Promise<BaCertificateIssueResult> => {
+    if (!issueCertificate) return "cancelled";
+    const result = await withStepUp(() =>
+      apiPost<BaCertificateListItem>(
+        `/api/admin/subsites/ba/certificates/${encodeURIComponent(issueCertificate.id)}/issue`,
+        { draft: issueDraft, idempotencyKey }
+      )
+    );
+    if (result === null) return "cancelled";
+    toast.success("证书已核发");
+    setIssueOpen(false);
+    setIssueCertificate(null);
+    await load();
+    return "issued";
   };
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -417,10 +485,10 @@ function CertificatesContent() {
               />
             </div>
           </div>
-          <span className="text-xs text-brand-charcoal/65">共 {total} 条</span>
+          <span className="text-xs text-ink-muted">共 {total} 条</span>
         </div>
 
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-3 text-sm text-status-danger-fg">{error}</p>}
 
         <MobileList
           className="mt-4 md:hidden"
@@ -434,13 +502,13 @@ function CertificatesContent() {
             <MobileListCard key={item.id}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                  <p className="truncate font-mono text-xs text-ink-muted">
                     {item.certNumber}
                   </p>
                   <p className="mt-1 truncate font-medium text-brand-charcoal">
                     {item.companyName}
                   </p>
-                  <p className="truncate text-xs text-brand-charcoal/65">{item.shopName}</p>
+                  <p className="truncate text-xs text-ink-muted">{item.shopName}</p>
                 </div>
                 <Badge variant={STATUS_VARIANTS[item.displayStatus] ?? "secondary"}>
                   {STATUS_LABELS[item.displayStatus] ?? item.displayStatus}
@@ -449,10 +517,10 @@ function CertificatesContent() {
               <p className="mt-2 line-clamp-2 text-xs text-brand-charcoal/70">
                 {item.scopeText}
               </p>
-              <p className="mt-2 text-xs text-brand-charcoal/65">
+              <p className="mt-2 text-xs text-ink-muted">
                 {item.startDate} ~ {item.endDate}
               </p>
-              <div className="mt-2 flex justify-end gap-1 border-t border-brand-charcoal/10 pt-2">
+              <div className="mt-2 flex justify-end gap-1 border-t border-line pt-2">
                 <Button variant="ghost" size="sm" onClick={() => void openDetail(item.id)}>
                   详情
                 </Button>
@@ -474,7 +542,7 @@ function CertificatesContent() {
         <div className="mt-4 hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] text-sm">
             <thead>
-              <tr className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/65">
+              <tr className="border-b border-line text-left text-xs text-ink-muted">
                 <th className="py-2 pr-3">证书编号</th>
                 <th className="py-2 pr-3">公司 / 店铺</th>
                 <th className="py-2 pr-3">授权范围</th>
@@ -487,13 +555,13 @@ function CertificatesContent() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-brand-charcoal/65">
+                  <td colSpan={7} className="py-10 text-center text-ink-muted">
                     加载中…
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-brand-charcoal/65">
+                  <td colSpan={7} className="py-10 text-center text-ink-muted">
                     暂无证书
                   </td>
                 </tr>
@@ -503,7 +571,7 @@ function CertificatesContent() {
                     <td className="py-3 pr-3 font-mono text-xs">{item.certNumber}</td>
                     <td className="py-3 pr-3">
                       <div className="font-medium">{item.companyName}</div>
-                      <div className="text-xs text-brand-charcoal/65">{item.shopName}</div>
+                      <div className="text-xs text-ink-muted">{item.shopName}</div>
                     </td>
                     <td className="max-w-[260px] py-3 pr-3">
                       <div className="line-clamp-2 text-xs leading-relaxed text-brand-charcoal/70">
@@ -559,23 +627,43 @@ function CertificatesContent() {
 
       <Modal
         open={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={closeForm}
+        closeGuard={() => !actionLoading}
         title={formMode === "issue" ? "直接核发证书" : "提报待审证书"}
         size="xl"
         footer={
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setFormOpen(false)}>
+            <Button variant="outline" onClick={closeForm} disabled={actionLoading}>
               取消
             </Button>
-            <Button variant="outline" onClick={() => void preview()} loading={previewLoading}>
+            <Button
+              variant="outline"
+              onClick={() => void preview()}
+              loading={previewLoading}
+              disabled={sealUploading || actionLoading}
+            >
               生成预览
             </Button>
-            <Button onClick={() => void submitDraft()} loading={actionLoading}>
+            <Button
+              onClick={() => void submitDraft()}
+              loading={actionLoading}
+              disabled={sealUploading}
+            >
               {formMode === "issue" ? "确认核发" : "提交审核"}
             </Button>
           </div>
         }
       >
+        {formMode === "issue" && canIssue && (
+          <BaCertificateSealField
+            key={sealFieldSessionKey}
+            value={draft.sealImage ?? ""}
+            onChange={(url) => updateDraft("sealImage", url)}
+            onUploadingChange={setSealUploading}
+            disabled={actionLoading}
+            className="mb-4"
+          />
+        )}
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-3">
             <Input
@@ -608,17 +696,6 @@ function CertificatesContent() {
                 onChange={(event) => updateDraft("endDate", event.target.value)}
               />
             </div>
-            {formMode === "issue" && canIssue && (
-              <div>
-                <label className="text-sm font-medium text-brand-charcoal">自定义签章</label>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(event) => void uploadSeal(event.target.files?.[0] ?? null)}
-                  className="mt-1 block w-full text-xs"
-                />
-              </div>
-            )}
           </div>
           <div className="space-y-3">
             <label className="text-sm font-medium text-brand-charcoal">授权范围</label>
@@ -626,14 +703,38 @@ function CertificatesContent() {
               value={draft.scopeText}
               onChange={(event) => updateDraft("scopeText", event.target.value)}
               rows={10}
-              className="w-full rounded-lg border border-brand-charcoal/15 p-3 text-sm outline-none focus:border-brand-primary"
+              className="w-full rounded-lg border border-line-strong p-3 text-sm outline-none focus:border-brand-primary"
             />
           </div>
         </div>
+        {formMode === "submit" && (
+          <p className="mt-3 text-xs text-ink-muted">
+            核发时由管理员确认签章（默认使用系统公章）；建议先“生成预览”核对证书信息。
+          </p>
+        )}
+        {previewStale && !previewUrl && (
+          <p className="mt-3 text-xs text-status-warning-fg" role="status">
+            内容已更新，请重新生成预览。
+          </p>
+        )}
         {previewUrl && (
-          <div className="mt-4 overflow-hidden rounded-lg border border-brand-charcoal/10 bg-white p-2">
+          <div className="mt-4 overflow-hidden rounded-lg border border-line bg-white p-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={previewUrl} alt="证书预览" className="mx-auto max-h-[560px] w-auto" />
+            <img
+              src={previewUrl}
+              alt="证书预览"
+              width={800}
+              height={1131}
+              decoding="async"
+              className="mx-auto max-h-[560px] w-auto"
+            />
+            <p className="mt-2 px-2 text-center text-xs text-ink-muted">
+              {formMode === "submit"
+                ? "预览带“审核中 · 未核发”水印，最终证书以管理员核发为准；签章由公司统一加盖。"
+                : draft.sealImage
+                  ? "当前预览签章：自定义签章"
+                  : "当前预览签章：系统默认公章"}
+            </p>
           </div>
         )}
       </Modal>
@@ -641,6 +742,7 @@ function CertificatesContent() {
       <Modal
         open={detailOpen}
         onClose={() => {
+          phoneReveal.hide();
           setDetailOpen(false);
           closeCertificateUrl();
         }}
@@ -672,7 +774,10 @@ function CertificatesContent() {
                 </Button>
               )}
               {detail.certificate.allowedActions.issue && (
-                <Button onClick={() => void runAction("issue")} loading={actionLoading}>
+                <Button
+                  onClick={() => openIssueDialog(detail.certificate)}
+                  disabled={actionLoading}
+                >
                   核发
                 </Button>
               )}
@@ -712,28 +817,28 @@ function CertificatesContent() {
             <div className="space-y-4 text-sm">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <div className="text-xs text-brand-charcoal/65">状态</div>
+                  <div className="text-xs text-ink-muted">状态</div>
                   <Badge variant={STATUS_VARIANTS[detail.certificate.displayStatus] ?? "secondary"}>
                     {STATUS_LABELS[detail.certificate.displayStatus] ??
                       detail.certificate.displayStatus}
                   </Badge>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/65">有效期</div>
+                  <div className="text-xs text-ink-muted">有效期</div>
                   <div>
                     {detail.certificate.startDate} ~ {detail.certificate.endDate}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/65">公司</div>
+                  <div className="text-xs text-ink-muted">公司</div>
                   <div>{detail.certificate.companyName}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/65">店铺</div>
+                  <div className="text-xs text-ink-muted">店铺</div>
                   <div>{detail.certificate.shopName}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/65">手机号</div>
+                  <div className="text-xs text-ink-muted">手机号</div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span>
                       {phoneReveal.revealed && detail.certificate.phone
@@ -755,35 +860,35 @@ function CertificatesContent() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-brand-charcoal/65">提报人</div>
+                  <div className="text-xs text-ink-muted">提报人</div>
                   <div>{detail.certificate.auditorName ?? "-"}</div>
                 </div>
               </div>
               <div>
-                <div className="text-xs text-brand-charcoal/65">授权范围</div>
+                <div className="text-xs text-ink-muted">授权范围</div>
                 <p className="whitespace-pre-wrap leading-relaxed">
                   {detail.certificate.scopeText}
                 </p>
               </div>
               <div>
-                <div className="mb-2 text-xs text-brand-charcoal/65">操作时间线</div>
+                <div className="mb-2 text-xs text-ink-muted">操作时间线</div>
                 <div className="space-y-2">
                   {detail.timeline.length === 0 ? (
-                    <p className="text-xs text-brand-charcoal/65">暂无记录</p>
+                    <p className="text-xs text-ink-muted">暂无记录</p>
                   ) : (
                     detail.timeline.map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-lg border border-brand-charcoal/10 p-3 text-xs"
+                        className="rounded-lg border border-line p-3 text-xs"
                       >
                         <div className="font-medium">{item.action}</div>
                         {item.comment && (
                           <div className="mt-1 text-brand-charcoal/70">{item.comment}</div>
                         )}
                         {item.reason && (
-                          <div className="mt-1 text-brand-charcoal/65">原因：{item.reason}</div>
+                          <div className="mt-1 text-ink-muted">原因：{item.reason}</div>
                         )}
-                        <div className="mt-1 text-brand-charcoal/45">
+                        <div className="mt-1 text-ink-faint">
                           {item.actorName ?? "-"} ·{" "}
                           {new Date(item.createdAt).toLocaleString("zh-CN")}
                         </div>
@@ -797,16 +902,19 @@ function CertificatesContent() {
               {(detail.certificate.displayStatus === "PENDING" ||
                 detail.certificate.displayStatus === "REJECTED" ||
                 (detail.certificate.artifact.pngReady && can("ba:certificates:download"))) ? (
-                <div className="overflow-hidden rounded-lg border border-brand-charcoal/10 bg-white">
+                <div className="overflow-hidden rounded-lg border border-line bg-white">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`/api/admin/subsites/ba/certificates/${detail.certificate.id}/preview`}
                     alt="证书预览"
-                    className="w-full"
+                    width={800}
+                    height={1131}
+                    decoding="async"
+                    className="h-auto w-full"
                   />
                 </div>
               ) : (
-                <div className="rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-4 text-xs text-brand-charcoal/60">
+                <div className="rounded-lg border border-line bg-surface-subtle p-4 text-xs text-ink-muted">
                   证书文件尚未生成，或当前账号没有下载权限。
                 </div>
               )}
@@ -846,6 +954,17 @@ function CertificatesContent() {
           </div>
         )}
       </Modal>
+
+      <BaCertificateIssueDialog
+        key={issueSessionKey}
+        open={issueOpen}
+        certificate={issueCertificate}
+        onClose={() => {
+          setIssueOpen(false);
+          setIssueCertificate(null);
+        }}
+        onConfirm={handleIssueConfirm}
+      />
 
       {totpModal}
     </div>

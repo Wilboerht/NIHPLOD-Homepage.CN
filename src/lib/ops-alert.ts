@@ -33,12 +33,16 @@ function formatAge(date: Date | null | undefined, now: Date): string {
 }
 
 function pendingDays(): number {
-  const raw = Number(process.env.POINT_REDEMPTION_PENDING_DAYS ?? "30");
-  return Number.isFinite(raw) ? raw : 30;
+  const rawValue = process.env.POINT_REDEMPTION_PENDING_DAYS;
+  if (rawValue === undefined || rawValue === null || rawValue === "") return 30;
+  const raw = Number(rawValue);
+  return Number.isFinite(raw) && raw >= 0 ? raw : 30;
 }
 
 function lowStockThreshold(): number {
-  const raw = Number(process.env.POINT_GIFT_LOW_STOCK_THRESHOLD ?? "2");
+  const rawValue = process.env.POINT_GIFT_LOW_STOCK_THRESHOLD;
+  if (rawValue === undefined || rawValue === null || rawValue === "") return 2;
+  const raw = Number(rawValue);
   return Number.isFinite(raw) ? Math.max(0, raw) : 2;
 }
 

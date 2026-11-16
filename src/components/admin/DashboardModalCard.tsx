@@ -38,22 +38,22 @@ export function DashboardModalCard({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         className={cn(
-          "group flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border border-brand-charcoal/10 bg-white px-4 py-3 text-left transition-colors hover:bg-brand-charcoal/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 sm:px-5",
+          "group flex min-h-[52px] w-full items-center justify-between gap-3 rounded-card border border-line bg-white px-4 py-3 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 sm:px-5",
           className
         )}
       >
         <span className="min-w-0">
-          <span className="flex items-center gap-2 text-sm font-semibold text-brand-charcoal">
+          <span className="flex items-center gap-2 text-sm font-semibold text-ink">
             {icon}
             {title}
           </span>
           {summary && (
-            <span className="mt-0.5 block truncate text-xs text-brand-charcoal/65">{summary}</span>
+            <span className="mt-0.5 block truncate text-xs text-ink-muted">{summary}</span>
           )}
         </span>
         <ChevronRight
           aria-hidden="true"
-          className="h-4 w-4 shrink-0 text-brand-charcoal/40 transition-transform group-hover:translate-x-0.5"
+          className="h-4 w-4 shrink-0 text-ink-faint transition-transform group-hover:translate-x-0.5"
         />
       </button>
 

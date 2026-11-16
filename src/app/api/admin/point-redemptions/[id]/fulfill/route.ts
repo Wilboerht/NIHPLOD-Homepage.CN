@@ -14,6 +14,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireMoneyOperationTotp } from "@/lib/admin-totp";
 import { fulfillRedemption } from "@/lib/point-gifts";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +59,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return invalidIdResponse();
     }
 
-    const parsed = fulfillSchema.safeParse(await request.json().catch(() => ({})));
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok && bodyResult.response.status === 413) return bodyResult.response;
+    const parsed = fulfillSchema.safeParse(bodyResult.ok ? bodyResult.data : {});
     if (!parsed.success) {
       return NextResponse.json(
         {

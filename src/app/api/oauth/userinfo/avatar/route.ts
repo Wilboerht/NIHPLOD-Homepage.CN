@@ -22,6 +22,7 @@ import { isBodyTooLargeError, payloadTooLargeResponse, readFormDataBody } from "
 import { processAndSaveImage, validateFileBuffer } from "@/lib/upload";
 import { apiConsole } from "@/lib/logger";
 import { cleanupAvatarUpload, registerPendingAvatarUpload } from "@/lib/avatar-assets";
+import { getIssuer } from "@/lib/oauth-constants";
 
 export const dynamic = "force-dynamic";
 
@@ -122,10 +123,8 @@ export async function POST(request: NextRequest) {
     const result = await processAndSaveImage(buffer, `avatar-${payload.id}`, "avatars");
 
     // 本地存储模式返回相对路径（/uploads/...）：补全为绝对地址，
-    // 以满足 profile.avatar 的 https URL 校验与小程序 <image> 加载
-    const url = result.url.startsWith("/")
-      ? `${(process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "")}${result.url}`
-      : result.url;
+    // 以满足小程序 <image> 直接加载；getIssuer 统一回退链，避免环境变量缺失时返回相对路径
+    const url = result.url.startsWith("/") ? `${getIssuer()}${result.url}` : result.url;
 
     try {
       await registerPendingAvatarUpload(payload.id, result);

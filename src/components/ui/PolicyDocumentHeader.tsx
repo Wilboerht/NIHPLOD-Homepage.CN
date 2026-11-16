@@ -27,7 +27,7 @@ export function PolicyDocumentHeader({
           {description}
         </p>
       )}
-      <div className="flex items-center gap-1.5 text-xs font-light tracking-[0.06em] text-brand-charcoal/60">
+      <div className="flex items-center gap-1.5 text-xs font-light tracking-[0.06em] text-ink-muted">
         <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
         <span>最近更新：</span>
         <time dateTime={toDateTime(lastUpdated)}>{lastUpdated}</time>

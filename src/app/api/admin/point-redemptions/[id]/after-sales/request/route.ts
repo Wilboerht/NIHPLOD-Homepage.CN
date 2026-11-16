@@ -7,6 +7,7 @@ import { requestAfterSales } from "@/lib/redemption-state-machine";
 import { requireAdminSupportAccess, supportError, supportReasonSchema } from "@/lib/admin-support";
 import { invalidIdResponse, validateCUID } from "@/lib/validation";
 import { isOwnedSpentProofImageRef, isValidSpentProofImageRef } from "@/lib/spent-adjustment-meta";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!access.ok) return access.response;
     const { id } = await params;
     if (!validateCUID(id)) return invalidIdResponse();
-    const parsed = schema.safeParse(await request.json().catch(() => null));
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const parsed = schema.safeParse(bodyResult.data);
     if (!parsed.success)
       return supportError("INVALID_PARAMS", parsed.error.issues[0]?.message || "参数错误");
     const redemption = await prisma.pointRedemption.findUnique({

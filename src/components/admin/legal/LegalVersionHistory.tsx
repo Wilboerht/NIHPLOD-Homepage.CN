@@ -213,20 +213,20 @@ export function LegalVersionHistory({
     <>
       <Modal open={open} onClose={onClose} title="版本历史" size="lg">
         <div className="space-y-4">
-          <p className="text-xs text-brand-charcoal/50">
+          <p className="text-xs text-ink-muted">
             版本永久保留。恢复旧版只会写入草稿，不会直接修改线上内容。
           </p>
 
           {versions.length > 0 ? (
-            <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3">
+            <div className="rounded-xl border border-line bg-surface-subtle p-3">
               <p className="text-xs font-medium text-brand-charcoal/70">对比任意两个版本</p>
               <div className="mt-2 flex flex-wrap items-end gap-2">
-                <label className="text-[11px] text-brand-charcoal/55">
+                <label className="text-2xs text-ink-muted">
                   基准
                   <select
                     value={baseSelection}
                     onChange={(event) => setBaseSelection(event.target.value)}
-                    className="mt-1 block h-9 min-w-[9rem] rounded-lg border border-brand-charcoal/20 bg-white px-2 text-xs text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                    className="mt-1 block h-9 min-w-[9rem] rounded-lg border border-line-strong bg-white px-2 text-xs text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                   >
                     {selectionOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -235,12 +235,12 @@ export function LegalVersionHistory({
                     ))}
                   </select>
                 </label>
-                <label className="text-[11px] text-brand-charcoal/55">
+                <label className="text-2xs text-ink-muted">
                   对比
                   <select
                     value={targetSelection}
                     onChange={(event) => setTargetSelection(event.target.value)}
-                    className="mt-1 block h-9 min-w-[9rem] rounded-lg border border-brand-charcoal/20 bg-white px-2 text-xs text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                    className="mt-1 block h-9 min-w-[9rem] rounded-lg border border-line-strong bg-white px-2 text-xs text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
                   >
                     {selectionOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -257,20 +257,20 @@ export function LegalVersionHistory({
           ) : null}
 
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-brand-charcoal/50">
+            <div className="flex items-center justify-center py-10 text-ink-muted">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               加载中...
             </div>
           ) : loadError ? (
             <div className="space-y-3 py-6 text-center">
-              <p className="text-sm text-red-500">{loadError}</p>
+              <p className="text-sm text-status-danger-fg">{loadError}</p>
               <Button variant="outline" size="sm" onClick={() => void fetchVersions()}>
                 重试
               </Button>
             </div>
           ) : versions.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center text-brand-charcoal/55">
-              <History className="h-8 w-8 text-brand-charcoal/25" aria-hidden="true" />
+            <div className="flex flex-col items-center gap-2 py-10 text-center text-ink-muted">
+              <History className="h-8 w-8 text-ink-faint" aria-hidden="true" />
               <p className="text-sm">还没有发布记录</p>
               <p className="text-xs">首次发布会自动生成 v1。</p>
             </div>
@@ -279,7 +279,7 @@ export function LegalVersionHistory({
               {versions.map((version) => (
                 <div
                   key={version.id}
-                  className="rounded-xl border border-brand-charcoal/10 bg-white p-3"
+                  className="rounded-xl border border-line bg-white p-3"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-brand-charcoal">
@@ -290,14 +290,14 @@ export function LegalVersionHistory({
                         当前线上
                       </Badge>
                     ) : null}
-                    <span className="text-xs text-brand-charcoal/50">
+                    <span className="text-xs text-ink-muted">
                       {new Date(version.createdAt).toLocaleString("zh-CN")}
                     </span>
-                    <span className="text-xs text-brand-charcoal/50">
+                    <span className="text-xs text-ink-muted">
                       {version.createdBy ?? "系统导入"}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-brand-charcoal/55">
+                  <p className="mt-1 text-xs text-ink-muted">
                     {version.sectionCount} 个章节
                     {version.note ? ` · ${version.note}` : ""}
                   </p>

@@ -4,14 +4,14 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode, Suspense } from "react";
-import { ChevronLeft, ChevronRight, Globe, KeyRound, Loader2, LogOut, Menu, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Globe, KeyRound, Loader2, LogOut, Menu, X } from "lucide-react";
 import {
   getBreadcrumbs,
   getVisibleNavGroups,
   isNavItemActive,
   type AdminNavCountKey,
 } from "@/config/admin-nav";
-import { ROLE_LABELS, type AdminRoleValue } from "@/lib/admin-permissions";
+import { getAdminRoleLabel } from "@/lib/admin-display";
 import { ADMIN_SESSION_EXPIRED_EVENT, apiGet, apiPost } from "@/lib/api-client";
 import { apiConsole } from "@/lib/logger";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const toast = useToast();
-  const { role, name, permissions, loading, redirecting, error, refresh } = useAdminSession();
+  const { role, name, permissions, customized, loading, redirecting, error, refresh } =
+    useAdminSession();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
@@ -193,7 +194,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-white">
         <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
-        <p className="text-sm text-brand-charcoal/65">登录已过期，正在跳转...</p>
+        <p className="text-sm text-ink-muted">登录已过期，正在跳转...</p>
       </div>
     );
   }
@@ -203,7 +204,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-white px-6 text-center">
         <p className="text-base font-medium text-brand-charcoal">后台会话加载失败</p>
-        <p className="max-w-md text-sm text-brand-charcoal/65">
+        <p className="max-w-md text-sm text-ink-muted">
           可能是网络异常或服务暂时不可用。请重试；若持续失败，请重新登录。
         </p>
         <div className="flex items-center gap-2">
@@ -216,7 +217,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </button>
           <Link
             href="/admin-login?reauth=1"
-            className="rounded-lg border border-brand-charcoal/15 px-4 py-2 text-sm text-brand-charcoal hover:bg-brand-charcoal/5"
+            className="rounded-lg border border-line-strong px-4 py-2 text-sm text-brand-charcoal hover:bg-brand-charcoal/5"
           >
             重新登录
           </Link>
@@ -256,7 +257,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {/* 桌面端侧边栏 */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-brand-charcoal/10 bg-white transition-all duration-300 lg:flex",
+          "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-line bg-white transition-all duration-slow lg:flex",
           collapsed ? "w-16" : "w-60"
         )}
       >
@@ -269,13 +270,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
           onToggleCollapse={toggleCollapsed}
           userName={name}
           userRole={role}
+          userCustomized={customized}
           onLogout={handleLogout}
           loggingOut={loggingOut}
         />
       </aside>
 
       {/* 移动端顶栏（sticky：汉堡 + 当前页标题） */}
-      <header className="sticky top-0 z-40 flex min-h-[calc(3.5rem_+_env(safe-area-inset-top,0px))] items-center gap-3 border-b border-brand-charcoal/10 bg-white/80 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur lg:hidden">
+      <header
+        inert={drawerOpen || undefined}
+        aria-hidden={drawerOpen || undefined}
+        className="sticky top-0 z-40 flex min-h-[calc(3.5rem_+_env(safe-area-inset-top,0px))] items-center gap-3 border-b border-line bg-white/80 px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur lg:hidden"
+      >
         <IconButton label="打开导航菜单" onClick={() => setDrawerOpen(true)} className="-ml-2">
           <Menu className="h-5 w-5" />
         </IconButton>
@@ -285,7 +291,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       {/* 移动端抽屉 */}
       <div
         className={cn(
-          "fixed inset-0 z-[90] bg-black/50 transition-opacity duration-300 lg:hidden",
+          "fixed inset-0 z-[90] bg-black/50 transition-opacity duration-slow lg:hidden",
           drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
         onClick={() => setDrawerOpen(false)}
@@ -293,7 +299,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[95] flex w-72 flex-col border-r border-brand-charcoal/10 bg-white transition-[transform,visibility] duration-300 ease-in-out lg:hidden",
+          "fixed inset-y-0 left-0 z-[95] flex w-72 flex-col border-r border-line bg-white transition-[transform,visibility] duration-slow ease-in-out lg:hidden",
           drawerOpen ? "translate-x-0" : "invisible -translate-x-full"
         )}
       >
@@ -313,6 +319,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             onClose={() => setDrawerOpen(false)}
             userName={name}
             userRole={role}
+            userCustomized={customized}
             onLogout={handleLogout}
             loggingOut={loggingOut}
           />
@@ -328,20 +335,49 @@ export function AdminShell({ children }: { children: ReactNode }) {
         aria-hidden={drawerOpen || undefined}
         className={cn(
           "outline-none",
-          "flex min-h-dvh flex-col px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-300 sm:px-6 lg:pb-8 lg:pr-8 lg:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
+          "flex min-h-dvh flex-col px-4 pb-[calc(1.5rem_+_env(safe-area-inset-bottom,0px))] pt-6 transition-[padding] duration-slow sm:px-6 lg:pb-8 lg:pr-8 lg:pt-[calc(1.5rem_+_env(safe-area-inset-top,0px))]",
           collapsed ? "lg:pl-24" : "lg:pl-[17rem]"
         )}
       >
         <div className={cn("mx-auto w-full flex-1", CONTENT_MAX_WIDTH_CLASS)}>
+          {breadcrumbs.length > 1 && (
+            <nav
+              aria-label="面包屑"
+              className="mb-3 hidden items-center gap-1 text-xs text-ink-muted lg:flex"
+            >
+              {breadcrumbs.map((crumb, index) => (
+                <span key={`${crumb.href}-${index}`} className="flex items-center gap-1">
+                  {index > 0 && (
+                    <ChevronRight className="h-3 w-3 text-ink-faint" aria-hidden="true" />
+                  )}
+                  {index === breadcrumbs.length - 1 ? (
+                    <span className="text-brand-charcoal/80">{crumb.title}</span>
+                  ) : (
+                    <Link href={crumb.href} className="transition-colors hover:text-brand-charcoal">
+                      {crumb.title}
+                    </Link>
+                  )}
+                </span>
+              ))}
+            </nav>
+          )}
           <Suspense
-            fallback={<div className="flex items-center justify-center py-8">加载中...</div>}
+            fallback={
+              <div
+                role="status"
+                aria-label="页面加载中"
+                className="flex min-h-[40vh] items-center justify-center"
+              >
+                <Loader2 className="h-6 w-6 animate-spin text-brand-primary" aria-hidden="true" />
+              </div>
+            }
           >
             {children}
           </Suspense>
         </div>
         <footer
           className={cn(
-            "mx-auto mt-auto w-full pt-8 text-center text-[11px] font-light tracking-widest text-brand-charcoal/65",
+            "mx-auto mt-auto w-full pt-8 text-center text-2xs font-light tracking-widest text-ink-muted",
             CONTENT_MAX_WIDTH_CLASS
           )}
         >
@@ -365,6 +401,7 @@ interface SidebarContentProps {
   onClose?: () => void;
   userName?: string;
   userRole?: string;
+  userCustomized?: boolean;
   onLogout: () => void;
   loggingOut: boolean;
 }
@@ -397,14 +434,18 @@ function SidebarContent({
   onClose,
   userName,
   userRole,
+  userCustomized = false,
   onLogout,
   loggingOut,
 }: SidebarContentProps) {
-  const itemCls = "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors";
-  const activeCls = cn(itemCls, "bg-brand-primary/10 text-brand-primary font-medium");
+  const itemCls = "flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors lg:min-h-9";
+  const activeCls = cn(
+    itemCls,
+    "relative bg-brand-primary/10 font-medium text-brand-primary before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-brand-primary"
+  );
   const inactiveCls = cn(
     itemCls,
-    "text-brand-charcoal/70 hover:text-brand-charcoal hover:bg-brand-charcoal/[0.04]"
+    "text-brand-charcoal/70 hover:text-brand-charcoal hover:bg-surface-muted"
   );
   const visibleGroups = permissions ? getVisibleNavGroups(permissions) : [];
 
@@ -461,11 +502,11 @@ function SidebarContent({
               key={group.label ?? "root"}
               className={cn(
                 "flex flex-col gap-0.5",
-                collapsed && groupIndex > 0 && "mt-2 border-t border-brand-charcoal/10 pt-2"
+                collapsed && groupIndex > 0 && "mt-2 border-t border-line pt-2"
               )}
             >
               {group.label && !collapsed && (
-                <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-brand-charcoal/65">
+                <p className="px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-ink-muted">
                   {group.label}
                 </p>
               )}
@@ -500,7 +541,7 @@ function SidebarContent({
                     {!collapsed && <span className="truncate">{item.title}</span>}
                     {!collapsed && hasPending && (
                       <span
-                        className="ml-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-red-500"
+                        className="ml-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-status-danger-fg"
                         title={`${count} 条待处理`}
                         aria-label={`${count} 条待处理`}
                       />
@@ -508,7 +549,7 @@ function SidebarContent({
                     {!collapsed && <SidebarLinkPending className="ml-auto" />}
                     {collapsed && hasPending && (
                       <span
-                        className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500"
+                        className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-status-danger-fg"
                         title={`${count} 条待处理`}
                         aria-label={`${count} 条待处理`}
                       />
@@ -522,14 +563,14 @@ function SidebarContent({
       </nav>
 
       {/* 底部：用户信息 + 查看站点 + 退出登录 + 折叠 */}
-      <div className="flex flex-col gap-0.5 border-t border-brand-charcoal/10 px-3 pb-4 pt-3">
+      <div className="flex flex-col gap-0.5 border-t border-line px-3 pb-4 pt-3">
         {!collapsed && (userName || userRole) && (
           <div className="px-3 pb-2">
             <p className="truncate text-sm font-medium text-brand-charcoal">
               {userName || "管理员"}
             </p>
-            <p className="text-xs text-brand-charcoal/65">
-              {userRole ? (ROLE_LABELS[userRole as AdminRoleValue] ?? "管理员") : "管理员"}
+            <p className="text-xs text-ink-muted">
+              {userRole ? getAdminRoleLabel(userRole, userCustomized) : "管理员"}
             </p>
           </div>
         )}
@@ -554,12 +595,19 @@ function SidebarContent({
         </Link>
         <Link
           href="/"
+          target="_blank"
+          rel="noopener noreferrer"
           onClick={onNavigate}
           className={cn(inactiveCls, collapsed && "justify-center px-2")}
-          title={collapsed ? "查看站点" : undefined}
+          title={collapsed ? "查看站点（新窗口）" : undefined}
         >
           <Globe className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && <span>查看站点</span>}
+          {!collapsed && (
+            <span className="flex items-center gap-1">
+              查看站点
+              <ExternalLink className="h-3 w-3 opacity-60" aria-hidden="true" />
+            </span>
+          )}
         </Link>
         <button
           onClick={onLogout}
@@ -567,7 +615,7 @@ function SidebarContent({
           title={collapsed ? "退出登录" : undefined}
           className={cn(
             inactiveCls,
-            "w-full text-left hover:text-red-500 disabled:opacity-50",
+            "w-full text-left hover:text-status-danger-fg disabled:opacity-50",
             collapsed && "justify-center px-2"
           )}
         >

@@ -30,7 +30,7 @@ export function MobileList({
     return (
       <div className={cn("space-y-2 md:hidden", className)}>
         {Array.from({ length: skeletonCount }).map((_, index) => (
-          <div key={index} className="h-28 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
+          <div key={index} className="h-28 animate-pulse rounded-card bg-surface-muted" />
         ))}
       </div>
     );
@@ -40,7 +40,7 @@ export function MobileList({
     return (
       <div
         className={cn(
-          "rounded-2xl border border-brand-charcoal/10 bg-white px-4 py-10 text-center text-sm text-brand-charcoal/65 md:hidden",
+          "rounded-card border border-line bg-white px-4 py-10 text-center text-sm text-ink-muted md:hidden",
           className
         )}
       >
@@ -53,7 +53,7 @@ export function MobileList({
     return (
       <div
         className={cn(
-          "rounded-2xl border border-brand-charcoal/10 bg-white px-4 py-10 text-center text-sm text-brand-charcoal/65 md:hidden",
+          "rounded-card border border-line bg-white px-4 py-10 text-center text-sm text-ink-muted md:hidden",
           className
         )}
       >
@@ -65,7 +65,7 @@ export function MobileList({
   return (
     <div
       className={cn(
-        "divide-y divide-brand-charcoal/10 overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white md:hidden",
+        "divide-y divide-line overflow-visible rounded-card border border-line bg-white md:hidden",
         className
       )}
     >

@@ -24,6 +24,13 @@ import {
   scheduleBackchannelRedelivery,
 } from "@/lib/backchannel-logout";
 import { checkUserStatus } from "@/lib/auth";
+import { prepareAvatarReplacement } from "@/lib/avatar-assets";
+import { resolveSsoAvatar } from "@/lib/default-avatar";
+import {
+  discardMirroredAvatar,
+  isSocialAvatarUrl,
+  mirrorSocialAvatarForLogin,
+} from "@/lib/social-avatar";
 import { hashPassword, generateSecurePassword } from "@/lib/password";
 import { verifySmsCodeWithLimit, SMS_CODE_MAX_ATTEMPTS } from "@/lib/sms";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -31,6 +38,8 @@ import { getClientIP } from "@/lib/client-ip";
 import { resolveMiniprogramCredentials } from "@/lib/miniprogram-clients";
 import { apiConsole } from "@/lib/logger";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
+import { defaultNicknameForPhone, sanitizeProviderNickname } from "@/lib/nickname-policy";
+import { auditNicknameBlocked } from "@/lib/nickname-audit";
 import type { NextRequest } from "next/server";
 
 /**
@@ -66,6 +75,8 @@ export interface WechatBindingInput {
   request: NextRequest;
   /** 外部身份 provider 标识（默认 wechat_open；小程序登录传 wechat_miniprogram） */
   provider?: string;
+  /** 昵称风控拦截审计来源（默认按 provider 推断） */
+  nicknameSource?: "wechat_bind" | "wechat_exchange";
   /** OAuth 签发参数：传入时走 RS256 OAuth 口径签发（见 WechatOAuthIssueOptions） */
   oauth?: WechatOAuthIssueOptions;
 }
@@ -260,22 +271,32 @@ export async function resolveWechatBinding(
   const isWechatProvider = provider.startsWith("wechat_");
   const writesLegacyWechatColumn = provider === "wechat_open" || provider === "wechat_mp";
 
+  // 第三方昵称合规兜底：命中违规/不可用字符时置空，写入侧回退默认昵称，
+  // 不阻断绑定/登录；命中事件在用户落库后写审计。
+  const providerNicknameResult = sanitizeProviderNickname(wechatInfo.nickname);
+  const providerNickname = providerNicknameResult.nickname;
+  const fallbackNickname = defaultNicknameForPhone(phone);
+
   // 0. 绑定冲突预检（核销验证码之前）：该微信身份已绑定其他真实账户时提前返回，
   //    避免用户烧掉验证码后才收到 WECHAT_ALREADY_BOUND。调用方持有微信授权凭证
   //   （bindToken/exchange token），暴露"自己的微信是否已绑定"不构成枚举。
   //    事务内的同名检查仍是并发下的权威判定，此处仅为体验优化。
+  // 预检时顺带记录"绑定后最终会保留的头像"：用于判断是否需要镜像社交头像。
+  // 社交头像为第三方热链（CSP 拦截/会过期），绑定成功后转存自有存储。
+  let mirrorTargetAvatar: string | null = null;
   {
     const phoneOwner = await prisma.user.findUnique({
       where: { phone },
-      select: { id: true },
+      select: { id: true, avatar: true },
     });
     const oldWechatUser = await prisma.user.findFirst({
       where:
         wechatInfo.unionid && isWechatProvider
           ? { OR: [{ wechatUnionId: wechatInfo.unionid }, { wechatOpenId: wechatInfo.openid }] }
           : { wechatOpenId: wechatInfo.openid },
-      select: { id: true, phone: true },
+      select: { id: true, phone: true, avatar: true },
     });
+    mirrorTargetAvatar = phoneOwner?.avatar ?? oldWechatUser?.avatar ?? null;
     if (
       oldWechatUser &&
       !oldWechatUser.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX) &&
@@ -338,9 +359,27 @@ export async function resolveWechatBinding(
   const mpClientId = wechatInfo.type === "wechat_bind" ? wechatInfo.mpClientId : undefined;
   const mpAppId = mpClientId ? (resolveMiniprogramCredentials(mpClientId)?.appId ?? null) : null;
   const identityMetadata = {
-    nickname: wechatInfo.nickname ?? null,
+    nickname: providerNickname,
     avatar: wechatInfo.avatar ?? null,
     ...(mpClientId ? { mpClientId, mpAppId } : {}),
+  };
+
+  // 社交头像镜像：仅在"无头像/仍是社交外链"时下载转存，失败回退默认头像
+  const mirroredAvatar = await mirrorSocialAvatarForLogin(
+    wechatInfo.avatar,
+    mirrorTargetAvatar,
+    provider
+  );
+  let mirroredAvatarUsed = false;
+  const chooseAvatar = (current: string | null): string | null => {
+    if (!mirroredAvatar) return current;
+    if (current === mirroredAvatar.url) {
+      mirroredAvatarUsed = true;
+      return current;
+    }
+    if (current && !isSocialAvatarUrl(current)) return current;
+    mirroredAvatarUsed = true;
+    return mirroredAvatar.url;
   };
 
   // 3-5. 在事务中原子化执行用户查找、冲突解决、创建/更新，消除竞态窗口
@@ -373,6 +412,15 @@ export async function resolveWechatBinding(
             });
           } else if (!foundUser) {
             // 旧临时账户升级为真实账户
+            const upgradedAvatar = chooseAvatar(oldWechatUser.avatar);
+            if (mirroredAvatar && upgradedAvatar === mirroredAvatar.url) {
+              await prepareAvatarReplacement(tx, {
+                userId: oldWechatUser.id,
+                nextAvatar: upgradedAvatar,
+                newUpload: mirroredAvatar,
+                allowInactive: true,
+              });
+            }
             foundUser = await tx.user.update({
               where: { id: oldWechatUser.id },
               data: {
@@ -380,9 +428,9 @@ export async function resolveWechatBinding(
                 phoneVerified: true,
                 password: hashedPassword,
                 nickname: oldWechatUser.nickname?.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)
-                  ? wechatInfo.nickname || `用户_${phone.slice(-4)}`
-                  : oldWechatUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-                avatar: oldWechatUser.avatar || wechatInfo.avatar || null,
+                  ? providerNickname || fallbackNickname
+                  : oldWechatUser.nickname || providerNickname || fallbackNickname,
+                avatar: upgradedAvatar,
                 ...(writesLegacyWechatColumn ? { wechatOpenId: wechatInfo.openid } : {}),
                 // 非微信系 provider 完全不触碰 wechatUnionId 列（保持原值）
                 ...(isWechatProvider
@@ -408,6 +456,15 @@ export async function resolveWechatBinding(
         foundUser?.id === oldWechatUser.id;
 
       if (foundUser && shouldUpdate) {
+        const nextAvatar = chooseAvatar(foundUser.avatar);
+        if (mirroredAvatar && nextAvatar === mirroredAvatar.url) {
+          await prepareAvatarReplacement(tx, {
+            userId: foundUser.id,
+            nextAvatar,
+            newUpload: mirroredAvatar,
+            allowInactive: true,
+          });
+        }
         foundUser = await tx.user.update({
           where: { id: foundUser.id },
           data: {
@@ -418,22 +475,31 @@ export async function resolveWechatBinding(
               : {}),
             // 仅当用户尚无密码时才设置（新用户/临时账户升级）；已有密码的用户不受影响
             password: foundUser.password || hashedPassword,
-            nickname: foundUser.nickname || wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-            avatar: foundUser.avatar || wechatInfo.avatar || null,
+            nickname: foundUser.nickname || providerNickname || fallbackNickname,
+            avatar: nextAvatar,
           },
         });
       } else if (!foundUser) {
+        const createdAvatar = chooseAvatar(null);
         foundUser = await tx.user.create({
           data: {
             phone,
             password: hashedPassword,
             phoneVerified: true,
-            nickname: wechatInfo.nickname || `用户_${phone.slice(-4)}`,
-            avatar: wechatInfo.avatar || null,
+            nickname: providerNickname || fallbackNickname,
+            avatar: createdAvatar,
             wechatOpenId: writesLegacyWechatColumn ? wechatInfo.openid : null,
             wechatUnionId: isWechatProvider ? wechatInfo.unionid || null : null,
           },
         });
+        if (mirroredAvatar && createdAvatar === mirroredAvatar.url) {
+          await prepareAvatarReplacement(tx, {
+            userId: foundUser.id,
+            nextAvatar: createdAvatar,
+            newUpload: mirroredAvatar,
+            allowInactive: true,
+          });
+        }
       }
 
       // 身份冲突检测（全 provider 覆盖）：旧列 oldWechatUser 检测仅覆盖微信系，
@@ -476,6 +542,7 @@ export async function resolveWechatBinding(
       return foundUser;
     });
   } catch (error) {
+    await discardMirroredAvatar(mirroredAvatar);
     if (error instanceof Error && error.message === "WECHAT_ALREADY_BOUND") {
       return {
         success: false,
@@ -484,6 +551,21 @@ export async function resolveWechatBinding(
       };
     }
     throw error;
+  }
+
+  // 镜像文件已生成但最终未采用（例如并发下已换成自有头像）：清理避免孤儿文件
+  if (mirroredAvatar && !mirroredAvatarUsed) {
+    await discardMirroredAvatar(mirroredAvatar);
+  }
+
+  if (providerNicknameResult.blocked && providerNicknameResult.reason) {
+    await auditNicknameBlocked({
+      request,
+      userId: user.id,
+      source: input.nicknameSource ?? (provider === "douyin" ? "douyin_callback" : "wechat_bind"),
+      reason: providerNicknameResult.reason,
+      category: providerNicknameResult.category,
+    });
   }
 
   // 6. 校验账号状态
@@ -529,7 +611,9 @@ export async function resolveWechatBinding(
         id: user.id,
         phone: user.phone,
         nickname: user.nickname,
-        avatar: user.avatar,
+        // 绑定接口同时服务主站与子站/小程序：统一输出绝对 URL，
+        // 本地存储模式的 /uploads/** 在子站域名下无法直接加载；null 保持 null 由前端兜底
+        avatar: user.avatar ? resolveSsoAvatar(user.avatar) : null,
       },
       accessToken,
       refreshToken,

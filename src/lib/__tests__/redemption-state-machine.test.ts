@@ -21,6 +21,7 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/points-ledger", () => ({
   withPointTxRetry: (fn: () => unknown) => fn(),
+  lockPointBalance: vi.fn().mockResolvedValue(undefined),
   adjustPoints: vi.fn().mockResolvedValue({ duplicated: false }),
 }));
 

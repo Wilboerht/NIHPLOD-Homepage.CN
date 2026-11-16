@@ -18,8 +18,8 @@ import { useMounted } from "@/hooks/useMounted";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createPortal } from "react-dom";
 import { m, AnimatePresence, useDragControls } from "framer-motion";
-import Image from "next/image";
 import { X, User, LogOut, Crown, Gift, Shield, NotebookPen } from "lucide-react";
+import { AvatarImage } from "@/components/ui/AvatarImage";
 import { useAuth, type UserCenterView } from "@/contexts/AuthContext";
 import { LogoutConfirmDialog } from "@/components/ui/LogoutConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -220,13 +220,11 @@ export function UserCenterModal() {
                     <div className="px-12 pb-4 pt-10">
                       <div className="flex flex-col items-start gap-4 text-left">
                         <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-cream/40 object-cover">
-                          {/* 未自定义头像的新用户使用默认头像 */}
-                          <Image
-                            src={user.avatar || "/images/default-avatar.png"}
-                            alt="Avatar"
-                            fill
-                            unoptimized
-                            className="h-full w-full object-cover"
+                          {/* 未自定义头像或外链不可渲染时使用默认头像 */}
+                          <AvatarImage
+                            src={user.avatar}
+                            alt={user.nickname || "用户头像"}
+                            className="h-full w-full"
                           />
                         </div>
                         <div className="flex flex-col justify-center">

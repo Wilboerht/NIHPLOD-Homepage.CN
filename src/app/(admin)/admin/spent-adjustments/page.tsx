@@ -404,7 +404,7 @@ function AdminSpentAdjustmentsContent() {
             </>
           }
         />
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-6 text-sm text-brand-charcoal/65">
+        <div className="rounded-card border border-line bg-white p-6 text-sm text-ink-muted">
           {canCreate && "你可以代客填写消费补录；"}
           {canImport && "你可以导入消费记录；"}
           查看和审核申请需要「消费补录查看」权限。
@@ -477,12 +477,12 @@ function AdminSpentAdjustmentsContent() {
       />
 
       {/* 状态筛选 + 搜索 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div
             role="group"
             aria-label="按审核状态筛选"
-            className="flex flex-wrap items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+            className="flex flex-wrap items-center gap-1 rounded-xl bg-surface-muted p-1"
           >
             {TABS.map((t) => {
               // “全部”为各状态计数之和；不能用当前筛选的 total（会随 tab 变化）
@@ -501,7 +501,7 @@ function AdminSpentAdjustmentsContent() {
                     "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
                     active
                       ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                      : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                      : "text-ink-muted hover:bg-white/70 hover:text-brand-charcoal"
                   )}
                 >
                   {t.label}
@@ -510,7 +510,7 @@ function AdminSpentAdjustmentsContent() {
                       "min-w-[1.25rem] rounded-full px-1.5 py-0.5 text-center text-xs tabular-nums",
                       active
                         ? "bg-brand-primary/10 text-brand-primary"
-                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
+                        : "bg-surface-hover text-ink-muted"
                     )}
                   >
                     {count}
@@ -521,7 +521,7 @@ function AdminSpentAdjustmentsContent() {
           </div>
 
           <div className="relative w-full md:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
             <Input
               aria-label="搜索手机号、订单号或昵称"
               placeholder="搜索手机号 / 订单号 / 昵称"
@@ -537,7 +537,7 @@ function AdminSpentAdjustmentsContent() {
                   update({ search: null }, { replace: true });
                 }}
                 aria-label="清除搜索"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -558,18 +558,18 @@ function AdminSpentAdjustmentsContent() {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-brand-charcoal/[0.04]" />
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-surface-muted" />
             ))}
           </div>
         ) : loadError ? (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10 text-center">
-            <p className="text-sm text-red-500">加载失败，请重试</p>
+          <div className="rounded-card border border-line bg-white py-10 text-center">
+            <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
             <Button variant="outline" size="sm" className="mt-3" onClick={fetchData}>
               重试
             </Button>
           </div>
         ) : data && data.applications.length > 0 ? (
-          <div className="divide-y divide-brand-charcoal/10 rounded-2xl border border-brand-charcoal/10 bg-white">
+          <div className="divide-y divide-line rounded-card border border-line bg-white">
             {data.applications.map((a) => (
               <div key={a.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -577,7 +577,7 @@ function AdminSpentAdjustmentsContent() {
                     <p className="truncate text-sm font-medium text-brand-charcoal">
                       {a.user.nickname || "未设置昵称"}
                     </p>
-                    <p className="truncate text-xs text-brand-charcoal/65">
+                    <p className="truncate text-xs text-ink-muted">
                       {a.user.phone} · {a.channelLabel}
                     </p>
                   </div>
@@ -587,7 +587,7 @@ function AdminSpentAdjustmentsContent() {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
                   {a.source === "ADMIN" && (
-                    <span className="col-span-2 inline-flex w-fit items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                    <span className="col-span-2 inline-flex w-fit items-center rounded-full bg-status-warning-soft px-2 py-0.5 text-2xs text-status-warning-strong">
                       客服代填{a.createdByAdmin ? ` · ${a.createdByAdmin.name}` : ""}
                     </span>
                   )}
@@ -613,7 +613,7 @@ function AdminSpentAdjustmentsContent() {
                     凭证：{a.images.length > 0 ? `${a.images.length} 张` : "无"}
                   </span>
                 </div>
-                <div className="mt-3 flex justify-end border-t border-brand-charcoal/10 pt-2">
+                <div className="mt-3 flex justify-end border-t border-line pt-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -627,17 +627,17 @@ function AdminSpentAdjustmentsContent() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-brand-charcoal/10 bg-white py-10">
+          <div className="rounded-card border border-line bg-white py-10">
             <Empty title="暂无申请" />
           </div>
         )}
       </div>
 
       {/* 列表（桌面端表格） */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
         <table className="w-full min-w-[1120px] text-sm">
           <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+            <tr className="border-b border-line bg-surface-subtle text-left">
               <th scope="col" className="px-4 py-3 font-normal">
                 用户
               </th>
@@ -682,7 +682,7 @@ function AdminSpentAdjustmentsContent() {
             ) : loadError ? (
               <tr>
                 <td colSpan={12} className="px-4 py-10 text-center">
-                  <p className="text-sm text-red-500">加载失败，请重试</p>
+                  <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -696,19 +696,19 @@ function AdminSpentAdjustmentsContent() {
               </tr>
             ) : data && data.applications.length > 0 ? (
               data.applications.map((a) => (
-                <tr key={a.id} className="hover:bg-brand-charcoal/[0.03]">
+                <tr key={a.id} className="hover:bg-surface-muted">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-charcoal/[0.06] text-xs text-brand-charcoal/65">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-hover text-xs text-ink-muted">
                         {(a.user.nickname || a.user.phone || "U").charAt(0)}
                       </div>
                       <div>
                         <p className="text-sm text-brand-charcoal/70">
                           {a.user.nickname || "未设置昵称"}
                         </p>
-                        <p className="text-xs text-brand-charcoal/65">{a.user.phone}</p>
+                        <p className="text-xs text-ink-muted">{a.user.phone}</p>
                         {a.source === "ADMIN" && (
-                          <span className="mt-1 inline-flex rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                          <span className="mt-1 inline-flex rounded-full bg-status-warning-soft px-1.5 py-0.5 text-2xs text-status-warning-strong">
                             客服代填{a.createdByAdmin ? ` · ${a.createdByAdmin.name}` : ""}
                           </span>
                         )}
@@ -734,13 +734,13 @@ function AdminSpentAdjustmentsContent() {
                   <td className="px-4 py-3">
                     <Badge variant={STATUS_BADGE_VARIANT[a.status]}>{a.statusLabel}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-ink-muted">
                     {a.reviewedBy?.name ?? "-"}
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-ink-muted">
                     {a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-ink-muted">
                     {formatDateTime(a.createdAt)}
                   </td>
                   <td className="px-4 py-3">
@@ -807,7 +807,7 @@ function AdminSpentAdjustmentsContent() {
                 <Button
                   onClick={handleReview}
                   loading={saving}
-                  className={decision === "reject" ? "bg-red-500 hover:bg-red-600" : undefined}
+                  className={decision === "reject" ? "bg-status-danger-fg hover:bg-status-danger-fg" : undefined}
                 >
                   {decision === "approve" ? "确认通过并入账" : "确认驳回"}
                 </Button>
@@ -827,7 +827,7 @@ function AdminSpentAdjustmentsContent() {
                 )}
             </div>
           ) : detail?.status === "PENDING" && canReview && isSelfSubmitted ? (
-            <p className="text-xs text-brand-charcoal/65">
+            <p className="text-xs text-ink-muted">
               该申请由你代客提交，按四眼原则需由其他管理员审核。
             </p>
           ) : detail?.status === "APPROVED" && !isOwnerActor && canRequestApproval ? (
@@ -873,43 +873,43 @@ function AdminSpentAdjustmentsContent() {
         {detail && (
           <div className="space-y-4">
             {/* 申请信息 */}
-            <div className="space-y-3 rounded-lg bg-brand-charcoal/[0.03] p-4 text-sm">
+            <div className="space-y-3 rounded-lg bg-surface-muted p-4 text-sm">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">用户</p>
+                  <p className="text-xs text-ink-muted">用户</p>
                   <p className="mt-0.5 text-brand-charcoal/70">
                     {detail.user.nickname || "-"}（{detail.user.phone}）
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">当前等级</p>
+                  <p className="text-xs text-ink-muted">当前等级</p>
                   <p className="mt-0.5 text-brand-charcoal/70">
                     {levelDisplay(detail.user.membershipLevel)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">提交来源</p>
+                  <p className="text-xs text-ink-muted">提交来源</p>
                   <p className="mt-0.5 text-brand-charcoal/70">
                     {detail.sourceLabel}
                     {detail.createdByAdmin ? `（${detail.createdByAdmin.name}）` : ""}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">渠道</p>
+                  <p className="text-xs text-ink-muted">渠道</p>
                   <p className="mt-0.5 text-brand-charcoal/70">{detail.channelLabel}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">订单号 / 小票号</p>
+                  <p className="text-xs text-ink-muted">订单号 / 小票号</p>
                   <p className="mt-0.5 font-mono text-brand-charcoal/70">{detail.orderNo}</p>
                 </div>
                 {detail.dealerName && (
                   <div>
-                    <p className="text-xs text-brand-charcoal/65">经销商名称</p>
+                    <p className="text-xs text-ink-muted">经销商名称</p>
                     <p className="mt-0.5 text-brand-charcoal/70">{detail.dealerName}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">申报金额</p>
+                  <p className="text-xs text-ink-muted">申报金额</p>
                   <p className="mt-0.5 text-brand-charcoal/70">
                     {detail.amountClaimed != null
                       ? `¥${detail.amountClaimed.toLocaleString()}`
@@ -917,32 +917,32 @@ function AdminSpentAdjustmentsContent() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">消费日期</p>
+                  <p className="text-xs text-ink-muted">消费日期</p>
                   <p className="mt-0.5 text-brand-charcoal/70">{formatDate(detail.purchasedAt)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">提交时间</p>
+                  <p className="text-xs text-ink-muted">提交时间</p>
                   <p className="mt-0.5 text-brand-charcoal/70">
                     {formatDateTime(detail.createdAt)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">状态</p>
+                  <p className="text-xs text-ink-muted">状态</p>
                   <p className="mt-0.5 text-brand-charcoal/70">{detail.statusLabel}</p>
                 </div>
               </div>
               {detail.note && (
                 <div>
-                  <p className="text-xs text-brand-charcoal/65">
+                  <p className="text-xs text-ink-muted">
                     {detail.channel === "OTHER" ? "用户说明" : "用户备注"}
                   </p>
                   <p className="mt-0.5 whitespace-pre-wrap text-brand-charcoal/70">{detail.note}</p>
                 </div>
               )}
               {detail.status !== "PENDING" && (
-                <div className="grid grid-cols-1 gap-3 border-t border-brand-charcoal/15 pt-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 border-t border-line-strong pt-3 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs text-brand-charcoal/65">核实金额</p>
+                    <p className="text-xs text-ink-muted">核实金额</p>
                     <p className="mt-0.5 text-brand-charcoal/70">
                       {detail.reviewAmount != null
                         ? `¥${detail.reviewAmount.toLocaleString()}`
@@ -950,13 +950,13 @@ function AdminSpentAdjustmentsContent() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-brand-charcoal/65">审核时间</p>
+                    <p className="text-xs text-ink-muted">审核时间</p>
                     <p className="mt-0.5 text-brand-charcoal/70">
                       {formatDateTime(detail.reviewedAt)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-brand-charcoal/65">审核人</p>
+                    <p className="text-xs text-ink-muted">审核人</p>
                     <p className="mt-0.5 text-brand-charcoal/70">
                       {detail.reviewedBy
                         ? `${detail.reviewedBy.name}（${detail.reviewedBy.email}）`
@@ -965,7 +965,7 @@ function AdminSpentAdjustmentsContent() {
                   </div>
                   {detail.reviewNote && (
                     <div className="col-span-2">
-                      <p className="text-xs text-brand-charcoal/65">审核备注</p>
+                      <p className="text-xs text-ink-muted">审核备注</p>
                       <p className="mt-0.5 whitespace-pre-wrap text-brand-charcoal/70">
                         {detail.reviewNote}
                       </p>
@@ -974,7 +974,7 @@ function AdminSpentAdjustmentsContent() {
                 </div>
               )}
               {detail.undoneAt && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <div className="rounded-lg border border-status-warning-line bg-status-warning-soft p-3 text-xs text-status-warning-strong">
                   <p>
                     该申请曾于 {formatDateTime(detail.lastReviewedAt)} 审核，后于{" "}
                     {formatDateTime(detail.undoneAt)} 撤销。
@@ -1007,7 +1007,7 @@ function AdminSpentAdjustmentsContent() {
                       href={receiptImageSrc(url, "admin")}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group relative block h-24 w-24 overflow-hidden rounded-lg border border-brand-charcoal/15"
+                      className="group relative block h-24 w-24 overflow-hidden rounded-lg border border-line-strong"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -1028,7 +1028,7 @@ function AdminSpentAdjustmentsContent() {
 
             {/* 审核操作（需要 spent:review 权限） */}
             {detail.status === "PENDING" && canReview && (
-              <div className="mt-6 border-t border-brand-charcoal/10 pt-4">
+              <div className="mt-6 border-t border-line pt-4">
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -1036,8 +1036,8 @@ function AdminSpentAdjustmentsContent() {
                     onClick={() => setDecision("approve")}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors ${
                       decision === "approve"
-                        ? "bg-emerald-600 text-white"
-                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/70 hover:bg-brand-charcoal/10"
+                        ? "bg-status-success-fg text-white"
+                        : "bg-surface-hover text-brand-charcoal/70 hover:bg-brand-charcoal/10"
                     }`}
                   >
                     <CheckCircle2 className="h-4 w-4" />
@@ -1049,8 +1049,8 @@ function AdminSpentAdjustmentsContent() {
                     onClick={() => setDecision("reject")}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors ${
                       decision === "reject"
-                        ? "bg-red-500 text-white"
-                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/70 hover:bg-brand-charcoal/10"
+                        ? "bg-status-danger-fg text-white"
+                        : "bg-surface-hover text-brand-charcoal/70 hover:bg-brand-charcoal/10"
                     }`}
                   >
                     <XCircle className="h-4 w-4" />
@@ -1096,7 +1096,7 @@ function AdminSpentAdjustmentsContent() {
               </div>
             )}
             {!canReview && !canRequestApproval && (
-              <div className="mt-6 border-t border-brand-charcoal/10 pt-4 text-xs text-brand-charcoal/65">
+              <div className="mt-6 border-t border-line pt-4 text-xs text-ink-muted">
                 只读查看（无审核权限）
               </div>
             )}

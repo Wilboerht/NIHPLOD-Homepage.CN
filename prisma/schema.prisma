@@ -1127,6 +1127,7 @@ model SpentSyncRecord {
   orderNoKey String? // 规范化订单号；跨来源去重
   source     SpentOrderSource? // 入账来源；历史数据为空
   spentDelta Int // 实际生效的消费额变动（元，正负均可，可能被 0 下限钳制）
+  requestedDelta Int? // 请求值（钳制前）；幂等比较使用该值，历史数据为空时回退 spentDelta
   note       String?           @db.Text
   revertedAt DateTime? // 导入撤销时间（保留记录做审计，不物理删除）
   createdAt  DateTime          @default(now())

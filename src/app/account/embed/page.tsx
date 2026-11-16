@@ -258,6 +258,7 @@ function EmbedAccountContent() {
               <input
                 type="text"
                 value={nickname}
+                maxLength={20}
                 onChange={(e) => setNickname(e.target.value)}
                 className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
               />

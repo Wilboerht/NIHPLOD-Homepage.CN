@@ -216,6 +216,29 @@ export async function POST(request: NextRequest) {
           source: "MALL",
           note: note ?? `商城兑换 ${reference}`,
         });
+        if (result.ok) {
+          const audited = await auditInternalPoints({
+            action: "points_internal_redeem",
+            targetType: "point_ledger",
+            targetId: reference,
+            userId: user.id,
+            project: config.project,
+            key,
+            request,
+            tx,
+            detail: {
+              points,
+              reference,
+              note: note ?? null,
+              spent: result.spent,
+              available: result.available,
+              duplicated: result.spent === 0,
+            },
+          });
+          if (!audited) {
+            throw new Error("POINTS_AUDIT_UNAVAILABLE");
+          }
+        }
         return { kind: "OK" as const, result };
       })
     );
@@ -253,33 +276,19 @@ export async function POST(request: NextRequest) {
 
     const result = outcome.result;
     if (!result.ok) {
+      const conflict = result.code === "REFERENCE_CONFLICT" || result.code === "DUPLICATE";
       return NextResponse.json(
         {
           success: false,
-          error: { code: result.code, message: "可用积分不足" },
+          error: {
+            code: result.code,
+            message: conflict ? "兑换请求号已被其他业务占用，请使用新的兑换单号" : "可用积分不足",
+          },
           data: { available: result.available },
         },
-        { status: 400 }
+        { status: conflict ? 409 : 400 }
       );
     }
-
-    await auditInternalPoints({
-      action: "points_internal_redeem",
-      targetType: "point_ledger",
-      targetId: reference,
-      userId: user.id,
-      project: config.project,
-      key,
-      request,
-      detail: {
-        points,
-        reference,
-        note: note ?? null,
-        spent: result.spent,
-        available: result.available,
-        duplicated: result.spent === 0,
-      },
-    });
 
     return NextResponse.json({
       success: true,

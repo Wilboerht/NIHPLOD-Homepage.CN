@@ -42,7 +42,7 @@ const RichTextEditor = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[260px] animate-pulse rounded-lg bg-stone-200/50" aria-hidden />
+      <div className="h-[260px] animate-pulse rounded-lg bg-surface-muted" aria-hidden />
     ),
   }
 );
@@ -643,7 +643,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 hint="数字越小越靠前"
               />
             </div>
-            <div className="mt-4 border-t border-brand-charcoal/10 pt-4">
+            <div className="mt-4 border-t border-line pt-4">
               <TagInput
                 label="功效标签"
                 value={formData.benefits}
@@ -720,7 +720,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 return (
                   <div
                     key={option.value}
-                    className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3"
+                    className="rounded-xl border border-line bg-surface-subtle p-3"
                   >
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[8.5rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                       <div className="flex items-center justify-between gap-2 sm:col-span-2 lg:col-span-1 lg:flex-col lg:items-start lg:justify-start lg:pt-6">
@@ -737,7 +737,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                             <button
                               type="button"
                               onClick={() => removeCanonicalPurchaseLink(option.value)}
-                              className="flex items-center gap-1 text-xs text-brand-charcoal/65 hover:text-red-500"
+                              className="flex items-center gap-1 text-xs text-ink-muted hover:text-status-danger-fg"
                             >
                               <Trash2 className="h-3 w-3" /> 清空
                             </button>
@@ -780,17 +780,17 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                         placeholder="可选，page/index/index?id=123"
                       />
                     </div>
-                    {rowError && <p className="mt-2 text-sm text-red-500">{rowError}</p>}
+                    {rowError && <p className="mt-2 text-sm text-status-danger-fg">{rowError}</p>}
                   </div>
                 );
               })}
             </div>
 
-            <div className="mt-4 border-t border-brand-charcoal/10 pt-4">
+            <div className="mt-4 border-t border-line pt-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-medium text-brand-charcoal">其他平台（保留）</h3>
-                  <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     仅官网展示，不进入小程序固定四类。
                   </p>
                 </div>
@@ -805,7 +805,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 </Button>
               </div>
               {otherPurchaseLinks.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-brand-charcoal/15 px-3 py-2 text-xs text-brand-charcoal/65">
+                <p className="rounded-lg border border-dashed border-line-strong px-3 py-2 text-xs text-ink-muted">
                   暂无其他平台链接
                 </p>
               ) : (
@@ -817,7 +817,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                     return (
                       <div
                         key={link.clientKey ?? `purchase-link-${index}`}
-                        className="grid gap-3 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
+                        className="grid gap-3 rounded-xl border border-line bg-surface-subtle p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
                       >
                         <Input
                           label="平台名称"
@@ -842,7 +842,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                           type="button"
                           onClick={() => removePurchaseLinkAt(index)}
                           aria-label={`删除${link.platform || "其他"}平台链接`}
-                          className="justify-self-end rounded-full p-1.5 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-500 sm:mt-6"
+                          className="justify-self-end rounded-full p-1.5 text-ink-muted hover:bg-status-danger-soft hover:text-status-danger-fg sm:mt-6"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -852,7 +852,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
                 </div>
               )}
               {errors.purchaseLinks && (
-                <p className="mt-2 text-sm text-red-500">{errors.purchaseLinks}</p>
+                <p className="mt-2 text-sm text-status-danger-fg">{errors.purchaseLinks}</p>
               )}
             </div>
           </FormSection>
@@ -862,19 +862,19 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         </div>
 
         <aside className="hidden xl:sticky xl:top-6 xl:flex xl:flex-col xl:gap-5">
-          <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+          <section className="rounded-card border border-line bg-white p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-brand-charcoal">发布</h2>
               <Badge variant={formData.published ? "success" : "secondary"}>
                 {formData.published ? "已发布" : "草稿"}
               </Badge>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-brand-charcoal/65">
+            <p className="mt-2 text-xs leading-relaxed text-ink-muted">
               {formData.published
                 ? "保存后继续对外展示；保存草稿会将产品从前台下架。"
                 : "保存草稿仅后台可见；保存并发布后用户可以从前台访问。"}
             </p>
-            {isDirty && <p className="mt-2 text-xs font-medium text-amber-600">有未保存的更改</p>}
+            {isDirty && <p className="mt-2 text-xs font-medium text-status-warning-fg">有未保存的更改</p>}
             <div className="mt-3 flex flex-col gap-2">
               <Button
                 type="button"
@@ -916,7 +916,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
         className="xl:hidden"
         start={
           isDirty ? (
-            <span className="hidden text-xs font-medium text-amber-600 sm:inline">
+            <span className="hidden text-xs font-medium text-status-warning-fg sm:inline">
               有未保存的更改
             </span>
           ) : undefined
@@ -960,6 +960,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
           void handleSave(false);
         }}
         type="warning"
+        confirmVariant="danger"
         title="保存为草稿"
         description="保存草稿将把该产品从前台下架，用户将无法再访问该产品页面。确认保存为草稿？"
         confirmText="确认保存草稿"
@@ -987,7 +988,7 @@ export function ProductForm({ mode, initialData, categories }: ProductFormProps)
             placeholder="如：Serum（URL 别名将自动生成）"
             required
           />
-          {newCategoryError && <p className="text-sm text-red-500">{newCategoryError}</p>}
+          {newCategoryError && <p className="text-sm text-status-danger-fg">{newCategoryError}</p>}
           <div className="flex justify-end gap-3 pt-2">
             <Button
               variant="outline"

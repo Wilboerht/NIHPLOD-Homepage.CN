@@ -146,6 +146,43 @@
 - 375px 下所有管理页必须可用；表格优先提供 `mobileCard`，弹窗内表格允许横向滚动。
 - 抽屉、页签、筛选工具栏在窄屏下允许横向滚动或自然换行，不得压缩到不可操作。
 
+## 状态与角色显示
+
+- 二进制状态在**有表头的桌面表格**中可用纯图标：`CircleCheck` 绿色=启用、`CircleX` 红色=禁用；必须同时提供 `title` 与 `sr-only` 文本，筛选器保留文字。
+- 移动端卡片没有表头，状态必须使用“图标 + 短文字”，不允许纯图标。
+- 二次验证：`ShieldCheck`=已绑定、`ShieldOff`=未绑定；`ShieldAlert` + “待重绑”文字，异常状态不允许纯图标。
+- 角色列只允许一个徽标：
+  - owner 显示“超管”；
+  - 非 owner 且存在个人权限覆盖时统一显示“自定义管理”；
+  - 其余显示基础角色标签。
+- “自定义管理”必须可通过 `title`/`sr-only` 说明基础角色与权限差异（如“基于运营角色，权限 +2/-1”）；编辑弹窗仍展示基础角色与权限模板。
+- 角色筛选中的“自定义管理”是特殊选项，走 `customized=1`，不新增第二个下拉。
+- 安全说明、帮助文案继续使用“超级管理员”全称，不使用“超管”。
+
+## 视觉 token
+
+- 表面：`bg-surface` / `bg-surface-subtle` / `bg-surface-muted` / `bg-surface-hover`。
+- 线条：`border-line` / `border-line-subtle` / `border-line-strong`。
+- 文字：`text-ink-secondary` / `text-ink-muted` / `text-ink-faint`（`faint` 仅装饰）。
+- 状态：`bg-status-*-soft` / `text-status-*-fg` / `border-status-*-line`。
+- 字号：正文最小 `text-xs`；元信息用 `text-2xs`（11/16）；10px 仅图表轴。
+- 圆角：控件 `rounded-control`、浮层 `rounded-surface`、卡片 `rounded-card`。
+- 浮层阴影：`shadow-popover` / `shadow-modal`；卡片保持描边，不加阴影。
+- 行高：默认 44px，紧凑 40px；不再使用 36px 数据行。
+- 焦点：`focus-visible:ring-2 ring-brand-primary/40 ring-offset-2`，鼠标点击不显示焦点环。
+- 对比度：正文/说明 ≥ `/70`，辅助 ≥ `/65`；`/45` 以下只允许装饰图标。
+
+## Toast
+
+- admin 桌面：右上角、页头操作区下方（`top-24 right-6`），宽 360px，避免遮挡“刷新/新增/保存”。
+- admin 移动/平板：sticky 顶栏下方、左右 16px、全宽；不允许右上角。
+- 官网保持顶部居中；`ToastProvider` 用 pathname 区分，排除 `/admin-login`。
+- 默认时长：success 3s、info 4s、warning 6s、error 8s 或常驻；hover/focus 暂停。
+- 相同 `type + message` 2 秒去重；最多同时 3 条；错误必须可手动关闭。
+- 反馈优先级：页面加载/筛选失败用内联错误；表单字段校验用字段错误；Toast 只报异步操作结果。
+- 长任务使用 `loading` → `update`，不要只靠按钮 spinner。
+
+
 ## 验证
 
 ```bash

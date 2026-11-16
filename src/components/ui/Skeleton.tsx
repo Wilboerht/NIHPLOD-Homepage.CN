@@ -65,7 +65,7 @@ export function TableRowSkeleton({
   return (
     <tr className={className}>
       {Array.from({ length: columns }).map((_, i) => (
-        <td key={i} className={density === "compact" ? "px-3 py-2" : "px-4 py-3"}>
+        <td key={i} className={density === "compact" ? "px-3 py-2.5" : "px-4 py-3"}>
           <Skeleton className="h-4 w-full" />
         </td>
       ))}

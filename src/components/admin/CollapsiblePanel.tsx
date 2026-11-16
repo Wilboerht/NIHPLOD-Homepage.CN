@@ -25,7 +25,7 @@ export function CollapsiblePanel({
   return (
     <details
       open={defaultOpen || undefined}
-      className={cn("group rounded-2xl border border-brand-charcoal/10 bg-white", className)}
+      className={cn("group rounded-card border border-line bg-white", className)}
     >
       <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5 [&::-webkit-details-marker]:hidden">
         <div className="min-w-0">
@@ -33,17 +33,17 @@ export function CollapsiblePanel({
             {title}
           </h2>
           {summary && (
-            <p className="mt-0.5 truncate text-xs text-brand-charcoal/65 group-open:hidden">
+            <p className="mt-0.5 truncate text-xs text-ink-muted group-open:hidden">
               {summary}
             </p>
           )}
         </div>
         <ChevronDown
           aria-hidden="true"
-          className="h-4 w-4 shrink-0 text-brand-charcoal/65 transition-transform group-open:rotate-180"
+          className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
         />
       </summary>
-      <div className="border-t border-brand-charcoal/10 px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
+      <div className="border-t border-line px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
         {children}
       </div>
     </details>

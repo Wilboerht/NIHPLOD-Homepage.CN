@@ -12,6 +12,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { receiveReturn } from "@/lib/redemption-state-machine";
+import { parseAdminJsonBody } from "@/lib/request-body";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
     const { id } = await context.params;
     if (!validateCUID(id)) return invalidIdResponse();
-    const parsed = schema.safeParse(await request.json().catch(() => ({})));
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok && bodyResult.response.status === 413) return bodyResult.response;
+    const parsed = schema.safeParse(bodyResult.ok ? bodyResult.data : {});
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: { code: "INVALID_PARAMS", message: "参数错误" } },

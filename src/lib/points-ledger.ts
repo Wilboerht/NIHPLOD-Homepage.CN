@@ -52,6 +52,12 @@ function getBirthdayWindow(now: Date = new Date()): Map<string, number> {
     const key = getUtc8DateKey(new Date(now.getTime() - i * 24 * 60 * 60 * 1000));
     keys.set(key.slice(5), Number(key.slice(0, 4)));
   }
+  // 2 月 29 日生日在非闰年没有对应日期；把 02-29 映射到 02-28 的发放窗口，
+  // 否则这类用户三年都领不到生日积分。闰年窗口同时包含 02-28/02-29 时
+  // 由 lastBirthdayRewardYear 幂等兜底，不会重复发放。
+  if (keys.has("02-28") && !keys.has("02-29")) {
+    keys.set("02-29", keys.get("02-28") as number);
+  }
   return keys;
 }
 
@@ -394,6 +400,9 @@ export async function redeemPoints(
   }
 ): Promise<RedeemResult> {
   const { userId, amount, reference, note, source = "WEBSITE" } = params;
+  if (!Number.isInteger(amount)) {
+    throw new Error("POINT_REDEEM_INVALID_AMOUNT");
+  }
   if (amount <= 0) return { ok: false, code: "INSUFFICIENT", available: 0 };
 
   await lockPointBalance(tx, userId);
@@ -489,7 +498,20 @@ export async function getPointBalanceView(
   userId: string,
   now: Date = new Date()
 ): Promise<PointBalanceView> {
-  await materializePoints(tx, userId, now);
+  // 读接口不应无条件写余额行：先做一次只读探测，只有确实存在过期流水时才物化。
+  // 否则每个积分页/礼品页请求都会 UPDATE PointBalance.updatedAt，形成热点行与 WAL 放大。
+  const hasExpired = await tx.pointLedger.findFirst({
+    where: {
+      userId,
+      type: { in: [...POINT_GRANT_LEDGER_TYPES] },
+      remaining: { gt: 0 },
+      expiresAt: { lte: now },
+    },
+    select: { id: true },
+  });
+  if (hasExpired) {
+    await expirePoints(tx, userId, now);
+  }
   const balance = await tx.pointBalance.findUnique({
     where: { userId },
     select: { available: true, frozen: true },

@@ -23,7 +23,7 @@ export function FormSection({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-brand-charcoal/10 bg-white",
+        "rounded-card border border-line bg-white",
         compact ? "p-4 sm:p-5" : "p-4 sm:p-6",
         className
       )}
@@ -47,7 +47,7 @@ export function FormSection({
               </h2>
             )}
             {description && (
-              <p className={cn("mt-1 text-brand-charcoal/65", compact ? "text-xs" : "text-sm")}>
+              <p className={cn("mt-1 text-ink-muted", compact ? "text-xs" : "text-sm")}>
                 {description}
               </p>
             )}

@@ -89,7 +89,7 @@ const columns: Column<OutboxItem>[] = [
     render: (_, row) => (
       <div className="min-w-0">
         <p className="truncate text-sm text-brand-charcoal">{row.eventType}</p>
-        <p className="truncate font-mono text-xs text-brand-charcoal/55">
+        <p className="truncate font-mono text-xs text-ink-muted">
           {row.templateKey ?? "-"}
         </p>
       </div>
@@ -117,7 +117,7 @@ const columns: Column<OutboxItem>[] = [
     render: (_, row) => (
       <div className="min-w-0">
         <p className="truncate font-mono text-xs">{row.userId ?? "-"}</p>
-        <p className="truncate font-mono text-[11px] text-brand-charcoal/55">
+        <p className="truncate font-mono text-2xs text-ink-muted">
           {row.idempotencyKey}
         </p>
       </div>
@@ -128,7 +128,7 @@ const columns: Column<OutboxItem>[] = [
     title: "下次重试 / 发送时间",
     width: "180px",
     render: (_, row) => (
-      <span className="text-xs text-brand-charcoal/65">
+      <span className="text-xs text-ink-muted">
         {row.sentAt
           ? `发送于 ${formatDateTimeSeconds(row.sentAt)}`
           : formatDateTimeSeconds(row.nextAttemptAt)}
@@ -141,11 +141,11 @@ const columns: Column<OutboxItem>[] = [
     width: "220px",
     render: (_, row) =>
       row.lastError ? (
-        <span className="line-clamp-2 text-xs text-red-500" title={row.lastError}>
+        <span className="line-clamp-2 text-xs text-status-danger-fg" title={row.lastError}>
           {row.lastError}
         </span>
       ) : (
-        <span className="text-xs text-brand-charcoal/45">-</span>
+        <span className="text-xs text-ink-faint">-</span>
       ),
   },
 ];
@@ -255,7 +255,7 @@ function NotificationOutboxContent() {
 
       <AdminHubTabs section="notifications" />
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-5">
+      <div className="rounded-card border border-line bg-white p-4 sm:p-5">
         <StatStrip
           items={[
             { label: "待发送", value: counts.PENDING ?? 0, muted: !counts.PENDING },
@@ -269,7 +269,7 @@ function NotificationOutboxContent() {
       <div className="flex flex-wrap items-center gap-2">
         <select
           aria-label="按状态筛选"
-          className="rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-line-strong bg-white px-3 py-2 text-sm"
           value={statusFilter}
           onChange={(event) => {
             setPage(1);
@@ -285,7 +285,7 @@ function NotificationOutboxContent() {
         </select>
         <select
           aria-label="按渠道筛选"
-          className="rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2 text-sm"
+          className="rounded-lg border border-line-strong bg-white px-3 py-2 text-sm"
           value={channelFilter}
           onChange={(event) => {
             setPage(1);
@@ -352,13 +352,13 @@ function NotificationOutboxContent() {
                 {STATUS_META[row.status].label}
               </Badge>
             </div>
-            <p className="text-xs text-brand-charcoal/65">
+            <p className="text-xs text-ink-muted">
               {CHANNEL_LABELS[row.channel]} · {row.attempts}/{row.maxAttempts} 次
             </p>
-            <p className="break-all font-mono text-xs text-brand-charcoal/55">
+            <p className="break-all font-mono text-xs text-ink-muted">
               {row.idempotencyKey}
             </p>
-            {row.lastError && <p className="text-xs text-red-500">{row.lastError}</p>}
+            {row.lastError && <p className="text-xs text-status-danger-fg">{row.lastError}</p>}
             <div className="flex justify-end gap-1 pt-1">
               <Button
                 variant="outline"
@@ -417,7 +417,7 @@ export default function NotificationOutboxPage() {
   return (
     <RequirePermission permission="notifications:read">
       <Suspense
-        fallback={<div className="py-12 text-center text-sm text-brand-charcoal/65">加载中…</div>}
+        fallback={<div className="py-12 text-center text-sm text-ink-muted">加载中…</div>}
       >
         <NotificationOutboxContent />
       </Suspense>

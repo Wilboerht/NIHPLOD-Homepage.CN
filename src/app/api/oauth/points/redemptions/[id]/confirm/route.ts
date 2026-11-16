@@ -3,7 +3,7 @@
  * POST /api/oauth/points/redemptions/[id]/confirm
  */
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { authenticateOAuthUserRequest, checkOAuthUserRateLimit } from "@/lib/oauth-user-auth";
 import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
 import { confirmRedemptionResponse } from "@/lib/points-mall-api";
@@ -20,6 +20,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       action: "points_after_sales",
     });
     if (!auth.ok) return auth.response;
+
+    if (!(await checkOAuthUserRateLimit(auth.payload.id, 10))) {
+      return auth.resJson(
+        { success: false, error: { code: "RATE_LIMITED", message: "操作过于频繁，请稍后再试" } },
+        429
+      );
+    }
+
     const allowed = (process.env.OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS ?? "")
       .split(",")
       .map((v) => v.trim())

@@ -300,22 +300,22 @@ function RetentionContent() {
       <AdminHubTabs section="audit" />
 
       <div className="grid gap-3 md:grid-cols-4">
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/65">可删除记录</p>
+        <div className="rounded-xl border border-line bg-white p-4">
+          <p className="text-xs text-ink-muted">可删除记录</p>
           <p className="mt-1 text-2xl font-semibold">{data?.preview.expectedCount ?? 0}</p>
         </div>
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/65">预计释放空间</p>
+        <div className="rounded-xl border border-line bg-white p-4">
+          <p className="text-xs text-ink-muted">预计释放空间</p>
           <p className="mt-1 text-2xl font-semibold">
             {formatBytes(data?.preview.expectedBytes ?? 0)}
           </p>
         </div>
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/65">法律保留排除</p>
+        <div className="rounded-xl border border-line bg-white p-4">
+          <p className="text-xs text-ink-muted">法律保留排除</p>
           <p className="mt-1 text-2xl font-semibold">{data?.preview.holdsExcluded ?? 0}</p>
         </div>
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/65">清理开关</p>
+        <div className="rounded-xl border border-line bg-white p-4">
+          <p className="text-xs text-ink-muted">清理开关</p>
           <p className="mt-1 flex items-center gap-2 text-sm font-semibold">
             {data?.enabled ? (
               <Badge variant="success">已启用</Badge>
@@ -331,11 +331,11 @@ function RetentionContent() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-brand-charcoal">到期预览</h3>
-            <p className="mt-1 text-xs text-brand-charcoal/65">
+            <p className="mt-1 text-xs text-ink-muted">
               AuditLog 保留 1825 天 / SSO 保留 730 天；当前最早数据尚未到期。
             </p>
           </div>
@@ -352,7 +352,7 @@ function RetentionContent() {
         </div>
 
         {data && data.preview.warnings.length > 0 && (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          <div className="mt-3 rounded-lg border border-status-warning-line bg-status-warning-soft p-3 text-xs text-status-warning-strong">
             <div className="mb-1 flex items-center gap-1.5 font-medium">
               <AlertTriangle className="h-4 w-4" />
               删除前必须处理的警告
@@ -366,7 +366,7 @@ function RetentionContent() {
         )}
 
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">            <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/65">
+          <table className="w-full min-w-[760px] text-sm">            <thead className="border-b border-line text-left text-xs text-ink-muted">
               <tr>
                 <th className="py-2 pr-3 font-medium">流</th>
                 <th className="py-2 pr-3 font-medium">日期</th>
@@ -381,7 +381,7 @@ function RetentionContent() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-brand-charcoal/65">
+                  <td colSpan={8} className="py-6 text-center text-ink-muted">
                     加载中...
                   </td>
                 </tr>
@@ -389,7 +389,7 @@ function RetentionContent() {
                 <tr>
                   <td colSpan={8} className="py-6 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm text-red-500">加载失败，请检查服务状态后重试</p>
+                      <p className="text-sm text-status-danger-fg">加载失败，请检查服务状态后重试</p>
                       <Button variant="outline" size="sm" onClick={load}>
                         重新加载
                       </Button>
@@ -410,7 +410,7 @@ function RetentionContent() {
                     <td className="py-2 pr-3 font-mono text-xs">{bucket.day}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{bucket.count}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{bucket.eligible}</td>
-                    <td className="py-2 pr-3 text-right text-xs text-brand-charcoal/65">
+                    <td className="py-2 pr-3 text-right text-xs text-ink-muted">
                       {formatBytes(bucket.bytes)}
                     </td>
                     <td className="py-2 pr-3 text-center">
@@ -428,7 +428,7 @@ function RetentionContent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-brand-charcoal/65">
+                  <td colSpan={8} className="py-6 text-center text-ink-muted">
                     当前没有到期待删除数据
                   </td>
                 </tr>
@@ -438,7 +438,7 @@ function RetentionContent() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-brand-charcoal">清理任务</h3>
           {isOwner && (
@@ -454,7 +454,7 @@ function RetentionContent() {
         </div>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
-            <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/65">
+            <thead className="border-b border-line text-left text-xs text-ink-muted">
               <tr>
                 <th className="py-2 pr-3 font-medium">创建时间</th>
                 <th className="py-2 pr-3 font-medium">申请人</th>
@@ -468,7 +468,7 @@ function RetentionContent() {
             <tbody>
               {jobs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-brand-charcoal/65">
+                  <td colSpan={7} className="py-6 text-center text-ink-muted">
                     暂无清理任务
                   </td>
                 </tr>
@@ -530,12 +530,12 @@ function RetentionContent() {
         </div>
         <div className="mt-4 space-y-2 md:hidden">
           {jobs.length === 0 ? (
-            <p className="py-6 text-center text-sm text-brand-charcoal/65">暂无清理任务</p>
+            <p className="py-6 text-center text-sm text-ink-muted">暂无清理任务</p>
           ) : (
             jobs.map((job) => (
-              <div key={job.id} className="rounded-xl border border-brand-charcoal/10 p-3 text-sm">
+              <div key={job.id} className="rounded-xl border border-line p-3 text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-brand-charcoal/65">
+                  <span className="text-xs text-ink-muted">
                     {formatDate(job.createdAt)}
                   </span>
                   <Badge
@@ -551,11 +551,11 @@ function RetentionContent() {
                   </Badge>
                 </div>
                 <p className="mt-1 line-clamp-2 text-xs text-brand-charcoal/70">{job.reason}</p>
-                <p className="mt-1 text-xs text-brand-charcoal/65">
+                <p className="mt-1 text-xs text-ink-muted">
                   {job.expectedCount} / {job.deletedCount} 条 ·{" "}
                   {job.finishedAt ? formatDate(job.finishedAt) : "未完成"}
                 </p>
-                <div className="mt-2 flex justify-end gap-2 border-t border-brand-charcoal/10 pt-2">
+                <div className="mt-2 flex justify-end gap-2 border-t border-line pt-2">
                   {isOwner && job.status === "PENDING" && (
                     <Button
                       variant="ghost"
@@ -584,11 +584,11 @@ function RetentionContent() {
       </div>
 
       {isOwner && (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="rounded-card border border-line bg-white p-4">
           <h3 className="text-sm font-semibold text-brand-charcoal">法律保留</h3>
           <div className="mt-3 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px] text-sm">
-              <thead className="border-b border-brand-charcoal/10 text-left text-xs text-brand-charcoal/65">
+              <thead className="border-b border-line text-left text-xs text-ink-muted">
                 <tr>
                   <th className="py-2 pr-3 font-medium">目标</th>
                   <th className="py-2 pr-3 font-medium">原因</th>
@@ -600,7 +600,7 @@ function RetentionContent() {
               <tbody>
                 {holds.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-brand-charcoal/65">
+                    <td colSpan={5} className="py-6 text-center text-ink-muted">
                       暂无法律保留
                     </td>
                   </tr>
@@ -619,9 +619,9 @@ function RetentionContent() {
                       </td>
                       <td className="py-2 pr-3 text-xs">
                         {formatDate(hold.createdAt)}
-                        <span className="ml-1 text-brand-charcoal/65">{hold.createdByEmail}</span>
+                        <span className="ml-1 text-ink-muted">{hold.createdByEmail}</span>
                         {hold.expiresAt && (
-                          <span className="ml-1 block text-brand-charcoal/65">
+                          <span className="ml-1 block text-ink-muted">
                             到期：{formatDate(hold.expiresAt)}
                           </span>
                         )}
@@ -658,7 +658,7 @@ function RetentionContent() {
         </div>
         <div className="mt-4 space-y-2 md:hidden">
           {holds.length === 0 ? (
-            <p className="py-6 text-center text-sm text-brand-charcoal/65">暂无法律保留</p>
+            <p className="py-6 text-center text-sm text-ink-muted">暂无法律保留</p>
           ) : (
             holds.map((hold) => {
               const target = hold.targetType
@@ -673,7 +673,7 @@ function RetentionContent() {
                     ? "生效中"
                     : "已解除";
               return (
-                <div key={hold.id} className="rounded-xl border border-brand-charcoal/10 p-3 text-sm">
+                <div key={hold.id} className="rounded-xl border border-line p-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="break-all font-mono text-xs">{target}</span>
                     <Badge
@@ -689,10 +689,10 @@ function RetentionContent() {
                     </Badge>
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-brand-charcoal/70">{hold.reason}</p>
-                  <p className="mt-1 text-xs text-brand-charcoal/65">
+                  <p className="mt-1 text-xs text-ink-muted">
                     {formatDate(hold.createdAt)} · {hold.createdByEmail ?? "-"}
                   </p>
-                  <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
+                  <div className="mt-2 flex justify-end border-t border-line pt-2">
                     {hold.active && (
                       <Button variant="ghost" size="sm" onClick={() => setReleaseHold(hold)}>
                         解除
@@ -714,14 +714,14 @@ function RetentionContent() {
         size="md"
       >
         <div className="space-y-4">
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+          <div className="rounded-lg border border-status-danger-line bg-status-danger-soft p-3 text-xs text-status-danger-strong">
             <div className="mb-1 flex items-center gap-1.5 font-medium">
               <ShieldAlert className="h-4 w-4" />
               不可逆操作
             </div>
             将删除已归档且超过保留期的审计记录。当前没有异地备份，本地归档是唯一副本。
           </div>
-          <div className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm">
+          <div className="rounded-lg bg-surface-muted p-3 text-sm">
             预计删除 <strong>{data?.preview.expectedCount ?? 0}</strong> 条，释放{" "}
             <strong>{formatBytes(data?.preview.expectedBytes ?? 0)}</strong>；法律保留排除{" "}
             <strong>{data?.preview.holdsExcluded ?? 0}</strong> 条。
@@ -773,7 +773,7 @@ function RetentionContent() {
 
       <Modal open={holdOpen} onClose={() => setHoldOpen(false)} title="设置法律保留" size="md">
         <div className="space-y-4">
-          <p className="text-xs text-brand-charcoal/65">
+          <p className="text-xs text-ink-muted">
             至少填写 targetType + targetId、userId、adminId 之一。命中的审计记录不会被到期清理。
           </p>
           <div className="grid gap-3 md:grid-cols-2">
@@ -843,7 +843,7 @@ function RetentionContent() {
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-xs text-brand-charcoal/65">
+          <p className="text-xs text-ink-muted">
             解除后，命中该目标的审计记录将重新参与到期清理。
           </p>
           <Input

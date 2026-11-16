@@ -287,7 +287,7 @@ function AdminProductsContent() {
         <div className="flex flex-wrap items-center gap-2">
           {/* 搜索框 */}
           <form onSubmit={handleSearch} className="relative min-w-[200px] max-w-md flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
             <Input
               aria-label="搜索产品"
               value={searchInput}
@@ -300,7 +300,7 @@ function AdminProductsContent() {
                 type="button"
                 onClick={clearSearch}
                 aria-label="清除搜索"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-charcoal/65 transition-colors hover:text-brand-charcoal"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted transition-colors hover:text-brand-charcoal"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -333,7 +333,7 @@ function AdminProductsContent() {
         {/* 加载失败错误态（替代表格，避免错误与旧数据同时展示） */}
         {loadError ? (
           <div className="flex flex-col items-center justify-center gap-3 py-12">
-            <p className="text-sm text-red-500">{loadError}</p>
+            <p className="text-sm text-status-danger-fg">{loadError}</p>
             <Button variant="outline" size="sm" onClick={fetchProducts}>
               重试
             </Button>

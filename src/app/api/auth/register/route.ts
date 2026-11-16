@@ -33,6 +33,12 @@ import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { recordPasswordHistory } from "@/lib/password-policy";
+import {
+  checkNicknameContent,
+  NICKNAME_BANNED_MESSAGE,
+  NICKNAME_INVALID_CHARS_MESSAGE,
+} from "@/lib/nickname-policy";
+import { auditNicknameBlocked } from "@/lib/nickname-audit";
 
 // 请求参数验证
 const registerSchema = z
@@ -91,6 +97,32 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, phone, code, password } = result.data;
+
+    // 昵称（注册姓名）内容风控：非法名称在核销验证码前拒绝
+    if (name) {
+      const nicknameCheck = checkNicknameContent(name);
+      if (!nicknameCheck.ok) {
+        await auditNicknameBlocked({
+          request,
+          source: "register",
+          reason: nicknameCheck.reason,
+          category: nicknameCheck.category,
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "NICKNAME_REJECTED",
+              message:
+                nicknameCheck.reason === "invalid_chars"
+                  ? NICKNAME_INVALID_CHARS_MESSAGE
+                  : NICKNAME_BANNED_MESSAGE,
+            },
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // 注意：不再使用「登录失败锁定」作为注册前置门禁——登录锁定不应阻塞注册/账号恢复。
     // 注册自身的防爆破由：IP 限流（form 预设）+ 单验证码 5 次尝试上限 + 短信发送间隔承担。

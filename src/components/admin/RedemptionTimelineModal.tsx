@@ -102,17 +102,17 @@ export function RedemptionTimelineModal({
       }
     >
       {loading ? (
-        <p className="py-8 text-center text-sm text-brand-charcoal/65">正在加载兑换详情...</p>
+        <p className="py-8 text-center text-sm text-ink-muted">正在加载兑换详情...</p>
       ) : error ? (
         <div className="py-6 text-center">
-          <p className="text-sm text-red-600">兑换详情加载失败</p>
+          <p className="text-sm text-status-danger-fg">兑换详情加载失败</p>
           <Button className="mt-3" variant="outline" onClick={() => void load()}>
             重试
           </Button>
         </div>
       ) : data ? (
         <div className="space-y-5">
-          <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+          <div className="rounded-lg bg-surface-muted p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium text-brand-charcoal">{data.productName}</p>
               <Badge>{STATUS_LABELS[data.status] ?? data.status}</Badge>
@@ -120,17 +120,17 @@ export function RedemptionTimelineModal({
             <p className="mt-2 text-sm text-brand-charcoal/70">
               ¥{Number(data.priceYuan).toLocaleString()} · {data.points.toLocaleString()} 积分
             </p>
-            <p className="mt-1 break-all text-xs text-brand-charcoal/60">兑换单号：{data.id}</p>
-            <p className="mt-1 text-xs text-brand-charcoal/60">
+            <p className="mt-1 break-all text-xs text-ink-muted">兑换单号：{data.id}</p>
+            <p className="mt-1 text-xs text-ink-muted">
               创建时间：{formatDateTimeSeconds(data.createdAt)}
             </p>
             {(data.recipient || data.phone || data.address) && (
-              <p className="mt-2 text-xs text-brand-charcoal/65">
+              <p className="mt-2 text-xs text-ink-muted">
                 收货信息：{[data.recipient, data.phone, data.address].filter(Boolean).join(" · ")}
               </p>
             )}
             {data.waybillNo && (
-              <p className="mt-1 text-xs text-brand-charcoal/65">运单号：{data.waybillNo}</p>
+              <p className="mt-1 text-xs text-ink-muted">运单号：{data.waybillNo}</p>
             )}
           </div>
 
@@ -149,7 +149,7 @@ export function RedemptionTimelineModal({
                     <img
                       src={receiptImageSrc(image, "admin")}
                       alt={`售后凭证 ${index + 1}`}
-                      className="h-24 w-24 rounded-lg border border-brand-charcoal/15 object-cover"
+                      className="h-24 w-24 rounded-lg border border-line-strong object-cover"
                     />
                   </a>
                 ))}
@@ -160,20 +160,20 @@ export function RedemptionTimelineModal({
           <div>
             <h3 className="mb-3 text-sm font-medium text-brand-charcoal">处理时间线</h3>
             {data.events.length === 0 ? (
-              <p className="text-xs text-brand-charcoal/60">
+              <p className="text-xs text-ink-muted">
                 暂无历史事件（可能为功能上线前的历史单）
               </p>
             ) : (
               <ol className="space-y-3">
                 {data.events.map((event) => (
-                  <li key={event.id} className="border-l-2 border-brand-charcoal/15 pl-3 text-sm">
+                  <li key={event.id} className="border-l-2 border-line-strong pl-3 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-medium text-brand-charcoal">{eventLabel(event)}</span>
-                      <time className="text-xs text-brand-charcoal/55">
+                      <time className="text-xs text-ink-muted">
                         {formatDateTimeSeconds(event.createdAt)}
                       </time>
                     </div>
-                    <p className="mt-0.5 text-xs text-brand-charcoal/60">
+                    <p className="mt-0.5 text-xs text-ink-muted">
                       操作方：{event.actorType}
                       {event.reasonCode ? ` · ${event.reasonCode}` : ""}
                     </p>

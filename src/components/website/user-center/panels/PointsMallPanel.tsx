@@ -36,6 +36,7 @@ import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { createClientRequestId } from "@/lib/request-id";
 import { fetchWithAuth } from "@/lib/fetch-with-auth";
 import { deferInEffect } from "@/hooks/deferInEffect";
+import { REDEMPTION_STATUS_LABELS } from "@/lib/redemption-meta";
 import { receiptImageSrc } from "@/lib/spent-adjustment-meta";
 import { PanelShell } from "../PanelShell";
 
@@ -98,6 +99,7 @@ interface RedemptionRecord {
   refundedPoints?: number;
   refundedAt?: string | null;
   createdAt: string;
+  protectionDays?: number;
   fulfillableAt?: string;
   protectionActive?: boolean;
 }
@@ -119,17 +121,19 @@ interface GiftsData {
 
 interface PointsData {
   available: number;
-  /** 服务端按全量发放流水计算的 30 天内即将过期积分（负余额时以可用余额封顶） */
+  /** 服务端按最早到期批次计算的 30 天内即将过期积分（负余额时以可用余额封顶） */
   expiringSoon?: { points: number; date: string } | null;
-  recent: {
-    id: string;
-    type: string;
-    amount: number;
-    remaining: number | null;
-    note: string | null;
-    expiresAt: string | null;
-    createdAt: string;
-  }[];
+  recent: PointsLedgerItem[];
+}
+
+interface PointsLedgerItem {
+  id: string;
+  type: string;
+  amount: number;
+  remaining: number | null;
+  note: string | null;
+  expiresAt: string | null;
+  createdAt: string;
 }
 
 /** 主视图「我的兑换记录」预览条数（更多记录进「查看全部」子视图） */
@@ -144,6 +148,35 @@ const SESSION_KEYS = {
   gifts: "nihplod:points:gifts-expanded",
 } as const;
 
+/** 兑换幂等键按商品持久化到 sessionStorage：刷新/重开面板后重试仍复用同一 requestId */
+function redeemRequestKey(productId: string): string {
+  return `nihplod:points:redeem-request:${productId}`;
+}
+
+function readRedeemRequestId(productId: string): string | null {
+  try {
+    return sessionStorage.getItem(redeemRequestKey(productId));
+  } catch {
+    return null;
+  }
+}
+
+function storeRedeemRequestId(productId: string, requestId: string): void {
+  try {
+    sessionStorage.setItem(redeemRequestKey(productId), requestId);
+  } catch {
+    // 隐私模式等场景忽略
+  }
+}
+
+function clearRedeemRequestId(productId: string): void {
+  try {
+    sessionStorage.removeItem(redeemRequestKey(productId));
+  } catch {
+    // 忽略
+  }
+}
+
 interface AddressItem {
   id: string;
   recipient: string;
@@ -152,20 +185,6 @@ interface AddressItem {
   detail: string;
   isDefault: boolean;
 }
-
-const REDEMPTION_STATUS_LABELS: Record<RedemptionStatus, string> = {
-  PENDING: "待发货",
-  FULFILLED: "已发货",
-  COMPLETED: "已完成",
-  AFTER_SALES_REQUESTED: "售后待审核",
-  AFTER_SALES_APPROVED: "售后待寄回",
-  AFTER_SALES_REJECTED: "售后已驳回",
-  RETURNING: "退货中",
-  RETURNED: "退货已签收",
-  REFUNDED: "已退款",
-  AFTER_SALES_CLOSED: "售后已关闭",
-  CANCELLED: "已取消",
-};
 
 const REDEMPTION_STATUS_ICONS: Record<RedemptionStatus, typeof Clock> = {
   PENDING: Clock,
@@ -241,6 +260,13 @@ export function PointsMallPanel() {
   // 即将过期积分（加载时计算，避免渲染期调用 Date.now 触发 react-hooks/purity）
   const [expiringSoon, setExpiringSoon] = useState<{ points: number; date: number } | null>(null);
   const [showLedger, setShowLedger] = useState(false);
+  // 完整积分流水（主视图只展示最近 20 条，这里支持分页加载全部历史）
+  const [ledgerItems, setLedgerItems] = useState<PointsLedgerItem[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [loadingMoreLedger, setLoadingMoreLedger] = useState(false);
+  const [hasMoreLedger, setHasMoreLedger] = useState(false);
+  const [ledgerTotal, setLedgerTotal] = useState(0);
+  const [ledgerError, setLedgerError] = useState(false);
   // 兑换记录：无限滚动加载（初始 10 条，滚动到底自动加载更多）
   const [redemptions, setRedemptions] = useState<RedemptionRecord[]>([]);
   const [redemptionsLoading, setRedemptionsLoading] = useState(true);
@@ -268,8 +294,8 @@ export function PointsMallPanel() {
   const [newRegion, setNewRegion] = useState("");
   const [newDetail, setNewDetail] = useState("");
   const [creatingAddress, setCreatingAddress] = useState(false);
-  // 面板视图：主视图 / 全部兑换记录 / 兑换详情 / 确认兑换（整版淡入淡出）
-  const [view, setView] = useState<"main" | "records" | "detail" | "redeem">("main");
+  // 面板视图：主视图 / 全部兑换记录 / 全部积分流水 / 兑换详情 / 确认兑换（整版淡入淡出）
+  const [view, setView] = useState<"main" | "records" | "ledger" | "detail" | "redeem">("main");
   // 兑换详情返回目标（从主视图或全部记录进入）
   const [detailFrom, setDetailFrom] = useState<"main" | "records">("main");
   const [selectedRedemption, setSelectedRedemption] = useState<RedemptionRecord | null>(null);
@@ -318,6 +344,44 @@ export function PointsMallPanel() {
     }
   }, []);
 
+  /** 加载全部积分流水第一页 */
+  const loadLedger = useCallback(async () => {
+    setLedgerLoading(true);
+    setLedgerError(false);
+    try {
+      const data = await apiGet<{
+        items: PointsLedgerItem[];
+        hasMore: boolean;
+        total: number;
+      }>("/api/user/points/ledger", { offset: "0" });
+      setLedgerItems(data.items);
+      setHasMoreLedger(data.hasMore);
+      setLedgerTotal(data.total);
+    } catch {
+      setLedgerError(true);
+    } finally {
+      setLedgerLoading(false);
+    }
+  }, []);
+
+  /** 加载更多积分流水 */
+  const loadMoreLedger = useCallback(async () => {
+    if (loadingMoreLedger || !hasMoreLedger) return;
+    setLoadingMoreLedger(true);
+    try {
+      const data = await apiGet<{ items: PointsLedgerItem[]; hasMore: boolean }>(
+        "/api/user/points/ledger",
+        { offset: String(ledgerItems.length) }
+      );
+      setLedgerItems((prev) => [...prev, ...data.items]);
+      setHasMoreLedger(data.hasMore);
+    } catch {
+      // 静默失败，滚动可重试
+    } finally {
+      setLoadingMoreLedger(false);
+    }
+  }, [loadingMoreLedger, hasMoreLedger, ledgerItems.length]);
+
   /** 重置加载兑换记录（offset=0） */
   const loadRedemptions = useCallback(async () => {
     setRedemptionsLoading(true);
@@ -357,13 +421,14 @@ export function PointsMallPanel() {
     }
   }, [loadingMoreRedemptions, hasMoreRedemptions, redemptions.length]);
 
-  /** 滚动到底部附近时自动加载更多记录（仅在「全部记录」子视图触发） */
+  /** 滚动到底部附近时自动加载更多（仅在「全部记录/全部流水」子视图触发） */
   const handleScroll = () => {
-    if (view !== "records") return;
+    if (view !== "records" && view !== "ledger") return;
     const el = scrollRef.current;
     if (!el) return;
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
-      void loadMoreRedemptions();
+      if (view === "records") void loadMoreRedemptions();
+      else void loadMoreLedger();
     }
   };
 
@@ -533,11 +598,15 @@ export function PointsMallPanel() {
   /** 打开兑换确认视图：加载地址并预选默认地址 */
   const openRedeem = (g: GiftItem) => {
     setConfirmGift(g);
-    // 离开确认页不丢幂等键：同商品再次进入沿用原 requestId，
-    // 避免上次请求超时但服务端已成功时重复扣分
+    // 离开确认页不丢幂等键：同商品再次进入优先复用 sessionStorage 中的 requestId，
+    // 避免上次请求超时但服务端已成功时（或页面刷新后）重复扣分
     const existing = redeemRequestRef.current;
-    const requestId = existing?.productId === g.id ? existing.requestId : createClientRequestId();
+    const requestId =
+      existing?.productId === g.id
+        ? existing.requestId
+        : (readRedeemRequestId(g.id) ?? createClientRequestId());
     redeemRequestRef.current = { productId: g.id, requestId };
+    storeRedeemRequestId(g.id, requestId);
     setRedeemRequestId(requestId);
     setShowNewAddress(false);
     setNewRecipient("");
@@ -552,9 +621,13 @@ export function PointsMallPanel() {
     if (!confirmGift) return;
     // 同一确认视图内复用幂等键：首次请求超时但实际成功时，重试不会重复扣分
     const requestId =
-      redeemRequestId ?? redeemRequestRef.current?.requestId ?? createClientRequestId();
+      redeemRequestId ??
+      redeemRequestRef.current?.requestId ??
+      readRedeemRequestId(confirmGift.id) ??
+      createClientRequestId();
     if (!redeemRequestId) setRedeemRequestId(requestId);
     redeemRequestRef.current = { productId: confirmGift.id, requestId };
+    storeRedeemRequestId(confirmGift.id, requestId);
 
     setRedeeming(true);
     try {
@@ -613,6 +686,7 @@ export function PointsMallPanel() {
         requestId,
         expectedPoints: confirmGift.cost ?? undefined,
       });
+      clearRedeemRequestId(confirmGift.id);
       redeemRequestRef.current = null;
       setRedeemRequestId(null);
       setConfirmGift(null);
@@ -752,8 +826,7 @@ export function PointsMallPanel() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-primary" />
                     <p className="text-xs text-stone-700">
-                      兑换成功，订单有 7
-                      天履约保护期；期满且无退款异常后安排发货，可在「我的兑换记录」中查看进度
+                      兑换成功，订单有履约保护期；期满且无退款异常后安排发货，可在「我的兑换记录」中查看进度
                     </p>
                   </div>
                   <button
@@ -795,6 +868,12 @@ export function PointsMallPanel() {
                   <span className="text-xs text-stone-400">积分</span>
                 </div>
 
+                {giftsData && giftsData.available < 0 && (
+                  <p className="relative mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700">
+                    当前积分为负，通常由消费退款冲正产生；后续消费获得的积分会优先抵扣，抵扣完成后即可继续兑换礼品。
+                  </p>
+                )}
+
                 {/* 即将过期提醒（常显，不依赖明细展开） */}
                 {expiringSoon && (
                   <p className="relative mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -834,33 +913,50 @@ export function PointsMallPanel() {
                         ) : pointsData.recent.length === 0 ? (
                           <p className="py-4 text-center text-xs text-stone-400">暂无积分明细</p>
                         ) : (
-                          <div className="space-y-2">
-                            {pointsData.recent.map((r) => (
-                              <div
-                                key={r.id}
-                                className="flex items-center justify-between gap-3 text-xs"
-                              >
-                                <span className="min-w-0 truncate text-stone-500">
-                                  {POINT_TYPE_LABELS[r.type] ?? r.type}
-                                  {r.note &&
-                                  (r.type === "CONSUME" ||
-                                    r.type === "CHECKIN" ||
-                                    r.type === "ADJUST")
-                                    ? `（${r.note.slice(0, 20)}）`
-                                    : ""}
-                                </span>
-                                <span className="flex shrink-0 items-center gap-3">
-                                  <span className="text-stone-400">{formatDate(r.createdAt)}</span>
-                                  <span
-                                    className={`font-medium ${r.amount >= 0 ? "text-stone-700" : "text-stone-400"}`}
-                                  >
-                                    {r.amount >= 0 ? "+" : ""}
-                                    {r.amount.toLocaleString()}
+                          <>
+                            <div className="space-y-2">
+                              {pointsData.recent.map((r) => (
+                                <div
+                                  key={r.id}
+                                  className="flex items-center justify-between gap-3 text-xs"
+                                >
+                                  <span className="min-w-0 truncate text-stone-500">
+                                    {POINT_TYPE_LABELS[r.type] ?? r.type}
+                                    {r.note &&
+                                    (r.type === "CONSUME" ||
+                                      r.type === "CHECKIN" ||
+                                      r.type === "ADJUST")
+                                      ? `（${r.note.slice(0, 20)}）`
+                                      : ""}
                                   </span>
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                                  <span className="flex shrink-0 items-center gap-3">
+                                    <span className="text-stone-400">
+                                      {formatDate(r.createdAt)}
+                                    </span>
+                                    <span
+                                      className={`font-medium ${r.amount >= 0 ? "text-stone-700" : "text-stone-400"}`}
+                                    >
+                                      {r.amount >= 0 ? "+" : ""}
+                                      {r.amount.toLocaleString()}
+                                    </span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setView("ledger");
+                                  void loadLedger();
+                                }}
+                                className="inline-flex items-center gap-0.5 rounded-full border border-stone-200 bg-white/40 px-3 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-800 active:opacity-70"
+                              >
+                                查看全部明细
+                                <ChevronRight className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </>
                         )}
                       </div>
                     </m.div>
@@ -1083,7 +1179,7 @@ export function PointsMallPanel() {
                       selectedRedemption.protectionActive &&
                       selectedRedemption.fulfillableAt && (
                         <p className="rounded-lg bg-amber-50 px-3 py-2 text-left text-xs leading-relaxed text-amber-700">
-                          7 天履约保护期内暂不发货，预计{" "}
+                          {selectedRedemption.protectionDays ?? 7} 天履约保护期内暂不发货，预计{" "}
                           {formatDateTime(selectedRedemption.fulfillableAt)} 后可安排履约。
                         </p>
                       )}
@@ -1134,6 +1230,25 @@ export function PointsMallPanel() {
                         </span>
                       </div>
                     ) : null}
+                    {selectedRedemption.returnWaybillNo && (
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="shrink-0 text-stone-400">退回物流</span>
+                        <span className="text-right text-stone-700">
+                          {selectedRedemption.returnCarrier === "SF" ? "顺丰速运" : "快递"} ·{" "}
+                          {selectedRedemption.returnWaybillNo}
+                          {selectedRedemption.returnShippedAt && (
+                            <span className="mt-0.5 block text-stone-500">
+                              寄出：{formatDateTime(selectedRedemption.returnShippedAt)}
+                            </span>
+                          )}
+                          {selectedRedemption.returnReceivedAt && (
+                            <span className="mt-0.5 block text-stone-500">
+                              签收：{formatDateTime(selectedRedemption.returnReceivedAt)}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
                     {selectedRedemption.address && (
                       <div className="flex items-start justify-between gap-4">
                         <span className="shrink-0 text-stone-400">收货信息</span>
@@ -1322,6 +1437,96 @@ export function PointsMallPanel() {
                 </div>
               </m.div>
             )
+          ) : view === "ledger" ? (
+            <m.div
+              key="ledger"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-lg font-medium text-stone-800">
+                  积分明细
+                  {ledgerTotal > 0 && (
+                    <span className="ml-1.5 text-sm font-normal text-stone-400">
+                      （{ledgerTotal}）
+                    </span>
+                  )}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setView("main")}
+                  className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/40 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-stone-300 hover:bg-white/70 hover:text-stone-900"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  返回
+                </button>
+              </div>
+
+              <div className="mt-4 rounded-xl border border-stone-200/60 bg-white/40 p-5">
+                {ledgerLoading && ledgerItems.length === 0 ? (
+                  <div className="flex items-center justify-center gap-1.5 py-6 text-xs text-stone-400">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> 明细加载中...
+                  </div>
+                ) : ledgerError && ledgerItems.length === 0 ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-xs text-stone-400">
+                    明细加载失败
+                    <button
+                      type="button"
+                      onClick={() => void loadLedger()}
+                      className="text-brand-primary transition-opacity hover:opacity-70"
+                    >
+                      重试
+                    </button>
+                  </div>
+                ) : ledgerItems.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-stone-400">暂无积分明细</p>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      {ledgerItems.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between gap-3 text-xs">
+                          <span className="min-w-0 truncate text-stone-500">
+                            {POINT_TYPE_LABELS[r.type] ?? r.type}
+                            {r.note &&
+                            (r.type === "CONSUME" || r.type === "CHECKIN" || r.type === "ADJUST")
+                              ? `（${r.note.slice(0, 20)}）`
+                              : ""}
+                          </span>
+                          <span className="flex shrink-0 items-center gap-3">
+                            <span className="text-stone-400">{formatDate(r.createdAt)}</span>
+                            <span
+                              className={`font-medium ${r.amount >= 0 ? "text-stone-700" : "text-stone-400"}`}
+                            >
+                              {r.amount >= 0 ? "+" : ""}
+                              {r.amount.toLocaleString()}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {hasMoreLedger && !loadingMoreLedger && (
+                      <button
+                        type="button"
+                        onClick={() => void loadMoreLedger()}
+                        className="mt-3 w-full rounded-full border border-stone-200 py-2 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-800 active:opacity-70"
+                      >
+                        加载更多
+                      </button>
+                    )}
+                    {loadingMoreLedger && (
+                      <div className="flex items-center justify-center gap-1.5 py-3 text-xs text-stone-400">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> 加载中...
+                      </div>
+                    )}
+                    {!hasMoreLedger && (
+                      <p className="pt-3 text-center text-[11px] text-stone-300">已加载全部明细</p>
+                    )}
+                  </>
+                )}
+              </div>
+            </m.div>
           ) : view === "records" ? (
             <m.div
               key="records"
@@ -1628,7 +1833,7 @@ export function PointsMallPanel() {
                     : "积分不足"}
               </button>
               <p className="mt-3 text-center text-[11px] leading-relaxed text-brand-charcoal/40">
-                兑换后有 7 天履约保护期，可在「我的兑换记录」中查看预计履约时间与发货进度
+                兑换后有履约保护期，可在「我的兑换记录」中查看预计履约时间与发货进度
               </p>
             </div>
           ) : null

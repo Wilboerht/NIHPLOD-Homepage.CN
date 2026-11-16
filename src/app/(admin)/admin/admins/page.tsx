@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   RefreshCw,
@@ -11,6 +11,7 @@ import {
   KeyRound,
   Copy,
   Power,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Dropdown, type DropdownItem } from "@/components/ui/Dropdown";
 import { Textarea } from "@/components/ui/Textarea";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
@@ -28,7 +30,14 @@ import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
 import { formatDateTime } from "@/lib/format";
 import { PasswordRulesChecklist } from "@/components/ui/PasswordRulesChecklist";
-import { AdminSearchInput, RequirePermission } from "@/components/admin";
+import {
+  AdminRoleBadge,
+  AdminSearchInput,
+  AdminStatusIcon,
+  IconButton,
+  RequirePermission,
+  TotpStatusIcon,
+} from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { BreakGlassButton } from "@/components/admin/BreakGlassButton";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
@@ -49,11 +58,14 @@ import {
   type AdminPermission,
   type AdminRoleValue,
 } from "@/lib/admin-permissions";
+import { getPermissionDiff, isCustomizedAdmin } from "@/lib/admin-display";
 import { cn } from "@/lib/utils";
 
 function permissionKey(permissions: Iterable<string>) {
   return Array.from(permissions).sort().join("|");
 }
+
+const ADMIN_PAGE_SIZES = [10, 20, 50, 100] as const;
 
 const EMAIL_HISTORY_REASON_LABELS: Record<string, string> = {
   email_changed: "修改邮箱",
@@ -67,7 +79,7 @@ function getAdvisorAccess(admin: AdminItem): {
 } {
   const permissions = resolveAdminPermissions(admin.role, admin.permissions);
   if (admin.role === "owner" || permissions.includes("advisor:admin")) {
-    return { label: "超级管理员", variant: "warning" };
+    return { label: "超管", variant: "warning" };
   }
   if (permissions.includes("advisor:access")) {
     return { label: "管理员", variant: "success" };
@@ -87,6 +99,138 @@ interface AdminItem {
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+interface AdminRowActionsProps {
+  admin: AdminItem;
+  currentAdminId?: string;
+  canManage: boolean;
+  isOwnerActor: boolean;
+  canRequestApproval: boolean;
+  togglingStatusId: string | null;
+  onEdit: (admin: AdminItem) => void;
+  onToggleStatus: (admin: AdminItem) => void;
+  onResetTotp: (admin: AdminItem) => void;
+  onDelete: (admin: AdminItem) => void;
+  className?: string;
+}
+
+/**
+ * 管理员行操作：编辑 + “更多”菜单。
+ * - owner：启用/禁用、重置二次验证、删除
+ * - 非 owner：逐条申请恢复码/申请删除
+ * - 非关键操作不再用一排同色图标，避免与状态图标抢语义
+ */
+function AdminRowActions({
+  admin,
+  currentAdminId,
+  canManage,
+  isOwnerActor,
+  canRequestApproval,
+  togglingStatusId,
+  onEdit,
+  onToggleStatus,
+  onResetTotp,
+  onDelete,
+  className,
+}: AdminRowActionsProps) {
+  if (!canManage) {
+    return <span className="text-xs text-ink-muted">只读</span>;
+  }
+
+  const isSelf = admin.id === currentAdminId;
+  const canEdit = admin.role !== "owner" || isOwnerActor;
+  const menuItems: DropdownItem[] = [];
+
+  if (isOwnerActor && !isSelf) {
+    menuItems.push({
+      label: admin.status === "DISABLED" ? "启用账号" : "禁用账号",
+      icon: <Power className="h-4 w-4" />,
+      danger: admin.status !== "DISABLED",
+      disabled: togglingStatusId === admin.id,
+      onClick: () => onToggleStatus(admin),
+    });
+    if ((admin.totpEnabled || admin.totpResetRequired) && admin.role !== "owner") {
+      menuItems.push({
+        label: "重置二次验证",
+        icon: <KeyRound className="h-4 w-4" />,
+        onClick: () => onResetTotp(admin),
+      });
+    }
+    if (!isSelf) {
+      menuItems.push({
+        label: "删除管理员",
+        icon: <Trash2 className="h-4 w-4" />,
+        danger: true,
+        onClick: () => onDelete(admin),
+      });
+    }
+  }
+
+  const needsOwnerApprovalRecovery =
+    isOwnerActor &&
+    !isSelf &&
+    admin.role === "owner" &&
+    (admin.totpEnabled || admin.totpResetRequired);
+  const needsRequesterRecovery =
+    !isOwnerActor && !isSelf && canRequestApproval && (admin.totpEnabled || admin.totpResetRequired);
+  const needsRequesterDelete = !isOwnerActor && !isSelf && canRequestApproval;
+
+  if (!canEdit && menuItems.length === 0 && !needsRequesterDelete && !needsOwnerApprovalRecovery) {
+    return <span className="text-xs text-ink-muted">只读</span>;
+  }
+
+  return (
+    <div className={cn("flex flex-wrap items-center justify-end gap-1", className)}>
+      {canEdit && (
+        <IconButton label={`编辑 ${admin.name}`} onClick={() => onEdit(admin)}>
+          <Pencil className="h-4 w-4" />
+        </IconButton>
+      )}
+
+      {menuItems.length > 0 && (
+        <Dropdown
+          trigger={
+            <span className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal sm:h-9 sm:min-w-9">
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">更多操作</span>
+            </span>
+          }
+          items={menuItems}
+        />
+      )}
+
+      {needsOwnerApprovalRecovery && (
+        <ApprovalRequestAction
+          policyKey="totp.recovery.issue"
+          initialValues={{ adminId: admin.id }}
+          label="申请恢复码"
+          variant="ghost"
+          size="sm"
+        />
+      )}
+
+      {needsRequesterRecovery && (
+        <ApprovalRequestAction
+          policyKey="totp.recovery.issue"
+          initialValues={{ adminId: admin.id }}
+          label="申请恢复码"
+          variant="ghost"
+          size="sm"
+        />
+      )}
+
+      {needsRequesterDelete && (
+        <ApprovalRequestAction
+          policyKey="admin.delete"
+          initialValues={{ adminId: admin.id }}
+          label="申请删除"
+          variant="ghost"
+          size="sm"
+        />
+      )}
+    </div>
+  );
 }
 
 export default function AdminAdminsPage() {
@@ -117,10 +261,16 @@ function AdminAdminsContent() {
 
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedRef = useRef(false);
   const [loadError, setLoadError] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 0 });
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminItem | null>(null);
+  const [passwordError, setPasswordError] = useState("");
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const [statusConfirmTarget, setStatusConfirmTarget] = useState<AdminItem | null>(null);
+  const [pendingRole, setPendingRole] = useState<AdminRoleValue | null>(null);
   const {
     id: currentAdminId,
     role: myRole,
@@ -156,6 +306,10 @@ function AdminAdminsContent() {
     !!modalBaseline &&
     (JSON.stringify(form) !== JSON.stringify(modalBaseline.form) ||
       permissionKey(selectedPermissions) !== modalBaseline.permissions);
+  const permissionDiff = useMemo(
+    () => getPermissionDiff(form.role, selectedPermissions),
+    [form.role, selectedPermissions]
+  );
   const { confirmClose } = useUnsavedChanges(isModalDirty);
   const isEditingSelf = !!editing && editing.id === currentAdminId;
   const [submitting, setSubmitting] = useState(false);
@@ -189,10 +343,15 @@ const search = searchParams.get("search") || "";
 const statusFilter = searchParams.get("status") || "";
 const roleFilter = searchParams.get("role") || "";
 const totpFilter = searchParams.get("totp") || "";
+const customizedFilter = searchParams.get("customized") === "1";
+const pageSizeRaw = Number(searchParams.get("pageSize"));
+const pageSizeParam = (ADMIN_PAGE_SIZES as readonly number[]).includes(pageSizeRaw)
+  ? pageSizeRaw
+  : 20;
 // 勾选状态：翻页/搜索/筛选变化时自动清空
 const selection = useRowSelection<AdminItem>(
   (admin) => admin.id,
-  `${page}|${search}|${statusFilter}|${roleFilter}|${totpFilter}`
+  `${page}|${search}|${statusFilter}|${roleFilter}|${totpFilter}|${customizedFilter}|${pageSizeParam}`
 );
   const { selectedIds } = selection;
   const [showBatchDelete, setShowBatchDelete] = useState(false);
@@ -201,22 +360,26 @@ const selection = useRowSelection<AdminItem>(
   const takeLatestAdmins = useLatestRequest();
   const fetchAdmins = useCallback(async () => {
     const isLatest = takeLatestAdmins();
-    setLoading(true);
+    if (hasLoadedRef.current) setRefreshing(true);
+    else setLoading(true);
     try {
         const data = await apiGet<{ admins: AdminItem[]; pagination: typeof pagination }>(
           "/api/admin/admins",
           {
             page,
+            pageSize: pageSizeParam,
             search,
             status: statusFilter || undefined,
             role: roleFilter || undefined,
             totp: totpFilter || undefined,
+            customized: customizedFilter ? "1" : undefined,
           }
         );
       if (!isLatest()) return;
       setAdmins(data.admins);
       setPagination(data.pagination);
       setLoadError(false);
+      hasLoadedRef.current = true;
     } catch (err) {
       if (!isLatest()) return;
       if (err instanceof ApiError && err.status === 401) {
@@ -224,17 +387,20 @@ const selection = useRowSelection<AdminItem>(
         return;
       }
       setLoadError(true);
-      error(err instanceof Error ? err.message : "加载失败，请刷新重试");
     } finally {
-      if (isLatest()) setLoading(false);
+      if (isLatest()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
     }, [
     page,
+    pageSizeParam,
     search,
     statusFilter,
     roleFilter,
     totpFilter,
-    error,
+    customizedFilter,
     router,
     takeLatestAdmins,
   ]);
@@ -270,6 +436,8 @@ const selection = useRowSelection<AdminItem>(
     setEditing(null);
     setEmailHistory([]);
     setForm(nextForm);
+    setPasswordError("");
+    setPendingRole(null);
     setSelectedPermissions(nextPermissions);
     setModalBaseline({ form: nextForm, permissions: permissionKey(nextPermissions) });
     setShowModal(true);
@@ -286,6 +454,8 @@ const selection = useRowSelection<AdminItem>(
     setEditing(admin);
     setEmailHistory([]);
     setForm(nextForm);
+    setPasswordError("");
+    setPendingRole(null);
     setSelectedPermissions(nextPermissions);
     setModalBaseline({ form: nextForm, permissions: permissionKey(nextPermissions) });
     setShowModal(true);
@@ -308,9 +478,17 @@ const selection = useRowSelection<AdminItem>(
   };
 
   /** 角色变化时重置为模板默认权限（owner 恒为全部） */
-  const handleRoleChange = (role: AdminRoleValue) => {
+  const applyRoleChange = (role: AdminRoleValue) => {
     setForm((prev) => ({ ...prev, role }));
     setSelectedPermissions(new Set(resolveAdminPermissions(role)));
+  };
+
+  const handleRoleChange = (role: AdminRoleValue) => {
+    if (editing && role !== editing.role && isCustomizedAdmin(editing.role, editing.permissions)) {
+      setPendingRole(role);
+      return;
+    }
+    applyRoleChange(role);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -319,10 +497,12 @@ const selection = useRowSelection<AdminItem>(
     if (!editing || form.password) {
       const strength = validatePasswordStrength(form.password);
       if (!strength.valid) {
-        error(strength.message || "密码格式不符合要求");
+        setPasswordError(strength.message || "密码格式不符合要求");
+        passwordInputRef.current?.focus();
         return;
       }
     }
+    setPasswordError("");
 
     setSubmitting(true);
     try {
@@ -374,22 +554,36 @@ const selection = useRowSelection<AdminItem>(
 
   const [togglingStatusId, setTogglingStatusId] = useState<string | null>(null);
 
-  const toggleAdminStatus = async (target: AdminItem) => {
+  const applyAdminStatus = async (target: AdminItem, nextStatus: "ACTIVE" | "DISABLED") => {
     if (togglingStatusId) return;
-    const nextStatus = target.status === "DISABLED" ? "ACTIVE" : "DISABLED";
     setTogglingStatusId(target.id);
     try {
       const result = await withStepUp(() =>
         apiPut(`/api/admin/admins`, { id: target.id, status: nextStatus })
       );
       if (result === null) return;
-      success(nextStatus === "ACTIVE" ? "管理员已启用" : "管理员已禁用");
+      setAdmins((prev) =>
+        prev.map((item) => (item.id === target.id ? { ...item, status: nextStatus } : item))
+      );
+      setStatusConfirmTarget(null);
+      success(
+        nextStatus === "ACTIVE" ? "管理员已启用" : "管理员已禁用，目标会话已失效"
+      );
+      // 静默对账，避免整表骨架闪烁
       await fetchAdmins();
     } catch (err) {
       error(err instanceof Error ? err.message : "状态修改失败");
     } finally {
       setTogglingStatusId(null);
     }
+  };
+
+  const requestToggleAdminStatus = (target: AdminItem) => {
+    if (target.status === "DISABLED") {
+      void applyAdminStatus(target, "ACTIVE");
+      return;
+    }
+    setStatusConfirmTarget(target);
   };
 
   const handleDelete = async () => {
@@ -509,13 +703,17 @@ const selection = useRowSelection<AdminItem>(
 
   const isAllSelected = selection.isAllSelected(admins);
   const isSelectionIndeterminate = selection.isIndeterminate(admins);
+  const hasFilters = Boolean(
+    search || statusFilter || roleFilter || totpFilter || customizedFilter
+  );
+  const clearFilters = () => router.push("/admin/admins");
 
   return (
     <RequirePermission permission="admins:read">
       <div className="space-y-6">
         <PageHeader
           title="管理员管理"
-          description="管理后台管理员账号"
+          description="管理后台管理员账号、角色与权限"
           accessory={isOwnerActor ? <BreakGlassButton /> : undefined}
           actions={
             <>
@@ -523,6 +721,7 @@ const selection = useRowSelection<AdminItem>(
                 variant="outline"
                 size="sm"
                 leftIcon={<RefreshCw className="h-4 w-4" />}
+                loading={refreshing}
                 onClick={fetchAdmins}
               >
                 刷新
@@ -537,7 +736,7 @@ const selection = useRowSelection<AdminItem>(
         />
 
       {/* 搜索与筛选 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <AdminSearchInput
             value={search}
@@ -559,13 +758,21 @@ const selection = useRowSelection<AdminItem>(
                 ]}
               />
             </div>
-            <div className="w-32">
+            <div className="w-36">
               <Select
-                aria-label="按角色筛选"
-                value={roleFilter}
-                onChange={(event) => updateParams({ role: event.target.value })}
+                aria-label="按角色或自定义管理筛选"
+                value={customizedFilter ? "custom" : roleFilter}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === "custom") {
+                    updateParams({ role: "", customized: "1" });
+                  } else {
+                    updateParams({ role: value, customized: "" });
+                  }
+                }}
                 options={[
                   { value: "", label: "全部角色" },
+                  { value: "custom", label: "自定义管理" },
                   ...ADMIN_ROLES.map((role) => ({
                     value: role,
                     label: ROLE_LABELS[role as AdminRoleValue] ?? role,
@@ -580,20 +787,25 @@ const selection = useRowSelection<AdminItem>(
                 onChange={(event) => updateParams({ totp: event.target.value })}
                 options={[
                   { value: "", label: "全部二次验证" },
-                  { value: "enabled", label: "已启用 TOTP" },
-                  { value: "disabled", label: "未启用 TOTP" },
+                  { value: "enabled", label: "已绑定" },
+                  { value: "disabled", label: "未绑定" },
                 ]}
               />
             </div>
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                清除筛选
+              </Button>
+            )}
             {canManage && isOwnerActor && selection.selectedCount > 0 && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-brand-charcoal/65">
+                <span className="text-sm text-ink-muted">
                   已选 {selection.selectedCount} 项
                 </span>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-red-600 hover:bg-red-50"
+                  className="text-status-danger-fg hover:bg-status-danger-soft"
                   leftIcon={<Trash2 className="h-4 w-4" />}
                   onClick={() => setShowBatchDelete(true)}
                 >
@@ -602,7 +814,7 @@ const selection = useRowSelection<AdminItem>(
                 <button
                   onClick={selection.clear}
                   aria-label="取消选择"
-                  className="inline-flex rounded p-1.5 text-brand-charcoal/65 hover:text-brand-charcoal/80"
+                  className="inline-flex rounded p-1.5 text-ink-muted hover:text-brand-charcoal/80"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -619,14 +831,30 @@ const selection = useRowSelection<AdminItem>(
           error={
             loadError ? (
               <>
-                <p className="text-red-500">加载失败</p>
+                <p className="text-status-danger-fg">加载失败</p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={fetchAdmins}>
                   重试
                 </Button>
               </>
             ) : undefined
           }
-          empty={<Empty title="暂无管理员" description="当前还没有管理员账号" />}
+          empty={
+            <Empty
+              title={hasFilters ? "没有符合条件的管理员" : "暂无管理员"}
+              description={hasFilters ? "试试调整或清除筛选条件" : "当前还没有管理员账号"}
+              action={
+                hasFilters ? (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    清除筛选
+                  </Button>
+                ) : canManage ? (
+                  <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
+                    新增管理员
+                  </Button>
+                ) : undefined
+              }
+            />
+          }
           isEmpty={!loading && !loadError && admins.length === 0}
         >
           {admins.map((admin) => {
@@ -634,13 +862,13 @@ const selection = useRowSelection<AdminItem>(
             return (
               <MobileListCard key={admin.id}>
                 <div className="flex items-start gap-3">
-                  {canManage && (
+                  {canManage && isOwnerActor && (
                     <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
                       <input
                         type="checkbox"
                         checked={selection.isSelected(admin)}
                         onChange={() => selection.toggle(admin)}
-                        className="h-4 w-4 rounded border-brand-charcoal/20"
+                        className="h-4 w-4 rounded border-line-strong"
                         aria-label={`选择 ${admin.name}`}
                       />
                     </label>
@@ -648,123 +876,36 @@ const selection = useRowSelection<AdminItem>(
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="truncate font-medium text-brand-charcoal">{admin.name}</p>
-                      <Badge variant={admin.role === "owner" ? "warning" : "default"}>
-                        {ROLE_LABELS[admin.role as AdminRoleValue] ?? admin.role}
-                      </Badge>
-                      {admin.role !== "owner" && admin.permissions?.length > 0 && (
-                        <Badge variant="secondary" className="px-1.5 py-0 text-xs">
-                          已自定义
-                        </Badge>
-                      )}
+                      <AdminRoleBadge role={admin.role} overrides={admin.permissions} />
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">{admin.email}</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <Badge variant={admin.status === "ACTIVE" ? "success" : "secondary"}>
-                  {admin.status === "ACTIVE" ? "已启用" : "已禁用"}
-                </Badge>
-                {admin.totpEnabled ? (
-                  <Badge variant="success">TOTP 已启用</Badge>
-                ) : (
-                  <Badge variant={admin.totpResetRequired ? "warning" : "danger"}>
-                    {admin.totpResetRequired ? "待重新绑定" : "TOTP 未启用"}
-                  </Badge>
-                )}
-                <Badge variant={advisor.variant}>{advisor.label}</Badge>
-                <span className="text-xs text-brand-charcoal/65">
-                  最近登录 {admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "从未"}
-                </span>
-              </div>
+                    <p className="mt-0.5 truncate text-xs text-ink-muted">{admin.email}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <AdminStatusIcon status={admin.status} showLabel />
+                      <TotpStatusIcon
+                        enabled={admin.totpEnabled}
+                        resetRequired={admin.totpResetRequired}
+                        showLabel
+                      />
+                      <Badge variant={advisor.variant}>测肤 {advisor.label}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-ink-muted">
+                      最近登录 {admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "从未"}
+                    </p>
                   </div>
                 </div>
-                <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
-                  {canManage && (admin.role !== "owner" || isOwnerActor) ? (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`编辑 ${admin.name}`}
-                        onClick={() => openEdit(admin)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {isOwnerActor && admin.id !== currentAdminId && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          loading={togglingStatusId === admin.id}
-                          aria-label={
-                            admin.status === "DISABLED"
-                              ? `启用 ${admin.name}`
-                              : `禁用 ${admin.name}`
-                          }
-                          title={admin.status === "DISABLED" ? "启用管理员" : "禁用管理员"}
-                          onClick={() => void toggleAdminStatus(admin)}
-                        >
-                          <Power
-                            className={cn(
-                              "h-4 w-4",
-                              admin.status === "DISABLED" ? "text-emerald-600" : "text-red-500"
-                            )}
-                          />
-                        </Button>
-                      )}
-                      {isOwnerActor &&
-                        admin.id !== currentAdminId &&
-                        (admin.totpEnabled || admin.totpResetRequired) &&
-                        (admin.role === "owner" ? (
-                          <ApprovalRequestAction
-                            policyKey="totp.recovery.issue"
-                            initialValues={{ adminId: admin.id }}
-                            label="申请恢复码"
-                            variant="ghost"
-                            size="sm"
-                          />
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`重置二次验证 ${admin.name}`}
-                            onClick={() => openRecovery(admin)}
-                          >
-                            <KeyRound className="h-4 w-4" />
-                          </Button>
-                        ))}
-                      {!isOwnerActor &&
-                        admin.id !== currentAdminId &&
-                        (admin.totpEnabled || admin.totpResetRequired) &&
-                        canRequestApproval && (
-                          <ApprovalRequestAction
-                            policyKey="totp.recovery.issue"
-                            initialValues={{ adminId: admin.id }}
-                            label="申请恢复码"
-                            variant="ghost"
-                            size="sm"
-                          />
-                        )}
-                      {admin.id !== currentAdminId && isOwnerActor && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`删除 ${admin.name}`}
-                          className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                          onClick={() => setDeleteTarget(admin)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {admin.id !== currentAdminId && !isOwnerActor && canRequestApproval && (
-                        <ApprovalRequestAction
-                          policyKey="admin.delete"
-                          initialValues={{ adminId: admin.id }}
-                          label="申请删除管理员"
-                          variant="ghost"
-                          size="sm"
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-brand-charcoal/65">只读</span>
-                  )}
+                <div className="mt-2 flex justify-end border-t border-line pt-2">
+                  <AdminRowActions
+                    admin={admin}
+                    currentAdminId={currentAdminId}
+                    canManage={canManage}
+                    isOwnerActor={isOwnerActor}
+                    canRequestApproval={canRequestApproval}
+                    togglingStatusId={togglingStatusId}
+                    onEdit={openEdit}
+                    onToggleStatus={requestToggleAdminStatus}
+                    onResetTotp={openRecovery}
+                    onDelete={setDeleteTarget}
+                  />
                 </div>
               </MobileListCard>
             );
@@ -772,11 +913,11 @@ const selection = useRowSelection<AdminItem>(
         </MobileList>
 
         {/* 列表（桌面端表格） */}
-        <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
-          <table className="w-full min-w-[760px] text-sm">
+        <div className="hidden rounded-card border border-line bg-white md:block">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
-              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
-                {canManage && (
+              <tr className="border-b border-line bg-surface-subtle text-left">
+                {canManage && isOwnerActor && (
                   <th scope="col" className="w-10 px-4 py-3.5">
                     <input
                       type="checkbox"
@@ -785,7 +926,7 @@ const selection = useRowSelection<AdminItem>(
                         if (el) el.indeterminate = isSelectionIndeterminate;
                       }}
                       onChange={(e) => selection.toggleAll(admins, e.target.checked)}
-                      className="h-4 w-4 rounded border-brand-charcoal/20"
+                      className="h-4 w-4 rounded border-line-strong"
                       aria-label="全选"
                     />
                   </th>
@@ -799,17 +940,25 @@ const selection = useRowSelection<AdminItem>(
                   <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                     角色
                   </th>
-                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
+                  <th
+                    scope="col"
+                    title="绿勾：已启用；红叉：已禁用"
+                    className="w-16 px-2 py-3.5 text-center font-medium text-brand-charcoal/70"
+                  >
                     状态
                   </th>
-                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
+                  <th
+                    scope="col"
+                    title="盾牌勾：已绑定；盾牌叉：未绑定；盾牌叹号：待重绑"
+                    className="w-24 px-3 py-3.5 text-center font-medium text-brand-charcoal/70"
+                  >
                     二次验证
                   </th>
                   <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                     最近登录
                   </th>
                   <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                    测肤子站
+                    测肤权限
                   </th>
                 <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
                   创建时间
@@ -819,19 +968,26 @@ const selection = useRowSelection<AdminItem>(
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-brand-charcoal/[0.06]">
+            <tbody className="divide-y divide-line-subtle">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRowSkeleton key={i} columns={canManage ? 10 : 9} />
+                  <TableRowSkeleton key={i} columns={canManage && isOwnerActor ? 10 : 9} />
                 ))
               ) : admins.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 10 : 9} className="px-5 py-8">
+                  <td colSpan={canManage && isOwnerActor ? 10 : 9} className="px-5 py-8">
                     <Empty
-                      title="暂无管理员"
+                      title={hasFilters ? "没有符合条件的管理员" : "暂无管理员"}
+                      description={
+                        hasFilters ? "试试调整或清除筛选条件" : "当前还没有管理员账号"
+                      }
                       className="py-6"
                       action={
-                        canManage ? (
+                        hasFilters ? (
+                          <Button variant="outline" size="sm" onClick={clearFilters}>
+                            清除筛选
+                          </Button>
+                        ) : canManage ? (
                           <Button
                             size="sm"
                             leftIcon={<Plus className="h-4 w-4" />}
@@ -846,14 +1002,14 @@ const selection = useRowSelection<AdminItem>(
                 </tr>
               ) : (
                 admins.map((admin) => (
-                  <tr key={admin.id} className="transition-colors hover:bg-brand-charcoal/[0.02]">
-                    {canManage && (
+                  <tr key={admin.id} className="transition-colors hover:bg-surface-subtle">
+                    {canManage && isOwnerActor && (
                       <td className="px-4 py-3.5">
                         <input
                           type="checkbox"
                           checked={selection.isSelected(admin)}
                           onChange={() => selection.toggle(admin)}
-                          className="h-4 w-4 rounded border-brand-charcoal/20"
+                          className="h-4 w-4 rounded border-line-strong"
                           aria-label={`选择 ${admin.name}`}
                         />
                       </td>
@@ -861,133 +1017,47 @@ const selection = useRowSelection<AdminItem>(
                     <td className="px-5 py-3.5 font-medium text-brand-charcoal">{admin.name}</td>
                     <td className="px-5 py-3.5 text-brand-charcoal/80">{admin.email}</td>
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={admin.role === "owner" ? "warning" : "default"}>
-                          {ROLE_LABELS[admin.role as AdminRoleValue] ?? admin.role}
-                        </Badge>
-                        {admin.role !== "owner" && admin.permissions?.length > 0 && (
-                          <Badge variant="secondary" className="px-1.5 py-0 text-xs">
-                            已自定义
-                          </Badge>
-                        )}
-                      </div>
+                      <AdminRoleBadge role={admin.role} overrides={admin.permissions} />
                     </td>
-                      <td className="px-5 py-3.5">
-                        <Badge variant={admin.status === "ACTIVE" ? "success" : "secondary"}>
-                          {admin.status === "ACTIVE" ? "已启用" : "已禁用"}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {admin.totpEnabled ? (
-                          <Badge variant="success">已启用</Badge>
-                        ) : admin.totpResetRequired ? (
-                          <Badge variant="warning">待重新绑定</Badge>
-                        ) : (
-                          <Badge variant="danger">未启用</Badge>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-xs text-brand-charcoal/65">
+                    <td className="px-2 py-3.5 text-center">
+                      <AdminStatusIcon status={admin.status} />
+                    </td>
+                    <td className="px-3 py-3.5 text-center">
+                      <TotpStatusIcon
+                        enabled={admin.totpEnabled}
+                        resetRequired={admin.totpResetRequired}
+                      />
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-ink-muted">
+                      <time
+                        dateTime={admin.lastLoginAt ?? undefined}
+                        title={admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : undefined}
+                      >
                         {admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "从未登录"}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {(() => {
-                          const advisor = getAdvisorAccess(admin);
-                          return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
-                        })()}
-                      </td>
-                    <td className="px-5 py-3.5 text-brand-charcoal/65">
+                      </time>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {(() => {
+                        const advisor = getAdvisorAccess(admin);
+                        return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
+                      })()}
+                    </td>
+                    <td className="px-5 py-3.5 text-ink-muted">
                       {new Date(admin.createdAt).toLocaleDateString("zh-CN")}
                     </td>
                     <td className="px-5 py-3.5">
-                      {canManage && (admin.role !== "owner" || isOwnerActor) ? (
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`编辑 ${admin.name}`}
-                            onClick={() => openEdit(admin)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          {isOwnerActor && admin.id !== currentAdminId && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              loading={togglingStatusId === admin.id}
-                              aria-label={
-                                admin.status === "DISABLED"
-                                  ? `启用 ${admin.name}`
-                                  : `禁用 ${admin.name}`
-                              }
-                              onClick={() => void toggleAdminStatus(admin)}
-                            >
-                              <Power
-                                className={cn(
-                                  "h-4 w-4",
-                                  admin.status === "DISABLED"
-                                    ? "text-emerald-600"
-                                    : "text-red-500"
-                                )}
-                              />
-                            </Button>
-                          )}
-                          {isOwnerActor &&
-                            admin.id !== currentAdminId &&
-                            (admin.totpEnabled || admin.totpResetRequired) &&
-                            (admin.role === "owner" ? (
-                              <ApprovalRequestAction
-                                policyKey="totp.recovery.issue"
-                                initialValues={{ adminId: admin.id }}
-                                label="申请恢复码"
-                                variant="ghost"
-                                size="sm"
-                              />
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                aria-label={`重置二次验证 ${admin.name}`}
-                                onClick={() => openRecovery(admin)}
-                              >
-                                <KeyRound className="h-4 w-4" />
-                              </Button>
-                            ))}
-                          {/* 不能删除自己（服务端禁止，前端不展示避免必然失败） */}
-                          {admin.id !== currentAdminId && isOwnerActor && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              aria-label={`删除 ${admin.name}`}
-                              onClick={() => setDeleteTarget(admin)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-400" />
-                            </Button>
-                          )}
-                          {admin.id !== currentAdminId &&
-                            !isOwnerActor &&
-                            (admin.totpEnabled || admin.totpResetRequired) &&
-                            canRequestApproval && (
-                              <ApprovalRequestAction
-                                policyKey="totp.recovery.issue"
-                                initialValues={{ adminId: admin.id }}
-                                label="申请恢复码"
-                                variant="ghost"
-                                size="sm"
-                              />
-                            )}
-                          {admin.id !== currentAdminId && !isOwnerActor && canRequestApproval && (
-                            <ApprovalRequestAction
-                              policyKey="admin.delete"
-                              initialValues={{ adminId: admin.id }}
-                              label="申请删除管理员"
-                              variant="ghost"
-                              size="sm"
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-brand-charcoal/65">只读</span>
-                      )}
+                      <AdminRowActions
+                        admin={admin}
+                        currentAdminId={currentAdminId}
+                        canManage={canManage}
+                        isOwnerActor={isOwnerActor}
+                        canRequestApproval={canRequestApproval}
+                        togglingStatusId={togglingStatusId}
+                        onEdit={openEdit}
+                        onToggleStatus={requestToggleAdminStatus}
+                        onResetTotp={openRecovery}
+                        onDelete={setDeleteTarget}
+                      />
                     </td>
                   </tr>
                 ))
@@ -997,12 +1067,13 @@ const selection = useRowSelection<AdminItem>(
         </div>
 
         {/* 分页 */}
-        <div className="flex justify-center">
+        <div className="flex justify-end">
           <Pagination
             page={pagination.page}
             pageSize={pagination.pageSize}
             total={pagination.total}
             onChange={(p) => updateParams({ page: String(p) })}
+            onPageSizeChange={(size) => updateParams({ pageSize: String(size) })}
           />
         </div>
 
@@ -1052,29 +1123,34 @@ const selection = useRowSelection<AdminItem>(
               />
               <div>
                 <Input
+                  ref={passwordInputRef}
                   label={`密码${editing ? "（留空则不修改）" : ""}`}
                   type="password"
                   required={!editing}
                   minLength={8}
                   disabled={isEditingSelf || (!!editing && !isOwnerActor)}
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  error={passwordError}
+                  onChange={(e) => {
+                    setForm({ ...form, password: e.target.value });
+                    if (passwordError) setPasswordError("");
+                  }}
                 />
                 {(form.password.length > 0 || !editing) && (
                   <PasswordRulesChecklist password={form.password} className="mt-1.5" />
                 )}
               </div>
               {editing && (historyLoading || emailHistory.length > 0) && (
-                <div className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-xs sm:col-span-2">
+                <div className="rounded-lg bg-surface-muted p-3 text-xs sm:col-span-2">
                   <p className="font-medium text-brand-charcoal/80">历史邮箱</p>
                   {historyLoading ? (
-                    <p className="mt-1 text-brand-charcoal/60">加载中…</p>
+                    <p className="mt-1 text-ink-muted">加载中…</p>
                   ) : (
                     <ul className="mt-1 space-y-1 text-brand-charcoal/70">
                       {emailHistory.map((item) => (
                         <li key={item.id} className="flex flex-wrap items-center gap-2">
                           <span className="break-all font-mono">{item.email}</span>
-                          <span className="text-brand-charcoal/45">
+                          <span className="text-ink-faint">
                             {formatDateTime(item.changedAt)}
                           </span>
                           <Badge variant="secondary" size="sm">
@@ -1105,31 +1181,65 @@ const selection = useRowSelection<AdminItem>(
             </div>
 
             {isEditingSelf && (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <p className="rounded-lg bg-status-warning-soft px-3 py-2 text-xs text-status-warning-strong">
                 不能修改自己的角色、权限或密码（防自锁），请由其他超级管理员操作。
               </p>
             )}
             {!isEditingSelf && !!editing && !isOwnerActor && (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <p className="rounded-lg bg-status-warning-soft px-3 py-2 text-xs text-status-warning-strong">
                 仅超级管理员可修改其他管理员的邮箱或密码。
               </p>
             )}
+            {!!editing &&
+              isCustomizedAdmin(editing.role, editing.permissions) &&
+              form.role !== editing.role && (
+                <p className="rounded-lg bg-status-warning-soft px-3 py-2 text-xs text-status-warning-fg">
+                  已切换角色，保存后原有自定义权限将按新角色模板重置。
+                </p>
+              )}
 
             {/* 权限覆盖编辑器：勾选相对角色模板调整，保存为个人权限覆盖 */}
             {form.role !== "owner" && (
-              <div className="rounded-lg border border-brand-charcoal/15 p-4">
+              <div className="rounded-lg border border-line-strong p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-brand-charcoal">权限（个人覆盖）</p>
-                    <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                    <p className="mt-0.5 text-xs text-ink-muted">
                       默认继承「{ROLE_LABELS[form.role]}」模板，可单独增减；保存时自动生成覆盖差异
+                    </p>
+                    <p
+                      className="mt-1 text-xs text-brand-charcoal/70"
+                      title={`新增：${
+                        permissionDiff.added
+                          .map((permission) => PERMISSION_LABELS[permission as AdminPermission] ?? permission)
+                          .join("、") || "无"
+                      }；撤销：${
+                        permissionDiff.removed
+                          .map((permission) => PERMISSION_LABELS[permission as AdminPermission] ?? permission)
+                          .join("、") || "无"
+                      }`}
+                    >
+                      当前差异：
+                      <span className="font-medium text-status-success-fg">
+                        +{permissionDiff.addedCount}
+                      </span>
+                      <span className="mx-1 text-ink-faint">/</span>
+                      <span className="font-medium text-status-danger-fg">
+                        -{permissionDiff.removedCount}
+                      </span>
+                      {permissionDiff.addedCount === 0 && permissionDiff.removedCount === 0 && (
+                        <span className="ml-1 text-ink-muted">（与模板一致）</span>
+                      )}
                     </p>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={isEditingSelf}
+                    disabled={
+                      isEditingSelf ||
+                      (permissionDiff.addedCount === 0 && permissionDiff.removedCount === 0)
+                    }
                     onClick={() =>
                       setSelectedPermissions(new Set(resolveAdminPermissions(form.role)))
                     }
@@ -1140,7 +1250,7 @@ const selection = useRowSelection<AdminItem>(
                 <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                   {PERMISSION_GROUPS.map((group) => (
                     <div key={group.group}>
-                      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-brand-charcoal/65">
+                      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-muted">
                         {group.group}
                       </p>
                       <div className="grid gap-1.5 sm:grid-cols-2">
@@ -1153,7 +1263,7 @@ const selection = useRowSelection<AdminItem>(
                                 "flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-xs",
                                 isEditingSelf
                                   ? "cursor-not-allowed opacity-60"
-                                  : "hover:bg-brand-charcoal/[0.04]"
+                                  : "hover:bg-surface-muted"
                               )}
                             >
                               <input
@@ -1224,36 +1334,36 @@ const selection = useRowSelection<AdminItem>(
         >
           {recoveryResult ? (
             <div className="space-y-4">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="rounded-lg border border-status-warning-line bg-status-warning-soft px-4 py-3 text-sm text-status-warning-strong">
                 恢复码只显示一次。请通过安全渠道发送给 {recoveryResult.targetEmail}。 对方使用“密码
                 + 恢复码”登录后，必须重新绑定 TOTP。
               </div>
               <div className="flex items-center gap-2">
-                <code className="min-w-0 flex-1 break-all rounded-lg bg-brand-charcoal/[0.05] px-3 py-2.5 font-mono text-sm">
+                <code className="min-w-0 flex-1 break-all rounded-lg bg-surface-hover px-3 py-2.5 font-mono text-sm">
                   {recoveryResult.code}
                 </code>
                 <Button type="button" variant="outline" onClick={copyRecoveryCode}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-brand-charcoal/65">
+              <p className="text-xs text-ink-muted">
                 有效期至：{new Date(recoveryResult.expiresAt).toLocaleString("zh-CN")}
               </p>
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-status-warning-line bg-status-warning-soft p-3">
                 <input
                   type="checkbox"
                   checked={recoverySaved}
                   onChange={(e) => setRecoverySaved(e.target.checked)}
                   className="mt-0.5"
                 />
-                <span className="text-xs text-amber-800">
+                <span className="text-xs text-status-warning-strong">
                   我已通过安全渠道保存/发送恢复码；关闭后无法再次查看。
                 </span>
               </label>
             </div>
           ) : (
             <form id="totp-recovery-form" onSubmit={handleIssueRecovery} className="space-y-4">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+              <div className="rounded-lg border border-status-warning-line bg-status-warning-soft px-4 py-3 text-xs text-status-warning-strong">
                 仅用于目标管理员丢失验证器且备用码不可用的情况。恢复码有效 10 分钟，使用一次后失效。
               </div>
               <p className="text-sm text-brand-charcoal/70">
@@ -1319,6 +1429,39 @@ const selection = useRowSelection<AdminItem>(
             maxLength={500}
           />
         </ConfirmDialog>
+
+        {/* 禁用确认：服务端会递增 tokenVersion，目标会话立即失效 */}
+        <ConfirmDialog
+          open={!!statusConfirmTarget}
+          onClose={() => setStatusConfirmTarget(null)}
+          onConfirm={() =>
+            statusConfirmTarget
+              ? applyAdminStatus(statusConfirmTarget, "DISABLED")
+              : Promise.resolve()
+          }
+          title="禁用管理员"
+          description={`禁用后「${statusConfirmTarget?.name ?? ""}」将立即退出登录，无法访问管理后台；可随时重新启用。`}
+          type="danger"
+          confirmText="禁用账号"
+          loading={!!statusConfirmTarget && togglingStatusId === statusConfirmTarget.id}
+        />
+
+        {/* 切换角色会重置自定义权限 */}
+        <ConfirmDialog
+          open={!!pendingRole}
+          onClose={() => setPendingRole(null)}
+          onConfirm={() => {
+            if (pendingRole) applyRoleChange(pendingRole);
+            setPendingRole(null);
+          }}
+          title="切换角色会重置权限"
+          description={`当前账号的自定义权限将被「${
+            pendingRole ? (ROLE_LABELS[pendingRole] ?? pendingRole) : ""
+          }」模板覆盖，保存后无法恢复。`}
+          type="warning"
+          confirmVariant="danger"
+          confirmText="切换角色"
+        />
 
         {/* 高风险操作二次验证 */}
         {totpModal}

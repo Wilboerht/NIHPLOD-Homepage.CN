@@ -49,6 +49,9 @@ import { upsertIdentity } from "@/lib/external-identity";
 import { checkUserStatus } from "@/lib/auth";
 import { passwordSchema } from "@/lib/password";
 import { resolveWechatBinding } from "@/lib/wechat-binding";
+import { sanitizeProviderNickname } from "@/lib/nickname-policy";
+import { auditNicknameBlocked } from "@/lib/nickname-audit";
+import { resolveSsoAvatar } from "@/lib/default-avatar";
 import { z } from "zod";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
@@ -216,6 +219,7 @@ export async function POST(request: NextRequest) {
         allowAutoPassword,
         wechatInfo,
         request,
+        nicknameSource: "wechat_exchange",
       });
 
       if (!bindingResult.success) {
@@ -292,6 +296,20 @@ async function finalizeLogin(
     );
   }
 
+  // 第三方昵称合规兜底：违规昵称不落库、不进 ExternalIdentity 元数据
+  const providerNickname = sanitizeProviderNickname(wechatInfo.nickname);
+  const safeNickname = providerNickname.nickname;
+
+  if (providerNickname.blocked && providerNickname.reason) {
+    await auditNicknameBlocked({
+      request,
+      userId: user.id,
+      source: "wechat_exchange",
+      reason: providerNickname.reason,
+      category: providerNickname.category,
+    });
+  }
+
   // 更新微信信息 + 双写 ExternalIdentity（多平台聚合框架）：子站扫码登录来自开放平台
   // （exchange token 不携带登录类型，mp 经子站回流的极少数场景统一记为 wechat_open）；
   // 同事务执行保证双写一致性
@@ -301,8 +319,10 @@ async function finalizeLogin(
       data: {
         wechatOpenId: wechatInfo.openid,
         wechatUnionId: wechatInfo.unionid || undefined,
-        nickname: user.nickname || wechatInfo.nickname || null,
-        avatar: user.avatar || wechatInfo.avatar || null,
+        nickname: user.nickname || safeNickname || null,
+        // 头像已在官网回调/绑定阶段镜像到自有存储；此处不再采纳第三方热链，
+        // 避免 CSP 拦截/过期外链落库（无头像时保持 null → 默认头像）
+        avatar: user.avatar,
       },
     });
     await upsertIdentity(
@@ -311,7 +331,7 @@ async function finalizeLogin(
       wechatInfo.openid,
       wechatInfo.unionid,
       {
-        nickname: wechatInfo.nickname ?? null,
+        nickname: safeNickname,
         avatar: wechatInfo.avatar ?? null,
       },
       tx
@@ -343,7 +363,8 @@ async function finalizeLogin(
         id: user.id,
         phone: user.phone,
         nickname: user.nickname,
-        avatar: user.avatar,
+        // 子站跨域消费：相对路径补全为绝对 URL；null 保持 null 由前端兜底
+        avatar: user.avatar ? resolveSsoAvatar(user.avatar) : null,
       },
       accessToken,
       refreshToken,

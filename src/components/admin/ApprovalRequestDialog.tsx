@@ -181,11 +181,11 @@ export function ApprovalRequestDialog({
       closeOnBackdrop={false}
     >
       <div className="space-y-4">
-        <div className="rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-xs text-brand-charcoal/70">
+        <div className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-brand-charcoal/70">
           提交后由 owner 审批。达到阈值的资金操作、账号安全操作会在这里生成申请。
         </div>
         {lockPolicy ? (
-          <div className="rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-sm font-medium text-brand-charcoal">
+          <div className="rounded-lg bg-surface-muted px-3 py-2 text-sm font-medium text-brand-charcoal">
             {policy.label}
           </div>
         ) : (
@@ -196,7 +196,7 @@ export function ApprovalRequestDialog({
             onChange={(event) => setPolicyKey(event.target.value as ApprovalPolicyKey)}
           />
         )}
-        <p className="text-xs text-brand-charcoal/65">{policy.summary}</p>
+        <p className="text-xs text-ink-muted">{policy.summary}</p>
 
         {(policyKey === "points.adjust" ||
           policyKey === "user.status" ||

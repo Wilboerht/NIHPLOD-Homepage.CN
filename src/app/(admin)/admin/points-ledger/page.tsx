@@ -56,7 +56,7 @@ const columns: Column<LedgerItem>[] = [
     title: "时间",
     width: "150px",
     render: (_, row) => (
-      <span className="text-xs text-brand-charcoal/65">{formatDateTime(row.createdAt)}</span>
+      <span className="text-xs text-ink-muted">{formatDateTime(row.createdAt)}</span>
     ),
   },
   {
@@ -68,8 +68,8 @@ const columns: Column<LedgerItem>[] = [
         <p className="truncate text-sm font-medium text-brand-charcoal">
           {row.user.nickname || "未设置昵称"}
         </p>
-        <p className="truncate font-mono text-xs text-brand-charcoal/65">{row.user.phone}</p>
-        <p className="truncate font-mono text-[10px] text-brand-charcoal/65">{row.user.id}</p>
+        <p className="truncate font-mono text-xs text-ink-muted">{row.user.phone}</p>
+        <p className="truncate font-mono text-2xs text-ink-muted">{row.user.id}</p>
       </div>
     ),
   },
@@ -88,8 +88,8 @@ const columns: Column<LedgerItem>[] = [
       <span
         className={
           row.amount >= 0
-            ? "font-semibold tabular-nums text-emerald-600"
-            : "font-semibold tabular-nums text-red-600"
+            ? "font-semibold tabular-nums text-status-success-fg"
+            : "font-semibold tabular-nums text-status-danger-fg"
         }
       >
         {row.amount > 0 ? "+" : ""}
@@ -121,7 +121,7 @@ const columns: Column<LedgerItem>[] = [
     title: "备注",
     width: "220px",
     render: (_, row) => (
-      <span className="line-clamp-2 text-xs text-brand-charcoal/65">{row.note ?? "—"}</span>
+      <span className="line-clamp-2 text-xs text-ink-muted">{row.note ?? "—"}</span>
     ),
   },
   {
@@ -129,7 +129,7 @@ const columns: Column<LedgerItem>[] = [
     title: "过期时间",
     width: "140px",
     render: (_, row) => (
-      <span className="text-xs text-brand-charcoal/65">
+      <span className="text-xs text-ink-muted">
         {row.expiresAt ? formatDateTime(row.expiresAt) : "—"}
       </span>
     ),
@@ -167,14 +167,13 @@ function PointsLedgerContent() {
       if (!isLatest()) return;
       setData(result);
       setLoadError(false);
-    } catch (error) {
+    } catch {
       if (!isLatest()) return;
       setLoadError(true);
-      toast.error(error instanceof Error ? error.message : "加载积分流水失败");
     } finally {
       if (isLatest()) setLoading(false);
     }
-  }, [dateFrom, dateTo, page, reference, search, takeLatest, toast, type]);
+  }, [dateFrom, dateTo, page, reference, search, takeLatest, type]);
 
   useEffect(() => {
     deferInEffect(load);
@@ -209,6 +208,14 @@ function PointsLedgerContent() {
 
   const summary = data?.summary;
   const hasFilters = Boolean(search || type || reference || dateFrom || dateTo);
+  const clearFilters = () =>
+    update({
+      search: null,
+      type: null,
+      reference: null,
+      dateFrom: null,
+      dateTo: null,
+    });
 
   return (
     <div className="flex flex-col gap-6">
@@ -241,7 +248,7 @@ function PointsLedgerContent() {
 
       <AdminHubTabs section="points" />
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <StatStrip
           items={[
             { label: "可用积分总额", value: (summary?.available ?? 0).toLocaleString("zh-CN") },
@@ -261,7 +268,7 @@ function PointsLedgerContent() {
         />
       </div>
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <AdminSearchInput
             value={search}
@@ -296,15 +303,7 @@ function PointsLedgerContent() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                update({
-                  search: null,
-                  type: null,
-                  reference: null,
-                  dateFrom: null,
-                  dateTo: null,
-                })
-              }
+              onClick={clearFilters}
             >
               清除筛选
             </Button>
@@ -321,6 +320,9 @@ function PointsLedgerContent() {
         rowKey="id"
         density="compact"
         tableLayout="fixed"
+        ariaLabel="积分流水表格"
+        isFiltered={hasFilters}
+        onClearFilters={clearFilters}
         minWidth="1280px"
         emptyText="暂无积分流水"
         pagination={
@@ -339,18 +341,18 @@ function PointsLedgerContent() {
               <span className="font-medium">{row.typeLabel}</span>
               <span
                 className={
-                  row.amount >= 0 ? "font-semibold text-emerald-600" : "font-semibold text-red-600"
+                  row.amount >= 0 ? "font-semibold text-status-success-fg" : "font-semibold text-status-danger-fg"
                 }
               >
                 {row.amount > 0 ? "+" : ""}
                 {row.amount.toLocaleString("zh-CN")}
               </span>
             </div>
-            <p className="text-xs text-brand-charcoal/65">
+            <p className="text-xs text-ink-muted">
               {row.user.nickname || "未设置昵称"} · {row.user.phone}
             </p>
-            <p className="break-all font-mono text-xs text-brand-charcoal/65">{row.reference}</p>
-            <p className="text-xs text-brand-charcoal/65">{formatDateTime(row.createdAt)}</p>
+            <p className="break-all font-mono text-xs text-ink-muted">{row.reference}</p>
+            <p className="text-xs text-ink-muted">{formatDateTime(row.createdAt)}</p>
           </div>
         )}
       />

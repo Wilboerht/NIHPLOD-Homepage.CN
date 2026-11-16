@@ -14,6 +14,7 @@ import { validateCUID, invalidIdResponse } from "@/lib/validation";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { updateRedemptionWaybill } from "@/lib/point-gifts";
+import { parseAdminJsonBody } from "@/lib/request-body";
 import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +61,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return invalidIdResponse();
     }
 
-    const parsed = waybillSchema.safeParse(await request.json().catch(() => ({})));
+    const bodyResult = await parseAdminJsonBody(request);
+    if (!bodyResult.ok && bodyResult.response.status === 413) return bodyResult.response;
+    const parsed = waybillSchema.safeParse(bodyResult.ok ? bodyResult.data : {});
     if (!parsed.success) {
       return NextResponse.json(
         {

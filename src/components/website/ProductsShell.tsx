@@ -29,13 +29,11 @@ export interface ProductsCategory {
   productSlug?: string | null;
 }
 
-type ProductsTab = "featured" | "all";
 type MobileView = "products" | "categories";
 type PendingTarget = { href: string; kind: "detail" | "list" };
 type NavigateEventLike = Event & { navigationType?: string };
 
 interface ProductsShellContextValue {
-  activeTab: ProductsTab;
   mobileView: MobileView;
   switchMobileView: (view: MobileView) => void;
   navigateToProduct: (slug: string) => void;
@@ -76,7 +74,6 @@ export function ProductsShell({
   const prefersReducedMotion = useReducedMotion();
 
   const isDetail = pathname.startsWith("/products/");
-  const [activeTab] = useState<ProductsTab>("featured");
   const [mobileView, setMobileView] = useState<MobileView>("products");
   const [pending, setPending] = useState<PendingTarget | null>(null);
   const [lastPathname, setLastPathname] = useState(pathname);
@@ -254,7 +251,6 @@ export function ProductsShell({
 
   const contextValue = useMemo<ProductsShellContextValue>(
     () => ({
-      activeTab,
       mobileView,
       switchMobileView,
       navigateToProduct,
@@ -262,14 +258,7 @@ export function ProductsShell({
       setDetailBackHandler,
       listScrollTopRef,
     }),
-    [
-      activeTab,
-      mobileView,
-      switchMobileView,
-      navigateToProduct,
-      navigateToList,
-      setDetailBackHandler,
-    ]
+    [mobileView, switchMobileView, navigateToProduct, navigateToList, setDetailBackHandler]
   );
 
   return (

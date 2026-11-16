@@ -32,7 +32,7 @@ import { purgeAvatarAssets } from "@/lib/avatar-assets";
 import { deleteSpentProofFile } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
 import { DELETION_STATUS } from "@/lib/account-deletion-requests";
-import { voidPointsForDeletedUser } from "@/lib/points-ledger";
+import { lockPointBalance, voidPointsForDeletedUser } from "@/lib/points-ledger";
 import { notifyAccountDeletionFailure } from "@/lib/admin-alert";
 import { runAfterResponse } from "@/lib/alert-notify";
 import {
@@ -230,6 +230,10 @@ export async function executeAccountDeletion(
     let closedPendingSpentAdjustments = 0;
     await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+      // 统一锁顺序：User -> PointBalance -> PointRedemption。
+      // 后续取消兑换单/关闭售后会改 PointRedemption，提前锁余额可避免与
+      // 履约/取消/账户合并形成反向锁序死锁。
+      await lockPointBalance(tx, userId);
       // 第三方身份全量解绑（防止注销后被第三方回调重新定位/激活）
       await tx.externalIdentity.deleteMany({ where: { userId } });
       // PII 衍生数据：密码历史、短信验证码、登录尝试（userId 维度）、收货地址簿、

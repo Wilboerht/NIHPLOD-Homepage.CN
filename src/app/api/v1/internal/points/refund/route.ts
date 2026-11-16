@@ -198,6 +198,26 @@ export async function POST(request: NextRequest) {
           note: note ?? `商城兑换撤销 ${reference}`,
         });
         const balance = await getPointBalanceView(tx, user.id);
+        const audited = await auditInternalPoints({
+          action: "points_internal_refund",
+          targetType: "point_ledger",
+          targetId: reference,
+          userId: user.id,
+          project: config.project,
+          key,
+          request,
+          tx,
+          detail: {
+            reference,
+            refunded: refund.amount,
+            available: balance.available,
+            duplicated: refund.duplicated,
+            note: note ?? null,
+          },
+        });
+        if (!audited) {
+          throw new Error("POINTS_AUDIT_UNAVAILABLE");
+        }
         return {
           notFound: false as const,
           duplicated: refund.duplicated,
@@ -216,23 +236,6 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    await auditInternalPoints({
-      action: "points_internal_refund",
-      targetType: "point_ledger",
-      targetId: reference,
-      userId: user.id,
-      project: config.project,
-      key,
-      request,
-      detail: {
-        reference,
-        refunded: result.refunded,
-        available: result.available,
-        duplicated: result.duplicated,
-        note: note ?? null,
-      },
-    });
 
     return NextResponse.json({
       success: true,

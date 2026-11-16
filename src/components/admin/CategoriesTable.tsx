@@ -59,7 +59,7 @@ function VisibilityToggle({
         aria-label={`${category.visible ? "隐藏" : "显示"}分类 ${category.name}`}
         className={cn(
           "inline-flex items-center rounded-md px-1.5 py-1 transition-colors disabled:opacity-50",
-          category.visible ? "hover:bg-emerald-50" : "hover:bg-brand-charcoal/[0.06]"
+          category.visible ? "hover:bg-status-success-soft" : "hover:bg-surface-hover"
         )}
       >
         <DotBadge color={category.visible ? "green" : "gray"}>
@@ -98,7 +98,7 @@ export function CategoriesTable({
           canWrite ? (
             <span
               className={cn(
-                "inline-flex items-center justify-center text-brand-charcoal/65",
+                "inline-flex items-center justify-center text-ink-muted",
                 savingOrder ? "cursor-not-allowed opacity-40" : "cursor-grab"
               )}
               title="拖拽排序"
@@ -120,9 +120,9 @@ export function CategoriesTable({
               title="查看该分类下的产品"
             >
               <span className="truncate">{record.name}</span>
-              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/65 transition-colors group-hover:text-brand-primary" />
+              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-ink-muted transition-colors group-hover:text-brand-primary" />
             </Link>
-            <p className="truncate text-xs text-brand-charcoal/65" title={record.nameEn}>
+            <p className="truncate text-xs text-ink-muted" title={record.nameEn}>
               {record.nameEn}
             </p>
           </div>
@@ -171,7 +171,7 @@ export function CategoriesTable({
         width: "60px",
         align: "right",
         render: (_, record) => (
-          <span className="text-sm text-brand-charcoal/65">{record.order}</span>
+          <span className="text-sm text-ink-muted">{record.order}</span>
         ),
       },
       {
@@ -290,9 +290,9 @@ export function CategoriesTable({
                 title="查看该分类下的产品"
               >
                 <span className="truncate">{record.name}</span>
-                <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/65 transition-colors group-hover:text-brand-primary" />
+                <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-ink-muted transition-colors group-hover:text-brand-primary" />
               </Link>
-              <p className="truncate text-xs text-brand-charcoal/65">{record.nameEn}</p>
+              <p className="truncate text-xs text-ink-muted">{record.nameEn}</p>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <Badge variant={record.productCount > 0 ? "secondary" : "default"}>
                   {record.productCount} 个产品
@@ -309,8 +309,8 @@ export function CategoriesTable({
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-            <span className="text-xs text-brand-charcoal/65">排序 {record.order}</span>
+          <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
+            <span className="text-xs text-ink-muted">排序 {record.order}</span>
             <div className="flex items-center justify-end gap-1">
               {canWrite && (
                 <>

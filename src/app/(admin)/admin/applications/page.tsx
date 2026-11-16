@@ -861,7 +861,7 @@ function AdminApplicationsContent() {
           </div>
           <div className="min-w-0">
             <p className="truncate font-medium text-brand-charcoal">{application.name}</p>
-            <p className="truncate text-xs text-brand-charcoal/65">{application.phone}</p>
+            <p className="truncate text-xs text-ink-muted">{application.phone}</p>
           </div>
         </div>
       ),
@@ -875,7 +875,7 @@ function AdminApplicationsContent() {
           <p className="truncate font-medium text-brand-charcoal/80" title={application.job.title}>
             {application.job.title}
           </p>
-          <p className="truncate text-xs text-brand-charcoal/65" title={application.job.titleEn}>
+          <p className="truncate text-xs text-ink-muted" title={application.job.titleEn}>
             {application.job.titleEn}
           </p>
         </div>
@@ -891,7 +891,7 @@ function AdminApplicationsContent() {
             <span className="min-w-0 truncate">{application.folder.name}</span>
           </Badge>
         ) : (
-          <span className="text-sm text-brand-charcoal/65">—</span>
+          <span className="text-sm text-ink-muted">—</span>
         ),
     },
     {
@@ -909,7 +909,7 @@ function AdminApplicationsContent() {
       title: "申请时间",
       width: "150px",
       render: (_, application) => (
-        <span className="text-sm text-brand-charcoal/65">{formatDate(application.createdAt)}</span>
+        <span className="text-sm text-ink-muted">{formatDate(application.createdAt)}</span>
       ),
     },
     {
@@ -917,7 +917,7 @@ function AdminApplicationsContent() {
       title: "最近处理",
       width: "150px",
       render: (_, application) => (
-        <span className="text-sm text-brand-charcoal/65">{formatDate(application.updatedAt)}</span>
+        <span className="text-sm text-ink-muted">{formatDate(application.updatedAt)}</span>
       ),
     },
     {
@@ -978,7 +978,7 @@ function AdminApplicationsContent() {
             <div
               role="group"
               aria-label="简历视图"
-              className="flex items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+              className="flex items-center gap-1 rounded-xl bg-surface-muted p-1"
             >
               <button
                 type="button"
@@ -987,7 +987,7 @@ function AdminApplicationsContent() {
                 className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
                   viewMode !== "board"
                     ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                    : "text-brand-charcoal/65 hover:bg-white/70"
+                    : "text-ink-muted hover:bg-white/70"
                 }`}
               >
                 列表
@@ -999,7 +999,7 @@ function AdminApplicationsContent() {
                 className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
                   viewMode === "board"
                     ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                    : "text-brand-charcoal/65 hover:bg-white/70"
+                    : "text-ink-muted hover:bg-white/70"
                 }`}
               >
                 看板
@@ -1040,17 +1040,17 @@ function AdminApplicationsContent() {
       />
 
       {/* 筛选栏 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white">
+      <div className="rounded-card border border-line bg-white">
         {folders.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-brand-charcoal/10 p-4">
-            <span className="mr-1 text-sm text-brand-charcoal/65">分类</span>
+          <div className="flex flex-wrap items-center gap-2 border-b border-line p-4">
+            <span className="mr-1 text-sm text-ink-muted">分类</span>
             <button
               onClick={() => update({ folderId: null })}
               className={cn(
                 "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
                 folderFilter === "all"
                   ? "border-brand-primary bg-brand-primary text-white"
-                  : "border-brand-charcoal/10 bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
+                  : "border-line bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
               )}
             >
               <Folder className="h-3.5 w-3.5" />
@@ -1062,7 +1062,7 @@ function AdminApplicationsContent() {
                 "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
                 folderFilter === "uncategorized"
                   ? "border-brand-primary bg-brand-primary text-white"
-                  : "border-brand-charcoal/10 bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
+                  : "border-line bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
               )}
             >
               <FileText className="h-3.5 w-3.5" />
@@ -1076,7 +1076,7 @@ function AdminApplicationsContent() {
                     "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
                     folderFilter === folder.id
                       ? "border-brand-primary bg-brand-primary text-white"
-                      : "border-brand-charcoal/10 bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
+                      : "border-line bg-white text-brand-charcoal/70 hover:border-brand-charcoal/25 hover:text-brand-charcoal"
                   )}
                 >
                   {folder.name}
@@ -1085,7 +1085,7 @@ function AdminApplicationsContent() {
                       "rounded-full px-1.5 py-0.5 text-xs tabular-nums",
                       folderFilter === folder.id
                         ? "bg-white/20 text-white"
-                        : "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
+                        : "bg-surface-hover text-ink-muted"
                     )}
                   >
                     {folder.applicationCount}
@@ -1100,7 +1100,7 @@ function AdminApplicationsContent() {
                           openFolderModal(folder);
                         }}
                         aria-label={`编辑分类 ${folder.name}`}
-                        className="rounded-full border border-brand-charcoal/10 bg-white p-1 text-brand-charcoal/65 shadow-sm transition-colors hover:text-brand-charcoal"
+                        className="rounded-full border border-line bg-white p-1 text-ink-muted shadow-sm transition-colors hover:text-brand-charcoal"
                       >
                         <Edit2 className="h-3 w-3" />
                       </button>
@@ -1114,7 +1114,7 @@ function AdminApplicationsContent() {
                           setDeleteFolderTarget(folder);
                         }}
                         aria-label={`删除分类 ${folder.name}`}
-                        className="rounded-full border border-brand-charcoal/10 bg-white p-1 text-brand-charcoal/65 shadow-sm transition-colors hover:text-red-500"
+                        className="rounded-full border border-line bg-white p-1 text-ink-muted shadow-sm transition-colors hover:text-status-danger-fg"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1129,7 +1129,7 @@ function AdminApplicationsContent() {
         <div className="p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="relative w-full md:max-w-sm md:flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 aria-label="搜索姓名、完整手机号"
                 placeholder="搜索姓名、完整手机号..."
@@ -1142,7 +1142,7 @@ function AdminApplicationsContent() {
                   type="button"
                   onClick={() => setSearch("")}
                   aria-label="清除搜索"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1213,7 +1213,7 @@ function AdminApplicationsContent() {
       {viewMode !== "board" &&
         (loadError ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12">
-          <p className="text-sm text-red-500">加载失败，请重试</p>
+          <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
           <Button variant="outline" size="sm" onClick={fetchApplications}>
             重试
           </Button>
@@ -1229,9 +1229,9 @@ function AdminApplicationsContent() {
           emptyText="暂无简历申请"
           rowProps={(application) => ({
             className: cn(
-              "hover:bg-brand-charcoal/[0.03]",
+              "hover:bg-surface-muted",
               application.status === "pending" &&
-                "!bg-brand-primary/[0.04] hover:!bg-brand-primary/[0.06]"
+                "!bg-brand-primary/5 hover:!bg-brand-primary/10"
             ),
           })}
           mobileCard={(application) => {
@@ -1247,13 +1247,13 @@ function AdminApplicationsContent() {
                       <p className="truncate font-medium text-brand-charcoal">{application.name}</p>
                       <Badge variant={statusInfo.color}>{statusInfo.label}</Badge>
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">
+                    <p className="mt-0.5 truncate text-xs text-ink-muted">
                       {application.phone}
                     </p>
                     <p className="mt-1 truncate text-sm text-brand-charcoal/80">
                       {application.job.title}
                     </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-brand-charcoal/65">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                       {application.folder && (
                         <span className="inline-flex items-center gap-1 rounded bg-brand-charcoal/10 px-1.5 py-0.5">
                           <Tag className="h-3 w-3" />
@@ -1264,8 +1264,8 @@ function AdminApplicationsContent() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-                  <span className="inline-flex items-center gap-1 text-xs text-brand-charcoal/65">
+                <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
+                  <span className="inline-flex items-center gap-1 text-xs text-ink-muted">
                     <Clock className="h-3 w-3" />
                     申请 {formatDate(application.createdAt)}
                   </span>
@@ -1336,7 +1336,7 @@ function AdminApplicationsContent() {
         closeGuard={() => !savingNotes && confirmCloseNotes()}
       >
         {detailApplication && detailLoading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-sm text-brand-charcoal/65">
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-ink-muted">
             <Loader2 className="h-4 w-4 animate-spin" />
             正在加载详情...
           </div>
@@ -1356,7 +1356,7 @@ function AdminApplicationsContent() {
                     {statusConfig[detailApplication.status]?.label || "未知"}
                   </Badge>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-4 text-sm text-brand-charcoal/65">
+                <div className="mt-2 flex flex-wrap gap-4 text-sm text-ink-muted">
                   <span className="flex items-center gap-1">
                     <User className="h-4 w-4" />
                     {detailApplication.phone}
@@ -1381,7 +1381,7 @@ function AdminApplicationsContent() {
                         >
                           隐藏
                         </button>
-                        <span className="text-xs text-brand-charcoal/65">
+                        <span className="text-xs text-ink-muted">
                           {Math.floor(phoneRevealRemaining / 60)}:
                           {String(phoneRevealRemaining % 60).padStart(2, "0")} 后自动隐藏
                         </span>
@@ -1393,15 +1393,15 @@ function AdminApplicationsContent() {
             </div>
 
             {/* 应聘职位 */}
-            <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm text-brand-charcoal/65">
+            <div className="rounded-lg bg-surface-muted p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm text-ink-muted">
                 <Briefcase className="h-4 w-4" />
                 应聘职位
               </div>
               <p className="font-medium text-brand-charcoal">{detailApplication.job.title}</p>
-              <p className="text-sm text-brand-charcoal/65">{detailApplication.job.titleEn}</p>
+              <p className="text-sm text-ink-muted">{detailApplication.job.titleEn}</p>
               {(detailApplication.job.location || detailApplication.job.type) && (
-                <p className="mt-1 text-sm text-brand-charcoal/65">
+                <p className="mt-1 text-sm text-ink-muted">
                   {[
                     detailApplication.job.location,
                     detailApplication.job.type &&
@@ -1413,14 +1413,14 @@ function AdminApplicationsContent() {
               )}
               {detailApplication.jobTitleSnapshot &&
                 detailApplication.jobTitleSnapshot !== detailApplication.job.title && (
-                  <p className="mt-1 text-sm text-brand-charcoal/65">
+                  <p className="mt-1 text-sm text-ink-muted">
                     投递时职位名称：{detailApplication.jobTitleSnapshot}
                   </p>
                 )}
             </div>
 
             {/* 申请时间 */}
-            <div className="flex items-center gap-2 text-sm text-brand-charcoal/65">
+            <div className="flex items-center gap-2 text-sm text-ink-muted">
               <Clock className="h-4 w-4" />
               申请时间：{formatDate(detailApplication.createdAt)}
             </div>
@@ -1465,20 +1465,20 @@ function AdminApplicationsContent() {
                   )}
                 {detailApplication.resumeFileName && (
                   <span
-                    className="max-w-full truncate text-sm text-brand-charcoal/65"
+                    className="max-w-full truncate text-sm text-ink-muted"
                     title={detailApplication.resumeFileName}
                   >
                     {detailApplication.resumeFileName}
                   </span>
                 )}
                 {formatFileSize(detailApplication.resumeSize) && (
-                  <span className="text-sm text-brand-charcoal/65">
+                  <span className="text-sm text-ink-muted">
                     {formatFileSize(detailApplication.resumeSize)}
                   </span>
                 )}
               </div>
               {!detailApplication.hasResume && (
-                <p className="mt-2 text-sm text-amber-600">简历文件不存在或已被清理。</p>
+                <p className="mt-2 text-sm text-status-warning-fg">简历文件不存在或已被清理。</p>
               )}
             </div>
 
@@ -1497,7 +1497,7 @@ function AdminApplicationsContent() {
                       "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                       detailApplication.status === key
                         ? "bg-brand-primary text-white"
-                        : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                        : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-surface-hover disabled:opacity-60"
                     )}
                   >
                     {config.label}
@@ -1517,7 +1517,7 @@ function AdminApplicationsContent() {
                     "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                     !detailApplication.folderId
                       ? "bg-brand-charcoal text-white"
-                      : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                      : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-surface-hover disabled:opacity-60"
                   )}
                 >
                   未分类
@@ -1531,7 +1531,7 @@ function AdminApplicationsContent() {
                       "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
                       detailApplication.folderId === folder.id
                         ? "bg-brand-primary text-white"
-                        : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-brand-charcoal/[0.06] disabled:opacity-60"
+                        : "bg-brand-charcoal/10 text-brand-charcoal/70 hover:bg-surface-hover disabled:opacity-60"
                     )}
                   >
                     {folder.name}
@@ -1541,7 +1541,7 @@ function AdminApplicationsContent() {
             </div>
 
             {/* 评价与标签 */}
-            <div className="space-y-3 rounded-xl border border-brand-charcoal/10 p-3">
+            <div className="space-y-3 rounded-xl border border-line p-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-brand-charcoal">候选人评价</h3>
                 <Button
@@ -1589,7 +1589,7 @@ function AdminApplicationsContent() {
             </div>
 
             {/* 面试安排 */}
-            <div className="space-y-3 rounded-xl border border-brand-charcoal/10 p-3">
+            <div className="space-y-3 rounded-xl border border-line p-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-brand-charcoal">面试安排</h3>
                 <Button size="sm" variant="outline" disabled={!canWrite} onClick={() => setInterviewOpen(true)}>
@@ -1597,14 +1597,14 @@ function AdminApplicationsContent() {
                 </Button>
               </div>
               {(detailApplication.interviews ?? []).length === 0 ? (
-                <p className="text-xs text-brand-charcoal/65">暂无面试安排</p>
+                <p className="text-xs text-ink-muted">暂无面试安排</p>
               ) : (
-                <ul className="divide-y divide-brand-charcoal/10">
+                <ul className="divide-y divide-line">
                   {(detailApplication.interviews ?? []).map((interview) => (
                     <li key={interview.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                       <div className="min-w-0">
                         <p className="font-medium">{formatDate(interview.scheduledAt)} · {INTERVIEW_MODE_LABELS[interview.mode] ?? interview.mode}</p>
-                        <p className="truncate text-xs text-brand-charcoal/65">
+                        <p className="truncate text-xs text-ink-muted">
                           {interview.interviewer || "未指定面试官"} {interview.locationOrLink ? ` · ${interview.locationOrLink}` : ""}
                         </p>
                       </div>
@@ -1615,7 +1615,7 @@ function AdminApplicationsContent() {
                         {canWrite && interview.result === "PENDING" && (
                           <>
                             <Button size="sm" variant="ghost" onClick={() => void updateInterviewResult(interview.id, "PASSED")}>通过</Button>
-                            <Button size="sm" variant="ghost" className="text-red-600" onClick={() => void updateInterviewResult(interview.id, "FAILED")}>未通过</Button>
+                            <Button size="sm" variant="ghost" className="text-status-danger-fg" onClick={() => void updateInterviewResult(interview.id, "FAILED")}>未通过</Button>
                           </>
                         )}
                       </div>
@@ -1626,12 +1626,12 @@ function AdminApplicationsContent() {
             </div>
 
             {/* 时间线 */}
-            <div className="space-y-2 rounded-xl border border-brand-charcoal/10 p-3">
+            <div className="space-y-2 rounded-xl border border-line p-3">
               <h3 className="text-sm font-semibold text-brand-charcoal">操作时间线</h3>
               {(detailApplication.events ?? []).length === 0 ? (
-                <p className="text-xs text-brand-charcoal/65">暂无记录</p>
+                <p className="text-xs text-ink-muted">暂无记录</p>
               ) : (
-                <ul className="space-y-1.5 text-xs text-brand-charcoal/65">
+                <ul className="space-y-1.5 text-xs text-ink-muted">
                   {(detailApplication.events ?? []).slice(0, 20).map((event) => (
                     <li key={event.id}>
                       <span className="font-medium text-brand-charcoal">

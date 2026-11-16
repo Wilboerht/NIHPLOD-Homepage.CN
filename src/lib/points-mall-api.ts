@@ -11,6 +11,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { apiConsole } from "@/lib/logger";
 import { validateCUID } from "@/lib/validation";
+import { BODY_LIMITS } from "@/lib/body-limits";
+import {
+  isBodyTooLargeError,
+  payloadTooLargeResponse,
+  readJsonBodyOrDefault,
+} from "@/lib/request-body";
 import { listRedeemableProducts, giftCostForUser, redeemGiftForUser } from "@/lib/point-gifts";
 import { notifyNewRedemption } from "@/lib/admin-notify";
 import { getPointBalanceView, POINT_GRANT_LEDGER_TYPES } from "@/lib/points-ledger";
@@ -93,6 +99,27 @@ function internalError(message = "服务器错误"): NextResponse {
   );
 }
 
+/**
+ * 读取有上限的 JSON body。
+ * 兑换/售后/地址写接口都直接接收用户请求，必须有请求体大小上限；
+ * 非法 JSON 统一按参数错误返回（调用方再用 zod 做字段校验）。
+ */
+async function readJsonOrInvalid(
+  request: Request
+): Promise<{ ok: true; data: unknown } | { ok: false; response: NextResponse }> {
+  try {
+    return {
+      ok: true,
+      data: await readJsonBodyOrDefault(request, BODY_LIMITS.defaultJson, null),
+    };
+  } catch (error) {
+    if (isBodyTooLargeError(error)) {
+      return { ok: false, response: payloadTooLargeResponse(error.limit) };
+    }
+    return { ok: false, response: invalidParams("请求体不是合法 JSON") };
+  }
+}
+
 const NO_STORE_HEADERS = { "Cache-Control": "no-store, max-age=0" };
 
 function userVisibleLedgerNote(
@@ -102,6 +129,7 @@ function userVisibleLedgerNote(
 ): string | null {
   const ref = reference ?? "";
   if (type === "ADJUST" && ref.startsWith("admin-adjust:")) return "人工调整";
+  if (type === "ADJUST" && ref.startsWith("approval:")) return "人工调整";
   if (type === "ADJUST" && ref.startsWith("cancel:")) return "兑换取消退还";
   if (type === "EXPIRE") return "积分过期";
   return note;
@@ -149,19 +177,25 @@ export async function getPointsOverviewResponse(userId: string): Promise<NextRes
         orderBy: { expiresAt: "asc" },
         select: { remaining: true, expiresAt: true },
       });
-      let expiringTotal = 0;
       let earliestExpiry: Date | null = null;
+      let earliestBatchTotal = 0;
       for (const row of expiringRows) {
         const remaining = row.remaining ?? 0;
         if (remaining <= 0 || !row.expiresAt) continue;
-        expiringTotal += remaining;
-        if (!earliestExpiry || row.expiresAt < earliestExpiry) earliestExpiry = row.expiresAt;
+        if (!earliestExpiry || row.expiresAt < earliestExpiry) {
+          earliestExpiry = row.expiresAt;
+          earliestBatchTotal = remaining;
+        } else if (row.expiresAt.getTime() === earliestExpiry.getTime()) {
+          earliestBatchTotal += remaining;
+        }
       }
-      const usableExpiring = Math.min(expiringTotal, Math.max(0, balance.available));
+      // 文案是“X 积分将于 DATE 过期”，X 必须是 DATE 当天到期的那一批，
+      // 不能把 30 天内其他批次的积分也算进去。
+      const usableExpiring = Math.min(earliestBatchTotal, Math.max(0, balance.available));
 
       const recent = await tx.pointLedger.findMany({
         where: { userId },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 20,
         select: {
           id: true,
@@ -358,8 +392,9 @@ export async function redeemPointsResponse(
   options: { clientId?: string | null } = {}
 ): Promise<NextResponse> {
   try {
-    const body = await request.json().catch(() => null);
-    const parsed = redeemSchema.safeParse(body);
+    const bodyResult = await readJsonOrInvalid(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const parsed = redeemSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
       return invalidParams(parsed.error.issues[0]?.message || "参数错误");
     }
@@ -490,6 +525,7 @@ export async function getRedemptionsResponse(
           cancelNote: true,
           afterSalesRequestedAt: true,
           afterSalesReason: true,
+          afterSalesImages: true,
           afterSalesReviewNote: true,
           afterSalesApprovedAt: true,
           afterSalesClosedAt: true,
@@ -534,6 +570,7 @@ export async function getRedemptionsResponse(
       cancelNote: r.cancelNote,
       afterSalesRequestedAt: r.afterSalesRequestedAt?.toISOString() ?? null,
       afterSalesReason: r.afterSalesReason,
+      afterSalesImages: r.afterSalesImages,
       afterSalesReviewNote: r.afterSalesReviewNote,
       afterSalesApprovedAt: r.afterSalesApprovedAt?.toISOString() ?? null,
       afterSalesClosedAt: r.afterSalesClosedAt?.toISOString() ?? null,
@@ -657,13 +694,9 @@ export async function requestAfterSalesResponse(
   request: Request
 ): Promise<NextResponse> {
   if (!validateCUID(redemptionId)) return invalidParams("非法 ID 格式");
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return invalidParams("请求体不是合法 JSON");
-  }
-  const parsed = afterSalesSchema.safeParse(body);
+  const bodyResult = await readJsonOrInvalid(request);
+  if (!bodyResult.ok) return bodyResult.response;
+  const parsed = afterSalesSchema.safeParse(bodyResult.data);
   if (!parsed.success) {
     return invalidParams(parsed.error.issues[0]?.message || "参数错误");
   }
@@ -693,13 +726,9 @@ export async function submitReturnShipmentResponse(
   request: Request
 ): Promise<NextResponse> {
   if (!validateCUID(redemptionId)) return invalidParams("非法 ID 格式");
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return invalidParams("请求体不是合法 JSON");
-  }
-  const parsed = returnShipmentSchema.safeParse(body);
+  const bodyResult = await readJsonOrInvalid(request);
+  if (!bodyResult.ok) return bodyResult.response;
+  const parsed = returnShipmentSchema.safeParse(bodyResult.data);
   if (!parsed.success) {
     return invalidParams(parsed.error.issues[0]?.message || "参数错误");
   }
@@ -786,7 +815,9 @@ export async function createAddressResponse(
   request: Request
 ): Promise<NextResponse> {
   try {
-    const parsed = addressFieldsSchema.safeParse(await request.json().catch(() => null));
+    const bodyResult = await readJsonOrInvalid(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const parsed = addressFieldsSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
       return invalidParams(parsed.error.issues[0]?.message || "参数错误");
     }
@@ -854,7 +885,9 @@ export async function updateAddressResponse(
       );
     }
 
-    const parsed = addressFieldsSchema.safeParse(await request.json().catch(() => null));
+    const bodyResult = await readJsonOrInvalid(request);
+    if (!bodyResult.ok) return bodyResult.response;
+    const parsed = addressFieldsSchema.safeParse(bodyResult.data);
     if (!parsed.success) {
       return invalidParams(parsed.error.issues[0]?.message || "参数错误");
     }

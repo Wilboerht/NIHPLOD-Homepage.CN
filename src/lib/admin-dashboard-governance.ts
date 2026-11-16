@@ -3,12 +3,12 @@ import type { AdminUser } from "@/types/auth";
 import { prisma } from "./prisma";
 import {
   ADMIN_PERMISSIONS,
-  ROLE_LABELS,
   ROLE_TEMPLATES,
   resolveAdminPermissions,
   hasAdminPermission,
   type AdminPermission,
 } from "./admin-permissions";
+import { getAdminRoleLabel } from "./admin-display";
 import { getAuditActionLabel } from "./audit-labels";
 import { getOwnerApprovalOverview } from "./admin-approval";
 
@@ -531,7 +531,10 @@ async function loadOwnerGovernanceData(): Promise<OwnerGovernanceData> {
         name: item.name,
         email: item.email,
         role: item.role,
-        roleLabel: ROLE_LABELS[item.role] ?? item.role,
+        roleLabel: getAdminRoleLabel(
+          item.role,
+          item.role !== "owner" && (item.permissions?.length ?? 0) > 0
+        ),
         permissions: effective.filter((permission) => OWNER_ONLY_PERMISSIONS.includes(permission)),
         totpEnabled: item.totpEnabled,
       };

@@ -954,10 +954,10 @@ if (!payload) {
       <AdminHubTabs section="sso" />
 
       {/* 工具栏：搜索与结果统计同一行，避免筛选控件堆叠 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative w-full md:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
             <Input
               aria-label="搜索应用名称或 Client ID"
               placeholder="搜索名称 / Client ID"
@@ -974,13 +974,13 @@ if (!payload) {
                   setPage(1);
                 }}
                 aria-label="清除搜索"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
-          <span className="text-sm text-brand-charcoal/65 md:ml-auto">共 {total} 个 Client</span>
+          <span className="text-sm text-ink-muted md:ml-auto">共 {total} 个 Client</span>
         </div>
       </div>
 
@@ -990,7 +990,7 @@ if (!payload) {
         error={
           loadError ? (
             <>
-              <p className="text-red-500">加载失败</p>
+              <p className="text-status-danger-fg">加载失败</p>
               <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
                 重试
               </Button>
@@ -1011,7 +1011,7 @@ if (!payload) {
                 aria-label={`查看 ${c.name} 详情`}
               >
                 <p className="truncate font-medium text-brand-charcoal">{c.name}</p>
-                <p className="mt-0.5 truncate font-mono text-xs text-brand-charcoal/65">
+                <p className="mt-0.5 truncate font-mono text-xs text-ink-muted">
                   {c.clientId}
                 </p>
               </button>
@@ -1030,11 +1030,11 @@ if (!payload) {
                 </Badge>
               ))}
               {c.scopes.length > 3 && (
-                <span className="text-xs text-brand-charcoal/65">+{c.scopes.length - 3}</span>
+                <span className="text-xs text-ink-muted">+{c.scopes.length - 3}</span>
               )}
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/65">
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-ink-muted">
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
                 {c.activeUserCount ?? 0} 个活跃会话
@@ -1049,10 +1049,10 @@ if (!payload) {
               </span>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
               <button
                 onClick={() => copyToClipboard(c.clientId)}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-brand-charcoal/65 hover:bg-brand-charcoal/[0.04] hover:text-brand-charcoal"
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-ink-muted hover:bg-surface-muted hover:text-brand-charcoal"
               >
                 <Copy className="h-3.5 w-3.5" />
                 复制 Client ID
@@ -1077,7 +1077,7 @@ if (!payload) {
       </MobileList>
 
       {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
         <table className="w-full min-w-[1392px] table-fixed text-sm">
           <colgroup>
             <col className="w-[240px]" />
@@ -1090,7 +1090,7 @@ if (!payload) {
             <col className="w-[308px]" />
           </colgroup>
           <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+            <tr className="border-b border-line bg-surface-subtle text-left">
               <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
                 应用
               </th>
@@ -1117,13 +1117,13 @@ if (!payload) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-charcoal/10">
+          <tbody className="divide-y divide-line">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={8} />)
             ) : loadError ? (
               <tr>
                 <td colSpan={8} className="px-4 py-10 text-center">
-                  <p className="text-sm text-red-500">加载失败</p>
+                  <p className="text-sm text-status-danger-fg">加载失败</p>
                   <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
                     重试
                   </Button>
@@ -1146,7 +1146,7 @@ if (!payload) {
               </tr>
             ) : (
               clients.map((c) => (
-                <tr key={c.id} className="hover:bg-brand-charcoal/[0.03]">
+                <tr key={c.id} className="hover:bg-surface-muted">
                   <td className="px-4 py-3">
                     <button
                       onClick={() => openDetailDrawer(c)}
@@ -1155,7 +1155,7 @@ if (!payload) {
                     >
                       {c.name}
                     </button>
-                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-xs text-brand-charcoal/65">
+                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-xs text-ink-muted">
                       <span className="min-w-0 truncate" title={c.clientId}>
                         {c.clientId}
                       </span>
@@ -1163,7 +1163,7 @@ if (!payload) {
                         <button
                           aria-label="复制 Client ID"
                           onClick={() => copyToClipboard(c.clientId)}
-                          className="inline-flex shrink-0 text-brand-charcoal/65 hover:text-brand-charcoal/70"
+                          className="inline-flex shrink-0 text-ink-muted hover:text-brand-charcoal/70"
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </button>
@@ -1182,7 +1182,7 @@ if (!payload) {
                     <span className="block truncate" title={c.redirectUris.join(", ")}>
                       {c.redirectUris[0] || "-"}
                       {c.redirectUris.length > 1 && (
-                        <span className="text-brand-charcoal/50">
+                        <span className="text-ink-muted">
                           {" "}
                           +{c.redirectUris.length - 1}
                         </span>
@@ -1198,7 +1198,7 @@ if (!payload) {
                       ))}
                       {c.scopes.length > 2 && (
                         <span
-                          className="shrink-0 cursor-default text-xs text-brand-charcoal/65"
+                          className="shrink-0 cursor-default text-xs text-ink-muted"
                           title={c.scopes.slice(2).join(", ")}
                         >
                           +{c.scopes.length - 2}
@@ -1208,11 +1208,11 @@ if (!payload) {
                   </td>
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-1 whitespace-nowrap text-sm text-brand-charcoal/70">
-                      <Users className="h-3.5 w-3.5 text-brand-charcoal/65" />
+                      <Users className="h-3.5 w-3.5 text-ink-muted" />
                       {c.activeUserCount ?? "-"}
                     </span>
-                    <span className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-xs text-brand-charcoal/55">
-                      <Clock className="h-3.5 w-3.5 text-brand-charcoal/65" />
+                    <span className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-xs text-ink-muted">
+                      <Clock className="h-3.5 w-3.5 text-ink-muted" />
                       {c.lastActiveAt ? formatDate(c.lastActiveAt) : "从未活跃"}
                     </span>
                   </td>
@@ -1224,7 +1224,7 @@ if (!payload) {
                       {c.isActive ? "启用" : "禁用"}
                     </Badge>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-muted">
                     {formatDate(c.createdAt)}
                   </td>
                   <td className="px-4 py-3">
@@ -1305,9 +1305,9 @@ if (!payload) {
       >
         {newSecret ? (
           <div className="space-y-4">
-            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-              <p className="mb-2 text-sm font-medium text-green-800">Client 创建成功！</p>
-              <p className="mb-3 text-xs text-green-600">
+            <div className="rounded-lg border border-status-success-line bg-status-success-soft p-4">
+              <p className="mb-2 text-sm font-medium text-status-success-strong">Client 创建成功！</p>
+              <p className="mb-3 text-xs text-status-success-fg">
                 请立即复制并安全保存 Client Secret，关闭后无法再次查看。
               </p>
               <div className="flex items-center gap-2">
@@ -1335,7 +1335,7 @@ if (!payload) {
                 </Button>
               </div>
             </div>
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="rounded-lg border border-status-warning-line bg-status-warning-soft p-4">
               <label className="flex cursor-pointer items-start gap-3">
                 <input
                   type="checkbox"
@@ -1344,8 +1344,8 @@ if (!payload) {
                   className="mt-0.5"
                 />
                 <div>
-                  <p className="text-sm font-medium text-amber-800">我已安全保存 Client Secret</p>
-                  <p className="mt-0.5 text-xs text-amber-600">
+                  <p className="text-sm font-medium text-status-warning-strong">我已安全保存 Client Secret</p>
+                  <p className="mt-0.5 text-xs text-status-warning-fg">
                     Secret 仅显示一次，关闭后无法再次查看。未完成保存前请勿关闭。
                   </p>
                 </div>
@@ -1355,7 +1355,7 @@ if (!payload) {
         ) : (
           <div className="space-y-4">
             {formError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <div className="rounded-lg border border-status-danger-line bg-status-danger-soft p-3 text-sm text-status-danger-strong">
                 {formError}
               </div>
             )}
@@ -1412,7 +1412,7 @@ if (!payload) {
       >
         <div className="space-y-4">
           {formError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="rounded-lg border border-status-danger-line bg-status-danger-soft p-3 text-sm text-status-danger-strong">
               {formError}
             </div>
           )}
@@ -1535,9 +1535,9 @@ if (!payload) {
         }
       >
         <div className="space-y-4">
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="mb-2 text-sm font-medium text-green-800">新 Secret 已生成</p>
-            <p className="mb-3 text-xs text-green-600">
+          <div className="rounded-lg border border-status-success-line bg-status-success-soft p-4">
+            <p className="mb-2 text-sm font-medium text-status-success-strong">新 Secret 已生成</p>
+            <p className="mb-3 text-xs text-status-success-fg">
               请立即复制并安全保存。旧 Secret 在 5
               分钟过渡期内仍可使用，之后自动失效，关闭后无法再次查看新 Secret。
             </p>
@@ -1570,7 +1570,7 @@ if (!payload) {
               </Button>
             </div>
           </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="rounded-lg border border-status-warning-line bg-status-warning-soft p-4">
             <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="checkbox"
@@ -1579,8 +1579,8 @@ if (!payload) {
                 className="mt-0.5"
               />
               <div>
-                <p className="text-sm font-medium text-amber-800">我已安全保存 Client Secret</p>
-                <p className="mt-0.5 text-xs text-amber-600">
+                <p className="text-sm font-medium text-status-warning-strong">我已安全保存 Client Secret</p>
+                <p className="mt-0.5 text-xs text-status-warning-fg">
                   Secret 仅显示一次，关闭后无法再次查看。未完成保存前请勿关闭。
                 </p>
               </div>
@@ -1622,11 +1622,11 @@ if (!payload) {
         }
       >
         <div className="space-y-4">
-          <p className="text-xs text-brand-charcoal/65">
+          <p className="text-xs text-ink-muted">
             输入 Client Secret 与回调地址，验证凭据、JWKS、authorize、token、userinfo、introspect
             全链路连通性。
           </p>
-          <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+          <p className="rounded-lg border border-status-warning-line bg-status-warning-soft p-3 text-xs text-status-warning-strong">
             如果没有保存 secret，请先轮换密钥获取新 secret。
           </p>
           <div className="space-y-3">
@@ -1658,10 +1658,10 @@ if (!payload) {
 
           {testResult && (
             <div
-              className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "border border-emerald-200 bg-emerald-50" : "border border-amber-200 bg-amber-50"}`}
+              className={`rounded-lg p-4 ${testResult.steps.every((s) => s.status === "passed") ? "border border-status-success-line bg-status-success-soft" : "border border-status-warning-line bg-status-warning-soft"}`}
             >
               <p
-                className={`mb-2 text-sm font-medium ${testResult.steps.every((s) => s.status === "passed") ? "text-emerald-800" : "text-amber-800"}`}
+                className={`mb-2 text-sm font-medium ${testResult.steps.every((s) => s.status === "passed") ? "text-status-success-strong" : "text-status-warning-strong"}`}
               >
                 {testResult.steps.every((s) => s.status === "passed")
                   ? "✅ 连接测试全部通过"
@@ -1670,16 +1670,16 @@ if (!payload) {
               <div className="space-y-1">
                 {testResult.steps.map((s, i) => (
                   <div key={i} className="flex items-start gap-2 text-xs">
-                    <span className={s.status === "passed" ? "text-green-600" : "text-red-500"}>
+                    <span className={s.status === "passed" ? "text-status-success-fg" : "text-status-danger-fg"}>
                       {s.status === "passed" ? "✓" : "✗"}
                     </span>
                     <span className="text-brand-charcoal/70">
                       {s.step}
                       {s.durationMs !== undefined && (
-                        <span className="ml-1 text-brand-charcoal/65">({s.durationMs}ms)</span>
+                        <span className="ml-1 text-ink-muted">({s.durationMs}ms)</span>
                       )}
                       {s.detail && (
-                        <span className="ml-1 text-brand-charcoal/65">— {s.detail}</span>
+                        <span className="ml-1 text-ink-muted">— {s.detail}</span>
                       )}
                     </span>
                   </div>
@@ -1706,14 +1706,14 @@ if (!payload) {
         }
       >
         <div className="space-y-4">
-          <div className="flex gap-2 rounded-lg bg-brand-charcoal/[0.06] p-1">
+          <div className="flex gap-2 rounded-lg bg-surface-hover p-1">
             <button
               onClick={() => handleSdkTypeChange("confidential")}
               className={cn(
                 "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 sdkClientType === "confidential"
                   ? "bg-white text-brand-charcoal shadow-sm"
-                  : "text-brand-charcoal/65 hover:text-brand-charcoal/70"
+                  : "text-ink-muted hover:text-brand-charcoal/70"
               )}
             >
               <Shield className="h-4 w-4" />
@@ -1725,7 +1725,7 @@ if (!payload) {
                 "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 sdkClientType === "public"
                   ? "bg-white text-brand-charcoal shadow-sm"
-                  : "text-brand-charcoal/65 hover:text-brand-charcoal/70"
+                  : "text-ink-muted hover:text-brand-charcoal/70"
               )}
             >
               <Smartphone className="h-4 w-4" />
@@ -1753,7 +1753,7 @@ if (!payload) {
               </Tooltip>
             </span>
           </div>
-          <p className="text-xs text-brand-charcoal/65">
+          <p className="text-xs text-ink-muted">
             将代码复制到子项目中即可快速接入。详情请参考{" "}
             <a
               href={`${process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn"}/api/oauth/docs`}
@@ -1780,61 +1780,61 @@ if (!payload) {
         {detailClient && (
           <div className="space-y-6">
             <div className="space-y-4">
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+              <div className="rounded-lg bg-surface-muted p-4">
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">基本信息</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">状态</span>
+                    <span className="text-ink-muted">状态</span>
                     <Badge variant={detailClient.isActive ? "success" : "danger"}>
                       {detailClient.isActive ? "启用" : "禁用"}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">类型</span>
+                    <span className="text-ink-muted">类型</span>
                     <Badge variant={detailClient.isPublic ? "warning" : "secondary"}>
                       {detailClient.isPublic ? "Public" : "Confidential"}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">活跃会话</span>
+                    <span className="text-ink-muted">活跃会话</span>
                     <span>{detailClient.activeUserCount ?? 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">最近活跃</span>
+                    <span className="text-ink-muted">最近活跃</span>
                     <span>
                       {detailClient.lastActiveAt ? formatDateTime(detailClient.lastActiveAt) : "-"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">创建时间</span>
+                    <span className="text-ink-muted">创建时间</span>
                     <span>{formatDateTime(detailClient.createdAt)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">更新时间</span>
+                    <span className="text-ink-muted">更新时间</span>
                     <span>{formatDateTime(detailClient.updatedAt)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+              <div className="rounded-lg bg-surface-muted p-4">
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal/70">安全参数</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">授权码有效期</span>
+                    <span className="text-ink-muted">授权码有效期</span>
                     <span>{detailClient.codeTtlSeconds ?? 300} 秒</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">Access Token 有效期</span>
+                    <span className="text-ink-muted">Access Token 有效期</span>
                     <span>{detailClient.accessTokenTtlSeconds ?? 28800} 秒</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">最近密钥轮换</span>
+                    <span className="text-ink-muted">最近密钥轮换</span>
                     <span className="text-right">
                       {detailClient.secretRotatedAt ? (
                         <>
                           {formatDateTime(detailClient.secretRotatedAt)}
                           {detailInRotationGrace && (
-                            <span className="ml-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+                            <span className="ml-1 rounded-full bg-status-warning-soft px-2 py-0.5 text-xs text-status-warning-strong">
                               过渡期内（旧密钥 5 分钟内仍可用）
                             </span>
                           )}
@@ -1866,7 +1866,7 @@ if (!payload) {
                   {detailClient.redirectUris.map((uri) => (
                     <li
                       key={uri}
-                      className="break-all rounded bg-brand-charcoal/[0.03] p-2 font-mono text-sm"
+                      className="break-all rounded bg-surface-muted p-2 font-mono text-sm"
                     >
                       {uri}
                     </li>
@@ -1883,7 +1883,7 @@ if (!payload) {
                     {detailClient.postLogoutRedirectUris.map((uri) => (
                       <li
                         key={uri}
-                        className="break-all rounded bg-brand-charcoal/[0.03] p-2 font-mono text-sm"
+                        className="break-all rounded bg-surface-muted p-2 font-mono text-sm"
                       >
                         {uri}
                       </li>
@@ -1897,7 +1897,7 @@ if (!payload) {
                   <h3 className="mb-2 text-sm font-medium text-brand-charcoal/70">
                     Backchannel Logout URI
                   </h3>
-                  <p className="break-all rounded bg-brand-charcoal/[0.03] p-2 font-mono text-sm">
+                  <p className="break-all rounded bg-surface-muted p-2 font-mono text-sm">
                     {detailClient.backchannelLogoutUri}
                   </p>
                 </div>
@@ -1908,7 +1908,7 @@ if (!payload) {
                   <h3 className="mb-2 text-sm font-medium text-brand-charcoal/70">
                     资料变更 Webhook URI
                   </h3>
-                  <p className="break-all rounded bg-brand-charcoal/[0.03] p-2 font-mono text-sm">
+                  <p className="break-all rounded bg-surface-muted p-2 font-mono text-sm">
                     {detailClient.webhookUri}
                   </p>
                 </div>
@@ -1951,7 +1951,7 @@ if (!payload) {
 export default function OAuthClientsPageWrapper() {
   return (
     <RequirePermission permission="sso:clients:read">
-      <Suspense fallback={<div className="p-6 text-center text-brand-charcoal/65">加载中...</div>}>
+      <Suspense fallback={<div className="p-6 text-center text-ink-muted">加载中...</div>}>
         <OAuthClientsPage />
       </Suspense>
     </RequirePermission>

@@ -130,7 +130,7 @@ function EditProductContent() {
   if (error || !product) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
-        <p className="text-brand-charcoal/65">{error || "产品不存在"}</p>
+        <p className="text-ink-muted">{error || "产品不存在"}</p>
         <button
           onClick={() => router.push("/admin/products")}
           className="text-brand-primary hover:underline"

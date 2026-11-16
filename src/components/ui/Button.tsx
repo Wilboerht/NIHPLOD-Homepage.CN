@@ -31,15 +31,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center gap-2 rounded-lg font-medium tracking-wider transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100";
+      "inline-flex items-center justify-center gap-2 rounded-lg font-medium tracking-wider transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100";
 
     const variantStyles = {
       primary: "bg-brand-primary text-white hover:bg-brand-primary/90",
       secondary: "bg-brand-charcoal/10 text-brand-charcoal hover:bg-brand-charcoal/15",
       outline:
-        "border border-brand-charcoal/20 text-brand-charcoal/80 bg-white hover:bg-brand-charcoal/[0.03]",
-      ghost: "text-brand-charcoal/80 hover:bg-brand-charcoal/[0.06]",
-      danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-600",
+        "border border-line-strong text-brand-charcoal/80 bg-white hover:bg-surface-muted",
+      ghost: "text-brand-charcoal/80 hover:bg-surface-hover",
+      danger: "bg-status-danger-fg text-white hover:bg-status-danger-strong focus:ring-status-danger-fg",
     };
 
     const sizeStyles = {

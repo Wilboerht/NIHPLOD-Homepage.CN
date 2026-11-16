@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Clock } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 import { formatRelativeTime } from "@/lib/format";
 import { apiPatch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -24,132 +24,117 @@ interface RecentMessagesListProps {
 }
 
 /**
- * 仪表盘最近留言：点击行直接打开详情弹窗，避免跳转列表页再定位。
+ * 仪表盘最近留言：点击行就地展开详情，避免在仪表盘弹窗里再套一层弹窗。
  */
 export function RecentMessagesList({ messages }: RecentMessagesListProps) {
   const router = useRouter();
-  const [selected, setSelected] = useState<RecentMessageItem | null>(null);
-
-  const close = () => setSelected(null);
+  const toast = useToast();
+  const [items, setItems] = useState(messages);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const openMessage = (message: RecentMessageItem) => {
-    setSelected(message);
-    // 与留言管理页一致：打开详情即标记已读，并刷新侧边栏未读红点
-    if (!message.read) {
-      void apiPatch(`/api/admin/messages/${message.id}`, { read: true })
-        .then(() => {
-          window.dispatchEvent(new Event("admin:nav-counts-refresh"));
-          router.refresh();
-        })
-        .catch(() => undefined);
-    }
+    setExpandedId((current) => (current === message.id ? null : message.id));
+    if (message.read) return;
+
+    // 乐观更新已读状态；失败时回滚并提示
+    setItems((prev) => prev.map((item) => (item.id === message.id ? { ...item, read: true } : item)));
+    void apiPatch(`/api/admin/messages/${message.id}`, { read: true })
+      .then(() => {
+        window.dispatchEvent(new Event("admin:nav-counts-refresh"));
+        router.refresh();
+      })
+      .catch((error) => {
+        setItems((prev) =>
+          prev.map((item) => (item.id === message.id ? { ...item, read: false } : item))
+        );
+        toast.apiError(error, "标记已读失败");
+      });
   };
 
   return (
-    <>
-      <div className="divide-y divide-brand-charcoal/[0.06]">
-        {messages.map((message) => (
-          <button
-            key={message.id}
-            type="button"
-            onClick={() => openMessage(message)}
-            aria-label={`查看 ${message.name} 的留言`}
-            className="flex w-full items-center gap-3 px-1 py-2.5 text-left transition-colors hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
-          >
-            <div
-              className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                message.read
-                  ? "bg-brand-charcoal/[0.06] text-brand-charcoal/65"
-                  : "bg-brand-primary/10 text-brand-primary"
-              )}
+    <div className="divide-y divide-line-subtle">
+      {items.map((message) => {
+        const expanded = expandedId === message.id;
+        return (
+          <div key={message.id}>
+            <button
+              type="button"
+              onClick={() => openMessage(message)}
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "收起" : "查看"} ${message.name} 的留言`}
+              className="flex w-full items-center gap-3 px-1 py-2.5 text-left transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
             >
-              {message.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "truncate text-sm",
-                    message.read
-                      ? "font-medium text-brand-charcoal/70"
-                      : "font-semibold text-brand-charcoal"
-                  )}
-                >
-                  {message.name}
-                </span>
-                {!message.read && (
-                  <span
-                    aria-label="未读"
-                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-primary"
-                  />
+              <div
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+                  message.read
+                    ? "bg-surface-hover text-ink-muted"
+                    : "bg-brand-primary/10 text-brand-primary"
                 )}
-                <span className="ml-auto flex shrink-0 items-center gap-1 text-[11px] text-brand-charcoal/65">
-                  <Clock className="h-3 w-3" />
-                  {formatRelativeTime(message.createdAt)}
-                </span>
-              </div>
-              <p className="mt-0.5 truncate text-xs text-brand-charcoal/65">{message.content}</p>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      <Modal
-        open={!!selected}
-        onClose={close}
-        title="留言详情"
-        size="lg"
-        footer={
-          selected ? (
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  close();
-                  router.push("/admin/messages");
-                }}
               >
-                前往留言管理
-              </Button>
-            </div>
-          ) : undefined
-        }
-      >
-        {selected && (
-          <div className="space-y-4">
-            <div className="space-y-3 rounded-lg bg-brand-charcoal/[0.03] p-4 text-sm">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-medium text-brand-primary">
-                  {selected.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-brand-charcoal">{selected.name}</span>
-                    <Badge variant={selected.read ? "default" : "warning"} size="sm">
-                      {selected.read ? "已读" : "未读"}
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 text-xs text-brand-charcoal/65">{selected.phone}</p>
-                </div>
+                {message.name.charAt(0).toUpperCase()}
               </div>
-              <div className="border-t border-brand-charcoal/15 pt-3">
-                <p className="text-xs text-brand-charcoal/65">提交时间</p>
-                <p className="mt-0.5 text-brand-charcoal/70">
-                  {new Date(selected.createdAt).toLocaleString("zh-CN")}
-                </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "truncate text-sm",
+                      message.read ? "font-medium text-brand-charcoal/70" : "font-semibold text-ink"
+                    )}
+                  >
+                    {message.name}
+                  </span>
+                  {!message.read && (
+                    <span
+                      aria-label="未读"
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-primary"
+                    />
+                  )}
+                  <span className="ml-auto flex shrink-0 items-center gap-1 text-2xs text-ink-muted">
+                    <Clock className="h-3 w-3" />
+                    {formatRelativeTime(message.createdAt)}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate text-xs text-ink-muted">{message.content}</p>
               </div>
-            </div>
+            </button>
 
-            <div className="rounded-lg border border-brand-charcoal/10 p-4">
-              <p className="text-xs text-brand-charcoal/65">留言内容</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-brand-charcoal/80">
-                {selected.content}
-              </p>
-            </div>
+            {expanded && (
+              <div
+                role="region"
+                aria-label={`${message.name} 的留言详情`}
+                className="mb-2 space-y-3 rounded-xl bg-surface-subtle p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-ink">{message.name}</span>
+                  <Badge variant={message.read ? "neutral" : "warning"} size="sm">
+                    {message.read ? "已读" : "未读"}
+                  </Badge>
+                  <span className="text-xs text-ink-muted">{message.phone}</span>
+                  <time
+                    dateTime={message.createdAt}
+                    className="ml-auto text-xs text-ink-muted"
+                    title={new Date(message.createdAt).toLocaleString("zh-CN")}
+                  >
+                    {formatRelativeTime(message.createdAt)}
+                  </time>
+                </div>
+                <p className="whitespace-pre-wrap text-sm text-brand-charcoal/80">
+                  {message.content}
+                </p>
+                <div className="flex justify-end">
+                  <Link
+                    href="/admin/messages"
+                    className="text-xs font-medium text-brand-primary hover:underline"
+                  >
+                    前往留言管理
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </Modal>
-    </>
+        );
+      })}
+    </div>
   );
 }

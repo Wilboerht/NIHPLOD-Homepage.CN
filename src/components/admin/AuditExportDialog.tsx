@@ -170,7 +170,7 @@ export function AuditExportDialog({
     <>
       <Modal open={open} onClose={handleClose} title="导出审计日志" size="md">
         <div className="space-y-4">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          <div className="rounded-lg border border-status-warning-line bg-status-warning-soft p-3 text-xs text-status-warning-strong">
             导出会生成独立文件，创建和下载都需要二次验证。文件 24 小时后失效。
           </div>
           <Select
@@ -183,12 +183,12 @@ export function AuditExportDialog({
             ]}
           />
           {job ? (
-            <div className="space-y-2 rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-sm">
+            <div className="space-y-2 rounded-lg border border-line bg-surface-subtle p-3 text-sm">
               <div className="flex items-center gap-2">
                 {job.status === "SUCCEEDED" ? (
-                  <FileJson className="h-4 w-4 text-emerald-600" />
+                  <FileJson className="h-4 w-4 text-status-success-fg" />
                 ) : job.status === "FAILED" || job.status === "EXPIRED" ? (
-                  <FileJson className="h-4 w-4 text-red-600" />
+                  <FileJson className="h-4 w-4 text-status-danger-fg" />
                 ) : (
                   <Loader2 className="h-4 w-4 animate-spin text-brand-primary" />
                 )}
@@ -198,11 +198,11 @@ export function AuditExportDialog({
                 </span>
               </div>
               {job.sha256 && (
-                <p className="break-all font-mono text-[11px] text-brand-charcoal/60">
+                <p className="break-all font-mono text-2xs text-ink-muted">
                   sha256: {job.sha256}
                 </p>
               )}
-              {job.error && <p className="text-xs text-red-600">{job.error}</p>}
+              {job.error && <p className="text-xs text-status-danger-fg">{job.error}</p>}
               {job.status === "SUCCEEDED" && (
                 <Button
                   size="sm"
@@ -218,7 +218,7 @@ export function AuditExportDialog({
           {history.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-brand-charcoal/70">历史导出任务</p>
-              <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-brand-charcoal/10">
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-line">
                 {history.map((item) => (
                   <div
                     key={item.id}
@@ -227,9 +227,9 @@ export function AuditExportDialog({
                     <div className="min-w-0">
                       <p className="truncate text-brand-charcoal/75">
                         {item.createdAt ? new Date(item.createdAt).toLocaleString("zh-CN") : item.id}
-                        <span className="ml-2 text-brand-charcoal/50">{item.format}</span>
+                        <span className="ml-2 text-ink-muted">{item.format}</span>
                       </p>
-                      <p className="text-brand-charcoal/50">
+                      <p className="text-ink-muted">
                         {item.status}
                         {item.status === "RUNNING" &&
                           `（${item.processedRows}/${item.totalRows}）`}

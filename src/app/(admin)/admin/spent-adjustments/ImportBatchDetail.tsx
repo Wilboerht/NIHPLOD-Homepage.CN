@@ -200,20 +200,20 @@ export function ImportBatchDetailModal({
     >
       {loading ? (
         <div className="space-y-3">
-          <div className="h-20 animate-pulse rounded-xl bg-brand-charcoal/[0.04]" />
-          <div className="h-64 animate-pulse rounded-xl bg-brand-charcoal/[0.04]" />
+          <div className="h-20 animate-pulse rounded-xl bg-surface-muted" />
+          <div className="h-64 animate-pulse rounded-xl bg-surface-muted" />
         </div>
       ) : loadError ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <AlertTriangle className="h-6 w-6 text-amber-500" />
-          <p className="text-sm text-brand-charcoal/65">{loadError}</p>
+          <AlertTriangle className="h-6 w-6 text-status-warning-fg" />
+          <p className="text-sm text-ink-muted">{loadError}</p>
           <Button size="sm" variant="outline" onClick={() => changePage(1)}>
             重试
           </Button>
         </div>
       ) : !payload || !batch ? null : (
         <div className="space-y-4">
-          <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3">
+          <div className="rounded-xl border border-line bg-surface-subtle p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="min-w-0 truncate text-sm font-medium text-brand-charcoal">
                 {batch.fileName}
@@ -235,12 +235,12 @@ export function ImportBatchDetailModal({
                     ? "处理中断（部分入账）"
                     : BATCH_STATUS_LABELS[batch.status]}
               </Badge>
-              <span className="text-xs text-brand-charcoal/55">{batch.adminName}</span>
-              <span className="text-xs text-brand-charcoal/45">
+              <span className="text-xs text-ink-muted">{batch.adminName}</span>
+              <span className="text-xs text-ink-faint">
                 {formatDateTime(batch.createdAt)}
               </span>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-brand-charcoal/65 sm:grid-cols-5">
+            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-muted sm:grid-cols-5">
               <span>总数 {batch.totalRows}</span>
               <span>成功 {batch.successRows}</span>
               <span>重复 {batch.duplicateRows}</span>
@@ -248,10 +248,10 @@ export function ImportBatchDetailModal({
               <span>净入账 ¥{batch.totalAmount.toLocaleString()}</span>
             </div>
             {batch.reason && (
-              <p className="mt-2 text-xs text-brand-charcoal/60">原因：{batch.reason}</p>
+              <p className="mt-2 text-xs text-ink-muted">原因：{batch.reason}</p>
             )}
             {batch.lastError && (
-              <p className="mt-1 text-xs text-red-600">批次错误：{batch.lastError}</p>
+              <p className="mt-1 text-xs text-status-danger-fg">批次错误：{batch.lastError}</p>
             )}
           </div>
 
@@ -287,9 +287,9 @@ export function ImportBatchDetailModal({
             </Button>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-brand-charcoal/10">
+          <div className="overflow-x-auto rounded-lg border border-line">
             <table className="w-full min-w-[1000px] text-left text-xs">
-              <thead className="bg-brand-charcoal/[0.03] text-brand-charcoal/55">
+              <thead className="bg-surface-muted text-ink-muted">
                 <tr>
                   <th className="px-3 py-2 font-medium">Excel 行</th>
                   <th className="px-3 py-2 font-medium">手机号</th>
@@ -302,17 +302,17 @@ export function ImportBatchDetailModal({
                   <th className="px-3 py-2 font-medium">原因/备注</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-charcoal/[0.06]">
+              <tbody className="divide-y divide-line-subtle">
                 {payload.rows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-3 py-8 text-center text-brand-charcoal/55">
+                    <td colSpan={9} className="px-3 py-8 text-center text-ink-muted">
                       没有符合条件的行
                     </td>
                   </tr>
                 ) : (
                   payload.rows.map((row) => (
                     <tr key={row.id}>
-                      <td className="whitespace-nowrap px-3 py-2 text-brand-charcoal/65">
+                      <td className="whitespace-nowrap px-3 py-2 text-ink-muted">
                         {row.rowIndex ?? "—"}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 font-mono text-brand-charcoal/70">
@@ -321,14 +321,14 @@ export function ImportBatchDetailModal({
                       <td className="whitespace-nowrap px-3 py-2 font-mono tabular-nums text-brand-charcoal/75">
                         ¥{row.amount.toLocaleString()}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-brand-charcoal/65">
+                      <td className="whitespace-nowrap px-3 py-2 text-ink-muted">
                         {row.channelLabel || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-brand-charcoal/65">
+                      <td className="whitespace-nowrap px-3 py-2 text-ink-muted">
                         {row.purchasedAt ? row.purchasedAt.slice(0, 10) : "—"}
                       </td>
                       <td
-                        className="max-w-[180px] truncate px-3 py-2 font-mono text-brand-charcoal/65"
+                        className="max-w-[180px] truncate px-3 py-2 font-mono text-ink-muted"
                         title={row.orderNo ?? ""}
                       >
                         {row.orderNo || "—"}
@@ -348,7 +348,7 @@ export function ImportBatchDetailModal({
                         {row.appliedDelta == null ? "—" : `¥${row.appliedDelta.toLocaleString()}`}
                       </td>
                       <td
-                        className="max-w-[220px] truncate px-3 py-2 text-brand-charcoal/60"
+                        className="max-w-[220px] truncate px-3 py-2 text-ink-muted"
                         title={row.error ?? row.note ?? ""}
                       >
                         {row.error || row.note || "—"}
@@ -370,7 +370,7 @@ export function ImportBatchDetailModal({
               >
                 上一页
               </Button>
-              <span className="text-xs tabular-nums text-brand-charcoal/55">
+              <span className="text-xs tabular-nums text-ink-muted">
                 {page}/{payload.pagination.totalPages}
               </span>
               <Button

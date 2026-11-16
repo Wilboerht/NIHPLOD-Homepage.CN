@@ -72,11 +72,11 @@ function EditJobContent() {
   if (!job) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="rounded-full bg-amber-50 p-4">
-          <AlertTriangle className="h-8 w-8 text-amber-500" />
+        <div className="rounded-full bg-status-warning-soft p-4">
+          <AlertTriangle className="h-8 w-8 text-status-warning-fg" />
         </div>
         <h2 className="mt-4 text-lg font-medium text-brand-charcoal">职位未找到</h2>
-        <p className="mt-1 text-sm text-brand-charcoal/65">该职位可能已被删除或不存在</p>
+        <p className="mt-1 text-sm text-ink-muted">该职位可能已被删除或不存在</p>
         <Link
           href="/admin/jobs"
           className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"

@@ -102,26 +102,26 @@ const HIDDEN_FILTER_ACTIONS = new Set([
 const ACTION_COLORS: Record<string, string> = {
   login: "bg-brand-charcoal/10 text-brand-charcoal/80",
   logout: "bg-brand-charcoal/10 text-brand-charcoal/80",
-  create_admin: "bg-emerald-50 text-emerald-700",
-  create_product: "bg-emerald-50 text-emerald-700",
-  create_category: "bg-emerald-50 text-emerald-700",
-  create_job: "bg-emerald-50 text-emerald-700",
-  batch_product: "bg-emerald-50 text-emerald-700",
-  batch_job: "bg-emerald-50 text-emerald-700",
-  batch_message: "bg-emerald-50 text-emerald-700",
-  update_admin: "bg-sky-50 text-sky-700",
-  update_product: "bg-sky-50 text-sky-700",
-  update_category: "bg-sky-50 text-sky-700",
-  update_job: "bg-sky-50 text-sky-700",
-  update_application: "bg-sky-50 text-sky-700",
-  update_message: "bg-sky-50 text-sky-700",
-  delete_admin: "bg-red-50 text-red-700",
-  delete_product: "bg-red-50 text-red-700",
-  delete_category: "bg-red-50 text-red-700",
-  delete_job: "bg-red-50 text-red-700",
-  delete_application: "bg-red-50 text-red-700",
-  delete_message: "bg-red-50 text-red-700",
-  run_cron_task: "bg-purple-50 text-purple-700",
+  create_admin: "bg-status-success-soft text-status-success-strong",
+  create_product: "bg-status-success-soft text-status-success-strong",
+  create_category: "bg-status-success-soft text-status-success-strong",
+  create_job: "bg-status-success-soft text-status-success-strong",
+  batch_product: "bg-status-success-soft text-status-success-strong",
+  batch_job: "bg-status-success-soft text-status-success-strong",
+  batch_message: "bg-status-success-soft text-status-success-strong",
+  update_admin: "bg-status-info-soft text-status-info-strong",
+  update_product: "bg-status-info-soft text-status-info-strong",
+  update_category: "bg-status-info-soft text-status-info-strong",
+  update_job: "bg-status-info-soft text-status-info-strong",
+  update_application: "bg-status-info-soft text-status-info-strong",
+  update_message: "bg-status-info-soft text-status-info-strong",
+  delete_admin: "bg-status-danger-soft text-status-danger-strong",
+  delete_product: "bg-status-danger-soft text-status-danger-strong",
+  delete_category: "bg-status-danger-soft text-status-danger-strong",
+  delete_job: "bg-status-danger-soft text-status-danger-strong",
+  delete_application: "bg-status-danger-soft text-status-danger-strong",
+  delete_message: "bg-status-danger-soft text-status-danger-strong",
+  run_cron_task: "bg-status-info-soft text-status-info-strong",
 };
 
 const OUTCOME_META: Record<
@@ -159,7 +159,7 @@ function OutcomeBadge({ outcome }: { outcome?: string | null }) {
 }
 
 function RiskBadge({ risk }: { risk?: string | null }) {
-  if (!risk) return <span className="text-xs text-brand-charcoal/50">-</span>;
+  if (!risk) return <span className="text-xs text-ink-muted">-</span>;
   const meta = RISK_META[risk] ?? RISK_META.LOW;
   return <Badge variant={meta.variant}>{meta.label}</Badge>;
 }
@@ -187,13 +187,13 @@ function ActionBadge({
 }
 
 function DetailDiff({ detail }: { detail: Record<string, unknown> | null | undefined }) {
-  if (!detail) return <div className="text-sm text-brand-charcoal/65">无详细记录</div>;
+  if (!detail) return <div className="text-sm text-ink-muted">无详细记录</div>;
   const changes = Array.isArray(detail.changes) ? detail.changes : null;
   if (changes && changes.length > 0) {
     return (
-      <div className="overflow-hidden rounded-lg border border-brand-charcoal/10">
+      <div className="overflow-hidden rounded-lg border border-line">
         <table className="w-full text-xs">
-          <thead className="bg-brand-charcoal/[0.03] text-left text-brand-charcoal/60">
+          <thead className="bg-surface-muted text-left text-ink-muted">
             <tr>
               <th className="px-3 py-2 font-medium">字段</th>
               <th className="px-3 py-2 font-medium">变更前</th>
@@ -209,10 +209,10 @@ function DetailDiff({ detail }: { detail: Record<string, unknown> | null | undef
                   className="border-t border-brand-charcoal/5"
                 >
                   <td className="px-3 py-2 font-mono">{item.field ?? "-"}</td>
-                  <td className="max-w-[240px] break-all px-3 py-2 text-red-700">
+                  <td className="max-w-[240px] break-all px-3 py-2 text-status-danger-strong">
                     {JSON.stringify(item.before ?? null)}
                   </td>
-                  <td className="max-w-[240px] break-all px-3 py-2 text-emerald-700">
+                  <td className="max-w-[240px] break-all px-3 py-2 text-status-success-strong">
                     {JSON.stringify(item.after ?? null)}
                   </td>
                 </tr>
@@ -224,7 +224,7 @@ function DetailDiff({ detail }: { detail: Record<string, unknown> | null | undef
     );
   }
   return (
-    <pre className="max-h-80 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/70">
+    <pre className="max-h-80 overflow-auto rounded-lg border border-line bg-surface-muted p-4 text-xs text-brand-charcoal/70">
       {JSON.stringify(detail, null, 2)}
     </pre>
   );
@@ -420,13 +420,18 @@ function AuditLogsContent() {
     endDate
   );
 
+  const clearFilters = () => {
+    setSearchDraft("");
+    router.push("/admin/audit-logs");
+  };
+
   const columns: Column<AuditLogItem>[] = [
     {
       key: "createdAt",
       title: "时间",
       width: "170px",
       render: (_, log) => (
-        <span className="whitespace-nowrap text-sm text-brand-charcoal/65">
+        <span className="whitespace-nowrap text-sm text-ink-muted">
           {formatDate(log.createdAt)}
         </span>
       ),
@@ -442,7 +447,7 @@ function AuditLogsContent() {
         return (
           <div className="min-w-0">
             <p className="truncate font-medium text-brand-charcoal">{name}</p>
-            {email && <p className="truncate text-xs text-brand-charcoal/65">{email}</p>}
+            {email && <p className="truncate text-xs text-ink-muted">{email}</p>}
           </div>
         );
       },
@@ -477,7 +482,7 @@ function AuditLogsContent() {
             {TARGET_TYPE_LABELS[log.targetType] || log.targetType}
           </p>
           <p
-            className="truncate font-mono text-xs text-brand-charcoal/55"
+            className="truncate font-mono text-xs text-ink-muted"
             title={log.targetId || undefined}
           >
             {log.targetLabel || log.targetId || "-"}
@@ -490,7 +495,7 @@ function AuditLogsContent() {
       title: "IP 地址",
       width: "125px",
       render: (_, log) => (
-        <span className="whitespace-nowrap text-sm text-brand-charcoal/65">
+        <span className="whitespace-nowrap text-sm text-ink-muted">
           {log.ipAddress || "-"}
         </span>
       ),
@@ -544,7 +549,7 @@ function AuditLogsContent() {
 
       <AdminHubTabs section="audit" />
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="w-full sm:w-36">
@@ -693,7 +698,7 @@ function AuditLogsContent() {
                   placeholder="开始日期"
                 />
               </div>
-              <span className="text-sm text-brand-charcoal/65">至</span>
+              <span className="text-sm text-ink-muted">至</span>
               <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
                 <DatePicker
                   aria-label="结束日期"
@@ -713,10 +718,7 @@ function AuditLogsContent() {
                 variant="ghost"
                 size="sm"
                 leftIcon={<X className="h-4 w-4" />}
-                onClick={() => {
-                  setSearchDraft("");
-                  router.push("/admin/audit-logs");
-                }}
+                onClick={clearFilters}
               >
                 清除筛选
               </Button>
@@ -727,7 +729,7 @@ function AuditLogsContent() {
 
       {loadError ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12">
-          <p className="text-sm text-red-500">加载失败，请重试</p>
+          <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
           <Button variant="outline" size="sm" onClick={fetchLogs}>
             重试
           </Button>
@@ -741,6 +743,9 @@ function AuditLogsContent() {
           tableLayout="fixed"
           minWidth="1140px"
           emptyText="暂无审计日志"
+          ariaLabel="审计日志表格"
+          isFiltered={hasFilters}
+          onClearFilters={clearFilters}
           onRowClick={openDetail}
           mobileCard={(log) => (
             <div className="space-y-3">
@@ -751,7 +756,7 @@ function AuditLogsContent() {
                     <OutcomeBadge outcome={log.outcome} />
                     <RiskBadge risk={log.riskLevel} />
                   </div>
-                  <p className="mt-1 text-xs text-brand-charcoal/65">{formatDate(log.createdAt)}</p>
+                  <p className="mt-1 text-xs text-ink-muted">{formatDate(log.createdAt)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
@@ -767,7 +772,7 @@ function AuditLogsContent() {
                   目标：{log.targetLabel || log.targetId || "-"}
                 </span>
               </div>
-              <div className="flex justify-end border-t border-brand-charcoal/10 pt-2">
+              <div className="flex justify-end border-t border-line pt-2">
                 <Button variant="ghost" size="sm" onClick={() => openDetail(log)}>
                   <Eye className="mr-1 h-4 w-4" />
                   查看详情
@@ -802,10 +807,10 @@ function AuditLogsContent() {
               <ActionBadge action={detail.action} detail={detail.detail} />
               <OutcomeBadge outcome={detail.outcome} />
               <RiskBadge risk={detail.riskLevel} />
-              <span className="text-sm text-brand-charcoal/65">
+              <span className="text-sm text-ink-muted">
                 {TARGET_TYPE_LABELS[detail.targetType] || detail.targetType}
                 {detail.targetId && (
-                  <span className="ml-1 font-mono text-xs text-brand-charcoal/65">
+                  <span className="ml-1 font-mono text-xs text-ink-muted">
                     ({detail.targetId})
                   </span>
                 )}
@@ -813,56 +818,56 @@ function AuditLogsContent() {
             </div>
 
             {detailLoading ? (
-              <p className="text-sm text-brand-charcoal/60">加载详情...</p>
+              <p className="text-sm text-ink-muted">加载详情...</p>
             ) : (
               <>
                 <div className="grid gap-3 text-sm md:grid-cols-2">
-                  <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                    <dt className="mb-1 text-brand-charcoal/65">操作人</dt>
+                  <div className="rounded-lg bg-surface-muted p-3">
+                    <dt className="mb-1 text-ink-muted">操作人</dt>
                     <dd className="font-medium">
                       {detail.actorName ||
                         detail.admin?.name ||
                         ACTOR_TYPE_LABELS[detail.actorType ?? "SYSTEM"] ||
                         "-"}
                       {(detail.actorEmail || detail.admin?.email) && (
-                        <span className="ml-1 text-xs text-brand-charcoal/60">
+                        <span className="ml-1 text-xs text-ink-muted">
                           ({detail.actorEmail || detail.admin?.email})
                         </span>
                       )}
                     </dd>
                   </div>
-                  <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                    <dt className="mb-1 text-brand-charcoal/65">操作者类型 / 角色</dt>
+                  <div className="rounded-lg bg-surface-muted p-3">
+                    <dt className="mb-1 text-ink-muted">操作者类型 / 角色</dt>
                     <dd className="font-medium">
                       {ACTOR_TYPE_LABELS[detail.actorType ?? "ADMIN"] ?? detail.actorType ?? "-"}
                       {detail.actorRole ? ` / ${detail.actorRole}` : ""}
                     </dd>
                   </div>
-                  <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                    <dt className="mb-1 text-brand-charcoal/65">操作时间</dt>
+                  <div className="rounded-lg bg-surface-muted p-3">
+                    <dt className="mb-1 text-ink-muted">操作时间</dt>
                     <dd className="font-medium">{formatDate(detail.createdAt)}</dd>
                   </div>
-                  <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                    <dt className="mb-1 text-brand-charcoal/65">IP 地址</dt>
+                  <div className="rounded-lg bg-surface-muted p-3">
+                    <dt className="mb-1 text-ink-muted">IP 地址</dt>
                     <dd className="font-mono font-medium">{detail.ipAddress || "-"}</dd>
                   </div>
-                  <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                    <dt className="mb-1 text-brand-charcoal/65">User-Agent</dt>
+                  <div className="rounded-lg bg-surface-muted p-3">
+                    <dt className="mb-1 text-ink-muted">User-Agent</dt>
                     <dd className="break-all text-xs font-medium">{detail.userAgent || "-"}</dd>
                   </div>
-                  <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                    <dt className="mb-1 text-brand-charcoal/65">认证方式</dt>
+                  <div className="rounded-lg bg-surface-muted p-3">
+                    <dt className="mb-1 text-ink-muted">认证方式</dt>
                     <dd className="font-medium">{detail.authMethod || "-"}</dd>
                   </div>
-                  <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                    <dt className="mb-1 text-brand-charcoal/65">请求 ID</dt>
+                  <div className="rounded-lg bg-surface-muted p-3">
+                    <dt className="mb-1 text-ink-muted">请求 ID</dt>
                     <dd className="flex items-center gap-2 break-all font-mono text-xs font-medium">
                       <span>{detail.requestId || "-"}</span>
                       {detail.requestId && (
                         <>
                           <button
                             type="button"
-                            className="text-brand-charcoal/50 hover:text-brand-primary"
+                            className="text-ink-muted hover:text-brand-primary"
                             onClick={() => void copyText(detail.requestId!)}
                             aria-label="复制请求 ID"
                           >
@@ -870,7 +875,7 @@ function AuditLogsContent() {
                           </button>
                           <button
                             type="button"
-                            className="text-brand-charcoal/50 hover:text-brand-primary"
+                            className="text-ink-muted hover:text-brand-primary"
                             onClick={() => {
                               setDetailOpen(false);
                               updateParams({ requestId: detail.requestId! });
@@ -883,8 +888,8 @@ function AuditLogsContent() {
                       )}
                     </dd>
                   </div>
-                  <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                    <dt className="mb-1 text-brand-charcoal/65">链序号 / 哈希</dt>
+                  <div className="rounded-lg bg-surface-muted p-3">
+                    <dt className="mb-1 text-ink-muted">链序号 / 哈希</dt>
                     <dd className="break-all font-mono text-xs font-medium">
                       {detail.chainSeq ?? "-"} /{" "}
                       {detail.entryHash ? `${detail.entryHash.slice(0, 16)}…` : "-"}

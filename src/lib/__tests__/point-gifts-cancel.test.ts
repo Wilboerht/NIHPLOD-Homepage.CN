@@ -33,6 +33,7 @@ vi.mock("@/lib/logger", () => ({
 
 vi.mock("@/lib/points-ledger", () => ({
   redeemPoints: vi.fn(),
+  lockPointBalance: vi.fn().mockResolvedValue(undefined),
   adjustPoints: vi.fn().mockResolvedValue({ duplicated: false }),
   withPointTxRetry: async <T>(fn: () => Promise<T>) => fn(),
 }));

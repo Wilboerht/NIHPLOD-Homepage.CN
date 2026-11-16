@@ -153,10 +153,9 @@ function OAuthAuditPage() {
       setEntries(data.items);
       setTotal(data.pagination.total);
       setLoadError(false);
-    } catch (err) {
+    } catch {
       if (!isLatest()) return;
       setLoadError(true);
-      toast.error(err instanceof Error ? err.message : "获取审计日志失败");
     } finally {
       if (isLatest()) setLoading(false);
     }
@@ -168,7 +167,6 @@ function OAuthAuditPage() {
     dateFrom,
     dateTo,
     successFilter,
-    toast,
     router,
     takeLatestAudit,
   ]);
@@ -273,7 +271,7 @@ function OAuthAuditPage() {
       <AdminHubTabs section="sso" />
 
       {/* 筛选栏：条件按类型分组，窄屏自然换行 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <div className="w-full sm:w-40">
@@ -310,7 +308,7 @@ function OAuthAuditPage() {
                   placeholder="开始日期"
                 />
               </div>
-              <span className="text-sm text-brand-charcoal/65">至</span>
+              <span className="text-sm text-ink-muted">至</span>
               <div className="min-w-0 flex-1 sm:w-40 sm:flex-none">
                 <DatePicker
                   aria-label="结束日期"
@@ -327,7 +325,7 @@ function OAuthAuditPage() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative w-full sm:w-44">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 aria-label="按 Client ID 搜索"
                 placeholder="搜索 Client ID"
@@ -338,7 +336,7 @@ function OAuthAuditPage() {
               />
             </div>
             <div className="relative w-full sm:w-44">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 aria-label="按用户 ID 搜索"
                 placeholder="搜索用户 ID"
@@ -368,7 +366,7 @@ function OAuthAuditPage() {
         error={
           loadError ? (
             <>
-              <p className="text-red-500">加载失败</p>
+              <p className="text-status-danger-fg">加载失败</p>
               <Button variant="outline" size="sm" className="mt-3" onClick={fetchAudit}>
                 重试
               </Button>
@@ -397,7 +395,7 @@ function OAuthAuditPage() {
               <span>{formatDate(entry.createdAt)}</span>
             </div>
             {entry.detail != null && (
-              <div className="mt-2 border-t border-brand-charcoal/10 pt-2">
+              <div className="mt-2 border-t border-line pt-2">
                 <button
                   type="button"
                   onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
@@ -411,7 +409,7 @@ function OAuthAuditPage() {
                   />
                 </button>
                 {expandedId === entry.id && (
-                  <pre className="mt-2 max-h-40 overflow-x-auto rounded-lg border border-brand-charcoal/10 bg-white p-3 text-xs text-brand-charcoal/70">
+                  <pre className="mt-2 max-h-40 overflow-x-auto rounded-lg border border-line bg-white p-3 text-xs text-brand-charcoal/70">
                     {JSON.stringify(entry.detail, null, 2)}
                   </pre>
                 )}
@@ -422,10 +420,10 @@ function OAuthAuditPage() {
       </MobileList>
 
       {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
         <table className="w-full min-w-[960px] text-sm">
           <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+            <tr className="border-b border-line bg-surface-subtle text-left">
               <th scope="col" className="px-4 py-3 font-normal">
                 事件类型
               </th>
@@ -449,14 +447,14 @@ function OAuthAuditPage() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-charcoal/10">
+          <tbody className="divide-y divide-line">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={7} />)
             ) : loadError ? (
               <tr>
                 <td colSpan={7}>
                   <div className="flex flex-col items-center justify-center gap-3 py-10">
-                    <p className="text-sm text-red-500">加载失败，请稍后重试</p>
+                    <p className="text-sm text-status-danger-fg">加载失败，请稍后重试</p>
                     <Button variant="outline" size="sm" onClick={fetchAudit}>
                       重新加载
                     </Button>
@@ -481,7 +479,7 @@ function OAuthAuditPage() {
             ) : (
               entries.map((entry) => (
                 <React.Fragment key={entry.id}>
-                  <tr className="hover:bg-brand-charcoal/[0.03]">
+                  <tr className="hover:bg-surface-muted">
                     <td className="px-4 py-3">
                       <Badge variant={getEventBadgeVariant(entry.event)}>
                         {formatEventType(entry.event)}
@@ -492,11 +490,11 @@ function OAuthAuditPage() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="truncate text-brand-charcoal/80">{entry.clientName || "-"}</p>
-                      <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                      <p className="truncate font-mono text-xs text-ink-muted">
                         {entry.clientId}
                       </p>
                     </td>
-                    <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/65">
+                    <td className="px-4 py-3 font-mono text-sm text-ink-muted">
                       {entry.ip}
                     </td>
                     <td className="px-4 py-3">
@@ -504,7 +502,7 @@ function OAuthAuditPage() {
                         {entry.success ? "成功" : "失败"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                    <td className="px-4 py-3 text-sm text-ink-muted">
                       {formatDate(entry.createdAt)}
                     </td>
                     <td className="px-4 py-3">
@@ -519,14 +517,14 @@ function OAuthAuditPage() {
                           />
                         </button>
                       ) : (
-                        <span className="text-xs text-brand-charcoal/65">-</span>
+                        <span className="text-xs text-ink-muted">-</span>
                       )}
                     </td>
                   </tr>
                   {expandedId === entry.id && entry.detail != null && (
-                    <tr key={`${entry.id}-detail`} className="bg-brand-charcoal/[0.02]">
+                    <tr key={`${entry.id}-detail`} className="bg-surface-subtle">
                       <td colSpan={7} className="px-4 py-3">
-                        <pre className="max-h-40 overflow-x-auto rounded-lg border border-brand-charcoal/10 bg-white p-3 text-xs text-brand-charcoal/70">
+                        <pre className="max-h-40 overflow-x-auto rounded-lg border border-line bg-white p-3 text-xs text-brand-charcoal/70">
                           {JSON.stringify(entry.detail, null, 2)}
                         </pre>
                       </td>
@@ -552,7 +550,7 @@ function OAuthAuditPage() {
 export default function OAuthAuditPageWrapper() {
   return (
     <RequirePermission permission="sso:read">
-      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/65">加载中...</div>}>
+      <Suspense fallback={<div className="py-8 text-center text-ink-muted">加载中...</div>}>
         <OAuthAuditPage />
       </Suspense>
     </RequirePermission>

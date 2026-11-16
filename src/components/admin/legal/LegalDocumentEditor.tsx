@@ -78,6 +78,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   const [discardOpen, setDiscardOpen] = useState(false);
   const [removeSectionId, setRemoveSectionId] = useState<string | null>(null);
   const [localDraft, setLocalDraft] = useState<LegalLocalDraft | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const isDirty = content ? legalContentSignature(content) !== baseline : false;
   const { confirmClose } = useUnsavedChanges(isDirty);
@@ -150,6 +151,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     patch: Partial<Pick<LegalDocumentContent["sections"][number], "title" | "body">>
   ) => {
     setLocalDraft(null);
+    setFormError(null);
     setContent((previous) => {
       if (!previous) return previous;
       return {
@@ -215,11 +217,21 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   };
 
   const handleSaveDraft = async () => {
-    if (!content || !document) return;
-    if (content.sections.some((section) => !section.title.trim())) {
-      toast.error("存在未填写标题的章节，请先补全");
+    if (!content || !document || publishing || saving) return;
+    const invalidSectionIds = content.sections
+      .filter((section) => !section.title.trim())
+      .map((section) => section.id);
+    if (invalidSectionIds.length > 0) {
+      setFormError(`有 ${invalidSectionIds.length} 个章节未填写标题，请补全后再保存。`);
+      setExpanded((previous) => {
+        const next = new Set(previous);
+        for (const id of invalidSectionIds) next.add(id);
+        return next;
+      });
+      scrollToSection(invalidSectionIds[0]);
       return;
     }
+    setFormError(null);
     setSaving(true);
     try {
       const data = await apiPut<LegalAdminDocumentDetail>(`/api/admin/legal/${slug}/draft`, {
@@ -243,10 +255,10 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   };
 
   const handlePublishClick = () => {
-    if (!content || !document) return;
+    if (!content || !document || saving || publishing) return;
     const validation = validatePublishableContent(content);
     if (!validation.ok) {
-      toast.error(validation.message ?? "请先补全内容");
+      setFormError(validation.message ?? "请先补全内容");
       if (validation.emptySectionIds.length > 0) {
         setExpanded((previous) => {
           const next = new Set(previous);
@@ -257,16 +269,18 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
       }
       return;
     }
+    setFormError(null);
     setPublishOpen(true);
   };
 
   const confirmPublish = async (note: string) => {
-    if (!content || !document) return;
+    if (!content || !document || saving || publishing) return;
     const publishNote = note.trim();
     if (publishNote.length < 2) {
       toast.error("请填写发布说明（至少 2 个字符）");
       return;
     }
+    setFormError(null);
     setPublishing(true);
     const payload = {
       content,
@@ -309,7 +323,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   };
 
   const handleDiscardDraft = async () => {
-    if (!document) return;
+    if (!document || saving || publishing || discarding) return;
     setDiscarding(true);
     try {
       const data = await apiDelete<LegalAdminDocumentDetail>(`/api/admin/legal/${slug}/draft`, {
@@ -339,7 +353,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-brand-charcoal/55">
+      <div className="flex min-h-[50vh] items-center justify-center text-ink-muted">
         <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
         加载中...
       </div>
@@ -350,7 +364,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     return (
       <div className="space-y-4">
         <PageHeader title="法务文档" />
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-xl border border-status-danger-line bg-status-danger-soft p-4 text-sm text-status-danger-strong">
           {loadError ?? "文档不存在"}
         </div>
         <Button
@@ -368,7 +382,8 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     document.publishedContent !== null &&
     legalContentComparableSignature(content) ===
       legalContentComparableSignature(document.publishedContent);
-  const publishDisabled = publishing || (document.publishedVersion > 0 && contentMatchesPublished);
+  const busy = saving || publishing || discarding;
+  const publishDisabled = busy || (document.publishedVersion > 0 && contentMatchesPublished);
 
   const restoreLocalDraft = () => {
     if (!localDraft) return;
@@ -388,7 +403,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     <div className="space-y-6">
       <nav
         aria-label="面包屑"
-        className="flex flex-wrap items-center gap-1 text-xs text-brand-charcoal/50"
+        className="flex flex-wrap items-center gap-1 text-xs text-ink-muted"
       >
         <Link
           href="/admin/legal"
@@ -418,7 +433,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
         }
       />
 
-      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 -mx-4 border-y border-brand-charcoal/10 bg-brand-cream/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-0 lg:rounded-xl lg:border lg:px-4 lg:py-3">
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 -mx-4 border-y border-line bg-brand-cream/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-0 lg:rounded-xl lg:border lg:px-4 lg:py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <LegalStatusPills document={document} isDirty={isDirty} />
           <div className="flex flex-wrap items-center gap-2">
@@ -444,7 +459,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
                   variant="secondary"
                   size="sm"
                   onClick={() => void handleSaveDraft()}
-                  disabled={!isDirty || saving}
+                  disabled={!isDirty || busy}
                   leftIcon={<Save className="h-4 w-4" />}
                 >
                   {saving ? "保存中..." : "保存草稿"}
@@ -468,10 +483,32 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
         </div>
       </div>
 
+      {formError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-status-danger-line bg-status-danger-soft px-4 py-3 text-sm text-status-danger-strong"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1">{formError}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const firstInvalid = content.sections.find(
+                (section) => !section.title.trim() || !section.body.trim()
+              );
+              if (firstInvalid) scrollToSection(firstInvalid.id);
+            }}
+          >
+            定位到首个问题
+          </Button>
+        </div>
+      ) : null}
+
       {canWrite && localDraft ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-xl border border-status-warning-line bg-status-warning-soft p-4 text-sm text-status-warning-strong">
           <p className="font-medium">检测到本浏览器中未提交的法务草稿</p>
-          <p className="mt-1 text-xs leading-5 text-amber-700">
+          <p className="mt-1 text-xs leading-5 text-status-warning-strong">
             保存于{" "}
             {localDraft.savedAt ? new Date(localDraft.savedAt).toLocaleString("zh-CN") : "未知时间"}
             ，可能是上次关闭页面时尚未保存的内容。恢复前请确认是否仍需要这些修改。
@@ -488,7 +525,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
       ) : null}
 
       {document.contentSource === "default" ? (
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+        <div className="rounded-xl border border-status-info-line bg-status-info-soft p-4 text-sm text-status-info-strong">
           <p className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {document.publishedVersion > 0
@@ -500,9 +537,9 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
-          <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
+          <section className="rounded-card border border-line bg-white p-4 sm:p-6">
             <h2 className="text-base font-medium text-brand-charcoal">基本信息</h2>
-            <p className="mt-1 text-xs text-brand-charcoal/50">
+            <p className="mt-1 text-xs text-ink-muted">
               标题固定为「{document.title}」，避免与导航、页面标题不一致；“最近更新”由发布自动维护。
             </p>
             <div className="mt-4">
@@ -527,7 +564,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h2 className="text-base font-medium text-brand-charcoal">章节</h2>
-                <p className="text-xs text-brand-charcoal/50">
+                <p className="text-xs text-ink-muted">
                   共 {content.sections.length} 章
                   {invalidSectionCount > 0
                     ? ` · ${invalidSectionCount} 个章节待完善`
@@ -604,8 +641,9 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                className="text-status-danger-fg hover:bg-status-danger-soft hover:text-status-danger-fg"
                 onClick={() => setDiscardOpen(true)}
+                disabled={busy}
               >
                 丢弃草稿
               </Button>

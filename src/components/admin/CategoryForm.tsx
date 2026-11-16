@@ -271,10 +271,10 @@ export function CategoryForm({ open, onClose, onSuccess, category }: CategoryFor
           />
 
           {/* 前台展示开关 */}
-          <div className="flex items-center justify-between rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.03] px-4 py-3">
+          <div className="flex items-center justify-between rounded-lg border border-line-strong bg-surface-muted px-4 py-3">
             <div>
               <label className="text-sm font-medium text-brand-charcoal/80">前台展示</label>
-              <p className="text-xs text-brand-charcoal/65">
+              <p className="text-xs text-ink-muted">
                 关闭后该分类及其下已发布商品将从产品页、商品详情、指南和站点地图中隐藏
               </p>
             </div>

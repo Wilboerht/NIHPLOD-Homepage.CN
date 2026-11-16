@@ -7,6 +7,7 @@ import { ItemListJsonLd } from "@/components/seo/JsonLd";
 import { PRODUCTS_TAG } from "@/lib/cache-tags";
 import { getVisibleCategories } from "./queries";
 import { mockProducts } from "./mock-data";
+import { FEATURED_PRODUCTS_LIMIT } from "./constants";
 
 // ISR: 产品列表页每60秒重新验证一次
 export const revalidate = 60;
@@ -75,7 +76,7 @@ async function getProductsUncached() {
       // 分类隐藏时其商品在全站不可见（列表/详情/sitemap/搜索一致）
       where: { published: true, category: { visible: true } },
       orderBy: [{ order: "asc" }, { createdAt: "desc" }],
-      take: 200,
+      take: FEATURED_PRODUCTS_LIMIT,
       select: {
         id: true,
         name: true,
@@ -122,7 +123,7 @@ const getProducts = isDev ? getProductsUncached : getProductsCached;
 export default async function ProductsPage() {
   const [categories, products] = await Promise.all([getVisibleCategories(), getProducts()]);
 
-  const itemList = products.map((product) => ({
+  const itemList = products.slice(0, FEATURED_PRODUCTS_LIMIT).map((product) => ({
     name: product.name,
     url: `/products/${product.slug}`,
     image: product.images[0]?.url,

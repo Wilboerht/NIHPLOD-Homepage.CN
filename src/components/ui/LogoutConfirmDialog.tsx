@@ -47,7 +47,7 @@ export function LogoutConfirmDialog({
             type="button"
             onClick={close}
             disabled={loading}
-            className="min-h-11 flex-1 cursor-pointer rounded-xl border border-brand-charcoal/15 bg-brand-charcoal/5 px-4 text-[13px] tracking-[0.05em] text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-50"
+            className="min-h-11 flex-1 cursor-pointer rounded-xl border border-line-strong bg-brand-charcoal/5 px-4 text-[13px] tracking-[0.05em] text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 disabled:opacity-50"
           >
             取消
           </button>
@@ -55,14 +55,14 @@ export function LogoutConfirmDialog({
             type="button"
             onClick={confirm}
             disabled={loading}
-            className="min-h-11 flex-1 cursor-pointer rounded-xl bg-red-600 px-4 text-[13px] tracking-[0.05em] text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
+            className="min-h-11 flex-1 cursor-pointer rounded-xl bg-status-danger-fg px-4 text-[13px] tracking-[0.05em] text-white transition-colors hover:bg-status-danger-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-status-danger-fg focus-visible:ring-offset-2 disabled:opacity-50"
           >
             {allDevices ? "退出所有平台" : "退出登录"}
           </button>
         </div>
       }
     >
-      <label className="flex min-h-11 cursor-pointer select-none items-center gap-3 rounded-xl border border-brand-charcoal/10 px-3 text-[13px] tracking-[0.03em] text-brand-charcoal/80">
+      <label className="flex min-h-11 cursor-pointer select-none items-center gap-3 rounded-xl border border-line px-3 text-[13px] tracking-[0.03em] text-brand-charcoal/80">
         <input
           type="checkbox"
           checked={allDevices}

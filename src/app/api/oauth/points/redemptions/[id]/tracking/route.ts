@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
-import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { authenticateOAuthUserRequest, checkOAuthUserRateLimit } from "@/lib/oauth-user-auth";
 import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { getRedemptionTrackingResponse } from "@/lib/points-mall-api";
 import { apiConsole } from "@/lib/logger";
@@ -23,6 +23,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
       action: "points_tracking",
     });
     if (!auth.ok) return auth.response;
+
+    if (!(await checkOAuthUserRateLimit(auth.payload.id, 20))) {
+      return auth.resJson(
+        { success: false, error: { code: "RATE_LIMITED", message: "操作过于频繁，请稍后再试" } },
+        429
+      );
+    }
+
     const { id } = await context.params;
     return decorateOAuthResponse(
       await getRedemptionTrackingResponse(auth.payload.id, id),

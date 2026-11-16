@@ -11,6 +11,7 @@ import { getCategoryIconPath } from "@/lib/product-icons";
 import { trackEvent } from "@/lib/analytics";
 import { useProductsShell, type ProductsCategory } from "@/components/website/ProductsShell";
 import { ProductImage } from "@/components/website/ProductImage";
+import { FEATURED_PRODUCTS_LIMIT } from "./constants";
 
 interface Product {
   id: string;
@@ -32,23 +33,27 @@ interface ProductsContentProps {
  * 抽屉容器与顶部导航由 products/layout.tsx 中的 ProductsShell 提供。
  */
 export function ProductsContent({ categories, products }: ProductsContentProps) {
-  const { activeTab, mobileView, switchMobileView, navigateToProduct, listScrollTopRef } =
-    useProductsShell();
+  const { mobileView, switchMobileView, navigateToProduct, listScrollTopRef } = useProductsShell();
 
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const desktopScrollRef = useRef<HTMLElement>(null);
   const fadeMaskRef = useRef<HTMLDivElement>(null);
   const bottomFadeMaskRef = useRef<HTMLDivElement>(null);
   const tabButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
-  const previousFiltersRef = useRef({ mobileView, activeTab });
+  const previousFiltersRef = useRef({ mobileView });
+
+  // 列表页仅展示前 3 个主推产品，其余产品通过分类导航与 sitemap 进入。
+  const visibleProducts = products.slice(0, FEATURED_PRODUCTS_LIMIT);
+  const listTitle = "当季热卖";
+  const productTabLabel = listTitle;
 
   // GA: view_item_list 事件
   useEffect(() => {
-    if (products.length > 0) {
+    if (visibleProducts.length > 0) {
       trackEvent("view_item_list", {
         item_list_id: "products",
         item_list_name: "产品列表",
-        items: products.map((p) => ({
+        items: visibleProducts.map((p) => ({
           item_id: p.id,
           item_name: p.name,
           price: p.price,
@@ -57,13 +62,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products.length]);
-
-  // 首屏始终渲染全部产品，仅通过 CSS 隐藏“当季热卖”之外的产品，
-  // 保证不执行 JS 的爬虫也能从列表页发现所有产品详情链接。
-  const listTitle = "全部产品";
-  const productTabLabel = listTitle;
-  const visibleProducts = products;
+  }, [visibleProducts.length]);
 
   // 上下渐隐遮罩状态评估：滚动中/触底/内容不溢出均正确
   const updateFadeMasks = () => {
@@ -79,7 +78,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   useEffect(() => {
     const raf = requestAnimationFrame(updateFadeMasks);
     return () => cancelAnimationFrame(raf);
-  }, [mobileView, activeTab, products.length, categories.length]);
+  }, [mobileView, visibleProducts.length, categories.length]);
 
   // 从详情返回列表时恢复滚动位置
   useLayoutEffect(() => {
@@ -103,8 +102,8 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
   // 切换筛选/视图时复位滚动位置（仅筛选值真正变化时执行，避免 StrictMode 首次挂载误伤）
   useEffect(() => {
     const previous = previousFiltersRef.current;
-    const changed = previous.mobileView !== mobileView || previous.activeTab !== activeTab;
-    previousFiltersRef.current = { mobileView, activeTab };
+    const changed = previous.mobileView !== mobileView;
+    previousFiltersRef.current = { mobileView };
 
     if (!changed) return;
 
@@ -113,7 +112,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
     listScrollTopRef.current = 0;
     updateFadeMasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mobileView, activeTab]);
+  }, [mobileView]);
 
   // 切换移动端 Tab：同步复位滚动位置，避免新列表从半屏中间开始展示
   const handleSwitchMobileView = (view: "products" | "categories") => {
@@ -283,7 +282,7 @@ export function ProductsContent({ categories, products }: ProductsContentProps) 
             {mobileView === "products" ? (
               /* --- 产品列表视图 --- */
               <m.div
-                key={`product-list-${activeTab}`}
+                key="product-list"
                 id="mobile-tabpanel-products"
                 role="tabpanel"
                 aria-labelledby="mobile-tab-products"

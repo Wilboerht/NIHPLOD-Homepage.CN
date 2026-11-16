@@ -60,16 +60,16 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
       }
     >
       {errors.geoFaqs && (
-        <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p role="alert" className="mb-3 rounded-lg bg-status-danger-soft px-3 py-2 text-sm text-status-danger-fg">
           {errors.geoFaqs}
         </p>
       )}
 
       {faqs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-brand-charcoal/15 bg-brand-charcoal/[0.02] py-6 text-center">
-          <MessageSquareText className="h-6 w-6 text-brand-charcoal/40" />
-          <p className="text-sm text-brand-charcoal/65">尚未添加 GEO 问答</p>
-          <p className="text-xs text-brand-charcoal/50">前台将使用规则生成的兜底问答</p>
+        <div className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line-strong bg-surface-subtle py-6 text-center">
+          <MessageSquareText className="h-6 w-6 text-ink-faint" />
+          <p className="text-sm text-ink-muted">尚未添加 GEO 问答</p>
+          <p className="text-xs text-ink-muted">前台将使用规则生成的兜底问答</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -79,7 +79,7 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
             return (
               <div
                 key={index}
-                className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3"
+                className="rounded-xl border border-line bg-surface-subtle p-3"
               >
                 <div className="flex items-start gap-2">
                   <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded bg-brand-primary text-xs font-bold text-white">
@@ -91,14 +91,14 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
                       placeholder="输入问题，如：这款产品适合敏感肌吗？"
                       className={cn(
                         "bg-transparent px-1 py-0.5 text-sm font-medium focus:bg-white focus:ring-1 focus:ring-brand-primary/40",
-                        questionError ? "border-red-500" : "border-none"
+                        questionError ? "border-status-danger-fg" : "border-none"
                       )}
                       value={faq.question}
                       maxLength={MAX_GEO_FAQ_QUESTION_LENGTH}
                       error={questionError}
                       onChange={(e) => updateFaq(index, { question: e.target.value })}
                     />
-                    <p className="mt-0.5 text-right text-[11px] text-brand-charcoal/45">
+                    <p className="mt-0.5 text-right text-2xs text-ink-faint">
                       {faq.question.length}/{MAX_GEO_FAQ_QUESTION_LENGTH}
                     </p>
                   </div>
@@ -106,7 +106,7 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
                     type="button"
                     onClick={() => removeFaq(index)}
                     aria-label={`删除问答 ${index + 1}`}
-                    className="flex-shrink-0 rounded-full p-1.5 text-brand-charcoal/65 hover:bg-red-50 hover:text-red-500"
+                    className="flex-shrink-0 rounded-full p-1.5 text-ink-muted hover:bg-status-danger-soft hover:text-status-danger-fg"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -121,7 +121,7 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
                       placeholder="输入简洁、可被 AI 引用的回答"
                       className={cn(
                         "h-auto resize-none bg-transparent px-1 py-0.5 text-sm focus:bg-white focus:ring-1 focus:ring-brand-primary/40",
-                        answerError ? "border-red-500" : "border-none"
+                        answerError ? "border-status-danger-fg" : "border-none"
                       )}
                       rows={2}
                       value={faq.answer}
@@ -129,7 +129,7 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
                       error={answerError}
                       onChange={(e) => updateFaq(index, { answer: e.target.value })}
                     />
-                    <p className="mt-0.5 text-right text-[11px] text-brand-charcoal/45">
+                    <p className="mt-0.5 text-right text-2xs text-ink-faint">
                       {faq.answer.length}/{MAX_GEO_FAQ_ANSWER_LENGTH}
                     </p>
                   </div>
@@ -141,7 +141,7 @@ export function GeoFaqEditor({ value, onChange, errors }: GeoFaqEditorProps) {
       )}
 
       {atLimit && (
-        <p className="mt-3 text-xs text-brand-charcoal/65">最多添加 {MAX_GEO_FAQS} 组问答</p>
+        <p className="mt-3 text-xs text-ink-muted">最多添加 {MAX_GEO_FAQS} 组问答</p>
       )}
     </FormSection>
   );

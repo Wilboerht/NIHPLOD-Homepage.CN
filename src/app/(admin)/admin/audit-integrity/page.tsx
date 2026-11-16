@@ -134,7 +134,7 @@ function IntegrityContent() {
       width: "90px",
       align: "center",
       render: (_, item) => (
-        <span className="text-xs text-brand-charcoal/65">
+        <span className="text-xs text-ink-muted">
           v{item.signatureVersion} / key {item.keyVersion}
         </span>
       ),
@@ -144,7 +144,7 @@ function IntegrityContent() {
       title: "摘要",
       width: "180px",
       render: (_, item) => (
-        <span className="font-mono text-xs text-brand-charcoal/65">
+        <span className="font-mono text-xs text-ink-muted">
           {item.digest.slice(0, 16)}…
         </span>
       ),
@@ -154,7 +154,7 @@ function IntegrityContent() {
       title: "归档",
       width: "150px",
       render: (_, item) => (
-        <span className="text-xs text-brand-charcoal/65">
+        <span className="text-xs text-ink-muted">
           {item.archivedAt ? formatDate(item.archivedAt) : "未归档"}
         </span>
       ),
@@ -217,7 +217,7 @@ function IntegrityContent() {
       <AdminHubTabs section="audit" />
 
       {data && !data.chainVerified && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-xl border border-status-danger-line bg-status-danger-soft p-4 text-sm text-status-danger-strong">
           <p className="font-medium">锚点链连续性异常</p>
           <ul className="mt-1 list-inside list-disc space-y-0.5 text-xs">
             {data.chainErrors.map((error) => (
@@ -228,30 +228,30 @@ function IntegrityContent() {
       )}
 
       <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/65">最新管理审计锚点</p>
+        <div className="rounded-xl border border-line bg-white p-4">
+          <p className="text-xs text-ink-muted">最新管理审计锚点</p>
           <p className="mt-1 font-mono text-lg font-semibold">{data?.latest.audit?.day ?? "-"}</p>
-          <p className="text-xs text-brand-charcoal/65">
+          <p className="text-xs text-ink-muted">
             {data?.latest.audit ? `${data.latest.audit.count} 条` : "暂无"}
           </p>
         </div>
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/65">最新 SSO 锚点</p>
+        <div className="rounded-xl border border-line bg-white p-4">
+          <p className="text-xs text-ink-muted">最新 SSO 锚点</p>
           <p className="mt-1 font-mono text-lg font-semibold">{data?.latest.sso?.day ?? "-"}</p>
-          <p className="text-xs text-brand-charcoal/65">
+          <p className="text-xs text-ink-muted">
             {data?.latest.sso ? `${data.latest.sso.count} 条` : "暂无"}
           </p>
         </div>
-        <div className="rounded-xl border border-brand-charcoal/10 bg-white p-4">
-          <p className="text-xs text-brand-charcoal/65">待处理 / 归档目录</p>
+        <div className="rounded-xl border border-line bg-white p-4">
+          <p className="text-xs text-ink-muted">待处理 / 归档目录</p>
           <p className="mt-1 text-lg font-semibold">{data?.pendingCount ?? 0}</p>
-          <p className="break-all text-xs text-brand-charcoal/65">{data?.config.root ?? "-"}</p>
+          <p className="break-all text-xs text-ink-muted">{data?.config.root ?? "-"}</p>
         </div>
       </div>
 
       {loadError ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-brand-charcoal/10 bg-white py-12">
-          <p className="text-sm text-red-500">加载失败，请检查服务状态后重试</p>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-card border border-line bg-white py-12">
+          <p className="text-sm text-status-danger-fg">加载失败，请检查服务状态后重试</p>
           <Button variant="outline" size="sm" onClick={load}>
             重新加载
           </Button>
@@ -273,13 +273,13 @@ function IntegrityContent() {
                   {item.stream === "audit" ? "管理审计" : "SSO 审计"}
                 </Badge>
               </div>
-              <p className="text-xs text-brand-charcoal/65">
+              <p className="text-xs text-ink-muted">
                 {item.count} 条 · 签名 v{item.signatureVersion} / key {item.keyVersion}
               </p>
-              <p className="break-all font-mono text-xs text-brand-charcoal/65">
+              <p className="break-all font-mono text-xs text-ink-muted">
                 {item.digest.slice(0, 24)}…
               </p>
-              <div className="flex items-center justify-between gap-2 text-xs text-brand-charcoal/65">
+              <div className="flex items-center justify-between gap-2 text-xs text-ink-muted">
                 <span>{item.archivedAt ? formatDate(item.archivedAt) : "未归档"}</span>
                 <Badge
                   variant={
@@ -293,7 +293,7 @@ function IntegrityContent() {
                   {VERIFY_STATUS_LABELS[item.verifyStatus] ?? item.verifyStatus}
                 </Badge>
               </div>
-              <div className="flex justify-end border-t border-brand-charcoal/10 pt-2">
+              <div className="flex justify-end border-t border-line pt-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -308,7 +308,7 @@ function IntegrityContent() {
           )}
         />
       ) : (
-        <div className="flex items-center gap-2 text-sm text-brand-charcoal/65">
+        <div className="flex items-center gap-2 text-sm text-ink-muted">
           <ShieldCheck className="h-4 w-4" />
           加载中...
         </div>

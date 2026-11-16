@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { apiConsole } from "@/lib/logger";
-import { isAllowedAvatarUrl, updateProfileSchema } from "@/lib/profile-schema";
+import { updateProfileSchema } from "@/lib/profile-schema";
+import {
+  checkNicknameContent,
+  NICKNAME_BANNED_MESSAGE,
+  NICKNAME_INVALID_CHARS_MESSAGE,
+} from "@/lib/nickname-policy";
+import { auditNicknameBlocked } from "@/lib/nickname-audit";
 import { normalizeGender, sendProfileUpdateWebhook } from "@/lib/profile-webhook";
 import { requireAdminSupportAccess, supportError, supportReasonSchema } from "@/lib/admin-support";
 import { AdminCorrectionError, correctUserProfile } from "@/lib/admin-user-corrections";
@@ -28,12 +34,36 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!access.ok) return access.response;
     const { id } = await params;
     if (!validateCUID(id)) return invalidIdResponse();
-    const parsed = profileCorrectionSchema.safeParse(await request.json().catch(() => null));
+    const rawBody = await request.json().catch(() => null);
+
+    // 昵称内容风控：先于 schema 校验检查，保证命中时返回明确错误码并写审计
+    const rawNickname =
+      rawBody && typeof rawBody === "object" && "nickname" in rawBody
+        ? (rawBody as { nickname?: unknown }).nickname
+        : undefined;
+    if (typeof rawNickname === "string" && rawNickname.trim()) {
+      const nicknameCheck = checkNicknameContent(rawNickname);
+      if (!nicknameCheck.ok) {
+        await auditNicknameBlocked({
+          request,
+          userId: id,
+          admin: access.admin,
+          source: "admin_correction",
+          reason: nicknameCheck.reason,
+          category: nicknameCheck.category,
+        });
+        return supportError(
+          "NICKNAME_REJECTED",
+          nicknameCheck.reason === "invalid_chars"
+            ? NICKNAME_INVALID_CHARS_MESSAGE
+            : NICKNAME_BANNED_MESSAGE
+        );
+      }
+    }
+
+    const parsed = profileCorrectionSchema.safeParse(rawBody);
     if (!parsed.success)
       return supportError("INVALID_PARAMS", parsed.error.issues[0]?.message || "参数错误");
-    if (parsed.data.avatar && !isAllowedAvatarUrl(parsed.data.avatar)) {
-      return supportError("INVALID_AVATAR", "头像地址不合法");
-    }
 
     const result = await correctUserProfile(id, parsed.data, {
       admin: access.admin,

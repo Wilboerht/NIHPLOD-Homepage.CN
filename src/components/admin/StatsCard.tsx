@@ -33,30 +33,30 @@ export function StatsCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-brand-charcoal/10 bg-white p-5 transition-colors",
+        "rounded-card border border-line bg-white p-5 transition-colors",
         className
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
-          <p className="text-sm text-brand-charcoal/65">{title}</p>
+          <p className="text-sm text-ink-muted">{title}</p>
           {loading ? (
             <div className="mt-1 h-8 w-20 animate-pulse rounded bg-brand-charcoal/10" />
           ) : (
-            <p className="mt-1 text-2xl font-semibold tracking-tight text-brand-charcoal">
+            <p className="mt-1 font-num text-2xl font-semibold tabular-nums tracking-tight text-ink">
               {value}
             </p>
           )}
-          {description && <p className="mt-1 text-xs text-brand-charcoal/65">{description}</p>}
+          {description && <p className="mt-1 text-xs text-ink-muted">{description}</p>}
           {trend && !loading && (
             <p
               className={cn(
                 "mt-2 text-xs font-medium",
-                trend.isPositive ? "text-emerald-600" : "text-red-500"
+                trend.isPositive ? "text-status-success-fg" : "text-status-danger-fg"
               )}
             >
               {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}%
-              <span className="ml-1 text-brand-charcoal/65">{trend.label ?? "较上月"}</span>
+              <span className="ml-1 text-ink-muted">{trend.label ?? "较上月"}</span>
             </p>
           )}
         </div>

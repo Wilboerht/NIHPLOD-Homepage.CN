@@ -56,7 +56,7 @@ function ToolbarButton({
         "rounded p-1.5 transition-colors",
         active
           ? "bg-brand-primary/20 text-brand-primary"
-          : "text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal/80",
+          : "text-ink-muted hover:bg-surface-hover hover:text-brand-charcoal/80",
         disabled && "cursor-not-allowed opacity-50"
       )}
     >
@@ -162,12 +162,12 @@ export function RichTextEditor({
           "overflow-hidden rounded-lg border bg-white transition-all",
           isFocused
             ? "border-brand-primary ring-2 ring-brand-primary/20"
-            : "border-brand-charcoal/20",
-          error && "border-red-500"
+            : "border-line-strong",
+          error && "border-status-danger-fg"
         )}
       >
         {/* 工具栏 */}
-        <div className="flex flex-wrap items-center gap-0.5 border-b border-brand-charcoal/15 bg-brand-charcoal/[0.03] px-2 py-1.5">
+        <div className="flex flex-wrap items-center gap-0.5 border-b border-line-strong bg-surface-muted px-2 py-1.5">
           {/* 标题 */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
@@ -262,7 +262,7 @@ export function RichTextEditor({
 
             {/* 链接输入框 */}
             {showLinkInput && (
-              <div className="absolute left-0 top-full z-10 mt-1 flex gap-1 rounded-lg border border-brand-charcoal/15 bg-white p-2 shadow-lg">
+              <div className="absolute left-0 top-full z-10 mt-1 flex gap-1 rounded-lg border border-line-strong bg-white p-2 shadow-popover">
                 <input
                   type="url"
                   placeholder="输入链接地址"
@@ -277,7 +277,7 @@ export function RichTextEditor({
                       setShowLinkInput(false);
                     }
                   }}
-                  className="w-48 rounded border border-brand-charcoal/20 px-2 py-1 text-sm focus:border-brand-primary focus:outline-none"
+                  className="w-48 rounded border border-line-strong px-2 py-1 text-sm focus:border-brand-primary focus:outline-none"
                 />
                 <button
                   type="button"
@@ -319,7 +319,7 @@ export function RichTextEditor({
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0",
-              "[&_.ProseMirror_p.is-editor-empty:first-child::before]:text-brand-charcoal/65",
+              "[&_.ProseMirror_p.is-editor-empty:first-child::before]:text-ink-muted",
               "[&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]"
             )}
           />
@@ -328,7 +328,7 @@ export function RichTextEditor({
           {editor && isFocused && (
             <BubbleMenu
               editor={editor}
-              className="flex gap-0.5 rounded-lg border border-brand-charcoal/15 bg-white p-1 shadow-lg"
+              className="flex gap-0.5 rounded-lg border border-line-strong bg-white p-1 shadow-popover"
             >
               <ToolbarButton
                 onClick={() => editor.chain().focus().toggleBold().run()}
@@ -366,7 +366,7 @@ export function RichTextEditor({
         </div>
       </div>
 
-      {error && <p className="mt-1.5 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1.5 text-sm text-status-danger-fg">{error}</p>}
     </div>
   );
 }

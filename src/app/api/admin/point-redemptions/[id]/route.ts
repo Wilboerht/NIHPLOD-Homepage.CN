@@ -48,6 +48,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       success: true,
       data: {
         ...detail,
+        recipient: detail.recipient ? `${detail.recipient.slice(0, 1)}**` : null,
         phone: maskPhone(detail.phone),
         address: detail.address ? "***" : null,
         afterSalesReason: canReadAfterSales ? detail.afterSalesReason : null,

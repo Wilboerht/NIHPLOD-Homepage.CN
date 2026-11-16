@@ -62,18 +62,18 @@ function GroupCheckbox({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm text-brand-charcoal transition-colors hover:bg-brand-charcoal/[0.04]">
+    <label className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm text-brand-charcoal transition-colors hover:bg-surface-muted">
       <input
         type="checkbox"
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary disabled:opacity-60"
+        className="mt-0.5 h-4 w-4 rounded border-line-strong text-brand-primary focus:ring-brand-primary disabled:opacity-60"
       />
       <span>
         {USER_EXPORT_GROUP_LABELS[group]}
         {group === "advisorFullAnalysis" && (
-          <span className="ml-1 text-xs text-brand-charcoal/55">默认关闭，体积较大</span>
+          <span className="ml-1 text-xs text-ink-muted">默认关闭，体积较大</span>
         )}
       </span>
     </label>
@@ -175,8 +175,8 @@ export function UserExportDialog({
         <div
           className={
             canReadSensitive
-              ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
-              : "rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-xs text-brand-charcoal/70"
+              ? "rounded-lg border border-status-warning-line bg-status-warning-soft px-3 py-2 text-xs text-status-warning-strong"
+              : "rounded-lg bg-surface-muted px-3 py-2 text-xs text-brand-charcoal/70"
           }
         >
           {canReadSensitive
@@ -231,7 +231,7 @@ export function UserExportDialog({
           <section>
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-medium text-brand-charcoal">测肤子站</h3>
-              <span className="text-xs text-brand-charcoal/55">逐用户拉取；人数较多时耗时较长</span>
+              <span className="text-xs text-ink-muted">逐用户拉取；人数较多时耗时较长</span>
             </div>
             <div className="grid gap-0.5 sm:grid-cols-2">
               {ADVISOR_GROUPS.map((group) => (
@@ -249,14 +249,14 @@ export function UserExportDialog({
               ))}
             </div>
             {advisorSelected && total > 200 && (
-              <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <p className="mt-2 rounded-lg border border-status-warning-line bg-status-warning-soft px-3 py-2 text-xs text-status-warning-strong">
                 当前匹配用户较多，测肤子站档案将逐用户调用，导出可能持续较长时间。可取消测肤子站分组以加快导出。
               </p>
             )}
           </section>
         )}
 
-        <p className="text-xs text-brand-charcoal/55">
+        <p className="text-xs text-ink-muted">
           ZIP 内每个数据范围对应独立 CSV（兼容 Excel）；测肤完整分析勾选后另存
           advisor-session-analysis.jsonl。
         </p>

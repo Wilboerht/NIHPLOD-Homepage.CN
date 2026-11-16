@@ -51,7 +51,7 @@ export function PendingQueue({ items, className }: PendingQueueProps) {
         <span
           className={cn(
             "inline-flex items-center gap-1 text-xs",
-            total > 0 ? "text-brand-charcoal/65" : "text-emerald-600"
+            total > 0 ? "text-ink-muted" : "text-status-success-fg"
           )}
         >
           {total > 0 ? (
@@ -67,7 +67,7 @@ export function PendingQueue({ items, className }: PendingQueueProps) {
       className={className}
     >
       {visibleItems.length === 0 ? (
-        <div className="flex items-center gap-2 rounded-xl bg-emerald-50/70 px-3 py-3 text-sm text-emerald-700">
+        <div className="flex items-center gap-2 rounded-xl bg-status-success-soft px-3 py-3 text-sm text-status-success-fg">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           所有队列已清零，暂无待处理事项
         </div>
@@ -87,28 +87,28 @@ export function PendingQueue({ items, className }: PendingQueueProps) {
                 key={item.key}
                 href={item.href}
                 aria-label={`${item.label} ${item.count} 项`}
-                className="flex min-h-[64px] items-center gap-2.5 rounded-xl bg-brand-primary/[0.04] p-3 transition-colors hover:bg-brand-primary/[0.08]"
+                className="flex min-h-[64px] items-center gap-2.5 rounded-xl bg-brand-primary/5 p-3 transition-colors hover:bg-brand-primary/10"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary">
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs text-brand-charcoal/65">
+                  <span className="block truncate text-xs text-ink-muted">
                     {item.label}
                   </span>
                   <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <span className="text-lg font-semibold tabular-nums text-brand-primary">
+                    <span className="font-num text-lg font-semibold tabular-nums text-brand-primary">
                       {item.count}
                     </span>
                     {item.amountYuan !== undefined && item.amountYuan > 0 && (
-                      <span className="text-[11px] text-brand-charcoal/65">
+                      <span className="text-2xs text-ink-muted">
                         申报 ¥{item.amountYuan.toLocaleString("zh-CN")}
                       </span>
                     )}
-                    {age && <span className="text-[11px] text-brand-charcoal/65">最老 {age}</span>}
+                    {age && <span className="text-2xs text-ink-muted">最老 {age}</span>}
                   </span>
                 </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-brand-charcoal/65" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" />
               </Link>
             );
           })}

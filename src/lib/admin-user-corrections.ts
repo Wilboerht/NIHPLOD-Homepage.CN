@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { createAuditLogTx, type AuditAction, type AuditTargetType } from "@/lib/audit";
 import { prepareAvatarReplacement } from "@/lib/avatar-assets";
 import { addressFieldsSchema, MAX_ADDRESSES } from "@/lib/user-address";
-import type { UpdateProfileInput } from "@/lib/profile-schema";
+import { isAllowedAvatarUrl, type UpdateProfileInput } from "@/lib/profile-schema";
+import { checkNicknameContent, NICKNAME_REJECTED_MESSAGE } from "@/lib/nickname-policy";
 import type { AdminUser } from "@/types/auth";
 import { z } from "zod";
 
@@ -66,6 +67,14 @@ export async function correctUserProfile(
   input: UpdateProfileInput,
   ctx: CorrectionContext
 ) {
+  // 兜底：即使路由层遗漏，也禁止把违规昵称写入数据库
+  if (input.nickname) {
+    const nicknameCheck = checkNicknameContent(input.nickname);
+    if (!nicknameCheck.ok) {
+      throw new AdminCorrectionError("NICKNAME_REJECTED", NICKNAME_REJECTED_MESSAGE);
+    }
+  }
+
   return prisma.$transaction(async (tx) => {
     await lockActiveRecordUser(tx, userId);
     const previous = await tx.user.findUniqueOrThrow({
@@ -79,11 +88,16 @@ export async function correctUserProfile(
     });
     const nextBirthday =
       input.birthday === undefined ? undefined : input.birthday === "" ? null : input.birthday;
+    // 仅在实际变更时校验：允许回显未变更的存量头像（历史社交外链 / 本地相对路径）
+    const avatarChanged = input.avatar !== undefined && (input.avatar || null) !== previous.avatar;
+    if (avatarChanged && input.avatar && !isAllowedAvatarUrl(input.avatar)) {
+      throw new AdminCorrectionError("INVALID_AVATAR", "头像地址不合法");
+    }
     const changedFields = [
       input.nickname !== undefined && (input.nickname || null) !== previous.nickname
         ? "nickname"
         : null,
-      input.avatar !== undefined && (input.avatar || null) !== previous.avatar ? "avatar" : null,
+      avatarChanged ? "avatar" : null,
       nextBirthday !== undefined &&
       (nextBirthday?.getTime() ?? null) !== (previous.birthday?.getTime() ?? null)
         ? "birthday"

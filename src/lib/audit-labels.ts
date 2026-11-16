@@ -175,6 +175,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   admin_approval_stale: "Owner 审批目标已变化",
   admin_approval_result_unknown: "Owner 审批执行结果未知",
   user_profile_admin_update: "管理员修改用户资料",
+  user_nickname_blocked: "昵称内容风控拦截",
+  user_nickname_update: "用户修改昵称",
   user_address_admin_create: "管理员新增用户地址",
   user_address_admin_update: "管理员修改用户地址",
   user_address_admin_delete: "管理员删除用户地址",

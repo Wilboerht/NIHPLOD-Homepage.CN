@@ -71,7 +71,7 @@ export function TagInput({
         className={cn(
           "flex flex-wrap items-center gap-2 rounded-lg border bg-white px-3 py-2",
           "focus-within:border-brand-primary focus-within:ring-1 focus-within:ring-brand-primary",
-          error ? "border-red-500" : "border-brand-charcoal/20"
+          error ? "border-status-danger-fg" : "border-line-strong"
         )}
       >
         {/* 已添加的标签 */}
@@ -112,7 +112,7 @@ export function TagInput({
                 type="button"
                 onClick={addTag}
                 aria-label="添加标签"
-                className="rounded p-1 text-brand-charcoal/65 hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                className="rounded p-1 text-ink-muted hover:bg-surface-hover hover:text-brand-charcoal"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -124,15 +124,15 @@ export function TagInput({
       {/* 提示信息 */}
       <div className="mt-1 flex items-center justify-between text-xs">
         {error ? (
-          <span id={errorId} className="text-red-500">
+          <span id={errorId} className="text-status-danger-fg">
             {error}
           </span>
         ) : (
-          <span id={hintId} className="text-brand-charcoal/65">
+          <span id={hintId} className="text-ink-muted">
             按回车添加标签
           </span>
         )}
-        <span className="text-brand-charcoal/65">
+        <span className="text-ink-muted">
           {value.length}/{maxTags}
         </span>
       </div>

@@ -157,6 +157,8 @@ export const RATE_LIMIT_PRESETS = {
   "reset-password": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   /** 换绑手机号限制 - 每 15 分钟 5 次（用户级，防枚举/防滥用） */
   "phone-rebind": { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+  /** 昵称修改限制 - 每小时 10 次（用户级，防高频试探风控词表） */
+  "nickname-change": { maxRequests: 10, windowMs: 60 * 60 * 1000 },
   /** OAuth 注销二次验证码 - 每小时 5 次（用户级） */
   "account-deletion-code": { maxRequests: 5, windowMs: 60 * 60 * 1000 },
   /** 账号注销申请 - 每天 3 次（用户级，防恶意注销/滥用） */

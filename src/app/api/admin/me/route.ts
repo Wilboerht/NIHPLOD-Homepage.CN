@@ -27,6 +27,9 @@ export const GET = withAuth(async (request: NextRequest, admin) => {
           role: admin.role,
           // 有效权限（含个人覆盖），前端据此渲染导航与操作按钮
           permissions: resolveAdminPermissions(admin.role, admin.permissionOverrides),
+          // 是否存在个人权限覆盖；用于侧边栏显示“自定义管理”
+          customized:
+            admin.role !== "owner" && (admin.permissionOverrides?.length ?? 0) > 0,
         },
       },
     });

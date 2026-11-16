@@ -6,6 +6,7 @@
  * 供积分/地址等"仅用户本人"的资源端点复用，避免各端点复制粘贴导致口径漂移。
  */
 import type { NextRequest } from "next/server";
+import { rateLimit } from "@/lib/ratelimit";
 import {
   authenticateOAuthResourceRequest,
   buildBearerChallenge,
@@ -98,4 +99,20 @@ export async function authenticateOAuthUserRequest(
   }
 
   return { ok: true, payload, ip, resJson, corsHeaders: auth.corsHeaders };
+}
+
+/**
+ * OAuth 资源端点的用户级限流。
+ * 共享鉴权只有 IP 级限流（默认 600 次/分钟）；兑换/售后等写操作还需要
+ * 与官网会话路由一致的按用户限流，避免单账号刷单或放大第三方调用。
+ */
+export async function checkOAuthUserRateLimit(
+  userId: string,
+  maxRequests: number
+): Promise<boolean> {
+  const result = await rateLimit(`user:${userId}`, "default", {
+    maxRequests,
+    windowMs: 60 * 1000,
+  });
+  return result.success;
 }

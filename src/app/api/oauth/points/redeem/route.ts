@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getOAuthCorsHeaders } from "@/lib/oauth-cors";
-import { authenticateOAuthUserRequest } from "@/lib/oauth-user-auth";
+import { authenticateOAuthUserRequest, checkOAuthUserRateLimit } from "@/lib/oauth-user-auth";
 import { decorateOAuthResponse } from "@/lib/oauth-resource-auth";
 import { redeemPointsResponse } from "@/lib/points-mall-api";
 import { apiConsole } from "@/lib/logger";
@@ -21,6 +21,13 @@ export async function POST(request: NextRequest) {
       action: "points_redeem",
     });
     if (!auth.ok) return auth.response;
+
+    if (!(await checkOAuthUserRateLimit(auth.payload.id, 10))) {
+      return auth.resJson(
+        { success: false, error: { code: "RATE_LIMITED", message: "操作过于频繁，请稍后再试" } },
+        429
+      );
+    }
 
     // 默认拒绝：OAuth 兑礼必须显式配置官方 client_id 白名单。
     const allowedClients = (process.env.OAUTH_POINTS_REDEEM_ALLOWED_CLIENTS ?? "")

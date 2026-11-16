@@ -97,17 +97,17 @@ export default function ScrollSpySidebar({
             href={`#${section.id}`}
             data-section-id={section.id}
             aria-current={activeId === section.id ? "location" : undefined}
-            className={`group flex flex-col border-l px-4 py-2.5 text-left transition-all duration-200 ${
+            className={`group flex flex-col border-l px-4 py-2.5 text-left transition-all duration-base ${
               activeId === section.id
                 ? "border-brand-primary"
-                : "border-brand-charcoal/20 hover:border-brand-charcoal/40"
+                : "border-line-strong hover:border-brand-charcoal/40"
             }`}
           >
             <span
               className={`text-sm font-light tracking-[0.04em] transition-colors ${
                 activeId === section.id
                   ? "text-brand-charcoal"
-                  : "text-brand-charcoal/65 group-hover:text-brand-charcoal"
+                  : "text-ink-muted group-hover:text-brand-charcoal"
               }`}
             >
               {section.title}
@@ -120,15 +120,15 @@ export default function ScrollSpySidebar({
 
   if (variant === "mobile") {
     return (
-      <details className="group mt-6 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-3 xl:hidden">
+      <details className="group mt-6 rounded-xl border border-line bg-surface-subtle px-4 py-3 xl:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-brand-charcoal">
           <span>章节目录</span>
           <ChevronDown
-            className="h-4 w-4 text-brand-charcoal/65 transition-transform group-open:rotate-180"
+            className="h-4 w-4 text-ink-muted transition-transform group-open:rotate-180"
             aria-hidden="true"
           />
         </summary>
-        <nav aria-label={label} className="mt-3 border-t border-brand-charcoal/10 pt-3">
+        <nav aria-label={label} className="mt-3 border-t border-line pt-3">
           {list}
         </nav>
       </details>
@@ -141,7 +141,7 @@ export default function ScrollSpySidebar({
         ref={navRef}
         className="scrollbar-hide sticky top-[120px] max-h-[calc(100vh-8rem)] overflow-y-auto overscroll-contain"
       >
-        <p className="mb-3 px-4 text-xs font-medium tracking-[0.08em] text-brand-charcoal/65">
+        <p className="mb-3 px-4 text-xs font-medium tracking-[0.08em] text-ink-muted">
           目录
         </p>
         <nav aria-label={label}>{list}</nav>

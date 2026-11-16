@@ -28,11 +28,15 @@ import {
 } from "@/types/auth";
 import { saveRefreshToken, extractDeviceInfo } from "@/lib/auth-security";
 import { findUserByIdentity, findUserByUnionId, upsertIdentity } from "@/lib/external-identity";
+import { prepareAvatarReplacement } from "@/lib/avatar-assets";
+import { discardMirroredAvatar, mirrorSocialAvatarForLogin } from "@/lib/social-avatar";
 import { apiConsole } from "@/lib/logger";
 import { logAuthEvent } from "@/lib/auth-logger";
 import { getClientIP } from "@/lib/client-ip";
 import { rateLimit } from "@/lib/ratelimit";
 import { checkUserStatus } from "@/lib/auth";
+import { sanitizeProviderNickname } from "@/lib/nickname-policy";
+import { auditNicknameBlocked } from "@/lib/nickname-audit";
 
 const PROVIDER = "douyin";
 
@@ -130,6 +134,10 @@ export async function GET(request: NextRequest) {
     const tokenData = await getDouyinOAuthToken(code);
     const douyinUser = await getDouyinUserInfo(tokenData.accessToken, tokenData.openId);
 
+    // 第三方昵称合规兜底：违规昵称不落库、不进 token/日志，回退默认昵称
+    const providerNickname = sanitizeProviderNickname(douyinUser.nickname);
+    const safeDouyinNickname = providerNickname.nickname ?? undefined;
+
     logAuthEvent("wechat_bind", {
       success: true,
       step: "douyin_oauth_callback",
@@ -145,6 +153,16 @@ export async function GET(request: NextRequest) {
       user = await findUserByUnionId(douyinUser.unionid, PROVIDER);
     }
 
+    if (providerNickname.blocked && providerNickname.reason) {
+      await auditNicknameBlocked({
+        request,
+        userId: user?.id,
+        source: "douyin_callback",
+        reason: providerNickname.reason,
+        category: providerNickname.category,
+      });
+    }
+
     // 情况1：已绑定真实账户 → 直接登录
     if (user && !user.phone.startsWith(WECHAT_PLACEHOLDER_PHONE_PREFIX)) {
       const statusCheck = await checkUserStatus(user.id);
@@ -158,23 +176,43 @@ export async function GET(request: NextRequest) {
 
       // 更新资料缺省项 + 双写 ExternalIdentity，同事务保证一致性
       // （抖音身份不进微信系旧列，仅更新 nickname/avatar 缺省与 ExternalIdentity）
-      await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: user!.id },
-          data: {
-            nickname: user!.nickname || douyinUser.nickname || null,
-            avatar: user!.avatar || douyinUser.avatar || null,
-          },
+      // 抖音头像为第三方热链：镜像到自有存储后再落库，失败保留现有头像/默认头像
+      const mirroredAvatar = await mirrorSocialAvatarForLogin(
+        douyinUser.avatar,
+        user.avatar,
+        PROVIDER
+      );
+      const nextAvatar = mirroredAvatar ? mirroredAvatar.url : user.avatar;
+      try {
+        await prisma.$transaction(async (tx) => {
+          if (mirroredAvatar) {
+            await prepareAvatarReplacement(tx, {
+              userId: user!.id,
+              nextAvatar: mirroredAvatar.url,
+              newUpload: mirroredAvatar,
+              allowInactive: true,
+            });
+          }
+          await tx.user.update({
+            where: { id: user!.id },
+            data: {
+              nickname: user!.nickname || safeDouyinNickname || null,
+              avatar: nextAvatar,
+            },
+          });
+          await upsertIdentity(
+            user!.id,
+            PROVIDER,
+            douyinUser.openid,
+            douyinUser.unionid || null,
+            { nickname: safeDouyinNickname ?? null, avatar: douyinUser.avatar ?? null },
+            tx
+          );
         });
-        await upsertIdentity(
-          user!.id,
-          PROVIDER,
-          douyinUser.openid,
-          douyinUser.unionid || null,
-          { nickname: douyinUser.nickname ?? null, avatar: douyinUser.avatar ?? null },
-          tx
-        );
-      });
+      } catch (error) {
+        await discardMirroredAvatar(mirroredAvatar);
+        throw error;
+      }
 
       // 签发双 Token（access 携带 jti，登出即失效自动生效）
       const accessToken = await signUserToken({ id: user.id });
@@ -215,7 +253,7 @@ export async function GET(request: NextRequest) {
     const bindToken = await signWechatBindToken({
       openid: douyinUser.openid,
       unionid: douyinUser.unionid,
-      nickname: douyinUser.nickname,
+      nickname: safeDouyinNickname,
       avatar: douyinUser.avatar,
       provider: PROVIDER,
     });

@@ -279,7 +279,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
       >
         {step === "upload" && (
           <div>
-            <p className="text-sm text-brand-charcoal/65">
+            <p className="text-sm text-ink-muted">
               请先下载模板，按表头填写后上传。仅支持 .xlsx / .xls / .csv，单次最多 500 行；
               金额为整数（元），负数表示退款冲正；订单号/小票号必填，用于跨批次去重。
             </p>
@@ -307,7 +307,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
               className="hidden"
               onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
             />
-            <div className="mt-6 rounded-lg bg-brand-charcoal/[0.03] p-4 text-xs text-brand-charcoal/65">
+            <div className="mt-6 rounded-lg bg-surface-muted p-4 text-xs text-ink-muted">
               <p className="font-medium text-brand-charcoal/70">模板列说明</p>
               <ul className="mt-2 space-y-1">
                 <li>手机号（必填）：11 位大陆手机号，须已注册官网账户</li>
@@ -323,9 +323,9 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
 
         {step === "preview" && preview && (
           <div>
-            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm">
+            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-muted p-3 text-sm">
               <span className="truncate text-brand-charcoal/70">{preview.fileName}</span>
-              <span className="text-brand-charcoal/65">
+              <span className="text-ink-muted">
                 共 {preview.rows.length} 行 · 可导入 {preview.okCount} 行 · 错误{" "}
                 {preview.errorCount} 行
               </span>
@@ -350,7 +350,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
 
             <div className="mt-4 overflow-x-auto rounded-lg border">
               <table className="w-full min-w-[620px] text-sm">
-                <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/65">
+                <thead className="sticky top-0 bg-surface-muted text-left text-xs text-ink-muted">
                   <tr>
                     <th className="px-3 py-2 font-medium">行</th>
                     <th className="px-3 py-2 font-medium">手机号</th>
@@ -365,7 +365,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                 <tbody className="divide-y">
                   {preview.rows.map((r) => (
                     <tr key={r.rowIndex}>
-                      <td className="px-3 py-2 text-brand-charcoal/65">{r.rowIndex}</td>
+                      <td className="px-3 py-2 text-ink-muted">{r.rowIndex}</td>
                       <td className="px-3 py-2 text-brand-charcoal/70">{r.maskedPhone ?? "-"}</td>
                       <td className="px-3 py-2 text-brand-charcoal/70">
                         {r.amount != null ? `¥${r.amount.toLocaleString()}` : "-"}
@@ -380,11 +380,11 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                       </td>
                       <td className="px-3 py-2">
                         {r.status === "ok" ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                          <span className="rounded-full bg-status-success-soft px-2 py-0.5 text-xs text-status-success-strong">
                             可导入
                           </span>
                         ) : (
-                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
+                          <span className="rounded-full bg-status-danger-soft px-2 py-0.5 text-xs text-status-danger-fg">
                             {r.error}
                           </span>
                         )}
@@ -400,27 +400,27 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
         {step === "result" && result && (
           <div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
+              <div className="rounded-lg bg-surface-muted p-4 text-center">
                 <p className="text-2xl font-medium text-brand-charcoal">{result.successRows}</p>
-                <p className="mt-1 text-xs text-brand-charcoal/65">成功入账</p>
+                <p className="mt-1 text-xs text-ink-muted">成功入账</p>
               </div>
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
+              <div className="rounded-lg bg-surface-muted p-4 text-center">
                 <p className="text-2xl font-medium text-brand-charcoal">{result.duplicateRows}</p>
-                <p className="mt-1 text-xs text-brand-charcoal/65">重复跳过</p>
+                <p className="mt-1 text-xs text-ink-muted">重复跳过</p>
               </div>
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
+              <div className="rounded-lg bg-surface-muted p-4 text-center">
                 <p className="text-2xl font-medium text-brand-charcoal">{result.errorRows}</p>
-                <p className="mt-1 text-xs text-brand-charcoal/65">失败</p>
+                <p className="mt-1 text-xs text-ink-muted">失败</p>
               </div>
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4 text-center">
+              <div className="rounded-lg bg-surface-muted p-4 text-center">
                 <p className="text-2xl font-medium text-brand-charcoal">
                   ¥{result.totalAmount.toLocaleString()}
                 </p>
-                <p className="mt-1 text-xs text-brand-charcoal/65">净入账金额</p>
+                <p className="mt-1 text-xs text-ink-muted">净入账金额</p>
               </div>
             </div>
             {(needsAttentionRows.length > 0 || result.errorRows > 0) && (
-              <p className="mt-3 text-xs text-brand-charcoal/65">
+              <p className="mt-3 text-xs text-ink-muted">
                 重复/失败行未入账：请按下方行号修正或删除 Excel
                 中对应行后重新导入（已成功行因幂等不会重复入账）。
               </p>
@@ -448,7 +448,7 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                 </div>
                 <div className="overflow-x-auto rounded-lg border">
                   <table className="w-full min-w-[620px] text-sm">
-                    <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/65">
+                    <thead className="sticky top-0 bg-surface-muted text-left text-xs text-ink-muted">
                       <tr>
                         <th className="px-3 py-2 font-medium">Excel 行号</th>
                         <th className="px-3 py-2 font-medium">手机号</th>
@@ -469,16 +469,16 @@ export function SpentImportModal({ open, onClose }: { open: boolean; onClose: ()
                           <td className="px-3 py-2 text-brand-charcoal/70">{row.amount}</td>
                           <td className="px-3 py-2">
                             {row.status === "DUPLICATE" ? (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                              <span className="rounded-full bg-status-warning-soft px-2 py-0.5 text-xs text-status-warning-strong">
                                 重复跳过
                               </span>
                             ) : (
-                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
+                              <span className="rounded-full bg-status-danger-soft px-2 py-0.5 text-xs text-status-danger-fg">
                                 失败
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-xs text-brand-charcoal/65">
+                          <td className="px-3 py-2 text-xs text-ink-muted">
                             {row.error || "-"}
                           </td>
                         </tr>
@@ -653,10 +653,10 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
         closeOnBackdrop={false}
         closeGuard={() => !undoing}
       >
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-3 py-2.5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-surface-subtle px-3 py-2.5">
           <div>
             <p className="text-xs font-medium text-brand-charcoal">跨来源订单对账</p>
-            <p className="mt-0.5 text-[11px] text-brand-charcoal/55">
+            <p className="mt-0.5 text-2xs text-ink-muted">
               检查最近 90 天导入成功与已通过补录的重复订单号
             </p>
           </div>
@@ -666,24 +666,24 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
         </div>
 
         {conflictError && (
-          <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+          <p className="mb-3 rounded-lg border border-status-danger-line bg-status-danger-soft px-3 py-2 text-xs text-status-danger-fg">
             {conflictError}
           </p>
         )}
 
         {conflicts && (
-          <div className="mb-3 rounded-lg border border-brand-charcoal/10">
+          <div className="mb-3 rounded-lg border border-line">
             {conflicts.count === 0 ? (
-              <p className="px-3 py-2.5 text-xs text-emerald-700">
+              <p className="px-3 py-2.5 text-xs text-status-success-strong">
                 未发现导入、补录或商城同步的重复订单
               </p>
             ) : (
               <>
-                <p className="border-b border-brand-charcoal/10 px-3 py-2 text-xs font-medium text-red-600">
+                <p className="border-b border-line px-3 py-2 text-xs font-medium text-status-danger-fg">
                   发现 {conflicts.count} 个重复订单，请人工核对
                   {conflicts.truncated ? "（仅展示前 100 条）" : ""}
                 </p>
-                <div className="divide-y divide-brand-charcoal/[0.06]">
+                <div className="divide-y divide-line-subtle">
                   {conflicts.items.map((item) => {
                     const sourceLabels: Record<string, string> = {
                       IMPORT: "Excel导入",
@@ -697,7 +697,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
                       >
                         <div className="min-w-0">
                           <p className="font-mono text-brand-charcoal/75">{item.orderNo}</p>
-                          <p className="mt-0.5 text-[11px] text-brand-charcoal/50">
+                          <p className="mt-0.5 text-2xs text-ink-muted">
                             来源：
                             {(item.sources ?? [])
                               .map((source) => sourceLabels[source] ?? source)
@@ -730,20 +730,20 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
         <div className="overflow-x-auto rounded-lg border">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-brand-charcoal/65" />
+              <Loader2 className="h-6 w-6 animate-spin text-ink-muted" />
             </div>
           ) : loadError ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12">
-              <p className="text-sm text-red-500">加载导入历史失败</p>
+              <p className="text-sm text-status-danger-fg">加载导入历史失败</p>
               <Button variant="outline" size="sm" onClick={fetchBatches}>
                 重试
               </Button>
             </div>
           ) : batches.length === 0 ? (
-            <p className="py-12 text-center text-sm text-brand-charcoal/65">暂无导入记录</p>
+            <p className="py-12 text-center text-sm text-ink-muted">暂无导入记录</p>
           ) : (
             <table className="w-full min-w-[620px] text-sm">
-              <thead className="sticky top-0 bg-brand-charcoal/[0.03] text-left text-xs text-brand-charcoal/65">
+              <thead className="sticky top-0 bg-surface-muted text-left text-xs text-ink-muted">
                 <tr>
                   <th className="px-3 py-2 font-medium">文件名</th>
                   <th className="px-3 py-2 font-medium">行数（总/成/重/错）</th>
@@ -762,22 +762,22 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
                       </p>
                       {b.reason && (
                         <p
-                          className="mt-0.5 truncate text-[11px] text-brand-charcoal/50"
+                          className="mt-0.5 truncate text-2xs text-ink-muted"
                           title={b.reason}
                         >
                           原因：{b.reason}
                         </p>
                       )}
                       {b.undoneAt ? (
-                        <span className="mt-0.5 inline-block rounded-full bg-brand-charcoal/10 px-2 py-0.5 text-[11px] text-brand-charcoal/70">
+                        <span className="mt-0.5 inline-block rounded-full bg-brand-charcoal/10 px-2 py-0.5 text-2xs text-brand-charcoal/70">
                           已撤销
                         </span>
                       ) : b.status === "FAILED" ? (
-                        <span className="mt-0.5 inline-block rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-600">
+                        <span className="mt-0.5 inline-block rounded-full bg-status-danger-soft px-2 py-0.5 text-2xs text-status-danger-fg">
                           未入账
                         </span>
                       ) : b.status === "PROCESSING" ? (
-                        <span className="mt-0.5 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                        <span className="mt-0.5 inline-block rounded-full bg-status-warning-soft px-2 py-0.5 text-2xs text-status-warning-strong">
                           处理中
                         </span>
                       ) : null}
@@ -789,7 +789,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
                       ¥{b.totalAmount.toLocaleString()}
                     </td>
                     <td className="px-3 py-2 text-brand-charcoal/70">{b.adminName}</td>
-                    <td className="px-3 py-2 text-brand-charcoal/65">
+                    <td className="px-3 py-2 text-ink-muted">
                       {formatDateTime(b.createdAt)}
                     </td>
                     <td className="px-3 py-2">
@@ -818,7 +818,7 @@ export function ImportHistoryModal({ open, onClose }: { open: boolean; onClose: 
         </div>
 
         {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between text-sm text-brand-charcoal/65">
+          <div className="mt-4 flex items-center justify-between text-sm text-ink-muted">
             <span>
               第 {page}/{totalPages} 页
             </span>

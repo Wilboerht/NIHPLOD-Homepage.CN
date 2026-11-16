@@ -77,14 +77,14 @@ export default function TOTPRecoveryPage() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-white px-4 py-8">
-      <div className="w-full max-w-lg rounded-2xl border border-brand-charcoal/10 bg-white p-6">
+      <div className="w-full max-w-lg rounded-card border border-line bg-white p-6">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-charcoal/[0.04]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-muted">
             <ShieldCheck className="h-5 w-5 text-brand-primary" />
           </div>
           <div>
             <h1 className="text-lg font-semibold text-brand-charcoal">重新绑定二次验证</h1>
-            <p className="text-xs text-brand-charcoal/65">
+            <p className="text-xs text-ink-muted">
               使用恢复码登录成功，请绑定新的验证器后重新登录。
             </p>
           </div>
@@ -98,7 +98,7 @@ export default function TOTPRecoveryPage() {
 
         {!loading && error && !setupData && (
           <div className="space-y-4">
-            <div className="flex items-start gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="flex items-start gap-2 rounded-lg border border-status-danger-line bg-status-danger-soft px-4 py-3 text-sm text-status-danger-fg">
               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -110,7 +110,7 @@ export default function TOTPRecoveryPage() {
 
         {done && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div className="rounded-lg border border-status-success-line bg-status-success-soft px-4 py-3 text-sm text-status-success-strong">
               二次验证已重新启用。请使用新验证器重新登录。
             </div>
             <Link
@@ -124,7 +124,7 @@ export default function TOTPRecoveryPage() {
 
         {!loading && setupData && !done && (
           <div className="space-y-4">
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-brand-charcoal/10 p-4">
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-line p-4">
               <Image
                 src={setupData.qrCode}
                 alt="TOTP 二维码"
@@ -133,7 +133,7 @@ export default function TOTPRecoveryPage() {
                 unoptimized
               />
               <div className="flex w-full items-center gap-2">
-                <code className="min-w-0 flex-1 break-all rounded bg-brand-charcoal/[0.04] px-2 py-1.5 text-xs">
+                <code className="min-w-0 flex-1 break-all rounded bg-surface-muted px-2 py-1.5 text-xs">
                   {setupData.secret}
                 </code>
                 <Button
@@ -156,7 +156,7 @@ export default function TOTPRecoveryPage() {
               <p className="mb-2 text-xs font-medium text-brand-charcoal/70">
                 备用码（仅显示一次，请逐个保存）
               </p>
-              <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-brand-charcoal/[0.03] p-3 text-xs">
+              <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-surface-muted p-3 text-xs">
                 {setupData.backupCodes.map((code) => (
                   <button
                     key={code}
@@ -167,9 +167,9 @@ export default function TOTPRecoveryPage() {
                   >
                     <span>{code}</span>
                     {copied === `backup-${code}` ? (
-                      <Check className="h-3 w-3 flex-shrink-0 text-green-500" />
+                      <Check className="h-3 w-3 flex-shrink-0 text-status-success-fg" />
                     ) : (
-                      <Copy className="h-3 w-3 flex-shrink-0 text-brand-charcoal/65" />
+                      <Copy className="h-3 w-3 flex-shrink-0 text-ink-muted" />
                     )}
                   </button>
                 ))}
@@ -208,7 +208,7 @@ export default function TOTPRecoveryPage() {
             </div>
 
             {error && (
-              <div className="flex items-start gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="flex items-start gap-2 rounded-lg border border-status-danger-line bg-status-danger-soft px-4 py-3 text-sm text-status-danger-fg">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>

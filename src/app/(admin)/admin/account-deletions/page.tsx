@@ -51,25 +51,25 @@ const STATUS_TABS: { key: DeletionStatus; label: string }[] = [
 ];
 
 const STATUS_BADGES: Record<DeletionStatus, { label: string; className: string }> = {
-  FAILED: { label: "失败", className: "bg-red-50 text-red-600" },
-  PENDING: { label: "冷静期", className: "bg-amber-50 text-amber-700" },
-  RUNNING: { label: "执行中", className: "bg-blue-50 text-blue-600" },
-  COMPLETED: { label: "已完成", className: "bg-emerald-50 text-emerald-600" },
-  CANCELLED: { label: "已撤回", className: "bg-brand-charcoal/5 text-brand-charcoal/65" },
+  FAILED: { label: "失败", className: "bg-status-danger-soft text-status-danger-fg" },
+  PENDING: { label: "冷静期", className: "bg-status-warning-soft text-status-warning-strong" },
+  RUNNING: { label: "执行中", className: "bg-status-info-soft text-status-info-fg" },
+  COMPLETED: { label: "已完成", className: "bg-status-success-soft text-status-success-fg" },
+  CANCELLED: { label: "已撤回", className: "bg-brand-charcoal/5 text-ink-muted" },
 };
 
 function DeletionWarningHint() {
   return (
     <details className="group relative inline-block">
       <summary
-        className="flex cursor-pointer list-none items-center rounded-full p-1 text-amber-600 transition-colors hover:bg-amber-50 [&::-webkit-details-marker]:hidden"
+        className="flex cursor-pointer list-none items-center rounded-full p-1 text-status-warning-fg transition-colors hover:bg-status-warning-soft [&::-webkit-details-marker]:hidden"
         aria-label="查看注销任务执行说明"
         title="查看注销任务执行说明"
       >
         <AlertTriangle className="h-4 w-4" aria-hidden="true" />
       </summary>
-      <div className="absolute left-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-amber-200 bg-white p-3 text-xs leading-relaxed text-brand-charcoal/80 shadow-lg">
-        <p className="font-medium text-amber-800">注销任务执行说明</p>
+      <div className="absolute left-0 top-full z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-status-warning-line bg-white p-3 text-xs leading-relaxed text-brand-charcoal/80 shadow-popover">
+        <p className="font-medium text-status-warning-strong">注销任务执行说明</p>
         <p className="mt-1.5">
           重试会立即同步执行注销任务（撤销全部会话与子站授权、解绑第三方身份、匿名化个人数据），操作不可逆。
         </p>
@@ -267,7 +267,7 @@ function AdminAccountDeletionsContent() {
               "rounded-full border px-4 py-1.5 text-sm transition-colors",
               status === tab.key
                 ? "border-brand-charcoal bg-brand-charcoal text-white"
-                : "border-brand-charcoal/15 bg-white text-brand-charcoal/70 hover:border-brand-charcoal/30"
+                : "border-line-strong bg-white text-brand-charcoal/70 hover:border-brand-charcoal/30"
             )}
           >
             {tab.label}
@@ -281,7 +281,7 @@ function AdminAccountDeletionsContent() {
         error={
           loadError ? (
             <>
-              <p className="text-red-500">加载失败</p>
+              <p className="text-status-danger-fg">加载失败</p>
               <Button
                 variant="outline"
                 size="sm"
@@ -303,7 +303,7 @@ function AdminAccountDeletionsContent() {
                 <p className="truncate font-medium text-brand-charcoal">
                   {item.userNickname || "未设置昵称"}
                 </p>
-                <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                <p className="truncate font-mono text-xs text-ink-muted">
                   {item.userPhone || item.userId}
                 </p>
               </div>
@@ -329,11 +329,11 @@ function AdminAccountDeletionsContent() {
               {item.reason && <span className="col-span-2">注销原因：{item.reason}</span>}
             </div>
             {item.status === "FAILED" && item.lastError && (
-              <p className="mt-2 rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-600">
+              <p className="mt-2 rounded-lg bg-status-danger-soft px-2 py-1.5 text-xs text-status-danger-fg">
                 {item.lastError}
               </p>
             )}
-            <div className="mt-2 flex justify-end border-t border-brand-charcoal/10 pt-2">
+            <div className="mt-2 flex justify-end border-t border-line pt-2">
               {item.status === "FAILED" ? (
                 canRetry ? (
                   <Button
@@ -347,7 +347,7 @@ function AdminAccountDeletionsContent() {
                     重试
                   </Button>
                 ) : (
-                  <span className="text-xs text-brand-charcoal/65">只读</span>
+                  <span className="text-xs text-ink-muted">只读</span>
                 )
               ) : item.status === "PENDING" && canCancel ? (
                 <Button
@@ -360,7 +360,7 @@ function AdminAccountDeletionsContent() {
                   撤回申请
                 </Button>
               ) : (
-                <span className="text-xs text-brand-charcoal/65">—</span>
+                <span className="text-xs text-ink-muted">—</span>
               )}
             </div>
           </MobileListCard>
@@ -368,18 +368,18 @@ function AdminAccountDeletionsContent() {
       </MobileList>
 
       {/* 列表（桌面端表格） */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
         ) : loadError ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="rounded-full bg-red-50 p-4">
-              <AlertCircle className="h-8 w-8 text-red-400" />
+            <div className="rounded-full bg-status-danger-soft p-4">
+              <AlertCircle className="h-8 w-8 text-status-danger-fg" />
             </div>
             <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-brand-charcoal/65">
+            <p className="mt-1 text-sm text-ink-muted">
               无法获取注销申请列表，请检查网络连接
             </p>
             <button
@@ -397,7 +397,7 @@ function AdminAccountDeletionsContent() {
         ) : (
           <table className="w-full min-w-[860px] text-sm">
             <thead>
-              <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left text-xs uppercase text-brand-charcoal/65">
+              <tr className="border-b border-line bg-surface-subtle text-left text-xs uppercase text-ink-muted">
                 <th className="px-4 py-3 font-medium">用户</th>
                 <th className="px-4 py-3 font-medium">状态</th>
                 <th className="px-4 py-3 font-medium">注销原因</th>
@@ -410,12 +410,12 @@ function AdminAccountDeletionsContent() {
                 <th className="px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-brand-charcoal/10">
+            <tbody className="divide-y divide-line">
               {items.map((item) => (
-                <tr key={item.id} className="hover:bg-brand-charcoal/[0.02]">
+                <tr key={item.id} className="hover:bg-surface-subtle">
                   <td className="px-4 py-3">
                     <p className="text-brand-charcoal/80">{item.userNickname || "未设置昵称"}</p>
-                    <p className="font-mono text-xs text-brand-charcoal/65">
+                    <p className="font-mono text-xs text-ink-muted">
                       {item.userPhone || item.userId}
                     </p>
                   </td>
@@ -431,7 +431,7 @@ function AdminAccountDeletionsContent() {
                   </td>
                   <td className="max-w-[12rem] px-4 py-3">
                     <p
-                      className="truncate text-xs text-brand-charcoal/65"
+                      className="truncate text-xs text-ink-muted"
                       title={item.reason ?? undefined}
                     >
                       {item.reason || "—"}
@@ -456,7 +456,7 @@ function AdminAccountDeletionsContent() {
                   <td className="px-4 py-3 text-brand-charcoal/70">{item.attempts} 次</td>
                   <td className="max-w-[16rem] px-4 py-3">
                     <p
-                      className="truncate text-xs text-brand-charcoal/65"
+                      className="truncate text-xs text-ink-muted"
                       title={item.lastError ?? undefined}
                     >
                       {item.lastError || "—"}
@@ -476,7 +476,7 @@ function AdminAccountDeletionsContent() {
                           重试
                         </Button>
                       ) : (
-                        <span className="text-xs text-brand-charcoal/65">只读</span>
+                        <span className="text-xs text-ink-muted">只读</span>
                       )
                     ) : item.status === "PENDING" && canCancel ? (
                       <Button
@@ -489,7 +489,7 @@ function AdminAccountDeletionsContent() {
                         撤回申请
                       </Button>
                     ) : (
-                      <span className="text-xs text-brand-charcoal/65">—</span>
+                      <span className="text-xs text-ink-muted">—</span>
                     )}
                   </td>
                 </tr>
@@ -501,7 +501,7 @@ function AdminAccountDeletionsContent() {
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-brand-charcoal/65">
+        <div className="flex items-center justify-between text-sm text-ink-muted">
           <span>
             第 {page}/{totalPages} 页
           </span>
@@ -552,7 +552,7 @@ function AdminAccountDeletionsContent() {
           placeholder="如：子站故障已恢复 / OPS-20261110-01"
         />
         {isOwnerActor && (
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-status-warning-line bg-status-warning-soft p-3">
             <input
               type="checkbox"
               checked={forceRetry}
@@ -560,10 +560,10 @@ function AdminAccountDeletionsContent() {
               className="mt-0.5"
             />
             <span>
-              <span className="block text-sm font-medium text-amber-800">
+              <span className="block text-sm font-medium text-status-warning-strong">
                 强制重试（忽略重试次数上限）
               </span>
-              <span className="mt-0.5 block text-xs text-amber-600">
+              <span className="mt-0.5 block text-xs text-status-warning-fg">
                 该申请已自动重试 {retryTarget?.attempts ?? 0}{" "}
                 次。勾选后将重置重试计数并立即执行，请先排查失败原因。
               </span>

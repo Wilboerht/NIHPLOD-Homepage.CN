@@ -33,15 +33,19 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/points-ledger", () => ({
   redeemPoints: vi.fn(),
+  getPointBalanceView: vi.fn(),
+  lockPointBalance: vi.fn().mockResolvedValue(undefined),
+  adjustPoints: vi.fn().mockResolvedValue({ duplicated: false }),
   withPointTxRetry: async <T>(fn: () => Promise<T>) => fn(),
 }));
 
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { redeemPoints } from "@/lib/points-ledger";
+import { getPointBalanceView, redeemPoints } from "@/lib/points-ledger";
 import { giftCostForUser, redeemGiftForUser, fulfillRedemption } from "@/lib/point-gifts";
 
 const mockRedeemPoints = redeemPoints as ReturnType<typeof vi.fn>;
+const mockGetPointBalanceView = getPointBalanceView as ReturnType<typeof vi.fn>;
 const mockTxFindUnique = txClient.pointRedemption.findUnique as ReturnType<typeof vi.fn>;
 const mockTxCreate = txClient.pointRedemption.create as ReturnType<typeof vi.fn>;
 const mockTxBalanceFind = txClient.pointBalance.findUnique as ReturnType<typeof vi.fn>;
@@ -52,9 +56,6 @@ const mockTxAddressFind = txClient.userAddress.findUnique as ReturnType<typeof v
 const mockTxRedemptionCount = txClient.pointRedemption.count as ReturnType<typeof vi.fn>;
 const mockPrismaRedemptionFind = (
   prisma.pointRedemption as unknown as { findUnique: ReturnType<typeof vi.fn> }
-).findUnique;
-const mockPrismaBalanceFind = (
-  prisma.pointBalance as unknown as { findUnique: ReturnType<typeof vi.fn> }
 ).findUnique;
 
 const REDEEMABLE_PRODUCT = {
@@ -102,6 +103,7 @@ describe("redeemGiftForUser 兑换事务", () => {
     mockTxBalanceFind.mockResolvedValue({ available: 770 });
     mockTxCreate.mockResolvedValue({ id: "redemption-1" });
     mockTxRedemptionCount.mockResolvedValue(0);
+    mockGetPointBalanceView.mockResolvedValue({ available: 770, frozen: 0, nextReleaseAt: null });
     mockRedeemPoints.mockResolvedValue({ ok: true, available: 770, spent: 230 });
   });
 
@@ -201,7 +203,7 @@ describe("redeemGiftForUser 兑换事务", () => {
 
   it("同一请求单重复提交：幂等返回，不重复扣分（余额取真实值）", async () => {
     mockTxFindUnique.mockResolvedValue({ id: "redemption-1", points: 230 });
-    mockTxBalanceFind.mockResolvedValue({ available: 500 });
+    mockGetPointBalanceView.mockResolvedValue({ available: 500, frozen: 0, nextReleaseAt: null });
 
     const result = await redeemGiftForUser({
       userId: "user-1",
@@ -218,6 +220,53 @@ describe("redeemGiftForUser 兑换事务", () => {
       redemptionId: "redemption-1",
     });
     expect(mockRedeemPoints).not.toHaveBeenCalled();
+  });
+
+  it("并发同一 requestId：拿到用户锁后重新检查，返回幂等结果而不是 500/409", async () => {
+    mockTxFindUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "redemption-1", points: 230 });
+    mockGetPointBalanceView.mockResolvedValue({ available: 460, frozen: 0, nextReleaseAt: null });
+
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      duplicated: true,
+      points: 230,
+      available: 460,
+      redemptionId: "redemption-1",
+    });
+    expect(mockRedeemPoints).not.toHaveBeenCalled();
+  });
+
+  it("redeemPoints 返回 spent=0（并发已写入流水）时回读兑换单并幂等返回", async () => {
+    mockTxFindUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "redemption-1", points: 230 });
+    mockRedeemPoints.mockResolvedValue({ ok: true, available: 540, spent: 0 });
+    mockGetPointBalanceView.mockResolvedValue({ available: 540, frozen: 0, nextReleaseAt: null });
+
+    const result = await redeemGiftForUser({
+      userId: "user-1",
+      productId: "product-1",
+      requestId: "req-1",
+      addressId: "addr-1",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      duplicated: true,
+      points: 230,
+      available: 540,
+      redemptionId: "redemption-1",
+    });
   });
 
   it("产品不存在：PRODUCT_NOT_FOUND", async () => {
@@ -347,7 +396,7 @@ describe("redeemGiftForUser 兑换事务", () => {
       })
     );
     mockPrismaRedemptionFind.mockResolvedValue({ id: "redemption-9", points: 230 });
-    mockPrismaBalanceFind.mockResolvedValue({ available: 480 });
+    mockGetPointBalanceView.mockResolvedValue({ available: 480, frozen: 0, nextReleaseAt: null });
 
     const result = await redeemGiftForUser({
       userId: "user-1",

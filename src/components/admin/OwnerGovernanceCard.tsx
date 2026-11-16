@@ -17,14 +17,14 @@ function CountBox({
   tone?: "default" | "danger" | "warning" | "primary";
 }) {
   return (
-    <div className="min-w-0 rounded-xl bg-brand-charcoal/[0.03] px-3 py-2.5">
-      <p className="truncate text-[11px] text-brand-charcoal/65">{label}</p>
+    <div className="min-w-0 rounded-xl bg-surface-muted px-3 py-2.5">
+      <p className="truncate text-2xs text-ink-muted">{label}</p>
       <p
         className={
           value > 0 && tone === "danger"
-            ? "mt-0.5 text-xl font-semibold tabular-nums text-red-600"
+            ? "mt-0.5 text-xl font-semibold tabular-nums text-status-danger-fg"
             : value > 0 && tone === "warning"
-              ? "mt-0.5 text-xl font-semibold tabular-nums text-amber-700"
+              ? "mt-0.5 text-xl font-semibold tabular-nums text-status-warning-strong"
               : value > 0 && tone === "primary"
                 ? "mt-0.5 text-xl font-semibold tabular-nums text-brand-primary"
                 : "mt-0.5 text-xl font-semibold tabular-nums text-brand-charcoal"
@@ -50,7 +50,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
       modalSize="xl"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-brand-charcoal/65">审批、owner 级权限与高风险操作概览</p>
+        <p className="text-xs text-ink-muted">审批、owner 级权限与高风险操作概览</p>
         <Link
           href="/admin/approvals"
           className="inline-flex items-center gap-1 text-xs text-brand-primary hover:underline"
@@ -74,18 +74,18 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
         <div>
           <div className="mb-2 flex items-center justify-between">
             <h3 className="flex items-center gap-1.5 text-xs font-medium text-brand-charcoal">
-              <Clock className="h-3.5 w-3.5 text-amber-600" />
+              <Clock className="h-3.5 w-3.5 text-status-warning-fg" />
               待我审批
             </h3>
             <Link
               href="/admin/approvals?status=PENDING"
-              className="text-[11px] text-brand-primary hover:underline"
+              className="text-2xs text-brand-primary hover:underline"
             >
               查看全部
             </Link>
           </div>
           {pending.length === 0 ? (
-            <p className="rounded-xl bg-emerald-50/70 px-3 py-3 text-sm text-emerald-700">
+            <p className="rounded-xl bg-status-success-soft/70 px-3 py-3 text-sm text-status-success-strong">
               暂无待审批申请
             </p>
           ) : (
@@ -96,7 +96,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
                     href="/admin/approvals?status=PENDING"
                     className="group flex items-start gap-2 py-2.5"
                   >
-                    <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                    <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-status-warning-fg" />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-1.5">
                         <span className="truncate text-sm font-medium text-brand-charcoal">
@@ -105,13 +105,13 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
                         </span>
                         <Badge variant="warning">待审批</Badge>
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-brand-charcoal/65">
+                      <span className="mt-0.5 block truncate text-xs text-ink-muted">
                         {item.requesterName || item.requesterEmail || item.requesterId} · 目标{" "}
                         {item.targetLabel || item.targetId || "-"} ·
                         {formatRelativeTime(item.createdAt)}
                       </span>
                     </span>
-                    <ChevronRight className="mt-1 h-3.5 w-3.5 text-brand-charcoal/40" />
+                    <ChevronRight className="mt-1 h-3.5 w-3.5 text-ink-faint" />
                   </Link>
                 </li>
               ))}
@@ -125,10 +125,10 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
               <Users className="h-3.5 w-3.5 text-brand-primary" />
               Owner 级权限持有人
             </h3>
-            <span className="text-[11px] text-brand-charcoal/65">{data.holders.length} 人</span>
+            <span className="text-2xs text-ink-muted">{data.holders.length} 人</span>
           </div>
           {data.holders.length === 0 ? (
-            <p className="rounded-xl bg-emerald-50/70 px-3 py-3 text-sm text-emerald-700">
+            <p className="rounded-xl bg-status-success-soft/70 px-3 py-3 text-sm text-status-success-strong">
               没有非 owner 持有 owner 级权限
             </p>
           ) : (
@@ -136,7 +136,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
               {data.holders.map((holder) => (
                 <li
                   key={holder.id}
-                  className="rounded-xl border border-brand-charcoal/10 px-3 py-2"
+                  className="rounded-xl border border-line px-3 py-2"
                 >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="truncate text-sm font-medium text-brand-charcoal">
@@ -147,7 +147,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
                       TOTP {holder.totpEnabled ? "已启用" : "未启用"}
                     </Badge>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-[11px] text-brand-charcoal/65">
+                  <p className="mt-1 line-clamp-2 text-2xs text-ink-muted">
                     {holder.permissions
                       .map((permission) => PERMISSION_LABELS[permission] ?? permission)
                       .join("、")}
@@ -159,18 +159,18 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
         </div>
       </div>
 
-      <div className="mt-4 border-t border-brand-charcoal/10 pt-3">
+      <div className="mt-4 border-t border-line pt-3">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-xs font-medium text-brand-charcoal">Owner 专属操作（近 24 小时）</h3>
           <Link
             href="/admin/audit-logs?actorType=ADMIN"
-            className="text-[11px] text-brand-primary hover:underline"
+            className="text-2xs text-brand-primary hover:underline"
           >
             查看审计
           </Link>
         </div>
         {ownerOnly.length === 0 ? (
-          <p className="text-sm text-brand-charcoal/65">暂无 owner 专属操作</p>
+          <p className="text-sm text-ink-muted">暂无 owner 专属操作</p>
         ) : (
           <ul className="max-h-56 divide-y divide-brand-charcoal/5 overflow-y-auto pr-1">
             {ownerOnly.map((event) => (
@@ -189,7 +189,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
                   <time
                     dateTime={event.createdAt}
                     title={formatDateTimeSeconds(event.createdAt)}
-                    className="shrink-0 text-brand-charcoal/55"
+                    className="shrink-0 text-ink-muted"
                   >
                     {formatRelativeTime(event.createdAt)}
                   </time>
@@ -200,7 +200,7 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
         )}
       </div>
 
-      <details className="group mt-4 rounded-xl bg-brand-charcoal/[0.03] px-3 py-2.5">
+      <details className="group mt-4 rounded-xl bg-surface-muted px-3 py-2.5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-medium text-brand-charcoal [&::-webkit-details-marker]:hidden">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5" />
@@ -211,13 +211,13 @@ export function OwnerGovernanceCard({ data }: { data: OwnerGovernanceData | null
             className="h-3.5 w-3.5 transition-transform group-open:rotate-180"
           />
         </summary>
-        <ul className="mt-1.5 space-y-1 text-[11px] text-brand-charcoal/65">
+        <ul className="mt-1.5 space-y-1 text-2xs text-ink-muted">
           {data.protectionRules.map((rule) => (
             <li key={rule}>· {rule}</li>
           ))}
         </ul>
         {data.unenforcedActions.length > 0 && (
-          <p className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-700">
+          <p className="mt-2 flex items-start gap-1.5 text-2xs text-status-warning-strong">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             仍待补 step-up：{data.unenforcedActions.join("、")}
           </p>

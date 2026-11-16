@@ -332,16 +332,16 @@ export function SpentOnBehalfModal({
         {/* 目标用户 */}
         <section>
           <p className="mb-2 text-xs font-medium text-brand-charcoal/70">
-            目标用户 <span className="text-red-500">*</span>
+            目标用户 <span className="text-status-danger-fg">*</span>
           </p>
           {selectedUser ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-brand-charcoal/15 bg-brand-charcoal/[0.02] px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-line-strong bg-surface-subtle px-3 py-2.5">
               <div className="min-w-0">
                 <p className="truncate text-sm text-brand-charcoal">
                   {selectedUser.nickname || "未设置昵称"}
-                  <span className="ml-2 text-xs text-brand-charcoal/65">{selectedUser.phone}</span>
+                  <span className="ml-2 text-xs text-ink-muted">{selectedUser.phone}</span>
                 </p>
-                <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   {levelDisplay(selectedUser.membershipLevel)} ·{" "}
                   {USER_STATUS_LABELS[selectedUser.status]}
                 </p>
@@ -364,7 +364,7 @@ export function SpentOnBehalfModal({
           ) : (
             <div className="space-y-2">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
                 <Input
                   aria-label="搜索用户"
                   placeholder="输入手机号 / 昵称 / 用户 ID"
@@ -375,34 +375,34 @@ export function SpentOnBehalfModal({
                 />
               </div>
               {searching && (
-                <p className="flex items-center gap-1.5 text-xs text-brand-charcoal/65">
+                <p className="flex items-center gap-1.5 text-xs text-ink-muted">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   搜索中...
                 </p>
               )}
-              {searchError && <p className="text-xs text-red-500">{searchError}</p>}
+              {searchError && <p className="text-xs text-status-danger-fg">{searchError}</p>}
               {!searching && !searchError && search.trim() && searchResults.length === 0 && (
-                <p className="text-xs text-brand-charcoal/65">未找到用户，请核对手机号或用户 ID</p>
+                <p className="text-xs text-ink-muted">未找到用户，请核对手机号或用户 ID</p>
               )}
               {searchResults.length > 0 && (
-                <div className="max-h-56 divide-y divide-brand-charcoal/10 overflow-y-auto rounded-lg border border-brand-charcoal/15">
+                <div className="max-h-56 divide-y divide-line overflow-y-auto rounded-lg border border-line-strong">
                   {searchResults.map((user) => (
                     <button
                       key={user.id}
                       type="button"
                       onClick={() => setSelectedUser(user)}
-                      className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-brand-charcoal/[0.04]"
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-muted"
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-sm text-brand-charcoal/80">
                           {user.nickname || "未设置昵称"}
-                          <span className="ml-2 text-xs text-brand-charcoal/65">{user.phone}</span>
+                          <span className="ml-2 text-xs text-ink-muted">{user.phone}</span>
                         </span>
-                        <span className="mt-0.5 block text-xs text-brand-charcoal/65">
+                        <span className="mt-0.5 block text-xs text-ink-muted">
                           {levelDisplay(user.membershipLevel)} · {USER_STATUS_LABELS[user.status]}
                         </span>
                       </span>
-                      <Check className="h-4 w-4 shrink-0 text-brand-charcoal/40" />
+                      <Check className="h-4 w-4 shrink-0 text-ink-faint" />
                     </button>
                   ))}
                 </div>
@@ -410,20 +410,20 @@ export function SpentOnBehalfModal({
             </div>
           )}
           {selectedUser && selectedUser.status !== "ACTIVE" && (
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-red-500">
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-status-danger-fg">
               <AlertCircle className="h-3.5 w-3.5" />
               该用户当前状态不可提交消费补录
             </p>
           )}
         </section>
 
-        <div className="border-t border-brand-charcoal/10" />
+        <div className="border-t border-line" />
 
         {/* 补录信息 */}
         <section className="space-y-4">
           <div>
             <p className="mb-2 text-xs font-medium text-brand-charcoal/70">
-              购买渠道 <span className="text-red-500">*</span>
+              购买渠道 <span className="text-status-danger-fg">*</span>
             </p>
             <div className="flex flex-wrap gap-2">
               {SPENT_CHANNELS.map((item) => {
@@ -437,7 +437,7 @@ export function SpentOnBehalfModal({
                     className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs transition-colors ${
                       active
                         ? "border-brand-primary/40 bg-brand-primary/10 font-medium text-brand-primary"
-                        : "border-brand-charcoal/15 text-brand-charcoal/70 hover:border-brand-charcoal/30"
+                        : "border-line-strong text-brand-charcoal/70 hover:border-brand-charcoal/30"
                     }`}
                   >
                     {active && <Check className="h-3 w-3" />}
@@ -490,9 +490,9 @@ export function SpentOnBehalfModal({
           <section>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-medium text-brand-charcoal/70">
-                凭证截图 <span className="font-normal text-brand-charcoal/65">（选填）</span>
+                凭证截图 <span className="font-normal text-ink-muted">（选填）</span>
               </p>
-              <span className="text-[11px] text-brand-charcoal/65">
+              <span className="text-2xs text-ink-muted">
                 {images.length}/{MAX_IMAGES}
               </span>
             </div>
@@ -500,7 +500,7 @@ export function SpentOnBehalfModal({
               {images.map((url, index) => (
                 <div
                   key={url}
-                  className="group relative h-20 w-20 overflow-hidden rounded-lg border border-brand-charcoal/15"
+                  className="group relative h-20 w-20 overflow-hidden rounded-lg border border-line-strong"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -523,14 +523,14 @@ export function SpentOnBehalfModal({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading || !selectedUser}
-                  className="flex h-20 w-40 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-brand-charcoal/25 text-brand-charcoal/65 transition-colors hover:border-brand-charcoal/40 hover:text-brand-charcoal disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-20 w-40 flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-brand-charcoal/25 text-ink-muted transition-colors hover:border-brand-charcoal/40 hover:text-brand-charcoal disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {uploading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
                       <ImagePlus className="h-5 w-5" />
-                      <span className="text-[11px]">上传凭证截图</span>
+                      <span className="text-2xs">上传凭证截图</span>
                     </>
                   )}
                 </button>
@@ -545,7 +545,7 @@ export function SpentOnBehalfModal({
               />
             </div>
             {!selectedUser && (
-              <p className="mt-1 text-xs text-brand-charcoal/65">请先选择目标用户再上传凭证</p>
+              <p className="mt-1 text-xs text-ink-muted">请先选择目标用户再上传凭证</p>
             )}
           </section>
 

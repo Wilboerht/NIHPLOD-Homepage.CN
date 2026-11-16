@@ -34,11 +34,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="mb-1 block text-sm font-medium text-brand-charcoal/80"
+            className="mb-1.5 block text-sm font-medium text-brand-charcoal/80"
           >
             {label}
             {required && (
-              <span className="ml-0.5 text-red-500" aria-hidden="true">
+              <span className="ml-0.5 text-status-danger-fg" aria-hidden="true">
                 *
               </span>
             )}
@@ -52,10 +52,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
             className={cn(
-              "w-full appearance-none rounded-lg border border-brand-charcoal/20 bg-white px-4 py-2.5 pr-10 text-brand-charcoal transition-colors",
-              "focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary",
-              "disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03] disabled:text-brand-charcoal/65",
-              error && "border-red-500 focus:border-red-500 focus:ring-red-500",
+              "w-full appearance-none rounded-lg border border-line-strong bg-white px-4 py-2.5 pr-10 text-brand-charcoal transition-colors",
+              "focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20",
+              "disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-muted",
+              error &&
+                "border-status-danger-fg focus:border-status-danger-fg focus:ring-status-danger-fg/25",
               className
             )}
             {...props}
@@ -71,14 +72,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
         </div>
         {error ? (
-          <p id={errorId} className="mt-1 text-sm text-red-500">
+          <p id={errorId} className="mt-1.5 text-sm text-status-danger-fg">
             {error}
           </p>
         ) : hint ? (
-          <p id={hintId} className="mt-1 text-xs text-brand-charcoal/65">
+          <p id={hintId} className="mt-1.5 text-xs text-ink-muted">
             {hint}
           </p>
         ) : null}

@@ -18,7 +18,7 @@ export default function LegalDocumentEditPage() {
       {isValid ? (
         <LegalDocumentEditor slug={slug as LegalDocumentSlug} />
       ) : (
-        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2 text-brand-charcoal/60">
+        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-2 text-ink-muted">
           <FileWarning className="h-8 w-8" aria-hidden="true" />
           <p className="text-sm">无效的法务文档地址</p>
         </div>

@@ -71,11 +71,11 @@ function StatCard({
     <PanelCard className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium text-brand-charcoal/65">{label}</p>
+          <p className="text-xs font-medium text-ink-muted">{label}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums text-brand-charcoal">{value}</p>
-          {hint && <p className="mt-1 text-[11px] text-brand-charcoal/65">{hint}</p>}
+          {hint && <p className="mt-1 text-2xs text-ink-muted">{hint}</p>}
         </div>
-        <span className="rounded-lg bg-brand-primary/[0.06] p-2 text-brand-primary">{icon}</span>
+        <span className="rounded-lg bg-brand-primary/10 p-2 text-brand-primary">{icon}</span>
       </div>
     </PanelCard>
   );
@@ -184,7 +184,7 @@ function BaDashboardContent() {
                 href={buildBaAdminLink("/workbench")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-primary/30 px-3 text-sm font-medium text-brand-primary transition-colors hover:bg-brand-primary/[0.05]"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-primary/30 px-3 text-sm font-medium text-brand-primary transition-colors hover:bg-brand-primary/10"
               >
                 <ExternalLink className="h-4 w-4" />
                 打开 BA 工作台
@@ -195,7 +195,7 @@ function BaDashboardContent() {
                 href={buildBaAdminLink("/workbench/audit-logs")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-charcoal/20 px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-surface-muted"
               >
                 <ScrollText className="h-4 w-4" />
                 BA 审计
@@ -204,7 +204,7 @@ function BaDashboardContent() {
             {canReadComplaints && (
               <Link
                 href="/admin/messages?source=ba"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-charcoal/20 px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-surface-muted"
               >
                 <MessageSquare className="h-4 w-4" />
                 举报处理
@@ -213,7 +213,7 @@ function BaDashboardContent() {
             {can("ba:certificates:read") && (
               <Link
                 href="/admin/subsites/ba/certificates"
-                className="inline-flex h-9 items-center rounded-lg border border-brand-charcoal/20 px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.03]"
+                className="inline-flex h-9 items-center rounded-lg border border-line-strong px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-surface-muted"
               >
                 证书管理
               </Link>
@@ -228,7 +228,7 @@ function BaDashboardContent() {
 
       <AdminHubTabs section="ba" />
 
-      <p className="text-xs text-brand-charcoal/60">
+      <p className="text-xs text-ink-muted">
         BA 管理员由主站统一管理，BA 工作台不提供本地管理员创建；仅保留 break-glass 应急账号。
         {canManageAdmins && (
           <>
@@ -241,12 +241,12 @@ function BaDashboardContent() {
       </p>
 
       {error && (
-        <PanelCard className="border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</PanelCard>
+        <PanelCard className="border-status-danger-line bg-status-danger-soft p-4 text-sm text-status-danger-strong">{error}</PanelCard>
       )}
 
       {payload?.degraded && (
-        <PanelCard className="border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-start gap-2 text-sm text-amber-800">
+        <PanelCard className="border-status-warning-line bg-status-warning-soft p-4">
+          <div className="flex items-start gap-2 text-sm text-status-warning-strong">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               BA 服务暂时不可用：
@@ -259,7 +259,7 @@ function BaDashboardContent() {
       {loading && !dashboard ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
-            <PanelCard key={index} className="h-24 animate-pulse bg-brand-charcoal/[0.03]">
+            <PanelCard key={index} className="h-24 animate-pulse bg-surface-muted">
               <span className="sr-only">加载中</span>
             </PanelCard>
           ))}
@@ -319,7 +319,7 @@ function BaDashboardContent() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-lg bg-brand-primary/[0.06] p-2 text-brand-primary">
+                    <span className="rounded-lg bg-brand-primary/10 p-2 text-brand-primary">
                       <KeyRound className="h-5 w-5" />
                     </span>
                     <h2 className="text-sm font-semibold text-brand-charcoal">应急账号</h2>
@@ -342,27 +342,27 @@ function BaDashboardContent() {
                   </div>
                   <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
                     <div>
-                      <dt className="text-xs text-brand-charcoal/65">用户名</dt>
+                      <dt className="text-xs text-ink-muted">用户名</dt>
                       <dd className="mt-0.5 font-mono text-brand-charcoal">
                         {emergencyAccount.username}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-brand-charcoal/65">密码</dt>
+                      <dt className="text-xs text-ink-muted">密码</dt>
                       <dd className="mt-0.5 font-mono text-brand-charcoal">••••••••</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-brand-charcoal/65">最近登录</dt>
+                      <dt className="text-xs text-ink-muted">最近登录</dt>
                       <dd className="mt-0.5 text-brand-charcoal">
                         {formatDateTime(emergencyAccount.lastLoginAt)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-brand-charcoal/65">BA 角色</dt>
+                      <dt className="text-xs text-ink-muted">BA 角色</dt>
                       <dd className="mt-0.5 text-brand-charcoal">{emergencyAccount.role ?? "—"}</dd>
                     </div>
                   </dl>
-                  <p className="mt-2 text-xs text-brand-charcoal/65">
+                  <p className="mt-2 text-xs text-ink-muted">
                     密码只保存哈希，无法查看原密码；重置后新密码只显示一次，请立即保存。
                   </p>
                 </div>
@@ -373,7 +373,7 @@ function BaDashboardContent() {
                       重置密码
                     </Button>
                   ) : (
-                    <p className="max-w-xs text-xs text-brand-charcoal/65 lg:text-right">
+                    <p className="max-w-xs text-xs text-ink-muted lg:text-right">
                       {emergencyAccount.exists
                         ? "仅 BA 超级管理员可重置应急密码"
                         : "请先在 BA 服务器运行 npm run init:break-glass"}
@@ -400,7 +400,7 @@ function BaDashboardContent() {
                             <span className="block truncate font-medium">
                               {item.channel || item.descriptionPreview}
                             </span>
-                            <span className="block truncate text-xs text-brand-charcoal/65">
+                            <span className="block truncate text-xs text-ink-muted">
                               {item.descriptionPreview}
                             </span>
                           </span>
@@ -412,10 +412,10 @@ function BaDashboardContent() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-3 text-sm text-brand-charcoal/65">暂无举报</p>
+                  <p className="mt-3 text-sm text-ink-muted">暂无举报</p>
                 )
               ) : (
-                <p className="mt-3 text-sm text-brand-charcoal/65">
+                <p className="mt-3 text-sm text-ink-muted">
                   需要 BA 举报查看权限才能看到举报摘要。
                 </p>
               )}
@@ -431,19 +431,19 @@ function BaDashboardContent() {
                       className="flex items-center justify-between gap-3 py-2.5 text-sm"
                     >
                       <span className="min-w-0 truncate">{AUDIT_ACTION_LABELS[item.action] ?? item.action}</span>
-                      <span className="shrink-0 text-xs text-brand-charcoal/65">
+                      <span className="shrink-0 text-xs text-ink-muted">
                         {item.actorName || "系统"} · {formatDateTime(item.createdAt)}
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-3 text-sm text-brand-charcoal/65">暂无审计记录</p>
+                <p className="mt-3 text-sm text-ink-muted">暂无审计记录</p>
               )}
             </PanelCard>
           </div>
 
-          <p className="text-xs text-brand-charcoal/45">
+          <p className="text-xs text-ink-faint">
             数据生成时间：{formatDateTime(dashboard.generatedAt)}
           </p>
         </>
@@ -487,19 +487,19 @@ function BaDashboardContent() {
         }
       >
         <div className="space-y-4">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-lg border border-status-warning-line bg-status-warning-soft px-4 py-3 text-sm text-status-warning-strong">
             新密码只显示一次。关闭后无法再次查看，请立即保存到密码管理器。
           </div>
           <div>
-            <p className="text-xs font-medium text-brand-charcoal/65">用户名</p>
-            <code className="mt-1 block rounded-lg bg-brand-charcoal/[0.05] px-3 py-2.5 font-mono text-sm">
+            <p className="text-xs font-medium text-ink-muted">用户名</p>
+            <code className="mt-1 block rounded-lg bg-surface-hover px-3 py-2.5 font-mono text-sm">
               {resetResult?.username}
             </code>
           </div>
           <div>
-            <p className="text-xs font-medium text-brand-charcoal/65">新密码</p>
+            <p className="text-xs font-medium text-ink-muted">新密码</p>
             <div className="mt-1 flex items-center gap-2">
-              <code className="min-w-0 flex-1 break-all rounded-lg bg-brand-charcoal/[0.05] px-3 py-2.5 font-mono text-sm">
+              <code className="min-w-0 flex-1 break-all rounded-lg bg-surface-hover px-3 py-2.5 font-mono text-sm">
                 {resetResult?.password}
               </code>
               <Button variant="outline" size="sm" onClick={() => void handleCopyPassword()}>

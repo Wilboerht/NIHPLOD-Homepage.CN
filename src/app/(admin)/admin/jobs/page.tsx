@@ -283,7 +283,7 @@ function AdminJobsContent() {
         }}
         onChange={() => selection.toggleAll(jobs, !selection.isAllSelected(jobs))}
         aria-label="全选本页职位"
-        className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+        className="h-4 w-4 rounded border-line-strong text-brand-primary focus:ring-brand-primary"
       />
     ),
     width: "48px",
@@ -294,7 +294,7 @@ function AdminJobsContent() {
         checked={selection.isSelected(job)}
         onChange={() => selection.toggle(job)}
         aria-label={`选择 ${job.title}`}
-        className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+        className="h-4 w-4 rounded border-line-strong text-brand-primary focus:ring-brand-primary"
       />
     ),
   };
@@ -314,7 +314,7 @@ function AdminJobsContent() {
           >
             {job.title}
           </Link>
-          <p className="truncate text-xs text-brand-charcoal/65" title={job.titleEn}>
+          <p className="truncate text-xs text-ink-muted" title={job.titleEn}>
             {job.titleEn}
           </p>
         </div>
@@ -339,7 +339,7 @@ function AdminJobsContent() {
           className="flex min-w-0 items-center gap-1 text-sm text-brand-charcoal/70"
           title={job.location || undefined}
         >
-          <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-brand-charcoal/65" />
+          <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-ink-muted" />
           <span className="min-w-0 truncate">{job.location || "-"}</span>
         </span>
       ),
@@ -386,7 +386,7 @@ function AdminJobsContent() {
       title: "更新时间",
       width: "144px",
       render: (_, job) => (
-        <span className="text-sm text-brand-charcoal/65">{formatDate(job.updatedAt)}</span>
+        <span className="text-sm text-ink-muted">{formatDate(job.updatedAt)}</span>
       ),
     },
     {
@@ -449,12 +449,12 @@ function AdminJobsContent() {
         />
 
         {/* 筛选栏 */}
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="rounded-card border border-line bg-white p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div
               role="group"
               aria-label="按发布状态筛选"
-              className="flex flex-wrap items-center gap-1 rounded-xl bg-brand-charcoal/[0.04] p-1"
+              className="flex flex-wrap items-center gap-1 rounded-xl bg-surface-muted p-1"
             >
               {STATUS_TABS.map((tab) => {
                 const active = statusFilter === tab.value;
@@ -468,7 +468,7 @@ function AdminJobsContent() {
                       "rounded-lg px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
                       active
                         ? "bg-white font-medium text-brand-charcoal shadow-sm"
-                        : "text-brand-charcoal/65 hover:bg-white/70 hover:text-brand-charcoal"
+                        : "text-ink-muted hover:bg-white/70 hover:text-brand-charcoal"
                     )}
                   >
                     {tab.label}
@@ -478,7 +478,7 @@ function AdminJobsContent() {
             </div>
 
             <div className="relative w-full md:w-72">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 aria-label="搜索职位"
                 placeholder="搜索职位..."
@@ -494,7 +494,7 @@ function AdminJobsContent() {
                     updateParams({ search: null });
                   }}
                   aria-label="清除搜索"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -505,7 +505,7 @@ function AdminJobsContent() {
 
         {/* 批量操作 */}
         {selection.selectedCount > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-brand-primary/15 bg-brand-primary/[0.03] px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-brand-primary/15 bg-brand-primary/5 px-4 py-3">
             <span className="mr-1 text-sm text-brand-charcoal/80">
               已选 {selection.selectedCount} 项
             </span>
@@ -550,7 +550,7 @@ function AdminJobsContent() {
         {/* 职位列表 */}
         {loadError ? (
           <div className="flex flex-col items-center justify-center gap-3 py-12">
-            <p className="text-sm text-red-500">加载失败，请重试</p>
+            <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
             <Button variant="outline" size="sm" onClick={fetchJobs}>
               重试
             </Button>
@@ -564,7 +564,7 @@ function AdminJobsContent() {
             tableLayout="fixed"
             minWidth="1200px"
             emptyText="暂无职位数据"
-            rowProps={() => ({ className: "hover:bg-brand-charcoal/[0.03]" })}
+            rowProps={() => ({ className: "hover:bg-surface-muted" })}
             mobileCard={(job) => (
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
@@ -575,7 +575,7 @@ function AdminJobsContent() {
                         checked={selection.isSelected(job)}
                         onChange={() => selection.toggle(job)}
                         aria-label={`选择 ${job.title}`}
-                        className="h-4 w-4 rounded border-brand-charcoal/20 text-brand-primary focus:ring-brand-primary"
+                        className="h-4 w-4 rounded border-line-strong text-brand-primary focus:ring-brand-primary"
                       />
                     </label>
                   )}
@@ -591,8 +591,8 @@ function AdminJobsContent() {
                         {job.published ? "已发布" : "草稿"}
                       </Badge>
                     </div>
-                    <p className="truncate text-xs text-brand-charcoal/65">{job.titleEn}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-brand-charcoal/65">
+                    <p className="truncate text-xs text-ink-muted">{job.titleEn}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
                       <span className="inline-flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5" />
                         {job.location || "-"}
@@ -608,8 +608,8 @@ function AdminJobsContent() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-2">
-                  <span className="text-xs text-brand-charcoal/65">
+                <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
+                  <span className="text-xs text-ink-muted">
                     更新于 {formatDate(job.updatedAt)}
                   </span>
                   <div className="flex items-center justify-end gap-1">

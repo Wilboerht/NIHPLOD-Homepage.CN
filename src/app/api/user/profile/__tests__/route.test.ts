@@ -7,6 +7,8 @@ const mockUserUpdateMany = vi.fn();
 const mockSendProfileUpdateWebhook = vi.fn();
 const mockPrepareAvatarReplacement = vi.fn();
 const mockCleanupAvatarUpload = vi.fn();
+const mockAuditNicknameBlocked = vi.fn().mockResolvedValue(undefined);
+const mockAuditNicknameChange = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -62,6 +64,11 @@ vi.mock("@/lib/spent-adjustment-files", () => ({
 vi.mock("@/lib/profile-webhook", () => ({
   sendProfileUpdateWebhook: (...args: unknown[]) => mockSendProfileUpdateWebhook(...args),
   normalizeGender: (g: string | null | undefined) => (g === "male" || g === "female" ? g : null),
+}));
+
+vi.mock("@/lib/nickname-audit", () => ({
+  auditNicknameBlocked: (...args: unknown[]) => mockAuditNicknameBlocked(...args),
+  auditNicknameChange: (...args: unknown[]) => mockAuditNicknameChange(...args),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -359,5 +366,79 @@ describe("POST /api/user/profile - 头像上传加固", () => {
         thumbnailUrl: "/uploads/avatars/thumbnail/new.webp",
       })
     );
+  });
+});
+
+describe("PUT /api/user/profile - 昵称内容风控", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRateLimit.mockResolvedValue({ success: true });
+    mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
+    mockPrepareAvatarReplacement.mockResolvedValue({ previousAvatar: null });
+    mockCleanupAvatarUpload.mockResolvedValue(true);
+    mockAuditNicknameBlocked.mockResolvedValue(undefined);
+    mockAuditNicknameChange.mockResolvedValue(undefined);
+  });
+
+  it("违规昵称：拒绝落库、返回 NICKNAME_REJECTED 并写审计", async () => {
+    const res = await PUT(putRequest({ nickname: "色情" }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("NICKNAME_REJECTED");
+    expect(mockUserFindUnique).not.toHaveBeenCalled();
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+    expect(mockAuditNicknameBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        source: "profile_update",
+        reason: "banned",
+        category: "porn",
+      })
+    );
+  });
+
+  it("零宽字符绕过同样被拦截（归一化后命中）", async () => {
+    const res = await PUT(putRequest({ nickname: "色\u200b情" }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("NICKNAME_REJECTED");
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+  });
+
+  it("命中拦截且改名限流触发时返回 429", async () => {
+    mockRateLimit.mockResolvedValue({ success: false });
+
+    const res = await PUT(putRequest({ nickname: "色情" }));
+
+    expect(res.status).toBe(429);
+    expect((await res.json()).error.code).toBe("RATE_LIMITED");
+    expect(mockAuditNicknameBlocked).not.toHaveBeenCalled();
+  });
+
+  it("正常改名成功：写改名审计（含变更前后值）", async () => {
+    mockUserFindUnique.mockResolvedValue(OLD_USER);
+    mockUserUpdate.mockResolvedValue(NEW_USER);
+
+    const res = await PUT(putRequest({ nickname: "新昵称" }));
+
+    expect(res.status).toBe(200);
+    expect(mockAuditNicknameChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        oldNickname: "旧昵称",
+        newNickname: "新昵称",
+        source: "profile_update",
+      })
+    );
+  });
+
+  it("改名频率超过配额时返回 429 且不落库", async () => {
+    mockUserFindUnique.mockResolvedValue(OLD_USER);
+    mockRateLimit.mockResolvedValue({ success: false });
+
+    const res = await PUT(putRequest({ nickname: "新昵称" }));
+
+    expect(res.status).toBe(429);
+    expect(mockUserUpdate).not.toHaveBeenCalled();
   });
 });

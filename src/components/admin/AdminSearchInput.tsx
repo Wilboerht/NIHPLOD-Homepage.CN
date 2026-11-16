@@ -65,7 +65,7 @@ export function AdminSearchInput({
 
   return (
     <div className={cn("relative w-full", className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
       <Input
         aria-label={ariaLabel}
         placeholder={placeholder}
@@ -88,7 +88,7 @@ export function AdminSearchInput({
             submitImmediately("");
           }}
           aria-label="清除搜索"
-          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
         >
           <X className="h-4 w-4" />
         </button>

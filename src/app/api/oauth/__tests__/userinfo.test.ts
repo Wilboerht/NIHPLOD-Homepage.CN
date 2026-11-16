@@ -63,6 +63,14 @@ vi.mock("@/lib/profile-webhook", () => ({
   normalizeGender: (g: string | null | undefined) => (g === "male" || g === "female" ? g : null),
 }));
 
+// === Mock nickname-audit ===
+const mockAuditNicknameBlocked = vi.fn();
+const mockAuditNicknameChange = vi.fn();
+vi.mock("@/lib/nickname-audit", () => ({
+  auditNicknameBlocked: (...args: unknown[]) => mockAuditNicknameBlocked(...args),
+  auditNicknameChange: (...args: unknown[]) => mockAuditNicknameChange(...args),
+}));
+
 // === Mock OAuth CORS（避免测试依赖真实数据库查询 redirectUris）===
 vi.mock("@/lib/oauth-cors", () => ({
   getOAuthCorsHeaders: vi.fn().mockResolvedValue({}),
@@ -314,6 +322,8 @@ describe("PATCH /api/oauth/userinfo", () => {
     // 默认 token 验证失败（401 路径）
     mockVerifyOAuthAccessToken.mockResolvedValue(null);
     mockSendProfileUpdateWebhook.mockResolvedValue(undefined);
+    mockAuditNicknameBlocked.mockResolvedValue(undefined);
+    mockAuditNicknameChange.mockResolvedValue(undefined);
     // 生日首次设置的条件写认领默认成功（并发场景单独覆盖）
     mockUserUpdateMany.mockResolvedValue({ count: 1 });
   });
@@ -401,6 +411,28 @@ describe("PATCH /api/oauth/userinfo", () => {
     expect(mockUserUpdate).not.toHaveBeenCalled();
   });
 
+  it("昵称命中本地违规词表应返回 400 invalid_request 并写审计", async () => {
+    mockVerifyOAuthAccessToken.mockResolvedValue({
+      id: "user-1",
+      client_id: "test-client",
+      scope: "openid profile profile:write",
+    });
+    const res = await PATCH(patchRequest({ nickname: "色情" }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_request");
+    expect(mockUserFindUnique).not.toHaveBeenCalled();
+    expect(mockUserUpdate).not.toHaveBeenCalled();
+    expect(mockAuditNicknameBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        source: "oauth_userinfo",
+        reason: "banned",
+        category: "porn",
+      })
+    );
+  });
+
   it("生日已锁定后修改应返回 403 birthday_locked", async () => {
     mockVerifyOAuthAccessToken.mockResolvedValue({
       id: "user-1",
@@ -450,7 +482,7 @@ describe("PATCH /api/oauth/userinfo", () => {
     expect(body.sub).toBe("user-1");
     expect(body.nickname).toBe("新昵称");
     // 未自定义头像：回退默认头像的绝对 URL（SSO 输出口径，子项目跨域可加载）
-    expect(body.avatar).toMatch(/\/images\/default-avatar\.png$/);
+    expect(body.avatar).toMatch(/\/images\/default-avatar-soft\.svg$/);
     expect(body.gender).toBe("female");
     expect(body.birthday).toBeUndefined();
 

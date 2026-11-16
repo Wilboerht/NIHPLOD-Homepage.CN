@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { POINT_GRANT_LEDGER_TYPES } from "@/lib/points-ledger";
 
 const GRANT_TYPES_SQL = Prisma.raw(`'CONSUME','BIRTHDAY','CHECKIN','ADJUST','REDEEM_REFUND'`);
 
@@ -18,29 +19,56 @@ export interface PointInvariantResult {
   checked: number;
   negativeBalances: number;
   deletedUsersWithRemaining: number;
+  /**
+   * 历史冻结机制残留：未释放（releasedAt = null）但仍有剩余量的发放流水。
+   * 这类流水不会被当前 FIFO 兑礼消耗，可能导致“余额有值但无法兑换”。
+   */
+  legacyUnreleasedGrants: number;
+  /** 历史无到期时间的发放流水；当前过期任务/FIFO 都会忽略它们，需人工补数据。 */
+  legacyMissingExpiryGrants: number;
   issues: PointInvariantIssue[];
   truncated: boolean;
 }
 
 export async function checkPointInvariants(limit = 200): Promise<PointInvariantResult> {
   const take = Math.min(1000, Math.max(1, limit));
-  const [checked, negative, deletedUsersWithRemaining] = await Promise.all([
+  const [
+    checked,
+    negative,
+    deletedUsersWithRemaining,
+    legacyUnreleasedGrants,
+    legacyMissingExpiryGrants,
+  ] = await Promise.all([
     prisma.pointBalance.count(),
     prisma.pointBalance.count({ where: { available: { lt: 0 } } }),
     prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(DISTINCT u."id")::bigint AS count
-      FROM "User" u
-      LEFT JOIN "PointBalance" pb ON pb."userId" = u."id"
-      WHERE u."status" = 'DELETED'
-        AND (
-          COALESCE(pb."available", 0) <> 0
-          OR COALESCE(pb."frozen", 0) <> 0
-          OR EXISTS (
-            SELECT 1 FROM "PointLedger" pl
-            WHERE pl."userId" = u."id" AND pl."remaining" > 0
+        SELECT COUNT(DISTINCT u."id")::bigint AS count
+        FROM "User" u
+        LEFT JOIN "PointBalance" pb ON pb."userId" = u."id"
+        WHERE u."status" = 'DELETED'
+          AND (
+            COALESCE(pb."available", 0) <> 0
+            OR COALESCE(pb."frozen", 0) <> 0
+            OR EXISTS (
+              SELECT 1 FROM "PointLedger" pl
+              WHERE pl."userId" = u."id" AND pl."remaining" > 0
+            )
           )
-        )
-    `,
+      `,
+    prisma.pointLedger.count({
+      where: {
+        type: { in: [...POINT_GRANT_LEDGER_TYPES] },
+        remaining: { gt: 0 },
+        releasedAt: null,
+      },
+    }),
+    prisma.pointLedger.count({
+      where: {
+        type: { in: [...POINT_GRANT_LEDGER_TYPES] },
+        remaining: { gt: 0 },
+        expiresAt: null,
+      },
+    }),
   ]);
 
   const rows = await prisma.$queryRaw<
@@ -89,6 +117,8 @@ export async function checkPointInvariants(limit = 200): Promise<PointInvariantR
     checked,
     negativeBalances: negative,
     deletedUsersWithRemaining: Number(deletedUsersWithRemaining[0]?.count ?? 0),
+    legacyUnreleasedGrants,
+    legacyMissingExpiryGrants,
     issues: issues.slice(0, take),
     truncated: rows.length + missing.length > take,
   };

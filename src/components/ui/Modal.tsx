@@ -271,7 +271,7 @@ export function Modal({
   const header = (title || showCloseButton || description) && (
     <div
       className={cn(
-        "flex shrink-0 items-start justify-between border-b border-brand-charcoal/10 px-4 py-3 sm:px-6 sm:py-4",
+        "flex shrink-0 items-start justify-between border-b border-line px-4 py-3 sm:px-6 sm:py-4",
         (variant === "drawer" || mobileFullScreen) &&
           "pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-4"
       )}
@@ -283,7 +283,7 @@ export function Modal({
           </h2>
         )}
         {description && (
-          <p id={descriptionId} className="mt-1 text-sm text-brand-charcoal/65">
+          <p id={descriptionId} className="mt-1 text-sm text-ink-muted">
             {description}
           </p>
         )}
@@ -292,7 +292,7 @@ export function Modal({
         <button
           type="button"
           onClick={requestClose}
-          className="-mr-2 -mt-2 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal sm:h-9 sm:w-9"
+          className="-mr-2 -mt-2 flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal sm:h-9 sm:w-9"
           aria-label="关闭"
         >
           <X className="h-5 w-5" />
@@ -302,7 +302,7 @@ export function Modal({
   );
 
   const footerNode = footer ? (
-    <div className="shrink-0 border-t border-brand-charcoal/10 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:px-6">
+    <div className="shrink-0 border-t border-line px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:px-6">
       {footer}
     </div>
   ) : null;
@@ -319,7 +319,7 @@ export function Modal({
       {open && (
         <div
           className={cn(
-            "fixed inset-0 z-[9999]",
+            "fixed inset-0 z-modal",
             variant === "center" &&
               "flex items-center justify-center px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:p-6 md:p-8",
             variant === "center" && mobileFullScreen && "max-sm:items-stretch max-sm:p-0"
@@ -328,7 +328,11 @@ export function Modal({
           {/* Backdrop（仅栈顶弹窗响应点击） */}
           <m.div
             data-modal-backdrop
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className={cn(
+              "absolute inset-0 bg-black/50",
+              // 抽屉通常覆盖大面积表格，backdrop blur 在滑动/退场时容易掉帧
+              variant === "center" && "backdrop-blur-sm"
+            )}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -352,7 +356,7 @@ export function Modal({
               exit={{ x: "100%" }}
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
               className={cn(
-                "absolute right-0 top-0 z-10 flex h-dvh w-full flex-col bg-white shadow-2xl",
+                "absolute right-0 top-0 z-10 flex h-dvh w-full flex-col bg-white shadow-modal",
                 sizeStyles[size]
               )}
             >
@@ -369,7 +373,7 @@ export function Modal({
               exit={{ opacity: 0, scale: 0.97, y: 4 }}
               transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
               className={cn(
-                "relative z-10 w-full rounded-xl bg-white shadow-2xl",
+                "relative z-10 w-full rounded-xl bg-white shadow-modal",
                 "flex max-h-[calc(100dvh-2rem-env(safe-area-inset-top,0px))] flex-col sm:max-h-[calc(100dvh-3rem-env(safe-area-inset-top,0px))] md:max-h-[calc(100dvh-4rem-env(safe-area-inset-top,0px))]",
                 mobileFullScreen && "max-sm:h-dvh max-sm:max-h-dvh max-sm:rounded-none",
                 sizeStyles[size]

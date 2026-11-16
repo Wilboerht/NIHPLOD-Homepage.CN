@@ -434,7 +434,7 @@ function ApprovalsContent() {
         }
       />
 
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="w-full sm:w-48">
             <Select
@@ -486,16 +486,16 @@ function ApprovalsContent() {
 
       {loadError ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12">
-          <p className="text-sm text-red-500">加载失败</p>
+          <p className="text-sm text-status-danger-fg">加载失败</p>
           <Button variant="outline" size="sm" onClick={fetchItems}>
             重试
           </Button>
         </div>
       ) : loading ? (
-        <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+        <div className="rounded-card border border-line bg-white p-4">
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-20 animate-pulse rounded-xl bg-brand-charcoal/[0.04]" />
+              <div key={index} className="h-20 animate-pulse rounded-xl bg-surface-muted" />
             ))}
           </div>
         </div>
@@ -503,7 +503,7 @@ function ApprovalsContent() {
         <Empty
           title="暂无审批申请"
           description="达到审批条件的操作会出现在这里"
-          className="rounded-2xl border border-brand-charcoal/10 bg-white py-12"
+          className="rounded-card border border-line bg-white py-12"
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -518,7 +518,7 @@ function ApprovalsContent() {
                   setNote("");
                   setRiskAcknowledged(false);
                 }}
-                className="w-full rounded-2xl border border-brand-charcoal/10 bg-white p-4 text-left transition-colors hover:border-brand-primary/30 hover:bg-brand-primary/[0.02]"
+                className="w-full rounded-card border border-line bg-white p-4 text-left transition-colors hover:border-brand-primary/30 hover:bg-brand-primary/5"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-brand-charcoal">
@@ -529,7 +529,7 @@ function ApprovalsContent() {
                     {item.executionMode === "AUTO" ? "自动执行" : "申请人执行"}
                   </Badge>
                 </div>
-                <div className="mt-2 grid gap-x-4 gap-y-1 text-xs text-brand-charcoal/65 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mt-2 grid gap-x-4 gap-y-1 text-xs text-ink-muted sm:grid-cols-2 lg:grid-cols-4">
                   <span className="truncate">
                     申请人：{actorName(item.requesterName, item.requesterEmail, item.requesterId)}
                   </span>
@@ -537,7 +537,7 @@ function ApprovalsContent() {
                   <span>创建：{formatDateTimeSeconds(item.createdAt)}</span>
                   <span>过期：{formatDateTimeSeconds(item.expiresAt)}</span>
                 </div>
-                <p className="mt-2 line-clamp-2 text-xs text-brand-charcoal/65">{item.reason}</p>
+                <p className="mt-2 line-clamp-2 text-xs text-ink-muted">{item.reason}</p>
                 <div className="mt-2 flex items-center gap-1 text-xs text-brand-primary">
                   <Clock className="h-3.5 w-3.5" />
                   查看详情与操作
@@ -585,55 +585,55 @@ function ApprovalsContent() {
             </div>
 
             <div className="grid gap-3 text-sm md:grid-cols-2">
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <p className="text-xs text-brand-charcoal/65">申请人</p>
+              <div className="rounded-lg bg-surface-muted p-3">
+                <p className="text-xs text-ink-muted">申请人</p>
                 <p className="mt-1 font-medium">
                   {actorName(selected.requesterName, selected.requesterEmail, selected.requesterId)}
                 </p>
-                <p className="text-xs text-brand-charcoal/65">{selected.requesterRole}</p>
+                <p className="text-xs text-ink-muted">{selected.requesterRole}</p>
               </div>
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <p className="text-xs text-brand-charcoal/65">审批人</p>
+              <div className="rounded-lg bg-surface-muted p-3">
+                <p className="text-xs text-ink-muted">审批人</p>
                 <p className="mt-1 font-medium">
                   {selected.approverId
                     ? actorName(selected.approverName, selected.approverEmail, selected.approverId)
                     : "待审批"}
                 </p>
                 {selected.approvedAt && (
-                  <p className="text-xs text-brand-charcoal/65">
+                  <p className="text-xs text-ink-muted">
                     {formatDateTimeSeconds(selected.approvedAt)}
                   </p>
                 )}
               </div>
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <p className="text-xs text-brand-charcoal/65">对象</p>
+              <div className="rounded-lg bg-surface-muted p-3">
+                <p className="text-xs text-ink-muted">对象</p>
                 <p className="mt-1 break-all font-medium">
                   {selected.targetLabel || selected.targetId || "-"}
                 </p>
               </div>
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-3">
-                <p className="text-xs text-brand-charcoal/65">时间</p>
+              <div className="rounded-lg bg-surface-muted p-3">
+                <p className="text-xs text-ink-muted">时间</p>
                 <p className="mt-1 font-medium">创建 {formatDateTimeSeconds(selected.createdAt)}</p>
-                <p className="text-xs text-brand-charcoal/65">
+                <p className="text-xs text-ink-muted">
                   过期 {formatDateTimeSeconds(selected.expiresAt)}
                 </p>
               </div>
             </div>
 
             <div>
-              <p className="mb-1 text-xs font-medium text-brand-charcoal/65">申请原因</p>
-              <p className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm text-brand-charcoal/80">
+              <p className="mb-1 text-xs font-medium text-ink-muted">申请原因</p>
+              <p className="rounded-lg bg-surface-muted p-3 text-sm text-brand-charcoal/80">
                 {selected.reason}
               </p>
             </div>
 
             {approvalSummary && (
-              <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3">
-                <p className="mb-2 text-xs font-medium text-brand-charcoal/65">操作摘要</p>
+              <div className="rounded-xl border border-line bg-surface-subtle p-3">
+                <p className="mb-2 text-xs font-medium text-ink-muted">操作摘要</p>
                 <dl className="grid gap-2 sm:grid-cols-2">
                   {approvalSummary.fields.map((field) => (
                     <div key={field.label} className="min-w-0">
-                      <dt className="text-xs text-brand-charcoal/65">{field.label}</dt>
+                      <dt className="text-xs text-ink-muted">{field.label}</dt>
                       <dd className="mt-0.5 break-all text-sm font-medium text-brand-charcoal">
                         {field.value}
                       </dd>
@@ -641,7 +641,7 @@ function ApprovalsContent() {
                   ))}
                 </dl>
                 {approvalSummary.riskNotes.length > 0 && (
-                  <ul className="mt-3 space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                  <ul className="mt-3 space-y-1 rounded-lg border border-status-warning-line bg-status-warning-soft p-2 text-xs text-status-warning-strong">
                     {approvalSummary.riskNotes.map((risk) => (
                       <li key={risk}>{risk}</li>
                     ))}
@@ -650,20 +650,20 @@ function ApprovalsContent() {
               </div>
             )}
 
-            <details className="rounded-lg border border-brand-charcoal/10 bg-white">
-              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-brand-charcoal/65">
+            <details className="rounded-lg border border-line bg-white">
+              <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-ink-muted">
                 技术详情（原始参数与目标快照）
               </summary>
-              <div className="grid gap-3 border-t border-brand-charcoal/10 p-3 md:grid-cols-2">
+              <div className="grid gap-3 border-t border-line p-3 md:grid-cols-2">
                 <div>
-                  <p className="mb-1 text-xs font-medium text-brand-charcoal/65">申请参数</p>
-                  <pre className="max-h-52 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-xs">
+                  <p className="mb-1 text-xs font-medium text-ink-muted">申请参数</p>
+                  <pre className="max-h-52 overflow-auto rounded-lg border border-line bg-surface-subtle p-3 text-xs">
                     {JSON.stringify(displayPayload, null, 2)}
                   </pre>
                 </div>
                 <div>
-                  <p className="mb-1 text-xs font-medium text-brand-charcoal/65">目标快照</p>
-                  <pre className="max-h-52 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-xs">
+                  <p className="mb-1 text-xs font-medium text-ink-muted">目标快照</p>
+                  <pre className="max-h-52 overflow-auto rounded-lg border border-line bg-surface-subtle p-3 text-xs">
                     {JSON.stringify(selected.targetSnapshot, null, 2)}
                   </pre>
                 </div>
@@ -672,8 +672,8 @@ function ApprovalsContent() {
 
             {selected.decisionNote && (
               <div>
-                <p className="mb-1 text-xs font-medium text-brand-charcoal/65">审批备注</p>
-                <p className="rounded-lg bg-brand-charcoal/[0.03] p-3 text-sm">
+                <p className="mb-1 text-xs font-medium text-ink-muted">审批备注</p>
+                <p className="rounded-lg bg-surface-muted p-3 text-sm">
                   {selected.decisionNote}
                 </p>
               </div>
@@ -681,27 +681,27 @@ function ApprovalsContent() {
 
             {selected.executionResult && (
               <div>
-                <p className="mb-1 text-xs font-medium text-brand-charcoal/65">执行结果</p>
-                <pre className="max-h-40 overflow-auto rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-3 text-xs">
+                <p className="mb-1 text-xs font-medium text-ink-muted">执行结果</p>
+                <pre className="max-h-40 overflow-auto rounded-lg border border-line bg-surface-subtle p-3 text-xs">
                   {JSON.stringify(selected.executionResult, null, 2)}
                 </pre>
               </div>
             )}
 
             {selected.error && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="rounded-lg border border-status-danger-line bg-status-danger-soft px-3 py-2 text-sm text-status-danger-strong">
                 {selected.error}
               </p>
             )}
 
             {canReview && selected.status === "PENDING" && (
-              <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
-                <p className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
+              <div className="space-y-3 rounded-xl border border-status-warning-line bg-status-warning-soft/60 p-3">
+                <p className="flex items-center gap-1.5 text-sm font-medium text-status-warning-strong">
                   <ShieldCheck className="h-4 w-4" />
                   审批操作
                 </p>
                 {lacksActionPermission && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  <div className="rounded-lg border border-status-danger-line bg-status-danger-soft px-3 py-2 text-xs text-status-danger-strong">
                     <p className="font-medium">
                       申请人原本不具备该动作权限：{requesterPermission?.actionPermission}
                     </p>
@@ -711,7 +711,7 @@ function ApprovalsContent() {
                   </div>
                 )}
                 {selected.policyKey === "totp.recovery.issue" && (
-                  <p className="rounded-lg border border-amber-200 bg-white/70 px-3 py-2 text-xs text-amber-800">
+                  <p className="rounded-lg border border-status-warning-line bg-white/70 px-3 py-2 text-xs text-status-warning-strong">
                     恢复码只显示给审批人。批准后请通过安全渠道交付给目标管理员本人，不要交给申请人。
                   </p>
                 )}
@@ -723,7 +723,7 @@ function ApprovalsContent() {
                   rows={3}
                 />
                 {lacksActionPermission && (
-                  <label className="flex items-start gap-2 text-xs text-red-700">
+                  <label className="flex items-start gap-2 text-xs text-status-danger-strong">
                     <input
                       type="checkbox"
                       className="mt-0.5"
@@ -740,7 +740,7 @@ function ApprovalsContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-red-200 text-red-600 hover:bg-red-50"
+                    className="border-status-danger-line text-status-danger-fg hover:bg-status-danger-soft"
                     leftIcon={<XCircle className="h-4 w-4" />}
                     loading={actionLoading === "reject"}
                     onClick={() => void handleDecision("reject")}
@@ -776,8 +776,8 @@ function ApprovalsContent() {
             {isRequester &&
               selected.status === "APPROVED" &&
               selected.executionMode === "REQUESTER" && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
-                  <p className="text-sm text-emerald-800">
+                <div className="rounded-xl border border-status-success-line bg-status-success-soft/60 p-3">
+                  <p className="text-sm text-status-success-strong">
                     owner 已通过。执行后一次性密钥只显示一次，请准备好接收方。
                   </p>
                   <div className="mt-2 flex justify-end">
@@ -793,16 +793,16 @@ function ApprovalsContent() {
               )}
 
             {canRetry && (
-              <div className="rounded-xl border border-red-200 bg-red-50/60 p-3">
-                <p className="text-sm text-red-800">上次执行失败，可重新执行。</p>
+              <div className="rounded-xl border border-status-danger-line bg-status-danger-soft/60 p-3">
+                <p className="text-sm text-status-danger-strong">上次执行失败，可重新执行。</p>
                 {selected.error && (
-                  <p className="mt-1 break-all text-xs text-red-700">{selected.error}</p>
+                  <p className="mt-1 break-all text-xs text-status-danger-strong">{selected.error}</p>
                 )}
                 <div className="mt-2 flex justify-end">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-red-200 text-red-600 hover:bg-red-50"
+                    className="border-status-danger-line text-status-danger-fg hover:bg-status-danger-soft"
                     loading={actionLoading === "retry"}
                     onClick={() => void handleRetry()}
                   >
@@ -850,11 +850,11 @@ function ApprovalsContent() {
         }
       >
         <div className="space-y-3">
-          <p className="text-sm text-amber-800">
+          <p className="text-sm text-status-warning-strong">
             该密钥只显示一次，不会写入数据库或审计日志。关闭后只能重新发起申请。
             请通过安全渠道交付给目标管理员本人，不要交给申请人。
           </p>
-          <pre className="break-all rounded-lg border border-brand-charcoal/10 bg-brand-charcoal/[0.03] p-3 text-sm">
+          <pre className="break-all rounded-lg border border-line bg-surface-muted p-3 text-sm">
             {secret}
           </pre>
           <Button

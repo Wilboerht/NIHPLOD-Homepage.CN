@@ -5,20 +5,22 @@
  * 避免两处字段规则漂移。
  */
 import { z } from "zod";
+import { isInternalAvatarPath } from "@/lib/avatar-url";
+import { checkNicknameContent, NICKNAME_REJECTED_MESSAGE } from "@/lib/nickname-policy";
 
 // 更新参数验证
 export const updateProfileSchema = z.object({
   // trim 后校验长度：纯空白昵称归一为空串（路由落库时转为 null）
-  nickname: z.string().trim().max(20).optional(),
-  avatar: z
-    .union([
-      z
-        .string()
-        .url()
-        .regex(/^https?:\/\//),
-      z.literal(""),
-    ])
+  // 内容合规：本地词表 + 字符集校验（路由层会额外写审计）
+  nickname: z
+    .string()
+    .trim()
+    .max(20)
+    .refine((value) => checkNicknameContent(value).ok, NICKNAME_REJECTED_MESSAGE)
     .optional(),
+  // 语义校验在路由层（isAllowedAvatarUrl）：需要放行"回显未变更的存量头像"
+  // （历史微信/抖音外链），因此 schema 本身只做长度与类型约束。
+  avatar: z.string().trim().max(2048).optional(),
   // 生日：空字符串/null 表示清除；不得晚于今天、不早于 100 年前。
   // null 归一为 ""：z.coerce.date() 会把 null 转成 1970-01-01（new Date(null)），
   // 若不归一，客户端误传 null 会把生日静默写成 1970。
@@ -54,7 +56,7 @@ const ALLOWED_AVATAR_HOSTS = (() => {
   const addUrl = (raw?: string) => {
     if (!raw) return;
     try {
-      hosts.add(new URL(raw).host);
+      hosts.add(new URL(raw).host.toLowerCase());
     } catch {
       // 配置值非法时忽略（启动校验已兜底）
     }
@@ -67,17 +69,24 @@ const ALLOWED_AVATAR_HOSTS = (() => {
   addUrl(process.env.NEXT_PUBLIC_WWW_URL);
   addUrl(process.env.ALI_OSS_PUBLIC_DOMAIN);
   if (process.env.ALI_OSS_BUCKET && process.env.ALI_OSS_REGION) {
-    hosts.add(`${process.env.ALI_OSS_BUCKET}.${process.env.ALI_OSS_REGION}.aliyuncs.com`);
+    hosts.add(
+      `${process.env.ALI_OSS_BUCKET}.${process.env.ALI_OSS_REGION}.aliyuncs.com`.toLowerCase()
+    );
   }
   return hosts;
 })();
 
-/** 校验头像地址是否属于允许的域名（仅对非空值调用） */
+/**
+ * 校验头像地址是否合法（仅对非空值调用）：
+ * - 站内相对路径（/images/**、/uploads/**）直接放行（本地存储模式）
+ * - 绝对地址仅允许 https + 官网域 / 自有 OSS 域
+ */
 export function isAllowedAvatarUrl(raw: string): boolean {
+  if (isInternalAvatarPath(raw)) return true;
   try {
     const url = new URL(raw);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return false;
-    return ALLOWED_AVATAR_HOSTS.has(url.host);
+    if (url.protocol !== "https:") return false;
+    return ALLOWED_AVATAR_HOSTS.has(url.host.toLowerCase());
   } catch {
     return false;
   }

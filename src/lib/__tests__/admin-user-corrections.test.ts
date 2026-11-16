@@ -92,6 +92,46 @@ describe("admin user corrections", () => {
     );
   });
 
+  it("回显未变更的历史社交头像不触发校验失败", async () => {
+    mocks.userFindUniqueOrThrow.mockResolvedValue({
+      nickname: "旧昵称",
+      avatar: "http://thirdwx.qlogo.cn/mmopen/a.png",
+      birthday: null,
+      gender: null,
+    });
+
+    const result = await correctUserProfile(
+      "user-1",
+      {
+        nickname: "新昵称",
+        avatar: "http://thirdwx.qlogo.cn/mmopen/a.png",
+      },
+      ctx
+    );
+
+    expect(result.changedFields).toEqual(["nickname"]);
+    expect(mocks.prepareAvatar).not.toHaveBeenCalled();
+    expect(mocks.userUpdate).toHaveBeenCalled();
+  });
+
+  it("将头像改为任意外链时拒绝并中断事务", async () => {
+    await expect(
+      correctUserProfile("user-1", { avatar: "https://evil.com/a.png" }, ctx)
+    ).rejects.toMatchObject({ code: "INVALID_AVATAR" });
+
+    expect(mocks.prepareAvatar).not.toHaveBeenCalled();
+    expect(mocks.userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("昵称命中本地违规词表时拒绝并中断事务", async () => {
+    await expect(correctUserProfile("user-1", { nickname: "色情" }, ctx)).rejects.toMatchObject({
+      code: "NICKNAME_REJECTED",
+    });
+
+    expect(mocks.userFindUniqueOrThrow).not.toHaveBeenCalled();
+    expect(mocks.userUpdate).not.toHaveBeenCalled();
+  });
+
   it("地址达到 20 条时拒绝新增", async () => {
     mocks.addressCount.mockResolvedValue(20);
     await expect(createUserAddressByAdmin("user-1", address, ctx)).rejects.toMatchObject({

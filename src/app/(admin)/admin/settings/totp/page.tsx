@@ -80,6 +80,13 @@ export default function TOTPSettingsPage() {
   const [passwordTotpCode, setPasswordTotpCode] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const [setupPasswordError, setSetupPasswordError] = useState("");
+  const [verifyCodeError, setVerifyCodeError] = useState("");
+  const [verifyBackupError, setVerifyBackupError] = useState("");
+  const [disablePasswordError, setDisablePasswordError] = useState("");
+  const [disableCodeError, setDisableCodeError] = useState("");
+  const [regenPasswordError, setRegenPasswordError] = useState("");
+  const [regenCodeError, setRegenCodeError] = useState("");
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -104,9 +111,10 @@ export default function TOTPSettingsPage() {
     // 幂等守卫：连按 Enter 不能重复创建密钥（后一次会覆盖前一次，导致二维码与库内不一致）
     if (processing) return;
     if (!setupPassword) {
-      toast.error("请输入当前密码以验证身份");
+      setSetupPasswordError("请输入当前密码以验证身份");
       return;
     }
+    setSetupPasswordError("");
     setProcessing(true);
     try {
       const data = await apiPost<TOTPSetupData>("/api/admin/totp/setup", {
@@ -114,6 +122,7 @@ export default function TOTPSettingsPage() {
       });
       setSetupData(data);
       setSetupPassword("");
+      setSetupPasswordError("");
       setVerifyCode("");
       setBackupSaved(false);
       setShowTotpSecret(false);
@@ -126,13 +135,15 @@ export default function TOTPSettingsPage() {
 
   const verifySetup = async () => {
     if (!backupSaved) {
-      toast.error("请先确认已安全保存备用码");
+      setVerifyBackupError("请先确认已安全保存备用码");
       return;
     }
     if (verifyCode.length !== 6) {
-      toast.error("请输入6位验证码");
+      setVerifyCodeError("请输入 6 位验证码");
       return;
     }
+    setVerifyBackupError("");
+    setVerifyCodeError("");
     setProcessing(true);
     try {
       await apiPost("/api/admin/totp/verify-setup", { code: verifyCode });
@@ -142,6 +153,8 @@ export default function TOTPSettingsPage() {
       setBackupCodesRemaining(setupData?.backupCodes.length ?? 0);
       setSetupData(null);
       setVerifyCode("");
+      setVerifyCodeError("");
+      setVerifyBackupError("");
       setBackupSaved(false);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "验证失败");
@@ -153,13 +166,15 @@ export default function TOTPSettingsPage() {
   /** 校验输入后打开确认弹窗（关闭二次验证属高风险动作） */
   const requestDisable = () => {
     if (!disablePassword) {
-      toast.error("请输入密码");
+      setDisablePasswordError("请输入密码");
       return;
     }
     if (disableCode.trim().length < 6) {
-      toast.error("请输入 6 位动态验证码或备用码");
+      setDisableCodeError("请输入 6 位动态验证码或备用码");
       return;
     }
+    setDisablePasswordError("");
+    setDisableCodeError("");
     setShowDisableConfirm(true);
   };
 
@@ -176,6 +191,8 @@ export default function TOTPSettingsPage() {
       setBackupCodesRemaining(0);
       setDisablePassword("");
       setDisableCode("");
+      setDisablePasswordError("");
+      setDisableCodeError("");
       return true;
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "关闭失败");
@@ -191,6 +208,8 @@ export default function TOTPSettingsPage() {
     setRegenCode("");
     setRegenCodes(null);
     setRegenSaved(false);
+    setRegenPasswordError("");
+    setRegenCodeError("");
     setShowRegenerate(true);
   };
 
@@ -199,18 +218,22 @@ export default function TOTPSettingsPage() {
     setShowRegenerate(false);
     setRegenCodes(null);
     setRegenSaved(false);
+    setRegenPasswordError("");
+    setRegenCodeError("");
   };
 
   const regenerateBackupCodes = async () => {
     if (processing) return;
     if (!regenPassword) {
-      toast.error("请输入密码");
+      setRegenPasswordError("请输入密码");
       return;
     }
     if (regenCode.trim().length < 6) {
-      toast.error("请输入 6 位动态验证码或备用码");
+      setRegenCodeError("请输入 6 位动态验证码或备用码");
       return;
     }
+    setRegenPasswordError("");
+    setRegenCodeError("");
     setProcessing(true);
     try {
       const data = await apiPost<{ backupCodes: string[] }>("/api/admin/totp/backup-codes", {
@@ -290,7 +313,7 @@ export default function TOTPSettingsPage() {
   if (statusError) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20">
-        <p className="text-sm text-red-500">加载二次验证状态失败</p>
+        <p className="text-sm text-status-danger-fg">加载二次验证状态失败</p>
         <Button
           variant="outline"
           size="sm"
@@ -313,7 +336,7 @@ export default function TOTPSettingsPage() {
       />
 
       {returnTo && (
-        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        <div className="rounded-2xl border border-status-info-line bg-status-info-soft p-4 text-sm text-status-info-strong">
           {totpEnabled ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span>二次验证已开启，可以继续访问测肤子站后台。</span>
@@ -321,7 +344,7 @@ export default function TOTPSettingsPage() {
                 onClick={() => {
                   window.location.href = returnTo;
                 }}
-                className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+                className="rounded-lg bg-status-info-strong px-3 py-1.5 text-xs font-medium text-white hover:bg-status-info-strong"
               >
                 返回测肤子站
               </button>
@@ -332,13 +355,13 @@ export default function TOTPSettingsPage() {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-brand-charcoal/10 bg-white">
+      <section className="overflow-hidden rounded-card border border-line bg-white">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
           <div className="flex items-start gap-3.5">
             <div
               className={cn(
                 "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-                totpEnabled ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
+                totpEnabled ? "bg-status-success-soft text-status-success-fg" : "bg-status-warning-soft text-status-warning-fg"
               )}
             >
               {totpEnabled ? <ShieldCheck className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
@@ -350,7 +373,7 @@ export default function TOTPSettingsPage() {
                   {totpEnabled ? "已启用" : "未启用"}
                 </Badge>
               </div>
-              <p className="mt-1 text-sm text-brand-charcoal/65">
+              <p className="mt-1 text-sm text-ink-muted">
                 {totpEnabled
                   ? "登录和高风险操作需要输入验证器生成的 6 位动态验证码。"
                   : "启用后，登录和高风险操作都需要动态验证码，可显著降低账号被盗风险。"}
@@ -366,21 +389,21 @@ export default function TOTPSettingsPage() {
         </div>
 
         {totpEnabled ? (
-          <div className="grid grid-cols-2 gap-px border-t border-brand-charcoal/10 bg-brand-charcoal/10 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-px border-t border-line bg-brand-charcoal/10 sm:grid-cols-3">
             <div className="bg-white p-4">
-              <p className="text-xs text-brand-charcoal/65">绑定时间</p>
+              <p className="text-xs text-ink-muted">绑定时间</p>
               <p className="mt-1 text-sm font-medium text-brand-charcoal">
                 {formatDateTimeNumeric(totpEnabledAt)}
               </p>
             </div>
             <div className="bg-white p-4">
-              <p className="text-xs text-brand-charcoal/65">剩余备用码</p>
+              <p className="text-xs text-ink-muted">剩余备用码</p>
               <p className="mt-1 text-sm font-medium text-brand-charcoal">
                 {backupCodesRemaining} 个
               </p>
             </div>
             <div className="col-span-2 bg-white p-4 sm:col-span-1">
-              <p className="text-xs text-brand-charcoal/65">保护范围</p>
+              <p className="text-xs text-ink-muted">保护范围</p>
               <p className="mt-1 text-sm font-medium text-brand-charcoal">登录 + 高风险操作</p>
             </div>
           </div>
@@ -392,7 +415,7 @@ export default function TOTPSettingsPage() {
                 e.preventDefault();
                 void startSetup();
               }}
-              className="border-t border-brand-charcoal/10 p-4 sm:p-5"
+              className="border-t border-line p-4 sm:p-5"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <Input
@@ -400,7 +423,11 @@ export default function TOTPSettingsPage() {
                   required
                   type="password"
                   value={setupPassword}
-                  onChange={(e) => setSetupPassword(e.target.value)}
+                  error={setupPasswordError}
+                  onChange={(e) => {
+                    setSetupPassword(e.target.value);
+                    if (setupPasswordError) setSetupPasswordError("");
+                  }}
                   placeholder="请输入当前登录密码"
                   autoComplete="current-password"
                   hint="出于安全考虑，启用前需验证当前密码"
@@ -417,7 +444,7 @@ export default function TOTPSettingsPage() {
 
       {setupData && (
         <FormSection title="绑定验证器" description="完成以下 3 步后，二次验证才会正式启用。">
-          <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+          <div className="mb-5 flex items-start gap-2 rounded-xl border border-status-warning-line bg-status-warning-soft px-3 py-2.5 text-xs text-status-warning-strong">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             密钥和备用码仅显示一次，请妥善保存，不要通过聊天工具发送给他人。
           </div>
@@ -429,11 +456,11 @@ export default function TOTPSettingsPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-brand-charcoal">扫描二维码</p>
-                <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   使用 Google Authenticator、Microsoft Authenticator 等应用扫描。
                 </p>
                 <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start">
-                  <div className="w-fit rounded-xl border border-brand-charcoal/10 bg-white p-2">
+                  <div className="w-fit rounded-xl border border-line bg-white p-2">
                     <Image
                       src={setupData.qrCode}
                       alt="TOTP QR Code"
@@ -443,9 +470,9 @@ export default function TOTPSettingsPage() {
                     />
                   </div>
                   <div className="min-w-0 flex-1 space-y-2">
-                    <p className="text-xs text-brand-charcoal/65">无法扫码时手动输入密钥</p>
+                    <p className="text-xs text-ink-muted">无法扫码时手动输入密钥</p>
                     <div className="flex flex-wrap items-center gap-2">
-                      <code className="max-w-full truncate rounded-lg bg-brand-charcoal/[0.04] px-2.5 py-1.5 font-mono text-xs text-brand-charcoal/80">
+                      <code className="max-w-full truncate rounded-lg bg-surface-muted px-2.5 py-1.5 font-mono text-xs text-brand-charcoal/80">
                         {showTotpSecret ? setupData.secret : "••••••••••••••••"}
                       </code>
                       <Tooltip content={showTotpSecret ? "隐藏密钥" : "显示密钥"} side="top">
@@ -453,7 +480,7 @@ export default function TOTPSettingsPage() {
                           type="button"
                           onClick={() => setShowTotpSecret(!showTotpSecret)}
                           aria-label={showTotpSecret ? "隐藏密钥" : "显示密钥"}
-                          className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal"
+                          className="inline-flex text-ink-muted hover:text-brand-charcoal"
                         >
                           {showTotpSecret ? (
                             <EyeOff className="h-4 w-4" />
@@ -467,17 +494,17 @@ export default function TOTPSettingsPage() {
                           type="button"
                           onClick={() => copyToClipboard(setupData.secret, "secret")}
                           aria-label="复制密钥"
-                          className="inline-flex text-brand-charcoal/65 hover:text-brand-charcoal"
+                          className="inline-flex text-ink-muted hover:text-brand-charcoal"
                         >
                           {copied === "secret" ? (
-                            <Check className="h-4 w-4 text-green-500" />
+                            <Check className="h-4 w-4 text-status-success-fg" />
                           ) : (
                             <Copy className="h-4 w-4" />
                           )}
                         </button>
                       </Tooltip>
                     </div>
-                    <p className="text-[11px] text-brand-charcoal/65">
+                    <p className="text-2xs text-ink-muted">
                       密钥属于敏感信息，请勿通过聊天工具发送。
                     </p>
                   </div>
@@ -493,7 +520,7 @@ export default function TOTPSettingsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-medium text-brand-charcoal">保存备用码</p>
-                    <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                    <p className="mt-0.5 text-xs text-ink-muted">
                       每个备用码只能使用一次，建议保存在密码管理器或离线位置。
                     </p>
                   </div>
@@ -503,7 +530,7 @@ export default function TOTPSettingsPage() {
                     onClick={() => copyToClipboard(setupData.backupCodes.join("\n"), "all-backup")}
                   >
                     {copied === "all-backup" ? (
-                      <Check className="mr-1.5 h-4 w-4 text-green-500" />
+                      <Check className="mr-1.5 h-4 w-4 text-status-success-fg" />
                     ) : (
                       <Copy className="mr-1.5 h-4 w-4" />
                     )}
@@ -517,26 +544,34 @@ export default function TOTPSettingsPage() {
                       type="button"
                       onClick={() => copyToClipboard(code, `backup-${index}`)}
                       aria-label={`复制备用码 ${code}`}
-                      className="flex cursor-pointer items-center justify-between rounded-lg bg-brand-charcoal/[0.03] px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80 transition-colors hover:bg-brand-charcoal/[0.06]"
+                      className="flex cursor-pointer items-center justify-between rounded-lg bg-surface-muted px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80 transition-colors hover:bg-surface-hover"
                     >
                       <span>{code}</span>
                       {copied === `backup-${index}` ? (
-                        <Check className="h-3 w-3 text-green-500" />
+                        <Check className="h-3 w-3 text-status-success-fg" />
                       ) : (
-                        <Copy className="h-3 w-3 text-brand-charcoal/65" />
+                        <Copy className="h-3 w-3 text-ink-muted" />
                       )}
                     </button>
                   ))}
                 </div>
-                <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-brand-charcoal/10 px-3 py-2.5 text-sm text-brand-charcoal/80">
+                <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-line px-3 py-2.5 text-sm text-brand-charcoal/80">
                   <input
                     type="checkbox"
                     checked={backupSaved}
-                    onChange={(e) => setBackupSaved(e.target.checked)}
+                    onChange={(e) => {
+                      setBackupSaved(e.target.checked);
+                      if (verifyBackupError) setVerifyBackupError("");
+                    }}
                     className="mt-0.5 h-4 w-4 accent-brand-primary"
                   />
                   <span>我已安全保存以上备用码</span>
                 </label>
+                {verifyBackupError ? (
+                  <p role="alert" className="mt-2 text-sm text-status-danger-fg">
+                    {verifyBackupError}
+                  </p>
+                ) : null}
               </div>
             </li>
 
@@ -546,7 +581,7 @@ export default function TOTPSettingsPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-brand-charcoal">输入验证码完成绑定</p>
-                <p className="mt-0.5 text-xs text-brand-charcoal/65">
+                <p className="mt-0.5 text-xs text-ink-muted">
                   输入验证器当前显示的 6 位数字。
                 </p>
                 <form
@@ -562,7 +597,11 @@ export default function TOTPSettingsPage() {
                     inputMode="numeric"
                     maxLength={6}
                     value={verifyCode}
-                    onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+                    error={verifyCodeError}
+                    onChange={(e) => {
+                      setVerifyCode(e.target.value.replace(/\D/g, ""));
+                      if (verifyCodeError) setVerifyCodeError("");
+                    }}
                     placeholder="000000"
                     autoComplete="one-time-code"
                     className="flex-1 font-mono"
@@ -584,15 +623,15 @@ export default function TOTPSettingsPage() {
       {totpEnabled && (
         <CollapsiblePanel
           title={
-            <span className="flex items-center gap-2 text-red-700">
+            <span className="flex items-center gap-2 text-status-danger-strong">
               <AlertTriangle className="h-4 w-4" />
               关闭二次验证
             </span>
           }
           summary="高风险操作，需要当前密码和动态验证码"
-          className="border-red-200"
+          className="border-status-danger-line"
         >
-          <p className="text-sm text-brand-charcoal/65">
+          <p className="text-sm text-ink-muted">
             关闭后登录不再需要动态验证码，账号安全性将降低。建议仅在更换验证器或无法继续使用时操作。
           </p>
           <form
@@ -607,14 +646,22 @@ export default function TOTPSettingsPage() {
               label="当前密码"
               type="password"
               value={disablePassword}
-              onChange={(e) => setDisablePassword(e.target.value)}
+              error={disablePasswordError}
+              onChange={(e) => {
+                setDisablePassword(e.target.value);
+                if (disablePasswordError) setDisablePasswordError("");
+              }}
               placeholder="请输入当前密码"
               autoComplete="current-password"
             />
             <Input
               label="动态验证码 / 备用码"
               value={disableCode}
-              onChange={(e) => setDisableCode(e.target.value)}
+              error={disableCodeError}
+              onChange={(e) => {
+                setDisableCode(e.target.value);
+                if (disableCodeError) setDisableCodeError("");
+              }}
               placeholder="6 位验证码或备用码"
               autoComplete="one-time-code"
               className="font-mono"
@@ -636,13 +683,13 @@ export default function TOTPSettingsPage() {
       <CollapsiblePanel
         title={
           <span className="flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-brand-charcoal/65" />
+            <KeyRound className="h-4 w-4 text-ink-muted" />
             账号密码
           </span>
         }
         summary="修改登录密码；保存后全部会话失效，需要重新登录"
       >
-        <p className="text-sm text-brand-charcoal/65">
+        <p className="text-sm text-ink-muted">
           修改成功后当前账号的全部会话会失效，需要使用新密码重新登录。
         </p>
         <form noValidate onSubmit={handleChangePassword} className="mt-4 max-w-sm space-y-3">
@@ -689,7 +736,7 @@ export default function TOTPSettingsPage() {
           {passwordError && (
             <p
               role="alert"
-              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+              className="rounded-lg border border-status-danger-line bg-status-danger-soft px-3 py-2 text-xs text-status-danger-strong"
             >
               {passwordError}
             </p>
@@ -738,7 +785,7 @@ export default function TOTPSettingsPage() {
       >
         {regenCodes ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-amber-600">
+            <div className="flex items-center gap-2 text-status-warning-fg">
               <AlertTriangle className="h-5 w-5" />
               <span className="font-medium">新备用码仅显示一次，旧备用码已失效</span>
             </div>
@@ -749,18 +796,18 @@ export default function TOTPSettingsPage() {
                   type="button"
                   onClick={() => copyToClipboard(code, `regen-${index}`)}
                   aria-label={`复制备用码 ${code}`}
-                  className="flex cursor-pointer items-center justify-between rounded bg-brand-charcoal/[0.03] px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80 hover:bg-brand-charcoal/10"
+                  className="flex cursor-pointer items-center justify-between rounded bg-surface-muted px-3 py-2 text-left font-mono text-xs text-brand-charcoal/80 hover:bg-brand-charcoal/10"
                 >
                   <span>{code}</span>
                   {copied === `regen-${index}` ? (
-                    <Check className="h-3 w-3 text-green-500" />
+                    <Check className="h-3 w-3 text-status-success-fg" />
                   ) : (
-                    <Copy className="h-3 w-3 text-brand-charcoal/65" />
+                    <Copy className="h-3 w-3 text-ink-muted" />
                   )}
                 </button>
               ))}
             </div>
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="rounded-lg border border-status-warning-line bg-status-warning-soft p-4">
               <label className="flex cursor-pointer items-start gap-3">
                 <input
                   type="checkbox"
@@ -769,8 +816,8 @@ export default function TOTPSettingsPage() {
                   className="mt-0.5"
                 />
                 <div>
-                  <p className="text-sm font-medium text-amber-800">我已安全保存以上备用码</p>
-                  <p className="mt-0.5 text-xs text-amber-600">
+                  <p className="text-sm font-medium text-status-warning-strong">我已安全保存以上备用码</p>
+                  <p className="mt-0.5 text-xs text-status-warning-fg">
                     备用码仅显示一次，关闭后无法再次查看。未完成保存前请勿关闭。
                   </p>
                 </div>
@@ -791,7 +838,11 @@ export default function TOTPSettingsPage() {
               required
               type="password"
               value={regenPassword}
-              onChange={(e) => setRegenPassword(e.target.value)}
+              error={regenPasswordError}
+              onChange={(e) => {
+                setRegenPassword(e.target.value);
+                if (regenPasswordError) setRegenPasswordError("");
+              }}
               placeholder="请输入当前密码"
               autoComplete="current-password"
               data-autofocus
@@ -800,7 +851,11 @@ export default function TOTPSettingsPage() {
               label="动态验证码 / 备用码"
               required
               value={regenCode}
-              onChange={(e) => setRegenCode(e.target.value)}
+              error={regenCodeError}
+              onChange={(e) => {
+                setRegenCode(e.target.value);
+                if (regenCodeError) setRegenCodeError("");
+              }}
               placeholder="6 位验证码或备用码"
               autoComplete="one-time-code"
               className="font-mono"

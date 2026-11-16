@@ -354,11 +354,11 @@ function OAuthSessionsPage() {
       </div>
 
       {/* 工具栏：关键词与 Client 筛选 */}
-      <div className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
+      <div className="rounded-card border border-line bg-white p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto">
             <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-brand-charcoal/65" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-ink-muted" />
               <Input
                 aria-label="搜索手机号、昵称、Client ID 或名称"
                 placeholder="搜索手机号 / 昵称 / Client"
@@ -376,7 +376,7 @@ function OAuthSessionsPage() {
                     setPage(1);
                   }}
                   aria-label="清除搜索"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-brand-charcoal/65 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-ink-muted transition-colors hover:bg-surface-hover hover:text-brand-charcoal"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -412,12 +412,12 @@ function OAuthSessionsPage() {
               </Button>
             )}
           </div>
-          <span className="text-sm text-brand-charcoal/65 md:ml-auto">共 {total} 条会话</span>
+          <span className="text-sm text-ink-muted md:ml-auto">共 {total} 条会话</span>
         </div>
       </div>
 
       {searchTruncated && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+        <p className="rounded-lg border border-status-warning-line bg-status-warning-soft px-4 py-2 text-sm text-status-warning-strong">
           匹配结果过多，仅统计前 500 个用户/客户端，请使用更精确的搜索关键词。
         </p>
       )}
@@ -428,7 +428,7 @@ function OAuthSessionsPage() {
         error={
           loadError ? (
             <>
-              <p className="text-red-500">加载失败</p>
+              <p className="text-status-danger-fg">加载失败</p>
               <Button variant="outline" size="sm" className="mt-3" onClick={fetchSessions}>
                 重试
               </Button>
@@ -445,7 +445,7 @@ function OAuthSessionsPage() {
                 <p className="truncate font-medium text-brand-charcoal">
                   {s.nickname || "未设置昵称"}
                 </p>
-                <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                <p className="truncate font-mono text-xs text-ink-muted">
                   {maskForList(s.phone) || s.userId}
                 </p>
               </div>
@@ -480,13 +480,13 @@ function OAuthSessionsPage() {
                 </Badge>
               ))}
               {s.scopes.length > 3 && (
-                <span className="text-xs text-brand-charcoal/65">+{s.scopes.length - 3}</span>
+                <span className="text-xs text-ink-muted">+{s.scopes.length - 3}</span>
               )}
             </div>
-            <p className="mt-1.5 truncate text-xs text-brand-charcoal/65">
+            <p className="mt-1.5 truncate text-xs text-ink-muted">
               Client：{s.clientName || s.clientId}
             </p>
-            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-brand-charcoal/10 pt-2 text-xs text-brand-charcoal/65">
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-line pt-2 text-xs text-ink-muted">
               <span>创建：{formatDate(s.createdAt)}</span>
               <span>过期：{formatDate(s.expiresAt)}</span>
             </div>
@@ -495,10 +495,10 @@ function OAuthSessionsPage() {
       </MobileList>
 
       {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-brand-charcoal/10 bg-white md:block">
+      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
-            <tr className="border-b border-brand-charcoal/10 bg-brand-charcoal/[0.02] text-left">
+            <tr className="border-b border-line bg-surface-subtle text-left">
               <th scope="col" className="px-4 py-3 font-normal">
                 用户
               </th>
@@ -519,14 +519,14 @@ function OAuthSessionsPage() {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-brand-charcoal/10">
+          <tbody className="divide-y divide-line">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
             ) : loadError ? (
               <tr>
                 <td colSpan={6}>
                   <div className="flex flex-col items-center justify-center gap-3 py-10">
-                    <p className="text-sm text-red-500">加载失败，请稍后重试</p>
+                    <p className="text-sm text-status-danger-fg">加载失败，请稍后重试</p>
                     <Button variant="outline" size="sm" onClick={fetchSessions}>
                       重新加载
                     </Button>
@@ -550,18 +550,18 @@ function OAuthSessionsPage() {
               </tr>
             ) : (
               sessions.map((s) => (
-                <tr key={s.id} className="hover:bg-brand-charcoal/[0.03]">
+                <tr key={s.id} className="hover:bg-surface-muted">
                   <td className="px-4 py-3">
                     <p className="truncate font-medium text-brand-charcoal/80">
                       {s.nickname || "未设置昵称"}
                     </p>
-                    <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                    <p className="truncate font-mono text-xs text-ink-muted">
                       {maskForList(s.phone) || s.userId}
                     </p>
                   </td>
                   <td className="px-4 py-3">
                     <p className="truncate text-brand-charcoal/80">{s.clientName || "-"}</p>
-                    <p className="truncate font-mono text-xs text-brand-charcoal/65">
+                    <p className="truncate font-mono text-xs text-ink-muted">
                       {s.clientId}
                     </p>
                   </td>
@@ -574,10 +574,10 @@ function OAuthSessionsPage() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-ink-muted">
                     {formatDate(s.createdAt)}
                   </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/65">
+                  <td className="px-4 py-3 text-sm text-ink-muted">
                     {formatDate(s.expiresAt)}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -704,7 +704,7 @@ function OAuthSessionsPage() {
               ]}
             />
           ) : (
-            <p className="text-xs text-brand-charcoal/65">
+            <p className="text-xs text-ink-muted">
               当前账号无 Client 列表权限，将终止该用户全部应用的会话。
             </p>
           )}
@@ -742,11 +742,11 @@ function OAuthSessionsPage() {
         {detailSession && (
           <div className="space-y-6">
             <div className="space-y-4">
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+              <div className="rounded-lg bg-surface-muted p-4">
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal">用户信息</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">用户 ID</span>
+                    <span className="text-ink-muted">用户 ID</span>
                     <Link
                       href={`/admin/users?search=${encodeURIComponent(detailSession.userId)}`}
                       className="font-mono text-brand-primary hover:underline"
@@ -755,25 +755,25 @@ function OAuthSessionsPage() {
                     </Link>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">手机号</span>
+                    <span className="text-ink-muted">手机号</span>
                     <span>{detailSession.phone || "-"}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">昵称</span>
+                    <span className="text-ink-muted">昵称</span>
                     <span>{detailSession.nickname || "-"}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+              <div className="rounded-lg bg-surface-muted p-4">
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal">Client 信息</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">Client ID</span>
+                    <span className="text-ink-muted">Client ID</span>
                     <span className="font-mono">{detailSession.clientId}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">Client 名称</span>
+                    <span className="text-ink-muted">Client 名称</span>
                     <span>{detailSession.clientName || "-"}</span>
                   </div>
                 </div>
@@ -790,15 +790,15 @@ function OAuthSessionsPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg bg-brand-charcoal/[0.03] p-4">
+              <div className="rounded-lg bg-surface-muted p-4">
                 <h3 className="mb-3 text-sm font-medium text-brand-charcoal">时间信息</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">创建时间</span>
+                    <span className="text-ink-muted">创建时间</span>
                     <span>{formatFullDateTime(detailSession.createdAt)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-brand-charcoal/65">过期时间</span>
+                    <span className="text-ink-muted">过期时间</span>
                     <span>{formatFullDateTime(detailSession.expiresAt)}</span>
                   </div>
                 </div>
@@ -846,7 +846,7 @@ function OAuthSessionsPage() {
                   </Button>
                 </>
               ) : (
-                <span className="text-xs text-brand-charcoal/65">只读查看（无操作权限）</span>
+                <span className="text-xs text-ink-muted">只读查看（无操作权限）</span>
               )}
             </div>
           </div>
@@ -860,7 +860,7 @@ function OAuthSessionsPage() {
 export default function OAuthSessionsPageWrapper() {
   return (
     <RequirePermission permission="sso:read">
-      <Suspense fallback={<div className="py-8 text-center text-brand-charcoal/65">加载中...</div>}>
+      <Suspense fallback={<div className="py-8 text-center text-ink-muted">加载中...</div>}>
         <OAuthSessionsPage />
       </Suspense>
     </RequirePermission>

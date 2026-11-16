@@ -193,8 +193,8 @@ function AdminCategoriesContent() {
 
       {/* 分类列表 */}
       {loadError ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-brand-charcoal/10 bg-white py-12">
-          <p className="text-sm text-red-500">分类加载失败，请检查网络后重试</p>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-card border border-line bg-white py-12">
+          <p className="text-sm text-status-danger-fg">分类加载失败，请检查网络后重试</p>
           <Button variant="outline" size="sm" onClick={fetchCategories}>
             重新加载
           </Button>

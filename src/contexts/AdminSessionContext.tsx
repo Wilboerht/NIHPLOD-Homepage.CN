@@ -21,7 +21,13 @@ import { apiGet } from "@/lib/api-client";
 import type { AdminPermission } from "@/lib/admin-permissions";
 
 interface AdminMeResponse {
-  user: { id: string; role: string; name: string; permissions?: string[] };
+  user: {
+    id: string;
+    role: string;
+    name: string;
+    permissions?: string[];
+    customized?: boolean;
+  };
 }
 
 export interface AdminSessionValue {
@@ -29,6 +35,8 @@ export interface AdminSessionValue {
   role?: string;
   name?: string;
   permissions: Set<string>;
+  /** 是否存在个人权限覆盖（非 owner） */
+  customized: boolean;
   loading: boolean;
   /** 会话已失效，正在跳转登录页 */
   redirecting: boolean;
@@ -45,6 +53,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | undefined>(undefined);
   const [name, setName] = useState<string | undefined>(undefined);
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
+  const [customized, setCustomized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState(false);
@@ -60,6 +69,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
         setRole(data.user?.role);
         setName(data.user?.name);
         setPermissions(new Set(data.user?.permissions ?? []));
+        setCustomized(Boolean(data.user?.customized));
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -94,8 +104,19 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AdminSessionValue>(
-    () => ({ id, role, name, permissions, loading, redirecting, error, can, refresh }),
-    [id, role, name, permissions, loading, redirecting, error, can, refresh]
+    () => ({
+      id,
+      role,
+      name,
+      permissions,
+      customized,
+      loading,
+      redirecting,
+      error,
+      can,
+      refresh,
+    }),
+    [id, role, name, permissions, customized, loading, redirecting, error, can, refresh]
   );
 
   return <AdminSessionContext.Provider value={value}>{children}</AdminSessionContext.Provider>;

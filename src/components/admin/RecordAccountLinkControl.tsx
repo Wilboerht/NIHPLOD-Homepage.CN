@@ -74,13 +74,13 @@ export function RecordAccountLinkControl({
           closeOnBackdrop={false}
         >
           <div className="space-y-4">
-            {userId && <p className="text-xs text-brand-charcoal/65">当前关联用户 ID：{userId}</p>}
+            {userId && <p className="text-xs text-ink-muted">当前关联用户 ID：{userId}</p>}
             <Input
               label="目标用户 ID（留空表示解除关联）"
               value={nextUserId}
               onChange={(e) => setNextUserId(e.target.value.trim())}
             />
-            <p className="text-xs text-amber-700">
+            <p className="text-xs text-status-warning-strong">
               服务端会锁定并核对目标账户手机号；与记录手机号不一致时拒绝关联。
             </p>
             <Textarea

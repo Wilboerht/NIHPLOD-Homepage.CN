@@ -175,7 +175,7 @@ export function Tooltip({ content, children, side = "top", className }: TooltipP
             role="tooltip"
             style={{ left: pos.left, top: pos.top }}
             className={cn(
-              "pointer-events-none fixed z-[99999] max-w-xs whitespace-nowrap rounded-md bg-brand-charcoal/90 px-2.5 py-1.5 text-xs text-white opacity-100 shadow-lg",
+              "pointer-events-none fixed z-tooltip max-w-xs whitespace-nowrap rounded-md bg-brand-charcoal/90 px-2.5 py-1.5 text-xs text-white opacity-100 shadow-popover",
               transformBySide[arrowSide],
               className
             )}

@@ -490,7 +490,11 @@ export async function runAdminReconciliation(
   ]);
 
   const pointIssueCount =
-    invariants.issues.length + invariants.deletedUsersWithRemaining + redemptionLinks.count;
+    invariants.issues.length +
+    invariants.deletedUsersWithRemaining +
+    invariants.legacyUnreleasedGrants +
+    invariants.legacyMissingExpiryGrants +
+    redemptionLinks.count;
   const warningCount = invariants.negativeBalances;
   const spentIssueCount =
     totalMismatches.count +
