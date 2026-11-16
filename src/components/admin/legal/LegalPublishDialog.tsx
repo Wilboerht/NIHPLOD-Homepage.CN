@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
+import { Badge } from "@/components/ui/Badge";
 import type { LegalDocumentContent } from "@/types/legal";
 
 interface LegalPublishDialogProps {
@@ -16,19 +17,22 @@ interface LegalPublishDialogProps {
   nextVersion: number;
 }
 
-function countChangedSections(
+function getChangeSummary(
   content: LegalDocumentContent,
   baseContent: LegalDocumentContent | null
-): number {
-  if (!baseContent) return content.sections.length;
+): { added: number; modified: number; removed: number } {
+  if (!baseContent) return { added: content.sections.length, modified: 0, removed: 0 };
   const baseMap = new Map(baseContent.sections.map((section) => [section.id, section]));
   const currentIds = new Set(content.sections.map((section) => section.id));
-  const changed = content.sections.filter((section) => {
+  let added = 0;
+  let modified = 0;
+  for (const section of content.sections) {
     const base = baseMap.get(section.id);
-    return !base || base.title !== section.title || base.body !== section.body;
-  }).length;
+    if (!base) added += 1;
+    else if (base.title !== section.title || base.body !== section.body) modified += 1;
+  }
   const removed = baseContent.sections.filter((section) => !currentIds.has(section.id)).length;
-  return changed + removed;
+  return { added, modified, removed };
 }
 
 export function LegalPublishDialog({
@@ -42,7 +46,8 @@ export function LegalPublishDialog({
 }: LegalPublishDialogProps) {
   const [note, setNote] = useState("");
   const noteValid = note.trim().length >= 2;
-  const changedSections = countChangedSections(content, baseContent);
+  const changes = getChangeSummary(content, baseContent);
+  const changedSections = changes.added + changes.modified + changes.removed;
   const orderChanged = baseContent
     ? content.sections.map((section) => section.id).join("|") !==
       baseContent.sections.map((section) => section.id).join("|")
@@ -52,18 +57,31 @@ export function LegalPublishDialog({
     <Modal open={open} onClose={onClose} title="发布新版本" size="lg" closeOnBackdrop={!loading}>
       <div className="space-y-5">
         <div className="rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] p-4 text-sm text-brand-charcoal/70">
-          <ul className="space-y-1.5">
-            <li>
-              发布后版本：
-              <strong className="font-semibold text-brand-charcoal">v{nextVersion}</strong>
-            </li>
-            <li>章节数量：{content.sections.length}</li>
-            <li>
-              变更章节：{changedSections}
-              {orderChanged ? "（含章节顺序调整）" : ""}
-            </li>
-            <li>“最近更新”将自动更新为今天（UTC+8）。</li>
-          </ul>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-brand-charcoal/50">版本</span>
+            <strong className="font-semibold text-brand-charcoal">
+              {nextVersion > 1 ? `v${nextVersion - 1} → ` : "首次发布 → "}v{nextVersion}
+            </strong>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <Badge variant="success" size="sm">
+              新增 {changes.added}
+            </Badge>
+            <Badge variant="warning" size="sm">
+              修改 {changes.modified}
+            </Badge>
+            <Badge variant="danger" size="sm">
+              删除 {changes.removed}
+            </Badge>
+            {orderChanged ? (
+              <Badge variant="secondary" size="sm">
+                章节顺序调整
+              </Badge>
+            ) : null}
+          </div>
+          <p className="mt-3 text-xs text-brand-charcoal/50">
+            共 {content.sections.length} 章，变更 {changedSections} 章；“最近更新”将自动更新为今天（UTC+8）。
+          </p>
         </div>
 
         {baseContent ? (
@@ -80,8 +98,9 @@ export function LegalPublishDialog({
           placeholder="例如：根据 2026 年新规更新个人信息处理说明"
           rows={3}
           required
+          autoFocus
           error={note.length > 0 && !noteValid ? "发布说明至少 2 个字符" : undefined}
-          hint={noteValid ? undefined : "必填，用于审计记录与版本历史"}
+          hint={noteValid ? `${note.length}/200` : "必填，用于审计记录与版本历史"}
         />
 
         <p className="text-xs text-brand-charcoal/50">

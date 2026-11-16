@@ -1,8 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { AlertCircle, Eye, History, Plus, RefreshCw, Save, Send } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  AlertCircle,
+  ChevronRight,
+  ExternalLink,
+  Eye,
+  History,
+  Plus,
+  RefreshCw,
+  Save,
+  Send,
+} from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -21,8 +31,12 @@ import {
   type LegalLocalDraft,
 } from "@/lib/legal-local-draft";
 import { createLegalSectionId } from "@/lib/legal-content";
-import { cn } from "@/lib/utils";
 import { LegalSectionEditor } from "./LegalSectionEditor";
+import {
+  LegalPublishStatusCard,
+  LegalStatusPills,
+} from "./LegalDocumentStatus";
+import { LegalSectionOutline } from "./LegalSectionOutline";
 import { LegalPreview } from "./LegalPreview";
 import { LegalPublishDialog } from "./LegalPublishDialog";
 import { LegalVersionHistory } from "./LegalVersionHistory";
@@ -44,7 +58,6 @@ interface LegalDocumentEditorProps {
 
 export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   const toast = useToast();
-  const router = useRouter();
   const { can } = useAdminPermissions();
   const canWrite = can("legal:write");
   const { requireTotp, totpModal } = useTotpConfirm();
@@ -52,6 +65,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   const [document, setDocument] = useState<LegalAdminDocumentDetail | null>(null);
   const [content, setContent] = useState<LegalDocumentContent | null>(null);
   const [baseline, setBaseline] = useState("");
+  const [baselineContent, setBaselineContent] = useState<LegalDocumentContent | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -69,10 +83,31 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
   const { confirmClose } = useUnsavedChanges(isDirty);
   useLegalDraftAutosave({ slug, content, isDirty, enabled: canWrite });
 
+  const sectionStateById = useMemo(() => {
+    const states: Record<string, { invalid: boolean; changed: boolean }> = {};
+    if (!content) return states;
+    const previous = new Map(
+      (baselineContent?.sections ?? []).map((section) => [section.id, section])
+    );
+    for (const section of content.sections) {
+      const before = previous.get(section.id);
+      states[section.id] = {
+        invalid: !section.title.trim() || !section.body.trim(),
+        changed:
+          !before || before.title !== section.title || before.body !== section.body,
+      };
+    }
+    return states;
+  }, [baselineContent, content]);
+  const invalidSectionCount = Object.values(sectionStateById).filter(
+    (state) => state.invalid
+  ).length;
+
   const applyDocument = useCallback(
     (next: LegalAdminDocumentDetail, options?: { resetExpanded?: boolean }) => {
       setDocument(next);
       setContent(cloneLegalContent(next.content));
+      setBaselineContent(cloneLegalContent(next.content));
       setBaseline(legalContentSignature(next.content));
       if (options?.resetExpanded) {
         setExpanded(new Set(next.content.sections.slice(0, 1).map((section) => section.id)));
@@ -147,6 +182,24 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     setExpanded((previous) => new Set(previous).add(section.id));
   };
 
+  const scrollToSection = (id: string) => {
+    setExpanded((previous) => new Set(previous).add(id));
+    window.requestAnimationFrame(() => {
+      window.document
+        .getElementById(`legal-section-${id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const expandAllSections = () => {
+    if (!content) return;
+    setExpanded(new Set(content.sections.map((section) => section.id)));
+  };
+
+  const collapseAllSections = () => {
+    setExpanded(new Set());
+  };
+
   const removeSection = () => {
     if (!removeSectionId) return;
     setLocalDraft(null);
@@ -200,6 +253,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
           for (const id of validation.emptySectionIds) next.add(id);
           return next;
         });
+        scrollToSection(validation.emptySectionIds[0]);
       }
       return;
     }
@@ -310,21 +364,6 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     );
   }
 
-  const statusBadge = document.hasDraft ? (
-    <Badge variant="warning">有未发布草稿</Badge>
-  ) : document.publishedVersion > 0 ? (
-    <Badge variant="success">已发布 v{document.publishedVersion}</Badge>
-  ) : (
-    <Badge variant="secondary">默认内容（尚未发布）</Badge>
-  );
-
-  const draftMeta = [
-    document.draftUpdatedBy ? `最后编辑：${document.draftUpdatedBy}` : null,
-    document.draftUpdatedAt ? new Date(document.draftUpdatedAt).toLocaleString("zh-CN") : null,
-  ]
-    .filter(Boolean)
-    .join("，");
-
   const contentMatchesPublished =
     document.publishedContent !== null &&
     legalContentComparableSignature(content) ===
@@ -343,25 +382,48 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     setLocalDraft(null);
   };
 
+  const publicHref = `/${document.slug}`;
+
   return (
     <div className="space-y-6">
+      <nav
+        aria-label="面包屑"
+        className="flex flex-wrap items-center gap-1 text-xs text-brand-charcoal/50"
+      >
+        <Link
+          href="/admin/legal"
+          className="transition-colors hover:text-brand-charcoal"
+          onClick={(event) => {
+            if (!confirmClose()) event.preventDefault();
+          }}
+        >
+          法务文档
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="text-brand-charcoal/75">{document.title}</span>
+      </nav>
+
       <PageHeader
         title={`${document.title} · 法务文档`}
-        description="章节正文为纯文本，支持空行分段与轻量 Markdown；发布后会同步到公开页与嵌入页。"
-        accessory={statusBadge}
+        description="先保存草稿并预览，确认无误后再发布新版本。公开页和嵌入页会同步更新。"
         actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(publicHref, "_blank", "noopener,noreferrer")}
+            leftIcon={<ExternalLink className="h-4 w-4" />}
+          >
+            查看线上
+          </Button>
+        }
+      />
+
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-30 -mx-4 border-y border-brand-charcoal/10 bg-brand-cream/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-0 lg:rounded-xl lg:border lg:px-4 lg:py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <LegalStatusPills document={document} isDirty={isDirty} />
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (confirmClose()) router.push("/admin/legal");
-              }}
-            >
-              返回列表
-            </Button>
-            <Button
-              variant="outline"
               size="sm"
               onClick={() => setPreviewOpen(true)}
               leftIcon={<Eye className="h-4 w-4" />}
@@ -369,7 +431,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
               预览
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setHistoryOpen(true)}
               leftIcon={<History className="h-4 w-4" />}
@@ -403,8 +465,8 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
               <Badge variant="secondary">只读</Badge>
             )}
           </div>
-        }
-      />
+        </div>
+      </div>
 
       {canWrite && localDraft ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -425,39 +487,18 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          "rounded-xl border p-4 text-sm",
-          document.contentSource === "default"
-            ? "border-sky-200 bg-sky-50 text-sky-800"
-            : document.hasDraft || isDirty
-              ? "border-amber-200 bg-amber-50 text-amber-800"
-              : "border-emerald-200 bg-emerald-50 text-emerald-800"
-        )}
-      >
-        {document.contentSource === "default" ? (
+      {document.contentSource === "default" ? (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
           <p className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {document.publishedVersion > 0
               ? "线上已发布内容校验失败，当前展示代码内置默认内容；请检查后重新发布。"
-              : "当前展示代码内置默认内容（尚未发布过版本）。首次发布会生成 v1，并把“最近更新”更新为发布当天。"}
+              : "当前展示代码内置默认内容。首次发布会生成 v1，并把公开页的“最近更新”更新为发布当天。"}
           </p>
-        ) : document.hasDraft ? (
-          <p>有未发布草稿{draftMeta ? `（${draftMeta}）` : ""}。草稿不会影响线上内容。</p>
-        ) : isDirty ? (
-          <p>有未保存修改。保存草稿后才会写入数据库；发布时会直接以当前内容生成新版本。</p>
-        ) : (
-          <p>
-            当前内容与线上 v{document.publishedVersion} 一致
-            {document.publishedAt
-              ? `（发布于 ${new Date(document.publishedAt).toLocaleString("zh-CN")}）`
-              : ""}
-            。
-          </p>
-        )}
-      </div>
+        </div>
+      ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
           <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-6">
             <h2 className="text-base font-medium text-brand-charcoal">基本信息</h2>
@@ -487,20 +528,36 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
               <div>
                 <h2 className="text-base font-medium text-brand-charcoal">章节</h2>
                 <p className="text-xs text-brand-charcoal/50">
-                  共 {content.sections.length} 章。正文段落之间用空行分隔。
+                  共 {content.sections.length} 章
+                  {invalidSectionCount > 0
+                    ? ` · ${invalidSectionCount} 个章节待完善`
+                    : " · 全部章节已填写"}
                 </p>
               </div>
-              {canWrite ? (
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={addSection}
-                  disabled={content.sections.length >= 80}
-                  leftIcon={<Plus className="h-4 w-4" />}
+                  onClick={collapseAllSections}
+                  disabled={expanded.size === 0}
                 >
-                  添加章节
+                  全部收起
                 </Button>
-              ) : null}
+                <Button variant="ghost" size="sm" onClick={expandAllSections}>
+                  全部展开
+                </Button>
+                {canWrite ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addSection}
+                    disabled={content.sections.length >= 80}
+                    leftIcon={<Plus className="h-4 w-4" />}
+                  >
+                    添加章节
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             {content.sections.map((section, index) => (
@@ -511,6 +568,9 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
                 total={content.sections.length}
                 expanded={expanded.has(section.id)}
                 readOnly={!canWrite}
+                changed={sectionStateById[section.id]?.changed}
+                invalidTitle={!section.title.trim()}
+                invalidBody={!section.body.trim()}
                 onToggle={() =>
                   setExpanded((previous) => {
                     const next = new Set(previous);
@@ -524,6 +584,19 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
                 onRemove={() => setRemoveSectionId(section.id)}
               />
             ))}
+
+            {canWrite ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={addSection}
+                disabled={content.sections.length >= 80}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                在末尾添加章节
+              </Button>
+            ) : null}
           </section>
 
           {canWrite && document.hasDraft ? (
@@ -540,33 +613,17 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
           ) : null}
         </div>
 
-        <aside className="space-y-4">
-          <section className="rounded-2xl border border-brand-charcoal/10 bg-white p-4">
-            <h2 className="text-sm font-semibold text-brand-charcoal">发布状态</h2>
-            <dl className="mt-3 space-y-2 text-xs text-brand-charcoal/65">
-              <div className="flex justify-between gap-3">
-                <dt>线上版本</dt>
-                <dd className="font-medium text-brand-charcoal">
-                  {document.publishedVersion > 0 ? `v${document.publishedVersion}` : "未发布"}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt>最近更新</dt>
-                <dd>{content.lastUpdated}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt>草稿修订号</dt>
-                <dd className="font-mono">{document.draftRevision}</dd>
-              </div>
-              <div className="flex justify-between gap-3">
-                <dt>当前编辑</dt>
-                <dd>{isDirty ? "有未保存修改" : "已同步"}</dd>
-              </div>
-            </dl>
-            <p className="mt-3 border-t border-brand-charcoal/10 pt-3 text-[11px] leading-5 text-brand-charcoal/50">
-              发布需要动态验证码（TOTP），并写入审计日志；历史版本永久保留，可随时恢复为草稿。
-            </p>
-          </section>
+        <aside className="order-first space-y-4 lg:order-none lg:sticky lg:top-24 lg:self-start">
+          <LegalPublishStatusCard
+            document={document}
+            isDirty={isDirty}
+            localDraft={localDraft}
+          />
+          <LegalSectionOutline
+            sections={content.sections}
+            stateById={sectionStateById}
+            onSelect={scrollToSection}
+          />
         </aside>
       </div>
 

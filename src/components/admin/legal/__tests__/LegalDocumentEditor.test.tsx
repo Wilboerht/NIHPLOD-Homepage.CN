@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -84,7 +84,7 @@ describe("LegalDocumentEditor", () => {
     expect(screen.getByText("基本信息")).toBeInTheDocument();
     expect(screen.getByLabelText("页面描述")).toHaveValue("使用前请阅读");
     expect(screen.getByLabelText("章节标题")).toHaveValue("1. 隐私权");
-    expect(screen.getByText("已发布 v1")).toBeInTheDocument();
+    expect(screen.getByText("线上 v1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /保存草稿/ })).toBeInTheDocument();
     const publishButton = screen.getByRole("button", { name: /^发布$/ });
     expect(publishButton).toBeInTheDocument();

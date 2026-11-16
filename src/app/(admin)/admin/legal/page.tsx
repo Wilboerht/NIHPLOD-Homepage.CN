@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Pencil, RefreshCw, ShieldCheck } from "lucide-react";
+import { ExternalLink, FileText, Pencil, RefreshCw, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { Badge } from "@/components/ui/Badge";
@@ -11,17 +12,22 @@ import { useToast } from "@/components/ui/Toast";
 import { apiGet, getApiErrorMessage } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatRelativeTime } from "@/lib/format";
 import type { LegalAdminDocumentSummary, LegalDocumentSlug } from "@/types/legal";
 
-const DOCUMENT_META: Record<LegalDocumentSlug, { description: string; icon: typeof FileText }> = {
+const DOCUMENT_META: Record<
+  LegalDocumentSlug,
+  { description: string; icon: typeof FileText; href: string }
+> = {
   terms: {
     description: "规范网站与产品服务使用、购买、售后与争议解决等条款。",
     icon: ShieldCheck,
+    href: "/terms",
   },
   privacy: {
     description: "说明个人信息的收集、使用、共享、存储与用户权利。",
     icon: FileText,
+    href: "/privacy",
   },
 };
 
@@ -33,6 +39,8 @@ function LegalDocumentsContent() {
   const [documents, setDocuments] = useState<LegalAdminDocumentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const draftCount = documents.filter((document) => document.hasDraft).length;
+  const publishedCount = documents.filter((document) => document.publishedVersion > 0).length;
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
@@ -76,73 +84,144 @@ function LegalDocumentsContent() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {documents.map((document) => {
-          const meta = DOCUMENT_META[document.slug];
-          const Icon = meta.icon;
-          return (
-            <section
-              key={document.slug}
-              className="flex flex-col rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-5"
-            >
-              <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-base font-semibold text-brand-charcoal">{document.title}</h2>
-                  <p className="mt-1 text-xs leading-5 text-brand-charcoal/55">
-                    {meta.description}
-                  </p>
-                </div>
-              </div>
+      {!loading && documents.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-brand-charcoal/10 bg-brand-charcoal/[0.02] px-4 py-3 text-xs text-brand-charcoal/60">
+          <span>
+            共 <strong className="font-semibold text-brand-charcoal">{documents.length}</strong> 份文档
+          </span>
+          <span>已发布 {publishedCount}</span>
+          <span className={draftCount > 0 ? "text-amber-700" : undefined}>
+            待发布草稿 {draftCount}
+          </span>
+        </div>
+      ) : null}
 
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                {document.hasDraft ? (
-                  <Badge variant="warning" size="sm">
-                    有未发布草稿
-                  </Badge>
-                ) : document.publishedVersion > 0 ? (
-                  <Badge variant="success" size="sm">
-                    已发布 v{document.publishedVersion}
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" size="sm">
-                    默认内容（尚未发布）
-                  </Badge>
-                )}
-                {document.contentSource === "default" ? (
-                  <Badge variant="outline" size="sm">
-                    代码内置默认值
-                  </Badge>
-                ) : null}
-              </div>
-
-              <dl className="mt-3 space-y-1.5 text-xs text-brand-charcoal/55">
-                <div className="flex justify-between gap-3">
-                  <dt>最近发布</dt>
-                  <dd>{document.publishedAt ? formatDateTime(document.publishedAt) : "—"}</dd>
+      {loading && documents.length === 0 ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {[0, 1].map((item) => (
+            <div
+              key={item}
+              className="h-56 animate-pulse rounded-2xl border border-brand-charcoal/10 bg-white"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {documents.map((document) => {
+            const meta = DOCUMENT_META[document.slug];
+            const Icon = meta.icon;
+            return (
+              <section
+                key={document.slug}
+                className="flex flex-col rounded-2xl border border-brand-charcoal/10 bg-white p-4 sm:p-5"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base font-semibold text-brand-charcoal">
+                      <Link
+                        href={`/admin/legal/${document.slug}`}
+                        className="hover:text-brand-primary"
+                      >
+                        {document.title}
+                      </Link>
+                    </h2>
+                    <p className="mt-1 text-xs leading-5 text-brand-charcoal/55">
+                      {meta.description}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex justify-between gap-3">
-                  <dt>草稿最后编辑</dt>
-                  <dd>{document.draftUpdatedAt ? formatDateTime(document.draftUpdatedAt) : "—"}</dd>
-                </div>
-              </dl>
 
-              <div className="mt-4 flex flex-1 items-end justify-end">
-                <Button
-                  variant={canWrite ? "primary" : "outline"}
-                  size="sm"
-                  onClick={() => router.push(`/admin/legal/${document.slug}`)}
-                  leftIcon={<Pencil className="h-4 w-4" />}
-                >
-                  {canWrite ? "编辑" : "查看"}
-                </Button>
-              </div>
-            </section>
-          );
-        })}
-      </div>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant={document.publishedVersion > 0 ? "success" : "secondary"}
+                    size="sm"
+                  >
+                    {document.publishedVersion > 0
+                      ? `线上 v${document.publishedVersion}`
+                      : "尚未发布"}
+                  </Badge>
+                  {document.hasDraft ? (
+                    <Badge variant="warning" size="sm">
+                      草稿待发布
+                    </Badge>
+                  ) : null}
+                  {document.contentSource === "default" ? (
+                    <Badge variant="outline" size="sm">
+                      系统默认内容
+                    </Badge>
+                  ) : null}
+                </div>
+
+                <dl className="mt-3 space-y-1.5 text-xs text-brand-charcoal/55">
+                  <div className="flex items-start justify-between gap-3">
+                    <dt>最近发布</dt>
+                    <dd className="text-right">
+                      {document.publishedAt ? (
+                        <time
+                          dateTime={document.publishedAt}
+                          title={formatDateTime(document.publishedAt)}
+                        >
+                          {formatRelativeTime(document.publishedAt)}
+                        </time>
+                      ) : (
+                        "—"
+                      )}
+                      {document.publishedBy ? (
+                        <span className="block text-brand-charcoal/40">
+                          {document.publishedBy}
+                        </span>
+                      ) : null}
+                    </dd>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <dt>草稿最后编辑</dt>
+                    <dd className="text-right">
+                      {document.draftUpdatedAt ? (
+                        <time
+                          dateTime={document.draftUpdatedAt}
+                          title={formatDateTime(document.draftUpdatedAt)}
+                        >
+                          {formatRelativeTime(document.draftUpdatedAt)}
+                        </time>
+                      ) : (
+                        "—"
+                      )}
+                      {document.draftUpdatedBy ? (
+                        <span className="block text-brand-charcoal/40">
+                          {document.draftUpdatedBy}
+                        </span>
+                      ) : null}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-brand-charcoal/10 pt-3">
+                  <a
+                    href={meta.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-brand-charcoal/55 hover:text-brand-primary"
+                  >
+                    查看线上
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  </a>
+                  <Button
+                    variant={canWrite ? "primary" : "outline"}
+                    size="sm"
+                    onClick={() => router.push(`/admin/legal/${document.slug}`)}
+                    leftIcon={<Pencil className="h-4 w-4" />}
+                  >
+                    {canWrite ? "编辑" : "查看"}
+                  </Button>
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       {!loading && documents.length === 0 && !loadError ? (
         <p className="rounded-xl border border-brand-charcoal/10 bg-white p-6 text-center text-sm text-brand-charcoal/55">

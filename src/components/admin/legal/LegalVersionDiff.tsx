@@ -17,6 +17,7 @@ interface LegalVersionDiffProps {
   targetLabel: string;
   baseMeta?: LegalVersionDetail | null;
   targetMeta?: LegalVersionDetail | null;
+  onSwap?: () => void;
 }
 
 type SectionChange = "added" | "removed" | "modified" | "unchanged";
@@ -140,13 +141,28 @@ export function LegalVersionDiff({
   targetLabel,
   baseMeta,
   targetMeta,
+  onSwap,
 }: LegalVersionDiffProps) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [onlyChanged, setOnlyChanged] = useState(true);
   const items = useMemo(
     () => (baseContent && targetContent ? buildSectionDiffs(targetContent, baseContent) : []),
     [baseContent, targetContent]
   );
-  const changedCount = items.filter((item) => item.change !== "unchanged").length;
+  const changedItems = useMemo(
+    () => items.filter((item) => item.change !== "unchanged"),
+    [items]
+  );
+  const changedCounts = useMemo(
+    () => ({
+      added: changedItems.filter((item) => item.change === "added").length,
+      modified: changedItems.filter((item) => item.change === "modified").length,
+      removed: changedItems.filter((item) => item.change === "removed").length,
+    }),
+    [changedItems]
+  );
+  const changedCount = changedItems.length;
+  const visibleItems = onlyChanged ? changedItems : items;
   const orderChanged = useMemo(() => {
     if (!baseContent || !targetContent) return false;
     const baseIds = baseContent.sections.map((section) => section.id);
@@ -157,7 +173,7 @@ export function LegalVersionDiff({
   }, [baseContent, targetContent]);
 
   const toggle = (id: string) => {
-    setExpanded((previous) => {
+    setCollapsed((previous) => {
       const next = new Set(previous);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -182,16 +198,50 @@ export function LegalVersionDiff({
             </p>
             {baseMeta?.note ? <p>基准发布说明：{baseMeta.note}</p> : null}
             {targetMeta?.note ? <p>对比发布说明：{targetMeta.note}</p> : null}
-            <p>
-              对比结果：{changedCount} 个章节有变化
-              {orderChanged ? "，章节顺序已调整" : ""}
-              （颜色标记为相对基准版本的增删）
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="success" size="sm">
+                新增 {changedCounts.added}
+              </Badge>
+              <Badge variant="warning" size="sm">
+                修改 {changedCounts.modified}
+              </Badge>
+              <Badge variant="danger" size="sm">
+                删除 {changedCounts.removed}
+              </Badge>
+              {orderChanged ? (
+                <Badge variant="secondary" size="sm">
+                  章节顺序有调整
+                </Badge>
+              ) : null}
+            </div>
+            <p className="mt-2 text-xs text-brand-charcoal/50">
+              {changedCount > 0 ? `${changedCount} 个章节有变化` : "两个版本内容一致"}
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                aria-pressed={onlyChanged}
+                onClick={() => setOnlyChanged((value) => !value)}
+              >
+                {onlyChanged ? `显示全部 ${items.length} 章` : "只看变更"}
+              </Button>
+              {onSwap ? (
+                <Button variant="ghost" size="sm" onClick={onSwap}>
+                  交换基准与对比
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           <div className="space-y-2">
-            {items.map((item) => {
-              const isOpen = expanded.has(item.id);
+            {visibleItems.length === 0 ? (
+              <p className="rounded-xl border border-brand-charcoal/10 bg-white p-6 text-center text-sm text-brand-charcoal/55">
+                两个版本没有章节变化
+              </p>
+            ) : null}
+            {visibleItems.map((item) => {
+              const isOpen = !collapsed.has(item.id);
               return (
                 <div key={item.id} className="rounded-xl border border-brand-charcoal/10 bg-white">
                   <div className="flex items-center gap-2 px-3 py-2">
@@ -201,9 +251,7 @@ export function LegalVersionDiff({
                     <span className="min-w-0 flex-1 truncate text-sm text-brand-charcoal">
                       {item.title}
                     </span>
-                    {item.change === "modified" ||
-                    item.change === "added" ||
-                    item.change === "removed" ? (
+                    {item.change !== "unchanged" ? (
                       <Button variant="ghost" size="sm" onClick={() => toggle(item.id)}>
                         {isOpen ? "收起" : "查看差异"}
                       </Button>

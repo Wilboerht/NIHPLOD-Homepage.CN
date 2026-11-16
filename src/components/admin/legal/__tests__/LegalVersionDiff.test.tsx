@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LazyMotion, domAnimation } from "framer-motion";
 import { LegalVersionDiff } from "../LegalVersionDiff";
@@ -51,8 +51,6 @@ describe("LegalVersionDiff", () => {
     expect(screen.getByText("新增")).toBeInTheDocument();
     expect(screen.getByText("删除")).toBeInTheDocument();
 
-    const diffButtons = screen.getAllByRole("button", { name: "查看差异" });
-    fireEvent.click(diffButtons[0]);
     expect(screen.getByText(/旧正文/)).toBeInTheDocument();
     expect(screen.getByText(/新正文/)).toBeInTheDocument();
   });

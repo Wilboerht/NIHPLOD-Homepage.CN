@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/admin/IconButton";
 import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/utils";
 import type { LegalSection } from "@/types/legal";
 
 interface LegalSectionEditorProps {
@@ -12,6 +13,9 @@ interface LegalSectionEditorProps {
   total: number;
   expanded: boolean;
   readOnly: boolean;
+  changed?: boolean;
+  invalidTitle?: boolean;
+  invalidBody?: boolean;
   onToggle: () => void;
   onChange: (patch: Partial<Pick<LegalSection, "title" | "body">>) => void;
   onMove: (direction: -1 | 1) => void;
@@ -24,15 +28,22 @@ export function LegalSectionEditor({
   total,
   expanded,
   readOnly,
+  changed = false,
+  invalidTitle,
+  invalidBody,
   onToggle,
   onChange,
   onMove,
   onRemove,
 }: LegalSectionEditorProps) {
-  const hasEmptyBody = section.body.trim().length === 0;
+  const titleInvalid = invalidTitle ?? !section.title.trim();
+  const bodyInvalid = invalidBody ?? !section.body.trim();
 
   return (
-    <section className="rounded-xl border border-brand-charcoal/10 bg-white">
+    <section
+      id={`legal-section-${section.id}`}
+      className="group scroll-mt-24 rounded-xl border border-brand-charcoal/10 bg-white"
+    >
       <div className="flex items-center gap-2 px-3 py-2 sm:px-4">
         <button
           type="button"
@@ -46,9 +57,17 @@ export function LegalSectionEditor({
           <span className="min-w-0 flex-1 truncate text-sm font-medium text-brand-charcoal">
             {section.title.trim() || "未命名章节"}
           </span>
-          {hasEmptyBody ? (
+          {titleInvalid || bodyInvalid ? (
             <Badge variant="warning" size="sm" className="shrink-0">
-              待填写正文
+              {titleInvalid && bodyInvalid
+                ? "待完善"
+                : titleInvalid
+                  ? "待填写标题"
+                  : "待填写正文"}
+            </Badge>
+          ) : changed ? (
+            <Badge variant="primary" size="sm" className="shrink-0">
+              已修改
             </Badge>
           ) : null}
           {expanded ? (
@@ -58,7 +77,7 @@ export function LegalSectionEditor({
           )}
         </button>
 
-        <div className="flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center opacity-100 transition-opacity sm:opacity-60 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
           <IconButton
             label={`上移第 ${index + 1} 章`}
             onClick={() => onMove(-1)}
@@ -99,7 +118,13 @@ export function LegalSectionEditor({
               readOnly={readOnly}
               maxLength={200}
               onChange={(event) => onChange({ title: event.target.value })}
-              className="w-full rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2 text-sm text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03]"
+              aria-invalid={titleInvalid || undefined}
+              className={cn(
+                "w-full rounded-lg border bg-white px-3 py-2 text-sm text-brand-charcoal focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03]",
+                titleInvalid
+                  ? "border-amber-400 focus:border-amber-500 focus:ring-amber-500"
+                  : "border-brand-charcoal/20 focus:border-brand-primary focus:ring-brand-primary"
+              )}
               placeholder="例如：一、个人信息处理者信息"
             />
           </div>
@@ -123,13 +148,18 @@ export function LegalSectionEditor({
               onChange={(event) => onChange({ body: event.target.value })}
               rows={12}
               spellCheck={false}
-              className="w-full resize-y rounded-lg border border-brand-charcoal/20 bg-white px-3 py-2.5 font-sans text-[14px] leading-7 text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03]"
+              aria-invalid={bodyInvalid || undefined}
+              className={cn(
+                "w-full resize-y rounded-lg border bg-white px-3 py-2.5 font-sans text-[14px] leading-7 text-brand-charcoal focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-brand-charcoal/[0.03]",
+                bodyInvalid
+                  ? "border-amber-400 focus:border-amber-500 focus:ring-amber-500"
+                  : "border-brand-charcoal/20 focus:border-brand-primary focus:ring-brand-primary"
+              )}
               placeholder="请输入章节正文，段落之间用空行分隔"
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[11px] text-brand-charcoal/40">章节 ID：{section.id}</span>
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               variant="ghost"

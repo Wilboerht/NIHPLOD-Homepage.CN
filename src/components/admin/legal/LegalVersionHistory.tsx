@@ -61,7 +61,7 @@ export function LegalVersionHistory({
   const [diffState, setDiffState] = useState<DiffState | null>(null);
   const [diffLoadingId, setDiffLoadingId] = useState<string | null>(null);
   const [baseSelection, setBaseSelection] = useState("current");
-  const [targetSelection, setTargetSelection] = useState("");
+  const [targetSelection, setTargetSelection] = useState("current");
   const [comparing, setComparing] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<LegalVersionSummary | null>(null);
   const [restoring, setRestoring] = useState(false);
@@ -77,10 +77,15 @@ export function LegalVersionHistory({
       }>(`/api/admin/legal/${slug}/versions`, { limit: 20 });
       setVersions(data.versions);
       setNextCursor(data.nextCursor);
+      setBaseSelection((previous) =>
+        data.versions.some((version) => version.id === previous)
+          ? previous
+          : (data.versions[0]?.id ?? "current")
+      );
       setTargetSelection((previous) =>
         previous === "current" || data.versions.some((version) => version.id === previous)
           ? previous
-          : (data.versions[0]?.id ?? "")
+          : "current"
       );
     } catch (error) {
       setLoadError(getApiErrorMessage(error, "加载历史版本失败"));
@@ -346,6 +351,21 @@ export function LegalVersionHistory({
         targetLabel={diffState?.targetLabel ?? ""}
         baseMeta={diffState?.baseMeta ?? null}
         targetMeta={diffState?.targetMeta ?? null}
+        onSwap={() =>
+          setDiffState((previous) =>
+            previous
+              ? {
+                  ...previous,
+                  baseContent: previous.targetContent,
+                  targetContent: previous.baseContent,
+                  baseLabel: previous.targetLabel,
+                  targetLabel: previous.baseLabel,
+                  baseMeta: previous.targetMeta,
+                  targetMeta: previous.baseMeta,
+                }
+              : previous
+          )
+        }
       />
 
       <ConfirmDialog
