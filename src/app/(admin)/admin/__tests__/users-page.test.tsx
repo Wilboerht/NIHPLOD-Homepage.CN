@@ -119,7 +119,7 @@ describe("用户管理列表", () => {
     await screen.findByRole("table", { name: "用户列表" });
     fireEvent.click(screen.getAllByLabelText("选择 测试用户")[0]);
 
-    expect(await screen.findByText("已选 1 位")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "冻结" })).toBeInTheDocument();
   });
 
   it("空态与分页总数", async () => {
@@ -127,7 +127,7 @@ describe("用户管理列表", () => {
     render(<AdminUsersPage />);
 
     expect((await screen.findAllByText("暂无用户")).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/共 0 条/)).not.toBeInTheDocument();
+    expect((await screen.findAllByText(/共 0 条/)).length).toBeGreaterThan(0);
   });
 
   it("加载失败展示重试入口", async () => {

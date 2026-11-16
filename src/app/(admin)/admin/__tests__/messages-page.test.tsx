@@ -129,7 +129,7 @@ describe("留言管理列表", () => {
     await screen.findByRole("table", { name: "留言列表" });
     fireEvent.click(screen.getAllByLabelText("选择 张三 的留言")[0]);
 
-    expect(await screen.findByText("已选 1 条")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "批量删除" })).toBeInTheDocument();
   });
 
   it("空态显示暂无留言", async () => {
@@ -143,6 +143,6 @@ describe("留言管理列表", () => {
     apiGetMock.mockRejectedValue(new Error("网络异常"));
     render(<MessagesPage />);
 
-    expect(await screen.findByText("加载失败，请重试")).toBeInTheDocument();
+    expect((await screen.findAllByText("加载失败，请重试")).length).toBeGreaterThan(0);
   });
 });

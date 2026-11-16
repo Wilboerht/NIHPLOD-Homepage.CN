@@ -1286,7 +1286,7 @@ function AdminUsersContent() {
   }
 
   const userColumns: Column<UserItem>[] = [];
-  if (canWriteUsers) {
+  if (canWriteUsers && isOwnerActor) {
     userColumns.push({
       key: "select",
       title: (
@@ -1400,7 +1400,7 @@ function AdminUsersContent() {
   const renderUserMobileCard = (user: UserItem) => (
     <div>
       <div className="flex items-start gap-3">
-        {canWriteUsers && (
+        {canWriteUsers && isOwnerActor && (
           <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
             <input
               type="checkbox"
