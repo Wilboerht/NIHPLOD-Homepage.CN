@@ -67,6 +67,7 @@ const nextConfig = {
 
   // 优化: 减小包体积
   experimental: {
+    agentUpgrade: "security",
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",
