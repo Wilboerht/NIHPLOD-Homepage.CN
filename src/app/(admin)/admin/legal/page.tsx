@@ -17,17 +17,19 @@ import type { LegalAdminDocumentSummary, LegalDocumentSlug } from "@/types/legal
 
 const DOCUMENT_META: Record<
   LegalDocumentSlug,
-  { description: string; icon: typeof FileText; href: string }
+  { description: string; icon: typeof FileText; href: string; accent: string }
 > = {
   terms: {
     description: "规范网站与产品服务使用、购买、售后与争议解决等条款。",
     icon: ShieldCheck,
     href: "/terms",
+    accent: "bg-brand-primary/10 text-brand-primary",
   },
   privacy: {
     description: "说明个人信息的收集、使用、共享、存储与用户权利。",
     icon: FileText,
     href: "/privacy",
+    accent: "bg-status-info-soft text-status-info-fg",
   },
 };
 
@@ -113,100 +115,113 @@ function LegalDocumentsContent() {
             return (
               <section
                 key={document.slug}
-                className="flex flex-col rounded-card border border-line bg-white p-4 sm:p-5"
+                className="group flex flex-col overflow-hidden rounded-card border border-line bg-white transition-colors hover:border-brand-primary/25"
               >
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary">
+                <div className="flex items-start gap-3 p-4 sm:p-5">
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${meta.accent}`}
+                  >
                     <Icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-base font-semibold text-brand-charcoal">
-                      <Link
-                        href={`/admin/legal/${document.slug}`}
-                        className="hover:text-brand-primary"
+                    <div className="flex items-start justify-between gap-3">
+                      <h2 className="text-base font-semibold text-brand-charcoal">
+                        <Link
+                          href={`/admin/legal/${document.slug}`}
+                          className="transition-colors hover:text-brand-primary"
+                        >
+                          {document.title}
+                        </Link>
+                      </h2>
+                      <Badge
+                        variant={document.publishedVersion > 0 ? "success" : "secondary"}
+                        size="sm"
+                        className="shrink-0"
                       >
-                        {document.title}
-                      </Link>
-                    </h2>
-                    <p className="mt-1 text-xs leading-5 text-ink-muted">
+                        {document.publishedVersion > 0
+                          ? `线上 v${document.publishedVersion}`
+                          : "尚未发布"}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-muted">
                       {meta.description}
                     </p>
+                    {(document.hasDraft || document.contentSource === "default") && (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {document.hasDraft ? (
+                          <Badge variant="warning" size="sm">
+                            草稿待发布
+                          </Badge>
+                        ) : null}
+                        {document.contentSource === "default" ? (
+                          <Badge variant="outline" size="sm">
+                            系统默认内容
+                          </Badge>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Badge
-                    variant={document.publishedVersion > 0 ? "success" : "secondary"}
-                    size="sm"
-                  >
-                    {document.publishedVersion > 0
-                      ? `线上 v${document.publishedVersion}`
-                      : "尚未发布"}
-                  </Badge>
-                  {document.hasDraft ? (
-                    <Badge variant="warning" size="sm">
-                      草稿待发布
-                    </Badge>
-                  ) : null}
-                  {document.contentSource === "default" ? (
-                    <Badge variant="outline" size="sm">
-                      系统默认内容
-                    </Badge>
-                  ) : null}
-                </div>
-
-                <dl className="mt-3 space-y-1.5 text-xs text-ink-muted">
-                  <div className="flex items-start justify-between gap-3">
-                    <dt>最近发布</dt>
-                    <dd className="text-right">
-                      {document.publishedAt ? (
-                        <time
-                          dateTime={document.publishedAt}
-                          title={formatDateTime(document.publishedAt)}
-                        >
-                          {formatRelativeTime(document.publishedAt)}
-                        </time>
-                      ) : (
-                        "—"
-                      )}
-                      {document.publishedBy ? (
-                        <span className="block text-ink-faint">
-                          {document.publishedBy}
-                        </span>
-                      ) : null}
+                <dl className="mx-4 mb-4 grid grid-cols-2 rounded-xl border border-line/70 bg-surface-subtle/60 px-3 py-2.5 text-xs sm:mx-5 sm:mb-5">
+                  <div className="min-w-0 pr-3">
+                    <dt className="text-2xs uppercase tracking-wide text-ink-faint">
+                      最近发布
+                    </dt>
+                    <dd className="mt-1">
+                      <p className="truncate font-medium text-brand-charcoal/80">
+                        {document.publishedAt ? (
+                          <time
+                            dateTime={document.publishedAt}
+                            title={formatDateTime(document.publishedAt)}
+                          >
+                            {formatRelativeTime(document.publishedAt)}
+                          </time>
+                        ) : (
+                          "—"
+                        )}
+                      </p>
+                      <p className="mt-0.5 min-h-4 truncate text-2xs text-ink-faint">
+                        {document.publishedBy || "\u00A0"}
+                      </p>
                     </dd>
                   </div>
-                  <div className="flex items-start justify-between gap-3">
-                    <dt>草稿最后编辑</dt>
-                    <dd className="text-right">
-                      {document.draftUpdatedAt ? (
-                        <time
-                          dateTime={document.draftUpdatedAt}
-                          title={formatDateTime(document.draftUpdatedAt)}
-                        >
-                          {formatRelativeTime(document.draftUpdatedAt)}
-                        </time>
-                      ) : (
-                        "—"
-                      )}
-                      {document.draftUpdatedBy ? (
-                        <span className="block text-ink-faint">
-                          {document.draftUpdatedBy}
-                        </span>
-                      ) : null}
+                  <div className="min-w-0 border-l border-line/70 pl-3">
+                    <dt className="text-2xs uppercase tracking-wide text-ink-faint">
+                      草稿最后编辑
+                    </dt>
+                    <dd className="mt-1">
+                      <p className="truncate font-medium text-brand-charcoal/80">
+                        {document.draftUpdatedAt ? (
+                          <time
+                            dateTime={document.draftUpdatedAt}
+                            title={formatDateTime(document.draftUpdatedAt)}
+                          >
+                            {formatRelativeTime(document.draftUpdatedAt)}
+                          </time>
+                        ) : (
+                          "—"
+                        )}
+                      </p>
+                      <p className="mt-0.5 min-h-4 truncate text-2xs text-ink-faint">
+                        {document.draftUpdatedBy || "\u00A0"}
+                      </p>
                     </dd>
                   </div>
                 </dl>
 
-                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+                <div className="mt-auto flex items-center justify-between gap-2 border-t border-line px-4 py-3 sm:px-5">
                   <a
                     href={meta.href}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-brand-primary"
+                    className="group/link inline-flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-brand-primary"
                   >
                     查看线上
-                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    <ExternalLink
+                      className="h-3.5 w-3.5 transition-transform group-hover/link:-translate-y-0.5 group-hover/link:translate-x-0.5"
+                      aria-hidden="true"
+                    />
                   </a>
                   <Button
                     variant={canWrite ? "primary" : "outline"}
