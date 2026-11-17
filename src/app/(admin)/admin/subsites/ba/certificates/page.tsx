@@ -97,6 +97,7 @@ function CertificatesContent() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [detail, setDetail] = useState<BaCertificateDetail | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [sealUploading, setSealUploading] = useState(false);
   const [sealFieldSessionKey, setSealFieldSessionKey] = useState(0);
@@ -149,8 +150,8 @@ function CertificatesContent() {
   }, [page, search, status]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => deferInEffect(load), 300);
-    return () => window.clearTimeout(timer);
+    // 搜索框已做 300ms 防抖，这里立即跟随 URL 变化加载，避免二次等待。
+    deferInEffect(load);
   }, [load]);
 
   useEffect(() => {
@@ -330,17 +331,25 @@ function CertificatesContent() {
     detailLoadingRef.current = id;
     phoneReveal.hide();
     openCertificateUrl(id);
+    setDetail(null);
+    setDetailLoading(true);
+    setDetailOpen(true);
     try {
       const data = await apiGet<BaCertificateDetail>(
         `/api/admin/subsites/ba/certificates/${encodeURIComponent(id)}`
       );
       if (new URLSearchParams(window.location.search).get("certificate") !== id) return;
       setDetail(data);
-      setDetailOpen(true);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "加载证书详情失败"));
+      if (new URLSearchParams(window.location.search).get("certificate") === id) {
+        setDetailOpen(false);
+        toast.error(getApiErrorMessage(err, "加载证书详情失败"));
+      }
     } finally {
-      if (detailLoadingRef.current === id) detailLoadingRef.current = null;
+      if (detailLoadingRef.current === id) {
+        detailLoadingRef.current = null;
+        setDetailLoading(false);
+      }
     }
   };
 
@@ -399,7 +408,6 @@ function CertificatesContent() {
     setIssueCertificate(certificate);
     setIssueOpen(true);
     setDetailOpen(false);
-    closeCertificateUrl();
   };
 
   const handleIssueConfirm = async ({
@@ -763,7 +771,9 @@ function CertificatesContent() {
         onClose={() => {
           phoneReveal.hide();
           setDetailOpen(false);
-          closeCertificateUrl();
+        }}
+        onExitComplete={() => {
+          if (!detailOpen && certificateParam) closeCertificateUrl();
         }}
         title={detail?.certificate.certNumber ?? "证书详情"}
         size="xl"
@@ -831,6 +841,24 @@ function CertificatesContent() {
           )
         }
       >
+        {detailLoading && (
+          <div className="space-y-4" aria-busy="true" aria-label="正在加载证书详情">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="h-3 w-16 animate-pulse rounded bg-surface-muted" />
+                  <div className="h-4 w-32 animate-pulse rounded bg-surface-muted" />
+                </div>
+              ))}
+            </div>
+            <div className="h-20 animate-pulse rounded-lg bg-surface-muted" />
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-16 animate-pulse rounded-lg bg-surface-muted" />
+              ))}
+            </div>
+          </div>
+        )}
         {detail && (
           <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             <div className="space-y-4 text-sm">

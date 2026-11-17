@@ -8,10 +8,17 @@ import { useEffect, useRef } from "react";
  */
 let scrollLockCount = 0;
 let savedOverflow = "";
+let savedPaddingRight = "";
 
 function lockScroll() {
   if (scrollLockCount === 0) {
     savedOverflow = document.body.style.overflow;
+    savedPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollbarWidth > 0) {
+      const currentPadding = Number.parseFloat(getComputedStyle(document.body).paddingRight) || 0;
+      document.body.style.paddingRight = `${currentPadding + scrollbarWidth}px`;
+    }
     document.body.style.overflow = "hidden";
   }
   scrollLockCount++;
@@ -21,6 +28,7 @@ function unlockScroll() {
   scrollLockCount = Math.max(0, scrollLockCount - 1);
   if (scrollLockCount === 0) {
     document.body.style.overflow = savedOverflow || "unset";
+    document.body.style.paddingRight = savedPaddingRight;
   }
 }
 

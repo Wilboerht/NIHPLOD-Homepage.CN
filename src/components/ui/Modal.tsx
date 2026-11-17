@@ -91,6 +91,8 @@ interface ModalProps {
   mobileFullScreen?: boolean;
   /** 确认类不可逆操作使用 alertdialog */
   role?: "dialog" | "alertdialog";
+  /** 退场动画结束后回调（用于延迟清理 URL 等） */
+  onExitComplete?: () => void;
 }
 
 /**
@@ -118,6 +120,7 @@ export function Modal({
   initialFocusRef,
   mobileFullScreen = false,
   role = "dialog",
+  onExitComplete,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
@@ -315,7 +318,7 @@ export function Modal({
   if (!mounted) return null;
 
   return createPortal(
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={onExitComplete}>
       {open && (
         <div
           className={cn(
