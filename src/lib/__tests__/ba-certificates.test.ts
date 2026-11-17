@@ -3,6 +3,7 @@ import {
   baActorCapabilities,
   baActorHeader,
   baCertificateCapabilities,
+  extractBaScopePlatforms,
   hasBaCertificateCapability,
 } from "@/lib/ba-certificates";
 
@@ -89,5 +90,38 @@ describe("BA certificate permissions", () => {
     expect(payload.externalAdminId).toBe("admin-1");
     expect(payload.baRole).toBe("super_admin");
     expect(payload.capabilities).toContain("ba.certificates.issue");
+  });
+});
+
+describe("extractBaScopePlatforms", () => {
+  it("优先使用渠道列表匹配授权范围中的平台", () => {
+    expect(
+      extractBaScopePlatforms("本证书授权范围包括天猫、京东、抖音等平台。", [
+        "天猫",
+        "京东",
+        "抖音",
+      ])
+    ).toEqual(["天猫", "京东", "抖音"]);
+  });
+
+  it("去掉授权说明，只保留平台名称", () => {
+    expect(extractBaScopePlatforms("本证书授权范围为天猫、京东、抖音平台使用。")).toEqual([
+      "天猫",
+      "京东",
+      "抖音",
+    ]);
+  });
+
+  it("支持冒号列表与空值", () => {
+    expect(extractBaScopePlatforms("授权平台：天猫、京东")).toEqual(["天猫", "京东"]);
+    expect(extractBaScopePlatforms("")).toEqual([]);
+  });
+
+  it("移除每个平台名称末尾的“平台/渠道”", () => {
+    expect(extractBaScopePlatforms("授权范围：天猫平台、京东渠道、抖音")).toEqual([
+      "天猫",
+      "京东",
+      "抖音",
+    ]);
   });
 });

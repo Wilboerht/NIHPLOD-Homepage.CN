@@ -118,6 +118,39 @@ export function baCertificateCapabilities(admin: BaCertificateAdmin): string[] {
   );
 }
 
+/** 从授权范围文本中提取平台名称，供列表紧凑展示。 */
+export function extractBaScopePlatforms(scopeText: string, channels: string[] = []): string[] {
+  const text = scopeText.trim();
+  if (!text) return [];
+
+  const matched = channels
+    .map((channel) => channel.trim())
+    .filter((channel) => channel && text.includes(channel));
+  if (matched.length > 0) return [...new Set(matched)];
+
+  const listPart = text.split(/[：:]/).pop() ?? text;
+  const cleaned = listPart
+    .replace(/^(本证书)?(授权|适用范围|范围|适用于|适用|包括|包含|仅限|平台|渠道|为|是|在)+/g, "")
+    .replace(/(等)?(平台|渠道|范围)?(内)?(使用|可用|销售|授权)?[。.!！]?$/g, "")
+    .trim();
+
+  return [
+    ...new Set(
+      cleaned
+        .split(/[、,，;；/]/)
+        .map((part) => part.replace(/^(在|于)/, "").replace(/(平台|渠道)$/, "").trim())
+        .filter(
+          (part) =>
+            part.length > 0 &&
+            part.length <= 20 &&
+            !/[。！？!?]/.test(part) &&
+            part !== "等平台"
+        )
+    ),
+  ];
+}
+
+
 export function baActorHeader(admin: BaCertificateAdmin): string {
   const payload = {
     externalAdminId: admin.id,

@@ -25,12 +25,13 @@ import { useListQuery } from "@/hooks/useListQuery";
 import { useUrlDetail } from "@/hooks/useUrlDetail";
 import { useSensitiveReveal } from "@/hooks/useSensitiveReveal";
 import { useToast } from "@/components/ui/Toast";
-import type {
-  BaCertificateDetail,
-  BaCertificateDraft,
-  BaCertificateListItem,
-  BaCertificateListData,
-  BaCertificateMeta,
+import {
+  extractBaScopePlatforms,
+  type BaCertificateDetail,
+  type BaCertificateDraft,
+  type BaCertificateListItem,
+  type BaCertificateListData,
+  type BaCertificateMeta,
 } from "@/lib/ba-certificates";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -446,12 +447,18 @@ function CertificatesContent() {
     {
       key: "scopeText",
       title: "授权范围",
-      width: "260px",
-      render: (_, item) => (
-        <p className="line-clamp-2 text-xs leading-relaxed text-brand-charcoal/70">
-          {item.scopeText}
-        </p>
-      ),
+      width: "180px",
+      render: (_, item) => {
+        const platforms = extractBaScopePlatforms(item.scopeText, meta?.channels ?? []);
+        return (
+          <span
+            className="block truncate text-xs text-brand-charcoal/70"
+            title={item.scopeText}
+          >
+            {platforms.length > 0 ? platforms.join("、") : "—"}
+          </span>
+        );
+      },
     },
     {
       key: "displayStatus",
@@ -508,7 +515,9 @@ function CertificatesContent() {
     },
   ];
 
-  const renderCertificateMobileCard = (item: BaCertificateListItem) => (
+  const renderCertificateMobileCard = (item: BaCertificateListItem) => {
+    const platforms = extractBaScopePlatforms(item.scopeText, meta?.channels ?? []);
+    return (
     <div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -520,7 +529,12 @@ function CertificatesContent() {
           {STATUS_LABELS[item.displayStatus] ?? item.displayStatus}
         </Badge>
       </div>
-      <p className="mt-2 line-clamp-2 text-xs text-brand-charcoal/70">{item.scopeText}</p>
+      <p
+        className="mt-2 truncate text-xs text-brand-charcoal/70"
+        title={item.scopeText}
+      >
+        {platforms.length > 0 ? platforms.join("、") : "—"}
+      </p>
       <p className="mt-2 text-xs text-ink-muted">
         {item.startDate} ~ {item.endDate}
       </p>
@@ -542,7 +556,8 @@ function CertificatesContent() {
           )}
       </div>
     </div>
-  );
+    );
+  };
 
   const today = useMemo(() => dateToday(), []);
 
