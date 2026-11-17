@@ -9,6 +9,7 @@ import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { PanelCard } from "@/components/admin/PanelCard";
 import { StatStrip } from "@/components/admin/StatStrip";
+import { AdvisorAnalyticsSummary } from "@/components/admin/advisor/AdvisorAnalyticsSummary";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import type {
@@ -46,10 +47,13 @@ const WEEKDAY_LABELS: Record<string, string> = {
 
 const QUICK_LINKS = [
   { label: "子站仪表盘", path: "/admin", description: "测肤子站数据总览" },
+  { label: "转化漏斗", path: "/admin/funnel", description: "近 30 天 8 步转化漏斗" },
+  { label: "报告质量", path: "/admin/report-quality", description: "AI 文案与规则兜底质量" },
   { label: "测肤用户", path: "/admin/users", description: "子站用户列表与配额" },
   { label: "推荐规则", path: "/admin/recommendation-rules", description: "AI 推荐条件与优先级" },
   { label: "AI 成本", path: "/admin/ai-costs", description: "Token 成本与失败记录" },
   { label: "测肤产品", path: "/admin/products", description: "推荐产品与肤质标签" },
+  { label: "数据导出", path: "/admin/exports", description: "产品/白皮书/用户/会话/审计 CSV" },
   { label: "安全审计", path: "/admin/audit-logs", description: "子站管理员操作记录" },
 ] as const;
 
@@ -488,7 +492,7 @@ function PageFrame({
     <div className="space-y-4">
       <PageHeader
         title="测肤子站"
-        description="smart.nihplod.cn 的运行概览与后台入口"
+        description="smart.nihplod.cn 的运行概览、分析摘要与后台入口"
         actions={
           canReadStats && onRefresh ? (
             <div className="flex items-center gap-2">
@@ -521,6 +525,7 @@ export default function AdvisorSubsitePage() {
   const [payload, setPayload] = useState<AdvisorDashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
 
   const canReadStats = can("advisor:stats:read");
   const canOpenAdvisor = can("advisor:access") || can("advisor:admin");
@@ -548,6 +553,7 @@ export default function AdvisorSubsitePage() {
     const isLatest = takeLatest();
     setLoading(true);
     setError("");
+    setSummaryRefreshKey((key) => key + 1);
     requestDashboard()
       .then((data) => {
         if (!isLatest()) return;
@@ -642,6 +648,10 @@ export default function AdvisorSubsitePage() {
       onRefresh={reload}
     >
       <DashboardContent dashboard={payload.dashboard} canOpenAdvisor={canOpenAdvisor} />
+      <AdvisorAnalyticsSummary
+        canOpenAdvisor={canOpenAdvisor}
+        refreshKey={summaryRefreshKey}
+      />
     </PageFrame>
   );
 }

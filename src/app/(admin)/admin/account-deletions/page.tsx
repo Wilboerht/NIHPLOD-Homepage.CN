@@ -7,15 +7,14 @@
  *   （重试为不可逆操作，需 users:delete 权限 + 二次确认）
  */
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, RefreshCw, RotateCw, AlertCircle } from "lucide-react";
+import { AlertTriangle, RefreshCw, RotateCw } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { DataTable, type Column } from "@/components/admin";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { Empty } from "@/components/ui/Empty";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -108,6 +107,7 @@ function AdminAccountDeletionsContent() {
     : "FAILED";
   const page = getNumber("page", 1);
   const [items, setItems] = useState<DeletionItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -125,7 +125,7 @@ function AdminAccountDeletionsContent() {
       try {
         const data = await apiGet<{
           items: DeletionItem[];
-          pagination: { totalPages: number };
+          pagination: { total: number; totalPages: number };
         }>("/api/admin/account-deletions", {
           status: targetStatus,
           page: targetPage,
@@ -133,6 +133,7 @@ function AdminAccountDeletionsContent() {
         });
         if (!isLatest()) return;
         setItems(data.items);
+        setTotal(data.pagination.total);
         setTotalPages(data.pagination.totalPages);
         setLoadError(false);
       } catch {
@@ -236,9 +237,150 @@ function AdminAccountDeletionsContent() {
     }
   };
 
+  const renderActions = (item: DeletionItem) => {
+    if (item.status === "FAILED") {
+      return canRetry ? (
+        <Button
+          variant="outline"
+          size="sm"
+          loading={actioningId === item.id}
+          disabled={actioningId !== null && actioningId !== item.id}
+          leftIcon={<RotateCw className="h-3.5 w-3.5" />}
+          onClick={() => setRetryTarget(item)}
+        >
+          重试
+        </Button>
+      ) : (
+        <span className="text-xs text-ink-muted">只读</span>
+      );
+    }
+    if (item.status === "PENDING" && canCancel) {
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          loading={actioningId === item.id}
+          disabled={actioningId !== null && actioningId !== item.id}
+          onClick={() => setCancelTarget(item)}
+        >
+          撤回申请
+        </Button>
+      );
+    }
+    return <span className="text-xs text-ink-muted">—</span>;
+  };
+
+  const columns: Column<DeletionItem>[] = [
+    {
+      key: "user",
+      title: "用户",
+      width: "220px",
+      render: (_value, item) => (
+        <div className="min-w-0">
+          <p className="truncate text-brand-charcoal/80">
+            {item.userNickname || "未设置昵称"}
+          </p>
+          <p className="truncate font-mono text-xs text-ink-muted">
+            {item.userPhone || item.userId}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      title: "状态",
+      width: "100px",
+      render: (_value, item) => (
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-xs",
+            STATUS_BADGES[item.status].className
+          )}
+        >
+          {STATUS_BADGES[item.status].label}
+        </span>
+      ),
+    },
+    {
+      key: "reason",
+      title: "注销原因",
+      width: "180px",
+      render: (_value, item) => (
+        <p className="truncate text-xs text-ink-muted" title={item.reason ?? undefined}>
+          {item.reason || "—"}
+        </p>
+      ),
+    },
+    {
+      key: "requestedAt",
+      title: "申请时间",
+      width: "170px",
+      render: (_value, item) => (
+        <span className="text-brand-charcoal/70">{formatDateTime(item.requestedAt)}</span>
+      ),
+    },
+    {
+      key: "scheduledAt",
+      title: "预定执行",
+      width: "170px",
+      render: (_value, item) => (
+        <span className="text-brand-charcoal/70">{formatDateTime(item.scheduledAt)}</span>
+      ),
+    },
+    ...(status === "CANCELLED"
+      ? [
+          {
+            key: "cancelledAt",
+            title: "撤回时间",
+            width: "170px",
+            render: (_value: unknown, item: DeletionItem) => (
+              <span className="text-brand-charcoal/70">
+                {formatDateTime(item.cancelledAt)}
+              </span>
+            ),
+          },
+        ]
+      : status === "COMPLETED"
+        ? [
+            {
+              key: "completedAt",
+              title: "完成时间",
+              width: "170px",
+              render: (_value: unknown, item: DeletionItem) => (
+                <span className="text-brand-charcoal/70">
+                  {formatDateTime(item.completedAt)}
+                </span>
+              ),
+            },
+          ]
+        : []),
+    {
+      key: "attempts",
+      title: "已尝试",
+      width: "90px",
+      numeric: true,
+      render: (_value, item) => <span>{item.attempts} 次</span>,
+    },
+    {
+      key: "lastError",
+      title: "失败原因",
+      width: "220px",
+      render: (_value, item) => (
+        <p className="truncate text-xs text-ink-muted" title={item.lastError ?? undefined}>
+          {item.lastError || "—"}
+        </p>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "110px",
+      render: (_value, item) => renderActions(item),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* 头部 */}
       <PageHeader
         title="注销申请管理"
         description="查看冷静期、执行失败与已完成的注销申请。"
@@ -276,28 +418,32 @@ function AdminAccountDeletionsContent() {
       </div>
 
       {/* 列表（移动端卡片） */}
-      <MobileList
+      <DataTable
+        columns={columns}
+        data={items}
         loading={loading}
-        error={
-          loadError ? (
-            <>
-              <p className="text-status-danger-fg">加载失败</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => fetchItems(status, page)}
-              >
-                重试
-              </Button>
-            </>
-          ) : undefined
+        error={loadError ? "加载失败，请检查网络连接" : null}
+        onRetry={() => {
+          setLoadError(false);
+          fetchItems(status, page);
+        }}
+        rowKey="id"
+        minWidth="960px"
+        emptyText="暂无记录"
+        ariaLabel="注销申请列表"
+        pagination={
+          total > 0
+            ? {
+                page,
+                pageSize: 20,
+                total,
+                onChange: (nextPage) =>
+                  update({ page: String(nextPage) }, { resetPage: false }),
+              }
+            : undefined
         }
-        empty={<Empty title="暂无记录" description="当前状态下没有注销申请" />}
-        isEmpty={!loading && !loadError && items.length === 0}
-      >
-        {items.map((item) => (
-          <MobileListCard key={item.id}>
+        mobileCard={(item) => (
+          <div>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate font-medium text-brand-charcoal">
@@ -334,199 +480,12 @@ function AdminAccountDeletionsContent() {
               </p>
             )}
             <div className="mt-2 flex justify-end border-t border-line pt-2">
-              {item.status === "FAILED" ? (
-                canRetry ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    loading={actioningId === item.id}
-                    disabled={actioningId !== null && actioningId !== item.id}
-                    leftIcon={<RotateCw className="h-3.5 w-3.5" />}
-                    onClick={() => setRetryTarget(item)}
-                  >
-                    重试
-                  </Button>
-                ) : (
-                  <span className="text-xs text-ink-muted">只读</span>
-                )
-              ) : item.status === "PENDING" && canCancel ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  loading={actioningId === item.id}
-                  disabled={actioningId !== null && actioningId !== item.id}
-                  onClick={() => setCancelTarget(item)}
-                >
-                  撤回申请
-                </Button>
-              ) : (
-                <span className="text-xs text-ink-muted">—</span>
-              )}
+              {renderActions(item)}
             </div>
-          </MobileListCard>
-        ))}
-      </MobileList>
-
-      {/* 列表（桌面端表格） */}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
-        {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
-        ) : loadError ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="rounded-full bg-status-danger-soft p-4">
-              <AlertCircle className="h-8 w-8 text-status-danger-fg" />
-            </div>
-            <h2 className="mt-4 text-lg font-medium text-brand-charcoal">加载失败</h2>
-            <p className="mt-1 text-sm text-ink-muted">
-              无法获取注销申请列表，请检查网络连接
-            </p>
-            <button
-              onClick={() => {
-                setLoadError(false);
-                fetchItems(status, page);
-              }}
-              className="mt-4 rounded-lg bg-brand-primary px-4 py-2 text-sm font-medium text-white hover:bg-brand-primary/90"
-            >
-              重试
-            </button>
-          </div>
-        ) : items.length === 0 ? (
-          <Empty className="h-64" title="暂无记录" description="当前状态下没有注销申请" />
-        ) : (
-          <table className="w-full min-w-[860px] text-sm">
-            <thead>
-              <tr className="border-b border-line bg-surface-subtle text-left text-xs uppercase text-ink-muted">
-                <th className="px-4 py-3 font-medium">用户</th>
-                <th className="px-4 py-3 font-medium">状态</th>
-                <th className="px-4 py-3 font-medium">注销原因</th>
-                <th className="px-4 py-3 font-medium">申请时间</th>
-                <th className="px-4 py-3 font-medium">预定执行</th>
-                {status === "CANCELLED" && <th className="px-4 py-3 font-medium">撤回时间</th>}
-                {status === "COMPLETED" && <th className="px-4 py-3 font-medium">完成时间</th>}
-                <th className="px-4 py-3 font-medium">已尝试</th>
-                <th className="px-4 py-3 font-medium">失败原因</th>
-                <th className="px-4 py-3 font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {items.map((item) => (
-                <tr key={item.id} className="hover:bg-surface-subtle">
-                  <td className="px-4 py-3">
-                    <p className="text-brand-charcoal/80">{item.userNickname || "未设置昵称"}</p>
-                    <p className="font-mono text-xs text-ink-muted">
-                      {item.userPhone || item.userId}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs",
-                        STATUS_BADGES[item.status].className
-                      )}
-                    >
-                      {STATUS_BADGES[item.status].label}
-                    </span>
-                  </td>
-                  <td className="max-w-[12rem] px-4 py-3">
-                    <p
-                      className="truncate text-xs text-ink-muted"
-                      title={item.reason ?? undefined}
-                    >
-                      {item.reason || "—"}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 text-brand-charcoal/70">
-                    {formatDateTime(item.requestedAt)}
-                  </td>
-                  <td className="px-4 py-3 text-brand-charcoal/70">
-                    {formatDateTime(item.scheduledAt)}
-                  </td>
-                  {status === "CANCELLED" && (
-                    <td className="px-4 py-3 text-brand-charcoal/70">
-                      {formatDateTime(item.cancelledAt)}
-                    </td>
-                  )}
-                  {status === "COMPLETED" && (
-                    <td className="px-4 py-3 text-brand-charcoal/70">
-                      {formatDateTime(item.completedAt)}
-                    </td>
-                  )}
-                  <td className="px-4 py-3 text-brand-charcoal/70">{item.attempts} 次</td>
-                  <td className="max-w-[16rem] px-4 py-3">
-                    <p
-                      className="truncate text-xs text-ink-muted"
-                      title={item.lastError ?? undefined}
-                    >
-                      {item.lastError || "—"}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    {item.status === "FAILED" ? (
-                      canRetry ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          loading={actioningId === item.id}
-                          disabled={actioningId !== null && actioningId !== item.id}
-                          leftIcon={<RotateCw className="h-3.5 w-3.5" />}
-                          onClick={() => setRetryTarget(item)}
-                        >
-                          重试
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-ink-muted">只读</span>
-                      )
-                    ) : item.status === "PENDING" && canCancel ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        loading={actioningId === item.id}
-                        disabled={actioningId !== null && actioningId !== item.id}
-                        onClick={() => setCancelTarget(item)}
-                      >
-                        撤回申请
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-ink-muted">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         )}
-      </div>
+      />
 
-      {/* 分页 */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-ink-muted">
-          <span>
-            第 {page}/{totalPages} 页
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => update({ page: String(page - 1) }, { resetPage: false })}
-            >
-              上一页
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => update({ page: String(page + 1) }, { resetPage: false })}
-            >
-              下一页
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* 重试确认 */}
       <ConfirmDialog
         open={!!retryTarget}
         onClose={() => {

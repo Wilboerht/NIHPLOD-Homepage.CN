@@ -18,14 +18,10 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
-import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dropdown, type DropdownItem } from "@/components/ui/Dropdown";
 import { Textarea } from "@/components/ui/Textarea";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
-import { Empty } from "@/components/ui/Empty";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/lib/api-client";
 import { validatePasswordStrength } from "@/lib/password";
 import { formatDateTime } from "@/lib/format";
@@ -34,9 +30,11 @@ import {
   AdminRoleBadge,
   AdminSearchInput,
   AdminStatusIcon,
+  DataTable,
   IconButton,
   RequirePermission,
   TotpStatusIcon,
+  type Column,
 } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { BreakGlassButton } from "@/components/admin/BreakGlassButton";
@@ -725,6 +723,132 @@ const selection = useRowSelection<AdminItem>(
   );
   const clearFilters = () => router.push("/admin/admins");
 
+  const columns: Column<AdminItem>[] = [
+    ...(canManage && isOwnerActor
+      ? [
+          {
+            key: "select",
+            title: (
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = isSelectionIndeterminate;
+                }}
+                onChange={(event) => selection.toggleAll(admins, event.target.checked)}
+                className="h-4 w-4 rounded border-line-strong"
+                aria-label="全选"
+              />
+            ),
+            width: "44px",
+            render: (_value: unknown, admin: AdminItem) => (
+              <input
+                type="checkbox"
+                checked={selection.isSelected(admin)}
+                onChange={() => selection.toggle(admin)}
+                className="h-4 w-4 rounded border-line-strong"
+                aria-label={`选择 ${admin.name}`}
+              />
+            ),
+          },
+        ]
+      : []),
+    {
+      key: "name",
+      title: "姓名",
+      width: "160px",
+      render: (_value, admin) => (
+        <span className="font-medium text-brand-charcoal">{admin.name}</span>
+      ),
+    },
+    {
+      key: "email",
+      title: "邮箱",
+      width: "220px",
+      render: (_value, admin) => (
+        <span className="text-brand-charcoal/80">{admin.email}</span>
+      ),
+    },
+    {
+      key: "role",
+      title: "角色",
+      width: "160px",
+      render: (_value, admin) => (
+        <AdminRoleBadge role={admin.role} overrides={admin.permissions} />
+      ),
+    },
+    {
+      key: "status",
+      title: "状态",
+      width: "64px",
+      align: "center",
+      render: (_value, admin) => <AdminStatusIcon status={admin.status} />,
+    },
+    {
+      key: "totp",
+      title: "二次验证",
+      width: "96px",
+      align: "center",
+      render: (_value, admin) => (
+        <TotpStatusIcon
+          enabled={admin.totpEnabled}
+          resetRequired={admin.totpResetRequired}
+        />
+      ),
+    },
+    {
+      key: "lastLoginAt",
+      title: "最近登录",
+      width: "180px",
+      render: (_value, admin) => (
+        <time
+          dateTime={admin.lastLoginAt ?? undefined}
+          title={admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : undefined}
+          className="text-xs text-ink-muted"
+        >
+          {admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "从未登录"}
+        </time>
+      ),
+    },
+    {
+      key: "advisor",
+      title: "测肤权限",
+      width: "110px",
+      render: (_value, admin) => {
+        const advisor = getAdvisorAccess(admin);
+        return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
+      },
+    },
+    {
+      key: "ba",
+      title: "验真权限",
+      width: "110px",
+      render: (_value, admin) => {
+        const ba = getBaAccess(admin);
+        return <Badge variant={ba.variant}>{ba.label}</Badge>;
+      },
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "100px",
+      render: (_value, admin) => (
+        <AdminRowActions
+          admin={admin}
+          currentAdminId={currentAdminId}
+          canManage={canManage}
+          isOwnerActor={isOwnerActor}
+          canRequestApproval={canRequestApproval}
+          togglingStatusId={togglingStatusId}
+          onEdit={openEdit}
+          onToggleStatus={requestToggleAdminStatus}
+          onResetTotp={openRecovery}
+          onDelete={setDeleteTarget}
+        />
+      ),
+    },
+  ];
+
   return (
     <RequirePermission permission="admins:read">
       <div className="space-y-6">
@@ -842,43 +966,33 @@ const selection = useRowSelection<AdminItem>(
       </div>
 
         {/* 列表（移动端卡片） */}
-        <MobileList
+        <DataTable
+          columns={columns}
+          data={admins}
           loading={loading}
-          skeletonCount={4}
-          error={
-            loadError ? (
-              <>
-                <p className="text-status-danger-fg">加载失败</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={fetchAdmins}>
-                  重试
-                </Button>
-              </>
-            ) : undefined
+          error={loadError ? "加载失败，请稍后重试" : null}
+          onRetry={fetchAdmins}
+          rowKey="id"
+          minWidth="900px"
+          emptyText="暂无管理员"
+          emptyAction={
+            canManage ? { label: "新增管理员", onClick: openCreate } : undefined
           }
-          empty={
-            <Empty
-              title={hasFilters ? "没有符合条件的管理员" : "暂无管理员"}
-              description={hasFilters ? "试试调整或清除筛选条件" : "当前还没有管理员账号"}
-              action={
-                hasFilters ? (
-                  <Button variant="outline" size="sm" onClick={clearFilters}>
-                    清除筛选
-                  </Button>
-                ) : canManage ? (
-                  <Button size="sm" leftIcon={<Plus className="h-4 w-4" />} onClick={openCreate}>
-                    新增管理员
-                  </Button>
-                ) : undefined
-              }
-            />
-          }
-          isEmpty={!loading && !loadError && admins.length === 0}
-        >
-          {admins.map((admin) => {
+          isFiltered={hasFilters}
+          onClearFilters={clearFilters}
+          ariaLabel="管理员列表"
+          pagination={{
+            page: pagination.page,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            onChange: (nextPage) => updateParams({ page: String(nextPage) }),
+            onPageSizeChange: (size) => updateParams({ pageSize: String(size) }),
+          }}
+          mobileCard={(admin) => {
             const advisor = getAdvisorAccess(admin);
             const ba = getBaAccess(admin);
             return (
-              <MobileListCard key={admin.id}>
+              <div>
                 <div className="flex items-start gap-3">
                   {canManage && isOwnerActor && (
                     <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
@@ -926,180 +1040,11 @@ const selection = useRowSelection<AdminItem>(
                     onDelete={setDeleteTarget}
                   />
                 </div>
-              </MobileListCard>
+              </div>
             );
-          })}
-        </MobileList>
+          }}
+        />
 
-        {/* 列表（桌面端表格） */}
-        <div className="hidden rounded-card border border-line bg-white md:block">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead>
-              <tr className="border-b border-line bg-surface-subtle text-left text-xs font-medium text-ink-muted">
-                {canManage && isOwnerActor && (
-                  <th scope="col" className="w-10 px-4 py-3.5">
-                    <input
-                      type="checkbox"
-                      checked={isAllSelected}
-                      ref={(el) => {
-                        if (el) el.indeterminate = isSelectionIndeterminate;
-                      }}
-                      onChange={(e) => selection.toggleAll(admins, e.target.checked)}
-                      className="h-4 w-4 rounded border-line-strong"
-                      aria-label="全选"
-                    />
-                  </th>
-                )}
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                  姓名
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                  邮箱
-                </th>
-                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                    角色
-                  </th>
-                  <th
-                    scope="col"
-                    title="绿勾：已启用；红叉：已禁用"
-                    className="w-16 px-2 py-3.5 text-center font-medium text-brand-charcoal/70"
-                  >
-                    状态
-                  </th>
-                  <th
-                    scope="col"
-                    title="盾牌勾：已绑定；盾牌叉：未绑定；盾牌叹号：待重绑"
-                    className="w-24 px-3 py-3.5 text-center font-medium text-brand-charcoal/70"
-                  >
-                    二次验证
-                  </th>
-                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                    最近登录
-                  </th>
-                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                    测肤权限
-                  </th>
-                  <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                    验真权限
-                  </th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-brand-charcoal/70">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line-subtle">
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRowSkeleton key={i} columns={canManage && isOwnerActor ? 10 : 9} />
-                ))
-              ) : admins.length === 0 ? (
-                <tr>
-                  <td colSpan={canManage && isOwnerActor ? 10 : 9} className="px-5 py-8">
-                    <Empty
-                      title={hasFilters ? "没有符合条件的管理员" : "暂无管理员"}
-                      description={
-                        hasFilters ? "试试调整或清除筛选条件" : "当前还没有管理员账号"
-                      }
-                      className="py-6"
-                      action={
-                        hasFilters ? (
-                          <Button variant="outline" size="sm" onClick={clearFilters}>
-                            清除筛选
-                          </Button>
-                        ) : canManage ? (
-                          <Button
-                            size="sm"
-                            leftIcon={<Plus className="h-4 w-4" />}
-                            onClick={openCreate}
-                          >
-                            新增管理员
-                          </Button>
-                        ) : undefined
-                      }
-                    />
-                  </td>
-                </tr>
-              ) : (
-                admins.map((admin) => (
-                  <tr key={admin.id} className="transition-colors hover:bg-surface-subtle">
-                    {canManage && isOwnerActor && (
-                      <td className="px-4 py-3.5">
-                        <input
-                          type="checkbox"
-                          checked={selection.isSelected(admin)}
-                          onChange={() => selection.toggle(admin)}
-                          className="h-4 w-4 rounded border-line-strong"
-                          aria-label={`选择 ${admin.name}`}
-                        />
-                      </td>
-                    )}
-                    <td className="px-5 py-3.5 font-medium text-brand-charcoal">{admin.name}</td>
-                    <td className="px-5 py-3.5 text-brand-charcoal/80">{admin.email}</td>
-                    <td className="px-5 py-3.5">
-                      <AdminRoleBadge role={admin.role} overrides={admin.permissions} />
-                    </td>
-                    <td className="px-2 py-3.5 text-center">
-                      <AdminStatusIcon status={admin.status} />
-                    </td>
-                    <td className="px-3 py-3.5 text-center">
-                      <TotpStatusIcon
-                        enabled={admin.totpEnabled}
-                        resetRequired={admin.totpResetRequired}
-                      />
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-ink-muted">
-                      <time
-                        dateTime={admin.lastLoginAt ?? undefined}
-                        title={admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : undefined}
-                      >
-                        {admin.lastLoginAt ? formatDateTime(admin.lastLoginAt) : "从未登录"}
-                      </time>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {(() => {
-                        const advisor = getAdvisorAccess(admin);
-                        return <Badge variant={advisor.variant}>{advisor.label}</Badge>;
-                      })()}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {(() => {
-                        const ba = getBaAccess(admin);
-                        return <Badge variant={ba.variant}>{ba.label}</Badge>;
-                      })()}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <AdminRowActions
-                        admin={admin}
-                        currentAdminId={currentAdminId}
-                        canManage={canManage}
-                        isOwnerActor={isOwnerActor}
-                        canRequestApproval={canRequestApproval}
-                        togglingStatusId={togglingStatusId}
-                        onEdit={openEdit}
-                        onToggleStatus={requestToggleAdminStatus}
-                        onResetTotp={openRecovery}
-                        onDelete={setDeleteTarget}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 分页 */}
-        <div className="flex justify-end">
-          <Pagination
-            page={pagination.page}
-            pageSize={pagination.pageSize}
-            total={pagination.total}
-            onChange={(p) => updateParams({ page: String(p) })}
-            onPageSizeChange={(size) => updateParams({ pageSize: String(size) })}
-          />
-        </div>
-
-        {/* 弹窗 */}
         <Modal
           open={showModal}
           onClose={() => setShowModal(false)}

@@ -11,14 +11,17 @@ import {
   Copy,
   ExternalLink,
   FileCheck2,
+  Info,
   KeyRound,
   MessageSquare,
   RefreshCw,
   ScrollText,
   ShieldAlert,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
@@ -56,6 +59,43 @@ function formatDateTime(value: string | null | undefined): string {
   });
 }
 
+function BaActionLink({
+  href,
+  icon: Icon,
+  children,
+  primary = false,
+  external = false,
+}: {
+  href: string;
+  icon: LucideIcon;
+  children: React.ReactNode;
+  primary?: boolean;
+  external?: boolean;
+}) {
+  const className = cn(
+    "inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-2",
+    primary
+      ? "border-brand-primary/30 font-medium text-brand-primary hover:bg-brand-primary/10"
+      : "border-line-strong text-brand-charcoal/80 hover:bg-surface-muted"
+  );
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        <Icon className="h-4 w-4" aria-hidden="true" />
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={href} className={className}>
+      <Icon className="h-4 w-4" aria-hidden="true" />
+      {children}
+    </Link>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -72,7 +112,9 @@ function StatCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-ink-muted">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-brand-charcoal">{value}</p>
+          <p className="mt-1 font-num text-2xl font-semibold tabular-nums text-brand-charcoal">
+            {value}
+          </p>
           {hint && <p className="mt-1 text-2xs text-ink-muted">{hint}</p>}
         </div>
         <span className="rounded-lg bg-brand-primary/10 p-2 text-brand-primary">{icon}</span>
@@ -180,43 +222,33 @@ function BaDashboardContent() {
         actions={
           <div className="flex flex-wrap gap-2">
             {canOpenWorkbench && (
-              <a
+              <BaActionLink
                 href={buildBaAdminLink("/workbench")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-primary/30 px-3 text-sm font-medium text-brand-primary transition-colors hover:bg-brand-primary/10"
+                icon={ExternalLink}
+                primary
+                external
               >
-                <ExternalLink className="h-4 w-4" />
                 打开 BA 工作台
-              </a>
+              </BaActionLink>
             )}
             {canViewAudit && (
-              <a
+              <BaActionLink
                 href={buildBaAdminLink("/workbench/audit-logs")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-surface-muted"
+                icon={ScrollText}
+                external
               >
-                <ScrollText className="h-4 w-4" />
                 BA 审计
-              </a>
+              </BaActionLink>
             )}
             {canReadComplaints && (
-              <Link
-                href="/admin/messages?source=ba"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-surface-muted"
-              >
-                <MessageSquare className="h-4 w-4" />
+              <BaActionLink href="/admin/messages?source=ba" icon={MessageSquare}>
                 举报处理
-              </Link>
+              </BaActionLink>
             )}
             {can("ba:certificates:read") && (
-              <Link
-                href="/admin/subsites/ba/certificates"
-                className="inline-flex h-9 items-center rounded-lg border border-line-strong px-3 text-sm text-brand-charcoal/80 transition-colors hover:bg-surface-muted"
-              >
+              <BaActionLink href="/admin/subsites/ba/certificates" icon={FileCheck2}>
                 证书管理
-              </Link>
+              </BaActionLink>
             )}
             <Button variant="outline" size="sm" onClick={load} disabled={loading}>
               <RefreshCw className={loading ? "mr-1.5 h-4 w-4 animate-spin" : "mr-1.5 h-4 w-4"} />
@@ -228,17 +260,20 @@ function BaDashboardContent() {
 
       <AdminHubTabs section="ba" />
 
-      <p className="text-xs text-ink-muted">
-        BA 管理员由主站统一管理，BA 工作台不提供本地管理员创建；仅保留 break-glass 应急账号。
-        {canManageAdmins && (
-          <>
-            {" "}
-            <Link href="/admin/admins" className="text-brand-primary hover:underline">
-              前往主站管理员管理
-            </Link>
-          </>
-        )}
-      </p>
+      <div className="flex items-start gap-2 text-xs text-ink-muted">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <p>
+          BA 管理员由主站统一管理，BA 工作台不提供本地管理员创建；仅保留 break-glass 应急账号。
+          {canManageAdmins && (
+            <>
+              {" "}
+              <Link href="/admin/admins" className="text-brand-primary hover:underline">
+                前往主站管理员管理
+              </Link>
+            </>
+          )}
+        </p>
+      </div>
 
       {error && (
         <PanelCard className="border-status-danger-line bg-status-danger-soft p-4 text-sm text-status-danger-strong">{error}</PanelCard>
@@ -389,7 +424,7 @@ function BaDashboardContent() {
               <h2 className="text-sm font-semibold text-brand-charcoal">最近举报</h2>
               {canReadComplaints ? (
                 recentComplaints.length > 0 ? (
-                  <ul className="mt-3 divide-y divide-brand-charcoal/5">
+                  <ul className="mt-3 divide-y divide-line-subtle">
                     {recentComplaints.map((item) => (
                       <li key={item.id}>
                         <a
@@ -424,7 +459,7 @@ function BaDashboardContent() {
             <PanelCard className="p-4">
               <h2 className="text-sm font-semibold text-brand-charcoal">最近审计</h2>
               {recentAudit.length > 0 ? (
-                <ul className="mt-3 divide-y divide-brand-charcoal/5">
+                <ul className="mt-3 divide-y divide-line-subtle">
                   {recentAudit.map((item) => (
                     <li
                       key={item.id}

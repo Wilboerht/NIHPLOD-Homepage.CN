@@ -17,6 +17,16 @@ function isActive(tab: AdminSectionTab, pathname: string): boolean {
 }
 
 /**
+ * 只让最具体的页签高亮：
+ * `/admin/subsites/ba/certificates` 不应同时命中父级 `/admin/subsites/ba`。
+ */
+function getActiveTabHref(tabs: AdminSectionTab[], pathname: string): string | undefined {
+  return tabs
+    .filter((tab) => isActive(tab, pathname))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+}
+
+/**
  * 域中心页签：把低频域内页面收进二级页签。
  * - 权限过滤后只剩一个页签时不渲染，避免无意义的单页签
  * - 现有页面 URL 保持不变，页签仅负责切换
@@ -34,6 +44,7 @@ export function AdminHubTabs({
     () => getVisibleSectionTabs(section, Array.from(permissions ?? [])),
     [permissions, section]
   );
+  const activeHref = useMemo(() => getActiveTabHref(tabs, pathname), [pathname, tabs]);
 
   if (loading) {
     return (
@@ -63,7 +74,7 @@ export function AdminHubTabs({
         className="scrollbar-hide flex items-center gap-1 overflow-x-auto rounded-xl bg-surface-muted p-1"
       >
         {tabs.map((tab) => {
-          const active = isActive(tab, pathname);
+          const active = tab.href === activeHref;
           return (
             <Link
               key={tab.href}

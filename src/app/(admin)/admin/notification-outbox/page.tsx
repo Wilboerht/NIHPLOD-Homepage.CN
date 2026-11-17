@@ -10,7 +10,6 @@ import { RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Pagination } from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import { apiPost, ApiError } from "@/lib/api-client";
 import { formatDateTimeSeconds } from "@/lib/format";
@@ -344,6 +343,16 @@ function NotificationOutboxContent() {
         density="compact"
         emptyText="暂无通知记录"
         minWidth="1180px"
+        pagination={
+          data
+            ? {
+                page: data.pagination.page,
+                pageSize: data.pagination.pageSize,
+                total: data.pagination.total,
+                onChange: setPage,
+              }
+            : undefined
+        }
         mobileCard={(row) => (
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between gap-2">
@@ -382,15 +391,6 @@ function NotificationOutboxContent() {
           </div>
         )}
       />
-
-      {data && data.pagination.totalPages > 1 && (
-        <Pagination
-          page={data.pagination.page}
-          pageSize={data.pagination.pageSize}
-          total={data.pagination.total}
-          onChange={setPage}
-        />
-      )}
 
       <ConfirmDialog
         open={!!actionTarget}

@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Dropdown, type DropdownItem } from "@/components/ui/Dropdown";
 import { Modal } from "@/components/ui/Modal";
-import { Pagination } from "@/components/ui/Pagination";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
@@ -475,6 +474,17 @@ function AfterSalesContent() {
         density="compact"
         emptyText="当前状态下暂无售后记录"
         minWidth="1100px"
+        pagination={
+          data
+            ? {
+                page: data.pagination.page,
+                pageSize: data.pagination.pageSize,
+                total: data.pagination.total,
+                onChange: (nextPage) =>
+                  update({ page: String(nextPage) }, { resetPage: false }),
+              }
+            : undefined
+        }
         mobileCard={(item) => (
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between gap-2">
@@ -491,16 +501,6 @@ function AfterSalesContent() {
         )}
       />
 
-      {data && data.pagination.totalPages > 1 && (
-        <div className="flex justify-center">
-          <Pagination
-            page={data.pagination.page}
-            pageSize={data.pagination.pageSize}
-            total={data.pagination.total}
-            onChange={(nextPage) => update({ page: String(nextPage) })}
-          />
-        </div>
-      )}
       <Modal
         open={!!action}
         onClose={() => {

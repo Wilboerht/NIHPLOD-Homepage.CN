@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileCheck2, Plus, RefreshCw } from "lucide-react";
@@ -8,10 +8,9 @@ import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { AdminSearchInput } from "@/components/admin/AdminSearchInput";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 import { PanelCard } from "@/components/admin/PanelCard";
-import { RequirePermission } from "@/components/admin/RequirePermission";
+import { DataTable, RequirePermission, type Column } from "@/components/admin";
 import { BaCertificateSealField } from "@/components/admin/BaCertificateSealField";
 import {
   BaCertificateIssueDialog,
@@ -21,7 +20,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useUrlDetail } from "@/hooks/useUrlDetail";
@@ -77,7 +75,9 @@ function CertificatesContent() {
   const { get, getNumber, update } = useListQuery();
   const page = getNumber("page", 1);
   const statusParam = get("status", "ALL");
-  const status = ["ALL", "PENDING", "ISSUED", "UPCOMING", "EXPIRED", "REVOKED", "REJECTED", "invalid"].includes(statusParam)
+  const status = ["ALL", "PENDING", "ISSUED", "UPCOMING", "EXPIRED", "REVOKED", "REJECTED"].includes(
+    statusParam
+  )
     ? statusParam
     : "ALL";
   const search = get("search");
@@ -423,7 +423,127 @@ function CertificatesContent() {
     return "issued";
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const certificateColumns: Column<BaCertificateListItem>[] = [
+    {
+      key: "certNumber",
+      title: "证书编号",
+      width: "160px",
+      render: (_, item) => (
+        <span className="font-mono text-xs text-ink-muted">{item.certNumber}</span>
+      ),
+    },
+    {
+      key: "companyName",
+      title: "公司 / 店铺",
+      width: "220px",
+      render: (_, item) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-brand-charcoal">{item.companyName}</p>
+          <p className="truncate text-xs text-ink-muted">{item.shopName}</p>
+        </div>
+      ),
+    },
+    {
+      key: "scopeText",
+      title: "授权范围",
+      width: "260px",
+      render: (_, item) => (
+        <p className="line-clamp-2 text-xs leading-relaxed text-brand-charcoal/70">
+          {item.scopeText}
+        </p>
+      ),
+    },
+    {
+      key: "displayStatus",
+      title: "状态",
+      width: "100px",
+      render: (_, item) => (
+        <Badge variant={STATUS_VARIANTS[item.displayStatus] ?? "secondary"}>
+          {STATUS_LABELS[item.displayStatus] ?? item.displayStatus}
+        </Badge>
+      ),
+    },
+    {
+      key: "validity",
+      title: "有效期",
+      width: "160px",
+      render: (_, item) => (
+        <span className="text-xs text-brand-charcoal/70">
+          {item.startDate} ~ {item.endDate}
+        </span>
+      ),
+    },
+    {
+      key: "auditorName",
+      title: "操作人",
+      width: "110px",
+      render: (_, item) => (
+        <span className="text-xs text-brand-charcoal/70">{item.auditorName ?? "-"}</span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "150px",
+      align: "right",
+      render: (_, item) => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="sm" onClick={() => void openDetail(item.id)}>
+            详情
+          </Button>
+          {item.allowedActions.downloadPng &&
+            item.artifact.pngReady &&
+            can("ba:certificates:download") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void downloadCertificate(item.id, "png", item.certNumber)}
+              >
+                <Download className="mr-1 h-3.5 w-3.5" />
+                PNG
+              </Button>
+            )}
+        </div>
+      ),
+    },
+  ];
+
+  const renderCertificateMobileCard = (item: BaCertificateListItem) => (
+    <div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate font-mono text-xs text-ink-muted">{item.certNumber}</p>
+          <p className="mt-1 truncate font-medium text-brand-charcoal">{item.companyName}</p>
+          <p className="truncate text-xs text-ink-muted">{item.shopName}</p>
+        </div>
+        <Badge variant={STATUS_VARIANTS[item.displayStatus] ?? "secondary"}>
+          {STATUS_LABELS[item.displayStatus] ?? item.displayStatus}
+        </Badge>
+      </div>
+      <p className="mt-2 line-clamp-2 text-xs text-brand-charcoal/70">{item.scopeText}</p>
+      <p className="mt-2 text-xs text-ink-muted">
+        {item.startDate} ~ {item.endDate}
+      </p>
+      <div className="mt-2 flex justify-end gap-1 border-t border-line pt-2">
+        <Button variant="ghost" size="sm" onClick={() => void openDetail(item.id)}>
+          详情
+        </Button>
+        {item.allowedActions.downloadPng &&
+          item.artifact.pngReady &&
+          can("ba:certificates:download") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void downloadCertificate(item.id, "png", item.certNumber)}
+            >
+              <Download className="mr-1 h-3.5 w-3.5" />
+              PNG
+            </Button>
+          )}
+      </div>
+    </div>
+  );
+
   const today = useMemo(() => dateToday(), []);
 
   return (
@@ -475,12 +595,11 @@ function CertificatesContent() {
                 options={[
                   { value: "ALL", label: "全部状态" },
                   { value: "PENDING", label: "待审核" },
-                  { value: "ISSUED", label: "已签发" },
                   { value: "UPCOMING", label: "待生效" },
-                  { value: "invalid", label: "已失效" },
-                  { value: "REJECTED", label: STATUS_LABELS.REJECTED },
+                  { value: "ISSUED", label: "已签发" },
                   { value: "EXPIRED", label: STATUS_LABELS.EXPIRED },
                   { value: "REVOKED", label: STATUS_LABELS.REVOKED },
+                  { value: "REJECTED", label: STATUS_LABELS.REJECTED },
                 ]}
               />
             </div>
@@ -488,142 +607,27 @@ function CertificatesContent() {
           <span className="text-xs text-ink-muted">共 {total} 条</span>
         </div>
 
-        {error && <p className="mt-3 text-sm text-status-danger-fg">{error}</p>}
-
-        <MobileList
-          className="mt-4 md:hidden"
-          loading={loading}
-          skeletonCount={3}
-          error={error ?? undefined}
-          empty="暂无证书"
-          isEmpty={!loading && !error && items.length === 0}
-        >
-          {items.map((item) => (
-            <MobileListCard key={item.id}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate font-mono text-xs text-ink-muted">
-                    {item.certNumber}
-                  </p>
-                  <p className="mt-1 truncate font-medium text-brand-charcoal">
-                    {item.companyName}
-                  </p>
-                  <p className="truncate text-xs text-ink-muted">{item.shopName}</p>
-                </div>
-                <Badge variant={STATUS_VARIANTS[item.displayStatus] ?? "secondary"}>
-                  {STATUS_LABELS[item.displayStatus] ?? item.displayStatus}
-                </Badge>
-              </div>
-              <p className="mt-2 line-clamp-2 text-xs text-brand-charcoal/70">
-                {item.scopeText}
-              </p>
-              <p className="mt-2 text-xs text-ink-muted">
-                {item.startDate} ~ {item.endDate}
-              </p>
-              <div className="mt-2 flex justify-end gap-1 border-t border-line pt-2">
-                <Button variant="ghost" size="sm" onClick={() => void openDetail(item.id)}>
-                  详情
-                </Button>
-                {item.allowedActions.downloadPng && item.artifact.pngReady && can("ba:certificates:download") && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void downloadCertificate(item.id, "png", item.certNumber)}
-                  >
-                    <Download className="mr-1 h-3.5 w-3.5" />
-                    PNG
-                  </Button>
-                )}
-              </div>
-            </MobileListCard>
-          ))}
-        </MobileList>
-
-        <div className="mt-4 hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[900px] text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-ink-muted">
-                <th className="py-2 pr-3">证书编号</th>
-                <th className="py-2 pr-3">公司 / 店铺</th>
-                <th className="py-2 pr-3">授权范围</th>
-                <th className="py-2 pr-3">状态</th>
-                <th className="py-2 pr-3">有效期</th>
-                <th className="py-2 pr-3">操作人</th>
-                <th className="py-2 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-ink-muted">
-                    加载中…
-                  </td>
-                </tr>
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-ink-muted">
-                    暂无证书
-                  </td>
-                </tr>
-              ) : (
-                items.map((item) => (
-                  <tr key={item.id} className="border-b border-brand-charcoal/5 align-top">
-                    <td className="py-3 pr-3 font-mono text-xs">{item.certNumber}</td>
-                    <td className="py-3 pr-3">
-                      <div className="font-medium">{item.companyName}</div>
-                      <div className="text-xs text-ink-muted">{item.shopName}</div>
-                    </td>
-                    <td className="max-w-[260px] py-3 pr-3">
-                      <div className="line-clamp-2 text-xs leading-relaxed text-brand-charcoal/70">
-                        {item.scopeText}
-                      </div>
-                    </td>
-                    <td className="py-3 pr-3">
-                      <Badge variant={STATUS_VARIANTS[item.displayStatus] ?? "secondary"}>
-                        {STATUS_LABELS[item.displayStatus] ?? item.displayStatus}
-                      </Badge>
-                    </td>
-                    <td className="py-3 pr-3 text-xs">
-                      {item.startDate} ~ {item.endDate}
-                    </td>
-                    <td className="py-3 pr-3 text-xs">{item.auditorName ?? "-"}</td>
-                    <td className="py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => void openDetail(item.id)}>
-                          详情
-                        </Button>
-                        {item.allowedActions.downloadPng && item.artifact.pngReady && can("ba:certificates:download") && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              void downloadCertificate(item.id, "png", item.certNumber)
-                            }
-                          >
-                            <Download className="mr-1 h-3.5 w-3.5" />
-                            PNG
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="mt-4 flex justify-center">
-            <Pagination
-              page={page}
-              pageSize={pageSize}
-              total={total}
-              onChange={(nextPage) => update({ page: String(nextPage) })}
-            />
-          </div>
-        )}
       </PanelCard>
+
+      <DataTable
+        columns={certificateColumns}
+        data={items}
+        loading={loading}
+        error={error}
+        onRetry={load}
+        rowKey="id"
+        minWidth="900px"
+        emptyText="暂无证书"
+        ariaLabel="BA 证书列表"
+        onRowClick={(item) => void openDetail(item.id)}
+        pagination={{
+          page,
+          pageSize,
+          total,
+          onChange: (nextPage) => update({ page: String(nextPage) }, { resetPage: false }),
+        }}
+        mobileCard={renderCertificateMobileCard}
+      />
 
       <Modal
         open={formOpen}

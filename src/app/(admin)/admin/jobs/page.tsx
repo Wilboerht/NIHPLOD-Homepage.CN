@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input } from "@/components/ui/Input";
-import { Pagination } from "@/components/ui/Pagination";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -564,6 +563,14 @@ function AdminJobsContent() {
             tableLayout="fixed"
             minWidth="1200px"
             emptyText="暂无职位数据"
+            pagination={{
+              page,
+              pageSize,
+              total,
+              onChange: (p) => updateParams({ page: String(p) }),
+              onPageSizeChange: (size) =>
+                updateParams({ pageSize: String(size), page: "1" }),
+            }}
             rowProps={() => ({ className: "hover:bg-surface-muted" })}
             mobileCard={(job) => (
               <div className="space-y-3">
@@ -651,19 +658,6 @@ function AdminJobsContent() {
               </div>
             )}
           />
-        )}
-
-        {/* 分页 */}
-        {total > 0 && (
-          <div className="flex justify-center">
-            <Pagination
-              page={page}
-              pageSize={pageSize}
-              total={total}
-              onChange={(p) => updateParams({ page: String(p) })}
-              onPageSizeChange={(size) => updateParams({ pageSize: String(size), page: "1" })}
-            />
-          </div>
         )}
 
         {/* 删除确认（有申请时提示删除会被 API 拒绝，与后端行为一致） */}

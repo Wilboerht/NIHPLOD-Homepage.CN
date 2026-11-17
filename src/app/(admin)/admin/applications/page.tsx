@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Textarea } from "@/components/ui/Textarea";
-import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -224,6 +223,8 @@ function AdminApplicationsContent() {
   const [savingEvaluation, setSavingEvaluation] = useState(false);
   const [interviewOpen, setInterviewOpen] = useState(false);
   const [interviewSaving, setInterviewSaving] = useState(false);
+  const [interviewTimeError, setInterviewTimeError] = useState("");
+  const [folderNameError, setFolderNameError] = useState("");
   const [interviewForm, setInterviewForm] = useState({
     scheduledAt: "",
     durationMinutes: "30",
@@ -561,9 +562,10 @@ function AdminApplicationsContent() {
   const createInterview = async () => {
     if (!detailApplication) return;
     if (!interviewForm.scheduledAt) {
-      showError("请选择面试时间");
+      setInterviewTimeError("请选择面试时间");
       return;
     }
+    setInterviewTimeError("");
     setInterviewSaving(true);
     try {
       await apiPost(`/api/admin/applications/${detailApplication.id}/interviews`, {
@@ -759,14 +761,16 @@ function AdminApplicationsContent() {
       setFolderForm({ name: "", description: "" });
     }
     setShowFolderModal(true);
+    setFolderNameError("");
   };
 
   // 保存分类夹
   const saveFolder = async () => {
     if (!folderForm.name.trim()) {
-      showError("请输入分类名称");
+      setFolderNameError("请输入分类名称");
       return;
     }
+    setFolderNameError("");
 
     setSavingFolder(true);
     try {
@@ -1227,6 +1231,12 @@ function AdminApplicationsContent() {
           tableLayout="fixed"
           minWidth="1160px"
           emptyText="暂无简历申请"
+          pagination={{
+            page,
+            pageSize: 20,
+            total,
+            onChange: (nextPage) => update({ page: String(nextPage) }, { resetPage: false }),
+          }}
           rowProps={(application) => ({
             className: cn(
               "hover:bg-surface-muted",
@@ -1310,17 +1320,6 @@ function AdminApplicationsContent() {
       ))}
 
       {/* 分页（始终展示总数） */}
-      {total > 0 && (
-        <div className="flex justify-center">
-          <Pagination
-            page={page}
-            pageSize={20}
-            total={total}
-            onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
-          />
-        </div>
-      )}
-
       {/* 详情抽屉 */}
       <Modal
         open={!!detailApplication}
@@ -1592,7 +1591,7 @@ function AdminApplicationsContent() {
             <div className="space-y-3 rounded-xl border border-line p-3">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-brand-charcoal">面试安排</h3>
-                <Button size="sm" variant="outline" disabled={!canWrite} onClick={() => setInterviewOpen(true)}>
+                <Button size="sm" variant="outline" disabled={!canWrite} onClick={() => { setInterviewTimeError(""); setInterviewOpen(true); }}>
                   安排面试
                 </Button>
               </div>
@@ -1686,7 +1685,16 @@ function AdminApplicationsContent() {
         }
       >
         <div className="space-y-3">
-          <Input label="面试时间" type="datetime-local" value={interviewForm.scheduledAt} onChange={(event) => setInterviewForm((prev) => ({ ...prev, scheduledAt: event.target.value }))} />
+          <Input
+            label="面试时间"
+            type="datetime-local"
+            value={interviewForm.scheduledAt}
+            onChange={(event) => {
+              setInterviewForm((prev) => ({ ...prev, scheduledAt: event.target.value }));
+              if (interviewTimeError) setInterviewTimeError("");
+            }}
+            error={interviewTimeError || undefined}
+          />
           <div className="grid gap-3 sm:grid-cols-2">
             <Input label="时长（分钟）" type="number" min={15} max={480} value={interviewForm.durationMinutes} onChange={(event) => setInterviewForm((prev) => ({ ...prev, durationMinutes: event.target.value }))} />
             <Select label="方式" value={interviewForm.mode} onChange={(event) => setInterviewForm((prev) => ({ ...prev, mode: event.target.value }))} options={[{ value: "VIDEO", label: "视频" }, { value: "ONSITE", label: "现场" }, { value: "PHONE", label: "电话" }]} />
@@ -1738,8 +1746,12 @@ function AdminApplicationsContent() {
             label="分类名称"
             data-autofocus
             value={folderForm.name}
-            onChange={(e) => setFolderForm({ ...folderForm, name: e.target.value })}
+            onChange={(e) => {
+              setFolderForm({ ...folderForm, name: e.target.value });
+              if (folderNameError) setFolderNameError("");
+            }}
             placeholder="如：优秀候选人、待面试等"
+            error={folderNameError || undefined}
             required
           />
           <Textarea

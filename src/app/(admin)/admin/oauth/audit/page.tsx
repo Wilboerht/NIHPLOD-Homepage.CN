@@ -1,25 +1,21 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Download, RotateCw, ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
-import { Pagination } from "@/components/ui/Pagination";
 import { DatePicker } from "@/components/ui/DatePicker";
-import { Empty } from "@/components/ui/Empty";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, ApiError } from "@/lib/api-client";
 import { downloadFromUrl } from "@/lib/client-download";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { formatDateTimeSeconds as formatDate } from "@/lib/format";
-import { RequirePermission } from "@/components/admin";
+import { RequirePermission, DataTable, type Column } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -242,6 +238,88 @@ function OAuthAuditPage() {
     }
   };
 
+  const columns: Column<AuditEntry>[] = [
+    {
+      key: "event",
+      title: "事件类型",
+      width: "130px",
+      render: (_value, entry) => (
+        <Badge variant={getEventBadgeVariant(entry.event)}>
+          {formatEventType(entry.event)}
+        </Badge>
+      ),
+    },
+    {
+      key: "userPhone",
+      title: "用户",
+      width: "150px",
+      render: (_value, entry) => (
+        <span className="font-mono text-sm text-brand-charcoal/80">
+          {entry.userPhone || "-"}
+        </span>
+      ),
+    },
+    {
+      key: "clientName",
+      title: "Client",
+      width: "220px",
+      render: (_value, entry) => (
+        <div className="min-w-0">
+          <p className="truncate text-brand-charcoal/80">{entry.clientName || "-"}</p>
+          <p className="truncate font-mono text-xs text-ink-muted">{entry.clientId}</p>
+        </div>
+      ),
+    },
+    {
+      key: "ip",
+      title: "IP",
+      width: "130px",
+      render: (_value, entry) => (
+        <span className="font-mono text-sm text-ink-muted">{entry.ip}</span>
+      ),
+    },
+    {
+      key: "success",
+      title: "状态",
+      width: "90px",
+      render: (_value, entry) => (
+        <Badge variant={entry.success ? "success" : "danger"}>
+          {entry.success ? "成功" : "失败"}
+        </Badge>
+      ),
+    },
+    {
+      key: "createdAt",
+      title: "时间",
+      width: "180px",
+      render: (_value, entry) => (
+        <span className="text-sm text-ink-muted">{formatDate(entry.createdAt)}</span>
+      ),
+    },
+    {
+      key: "detail",
+      title: "详情",
+      width: "100px",
+      render: (_value, entry) =>
+        entry.detail ? (
+          <button
+            type="button"
+            onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
+            className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
+          >
+            {expandedId === entry.id ? "收起" : "展开"}
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${
+                expandedId === entry.id ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        ) : (
+          <span className="text-xs text-ink-muted">-</span>
+        ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -361,23 +439,32 @@ function OAuthAuditPage() {
       </div>
 
       {/* 移动端卡片 */}
-      <MobileList
+      <DataTable
+        columns={columns}
+        data={entries}
         loading={loading}
-        error={
-          loadError ? (
-            <>
-              <p className="text-status-danger-fg">加载失败</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={fetchAudit}>
-                重试
-              </Button>
-            </>
-          ) : undefined
+        error={loadError ? "加载失败，请稍后重试" : null}
+        onRetry={fetchAudit}
+        rowKey="id"
+        minWidth="960px"
+        emptyText="暂无审计日志"
+        isFiltered={hasFilters}
+        onClearFilters={handleReset}
+        ariaLabel="SSO 审计日志"
+        pagination={
+          total > 0
+            ? { page, pageSize, total, onChange: setPage }
+            : undefined
         }
-        empty="暂无数据，请调整筛选条件后重试"
-        isEmpty={!loading && !loadError && entries.length === 0}
-      >
-        {entries.map((entry) => (
-          <MobileListCard key={entry.id}>
+        expandedRow={(entry) =>
+          expandedId === entry.id && entry.detail != null ? (
+            <pre className="max-h-40 overflow-x-auto rounded-lg border border-line bg-white p-3 text-xs text-brand-charcoal/70">
+              {JSON.stringify(entry.detail, null, 2)}
+            </pre>
+          ) : null
+        }
+        mobileCard={(entry) => (
+          <div>
             <div className="flex items-start justify-between gap-3">
               <Badge variant={getEventBadgeVariant(entry.event)}>
                 {formatEventType(entry.event)}
@@ -415,133 +502,9 @@ function OAuthAuditPage() {
                 )}
               </div>
             )}
-          </MobileListCard>
-        ))}
-      </MobileList>
-
-      {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
-        <table className="w-full min-w-[960px] text-sm">
-          <thead>
-            <tr className="border-b border-line bg-surface-subtle text-left">
-              <th scope="col" className="px-4 py-3 font-normal">
-                事件类型
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                用户
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                Client
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                IP
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                状态
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                时间
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                详情
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={7} />)
-            ) : loadError ? (
-              <tr>
-                <td colSpan={7}>
-                  <div className="flex flex-col items-center justify-center gap-3 py-10">
-                    <p className="text-sm text-status-danger-fg">加载失败，请稍后重试</p>
-                    <Button variant="outline" size="sm" onClick={fetchAudit}>
-                      重新加载
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ) : entries.length === 0 ? (
-              <tr>
-                <td colSpan={7}>
-                  <div className="flex justify-center py-8">
-                    <Empty
-                      title="暂无审计日志"
-                      description={
-                        hasFilters
-                          ? "当前筛选条件下没有事件，请调整筛选条件"
-                          : "SSO 事件发生后会记录在这里"
-                      }
-                    />
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              entries.map((entry) => (
-                <React.Fragment key={entry.id}>
-                  <tr className="hover:bg-surface-muted">
-                    <td className="px-4 py-3">
-                      <Badge variant={getEventBadgeVariant(entry.event)}>
-                        {formatEventType(entry.event)}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-sm text-brand-charcoal/80">
-                      {entry.userPhone || "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="truncate text-brand-charcoal/80">{entry.clientName || "-"}</p>
-                      <p className="truncate font-mono text-xs text-ink-muted">
-                        {entry.clientId}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-sm text-ink-muted">
-                      {entry.ip}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={entry.success ? "success" : "danger"}>
-                        {entry.success ? "成功" : "失败"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-ink-muted">
-                      {formatDate(entry.createdAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {entry.detail ? (
-                        <button
-                          onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
-                          className="flex items-center gap-1 text-xs text-brand-primary hover:underline"
-                        >
-                          展开
-                          <ChevronDown
-                            className={`h-3 w-3 transition-transform ${expandedId === entry.id ? "rotate-180" : ""}`}
-                          />
-                        </button>
-                      ) : (
-                        <span className="text-xs text-ink-muted">-</span>
-                      )}
-                    </td>
-                  </tr>
-                  {expandedId === entry.id && entry.detail != null && (
-                    <tr key={`${entry.id}-detail`} className="bg-surface-subtle">
-                      <td colSpan={7} className="px-4 py-3">
-                        <pre className="max-h-40 overflow-x-auto rounded-lg border border-line bg-white p-3 text-xs text-brand-charcoal/70">
-                          {JSON.stringify(entry.detail, null, 2)}
-                        </pre>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {total > 0 && (
-        <div className="flex justify-center">
-          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
-        </div>
-      )}
+          </div>
+        )}
+      />
       {totpModal}
     </div>
   );

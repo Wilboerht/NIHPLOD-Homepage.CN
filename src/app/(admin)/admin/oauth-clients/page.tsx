@@ -27,23 +27,19 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Switch } from "@/components/ui/Switch";
-import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { IconButton } from "@/components/admin/IconButton";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useLatestRequest } from "@/hooks/useLatestRequest";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/api-client";
 import { formatDate, formatDateTimeSeconds as formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { RequirePermission } from "@/components/admin";
+import { RequirePermission, DataTable, type Column } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
 
@@ -445,6 +441,8 @@ function OAuthClientsPage() {
   const [testRedirectUri, setTestRedirectUri] = useState("");
   const [testLoading, setTestLoading] = useState(false);
   const [testResult, setTestResult] = useState<TestResultData | null>(null);
+  const [testSecretError, setTestSecretError] = useState("");
+  const [testRedirectError, setTestRedirectError] = useState("");
 
   // Form
   const [formName, setFormName] = useState("");
@@ -786,17 +784,21 @@ function OAuthClientsPage() {
     setTestSecret("");
     setTestRedirectUri(client.redirectUris[0] || "");
     setTestResult(null);
+    setTestSecretError("");
+    setTestRedirectError("");
   };
 
   const handleRunTest = async () => {
     if (!testClient || !testSecret.trim()) {
-      toast.error("请填写 Client Secret");
+      setTestSecretError("请输入 Client Secret");
       return;
     }
     if (!testRedirectUri.trim()) {
-      toast.error("请填写回调地址");
+      setTestRedirectError("请填写回调地址");
       return;
     }
+    setTestSecretError("");
+    setTestRedirectError("");
     setTestLoading(true);
     setTestResult(null);
     try {
@@ -924,6 +926,154 @@ if (!payload) {
     }
   };
 
+  const columns: Column<OAuthClient>[] = [
+    {
+      key: "name",
+      title: "应用",
+      width: "240px",
+      render: (_value, client) => (
+        <div className="min-w-0">
+          <button
+            onClick={() => openDetailDrawer(client)}
+            className="block w-full truncate text-left font-medium text-brand-charcoal hover:text-brand-primary hover:underline"
+            title={client.name}
+          >
+            {client.name}
+          </button>
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-xs text-ink-muted">
+            <span className="min-w-0 truncate" title={client.clientId}>
+              {client.clientId}
+            </span>
+            <Tooltip content="复制 Client ID" side="top">
+              <button
+                aria-label="复制 Client ID"
+                onClick={() => copyToClipboard(client.clientId)}
+                className="inline-flex shrink-0 text-ink-muted hover:text-brand-charcoal/70"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      title: "类型",
+      width: "128px",
+      render: (_value, client) => (
+        <Badge
+          variant={client.isPublic ? "warning" : "secondary"}
+          className="whitespace-nowrap text-xs"
+        >
+          {client.isPublic ? "Public" : "Confidential"}
+        </Badge>
+      ),
+    },
+    {
+      key: "redirectUris",
+      title: "回调 URL",
+      width: "180px",
+      render: (_value, client) => (
+        <span
+          className="block truncate text-sm text-brand-charcoal/70"
+          title={client.redirectUris.join(", ")}
+        >
+          {client.redirectUris[0] || "-"}
+          {client.redirectUris.length > 1 && (
+            <span className="text-ink-muted"> +{client.redirectUris.length - 1}</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: "scopes",
+      title: "Scopes",
+      width: "220px",
+      render: (_value, client) => (
+        <div className="flex flex-nowrap items-center gap-1 overflow-hidden">
+          {client.scopes.slice(0, 2).map((scope) => (
+            <Badge key={scope} variant="secondary" className="whitespace-nowrap text-xs">
+              {scope}
+            </Badge>
+          ))}
+          {client.scopes.length > 2 && (
+            <span
+              className="shrink-0 cursor-default text-xs text-ink-muted"
+              title={client.scopes.slice(2).join(", ")}
+            >
+              +{client.scopes.length - 2}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "activeUserCount",
+      title: "活跃情况",
+      width: "124px",
+      render: (_value, client) => (
+        <div>
+          <span className="flex items-center gap-1 whitespace-nowrap text-sm text-brand-charcoal/70">
+            <Users className="h-3.5 w-3.5 text-ink-muted" />
+            {client.activeUserCount ?? "-"}
+          </span>
+          <span className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-xs text-ink-muted">
+            <Clock className="h-3.5 w-3.5 text-ink-muted" />
+            {client.lastActiveAt ? formatDate(client.lastActiveAt) : "从未活跃"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "isActive",
+      title: "状态",
+      width: "88px",
+      render: (_value, client) => (
+        <Badge
+          variant={client.isActive ? "success" : "danger"}
+          className="whitespace-nowrap"
+        >
+          {client.isActive ? "启用" : "禁用"}
+        </Badge>
+      ),
+    },
+    {
+      key: "createdAt",
+      title: "创建时间",
+      width: "104px",
+      render: (_value, client) => (
+        <span className="whitespace-nowrap text-sm text-ink-muted">
+          {formatDate(client.createdAt)}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "308px",
+      align: "right",
+      render: (_value, client) => (
+        <ClientActions
+          client={client}
+          canWrite={canWrite}
+          onView={() => openDetailDrawer(client)}
+          onSdkConfig={() => openSdkConfig(client)}
+          onTest={() => openTest(client)}
+          onEdit={() => openEdit(client)}
+          onRotate={() => setRotateClient(client)}
+          onToggle={() =>
+            client.isActive ? setDisableClient(client) : handleToggleActive(client)
+          }
+          onDelete={() => {
+            setDeleteClient(client);
+            setDeleteConfirmText("");
+          }}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -985,278 +1135,104 @@ if (!payload) {
       </div>
 
       {/* 移动端卡片列表 */}
-      <MobileList
+      <DataTable
+        columns={columns}
+        data={clients}
         loading={loading}
-        error={
-          loadError ? (
-            <>
-              <p className="text-status-danger-fg">加载失败</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
-                重试
-              </Button>
-            </>
-          ) : undefined
-        }
-        empty={
-          debouncedSearch ? `暂无匹配「${debouncedSearch}」的 Client` : "暂无 Client，请先创建"
-        }
-        isEmpty={!loading && !loadError && clients.length === 0}
-      >
-        {clients.map((c) => (
-          <MobileListCard key={c.id}>
+        error={loadError ? "加载失败，请稍后重试" : null}
+        onRetry={fetchClients}
+        rowKey="id"
+        minWidth="1392px"
+        tableLayout="fixed"
+        emptyText="暂无 Client"
+        emptyAction={canWrite ? { label: "新建 Client", onClick: openCreate } : undefined}
+        isFiltered={Boolean(debouncedSearch)}
+        onClearFilters={() => {
+          setSearch("");
+          setDebouncedSearch("");
+          setPage(1);
+        }}
+        ariaLabel="OAuth Client 列表"
+        pagination={total > 0 ? { page, pageSize, total, onChange: setPage } : undefined}
+        mobileCard={(client) => (
+          <div>
             <div className="flex items-start justify-between gap-3">
               <button
-                onClick={() => openDetailDrawer(c)}
+                onClick={() => openDetailDrawer(client)}
                 className="min-w-0 text-left"
-                aria-label={`查看 ${c.name} 详情`}
+                aria-label={`查看 ${client.name} 详情`}
               >
-                <p className="truncate font-medium text-brand-charcoal">{c.name}</p>
+                <p className="truncate font-medium text-brand-charcoal">{client.name}</p>
                 <p className="mt-0.5 truncate font-mono text-xs text-ink-muted">
-                  {c.clientId}
+                  {client.clientId}
                 </p>
               </button>
-              <Badge variant={c.isActive ? "success" : "danger"}>
-                {c.isActive ? "启用" : "禁用"}
+              <Badge variant={client.isActive ? "success" : "danger"}>
+                {client.isActive ? "启用" : "禁用"}
               </Badge>
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-1">
-              <Badge variant={c.isPublic ? "warning" : "secondary"} className="text-xs">
-                {c.isPublic ? "Public" : "Confidential"}
+              <Badge variant={client.isPublic ? "warning" : "secondary"} className="text-xs">
+                {client.isPublic ? "Public" : "Confidential"}
               </Badge>
-              {c.scopes.slice(0, 3).map((s) => (
-                <Badge key={s} variant="secondary" className="text-xs">
-                  {s}
+              {client.scopes.slice(0, 3).map((scope) => (
+                <Badge key={scope} variant="secondary" className="text-xs">
+                  {scope}
                 </Badge>
               ))}
-              {c.scopes.length > 3 && (
-                <span className="text-xs text-ink-muted">+{c.scopes.length - 3}</span>
+              {client.scopes.length > 3 && (
+                <span className="text-xs text-ink-muted">
+                  +{client.scopes.length - 3}
+                </span>
               )}
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-ink-muted">
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
-                {c.activeUserCount ?? 0} 个活跃会话
+                {client.activeUserCount ?? 0} 个活跃会话
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
-                {c.lastActiveAt ? formatDate(c.lastActiveAt) : "从未活跃"}
+                {client.lastActiveAt ? formatDate(client.lastActiveAt) : "从未活跃"}
               </span>
-              <span className="col-span-2 truncate" title={c.redirectUris.join(", ")}>
-                回调：{c.redirectUris[0] || "-"}
-                {c.redirectUris.length > 1 && ` 等 ${c.redirectUris.length} 个`}
+              <span className="col-span-2 truncate" title={client.redirectUris.join(", ")}>
+                回调：{client.redirectUris[0] || "-"}
+                {client.redirectUris.length > 1 &&
+                  ` 等 ${client.redirectUris.length} 个`}
               </span>
             </div>
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
               <button
-                onClick={() => copyToClipboard(c.clientId)}
+                onClick={() => copyToClipboard(client.clientId)}
                 className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs text-ink-muted hover:bg-surface-muted hover:text-brand-charcoal"
               >
                 <Copy className="h-3.5 w-3.5" />
                 复制 Client ID
               </button>
               <ClientActions
-                client={c}
+                client={client}
                 canWrite={canWrite}
-                onView={() => openDetailDrawer(c)}
-                onSdkConfig={() => openSdkConfig(c)}
-                onTest={() => openTest(c)}
-                onEdit={() => openEdit(c)}
-                onRotate={() => setRotateClient(c)}
-                onToggle={() => (c.isActive ? setDisableClient(c) : handleToggleActive(c))}
+                onView={() => openDetailDrawer(client)}
+                onSdkConfig={() => openSdkConfig(client)}
+                onTest={() => openTest(client)}
+                onEdit={() => openEdit(client)}
+                onRotate={() => setRotateClient(client)}
+                onToggle={() =>
+                  client.isActive ? setDisableClient(client) : handleToggleActive(client)
+                }
                 onDelete={() => {
-                  setDeleteClient(c);
+                  setDeleteClient(client);
                   setDeleteConfirmText("");
                 }}
               />
             </div>
-          </MobileListCard>
-        ))}
-      </MobileList>
+          </div>
+        )}
+      />
 
-      {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
-        <table className="w-full min-w-[1392px] table-fixed text-sm">
-          <colgroup>
-            <col className="w-[240px]" />
-            <col className="w-[128px]" />
-            <col className="w-[180px]" />
-            <col className="w-[220px]" />
-            <col className="w-[124px]" />
-            <col className="w-[88px]" />
-            <col className="w-[104px]" />
-            <col className="w-[308px]" />
-          </colgroup>
-          <thead>
-            <tr className="border-b border-line bg-surface-subtle text-left">
-              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
-                应用
-              </th>
-              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
-                类型
-              </th>
-              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
-                回调 URL
-              </th>
-              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
-                Scopes
-              </th>
-              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
-                活跃情况
-              </th>
-              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
-                状态
-              </th>
-              <th scope="col" className="whitespace-nowrap px-4 py-3 font-normal">
-                创建时间
-              </th>
-              <th scope="col" className="whitespace-nowrap px-4 py-3 text-right font-normal">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={8} />)
-            ) : loadError ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-10 text-center">
-                  <p className="text-sm text-status-danger-fg">加载失败</p>
-                  <Button variant="outline" size="sm" className="mt-3" onClick={fetchClients}>
-                    重试
-                  </Button>
-                </td>
-              </tr>
-            ) : clients.length === 0 ? (
-              <tr>
-                <td colSpan={8}>
-                  <div className="flex justify-center py-8">
-                    <Empty
-                      title="暂无 Client"
-                      description={
-                        debouncedSearch
-                          ? `没有匹配「${debouncedSearch}」的 Client，请调整搜索条件`
-                          : "创建第一个 OAuth Client 以接入 SSO"
-                      }
-                    />
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              clients.map((c) => (
-                <tr key={c.id} className="hover:bg-surface-muted">
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => openDetailDrawer(c)}
-                      className="block w-full truncate text-left font-medium text-brand-charcoal hover:text-brand-primary hover:underline"
-                      title={c.name}
-                    >
-                      {c.name}
-                    </button>
-                    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-xs text-ink-muted">
-                      <span className="min-w-0 truncate" title={c.clientId}>
-                        {c.clientId}
-                      </span>
-                      <Tooltip content="复制 Client ID" side="top">
-                        <button
-                          aria-label="复制 Client ID"
-                          onClick={() => copyToClipboard(c.clientId)}
-                          className="inline-flex shrink-0 text-ink-muted hover:text-brand-charcoal/70"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </button>
-                      </Tooltip>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      variant={c.isPublic ? "warning" : "secondary"}
-                      className="whitespace-nowrap text-xs"
-                    >
-                      {c.isPublic ? "Public" : "Confidential"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                    <span className="block truncate" title={c.redirectUris.join(", ")}>
-                      {c.redirectUris[0] || "-"}
-                      {c.redirectUris.length > 1 && (
-                        <span className="text-ink-muted">
-                          {" "}
-                          +{c.redirectUris.length - 1}
-                        </span>
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-nowrap items-center gap-1 overflow-hidden">
-                      {c.scopes.slice(0, 2).map((s) => (
-                        <Badge key={s} variant="secondary" className="whitespace-nowrap text-xs">
-                          {s}
-                        </Badge>
-                      ))}
-                      {c.scopes.length > 2 && (
-                        <span
-                          className="shrink-0 cursor-default text-xs text-ink-muted"
-                          title={c.scopes.slice(2).join(", ")}
-                        >
-                          +{c.scopes.length - 2}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-1 whitespace-nowrap text-sm text-brand-charcoal/70">
-                      <Users className="h-3.5 w-3.5 text-ink-muted" />
-                      {c.activeUserCount ?? "-"}
-                    </span>
-                    <span className="mt-0.5 flex items-center gap-1 whitespace-nowrap text-xs text-ink-muted">
-                      <Clock className="h-3.5 w-3.5 text-ink-muted" />
-                      {c.lastActiveAt ? formatDate(c.lastActiveAt) : "从未活跃"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      variant={c.isActive ? "success" : "danger"}
-                      className="whitespace-nowrap"
-                    >
-                      {c.isActive ? "启用" : "禁用"}
-                    </Badge>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-ink-muted">
-                    {formatDate(c.createdAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <ClientActions
-                      client={c}
-                      canWrite={canWrite}
-                      onView={() => openDetailDrawer(c)}
-                      onSdkConfig={() => openSdkConfig(c)}
-                      onTest={() => openTest(c)}
-                      onEdit={() => openEdit(c)}
-                      onRotate={() => setRotateClient(c)}
-                      onToggle={() => (c.isActive ? setDisableClient(c) : handleToggleActive(c))}
-                      onDelete={() => {
-                        setDeleteClient(c);
-                        setDeleteConfirmText("");
-                      }}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {total > 0 && (
-        <div className="flex justify-center">
-          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
-        </div>
-      )}
-
-      {/* Create Modal */}
       <Modal
         open={showCreate}
         onClose={() => {
@@ -1638,8 +1614,12 @@ if (!payload) {
                 type="password"
                 autoComplete="off"
                 value={testSecret}
-                onChange={(e) => setTestSecret(e.target.value)}
+                onChange={(e) => {
+                  setTestSecret(e.target.value);
+                  if (testSecretError) setTestSecretError("");
+                }}
                 placeholder="请输入 Client Secret"
+                error={testSecretError || undefined}
                 className="font-mono text-sm"
               />
             </div>
@@ -1649,8 +1629,12 @@ if (!payload) {
               </label>
               <Input
                 value={testRedirectUri}
-                onChange={(e) => setTestRedirectUri(e.target.value)}
+                onChange={(e) => {
+                  setTestRedirectUri(e.target.value);
+                  if (testRedirectError) setTestRedirectError("");
+                }}
                 placeholder="https://your-app.com/callback"
+                error={testRedirectError || undefined}
                 className="font-mono text-sm"
               />
             </div>

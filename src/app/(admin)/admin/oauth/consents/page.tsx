@@ -7,19 +7,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { formatDateTime as formatDate } from "@/lib/format";
-import { RequirePermission } from "@/components/admin";
+import { RequirePermission, DataTable, type Column } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { IconButton } from "@/components/admin/IconButton";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -269,6 +265,165 @@ function OAuthConsentsPage() {
     }
   };
 
+  const activeConsents = consents.filter((c) => c.status === "active");
+
+  const renderAction = (consent: Consent) => {
+    if (consent.status !== "active") {
+      return (
+        <span
+          className="text-xs text-ink-muted"
+          title="用户下次访问该 Client 时需要重新授权"
+        >
+          需重新授权
+        </span>
+      );
+    }
+    if (!canWrite) {
+      return <span className="text-xs text-ink-muted">只读</span>;
+    }
+    return (
+      <Tooltip content="撤销授权" side="top">
+        <IconButton
+          label="撤销授权"
+          variant="danger"
+          onClick={() => {
+            setRevokeTarget({
+              userId: consent.userId,
+              phone: consent.phone,
+              clientId: consent.clientId,
+              clientName: consent.clientName,
+            });
+            setShowRevoke(true);
+          }}
+        >
+          <XCircle className="h-4 w-4" />
+        </IconButton>
+      </Tooltip>
+    );
+  };
+
+  const columns: Column<Consent>[] = [
+    ...(canWrite
+      ? [
+          {
+            key: "select",
+            title: (
+              <input
+                type="checkbox"
+                checked={selection.isAllSelected(activeConsents)}
+                onChange={(event) => selection.toggleAll(activeConsents, event.target.checked)}
+                aria-label="全选已授权记录"
+                className="h-4 w-4 rounded border-line-strong"
+              />
+            ),
+            width: "44px",
+            render: (_value: unknown, consent: Consent) =>
+              consent.status === "active" ? (
+                <input
+                  type="checkbox"
+                  checked={selection.isSelected(consent)}
+                  onChange={() => selection.toggle(consent)}
+                  aria-label={`选择 ${consent.phone || consent.userId} 的授权`}
+                  className="h-4 w-4 rounded border-line-strong"
+                />
+              ) : null,
+          },
+        ]
+      : []),
+    {
+      key: "phone",
+      title: "用户手机号",
+      width: "150px",
+      render: (_value, consent) => (
+        <Tooltip content="查看用户详情" side="top">
+          <Link
+            href={`/admin/users?search=${encodeURIComponent(consent.userId)}`}
+            className="inline-flex text-brand-primary hover:underline"
+          >
+            {consent.phone ? maskPhone(consent.phone) : consent.userId}
+          </Link>
+        </Tooltip>
+      ),
+    },
+    {
+      key: "nickname",
+      title: "用户昵称",
+      width: "130px",
+      render: (_value, consent) => (
+        <span className="text-sm text-brand-charcoal/80">{consent.nickname || "-"}</span>
+      ),
+    },
+    {
+      key: "clientId",
+      title: "Client",
+      width: "220px",
+      render: (_value, consent) => (
+        <Tooltip content="查看 Client" side="top">
+          <Link
+            href={`/admin/oauth-clients?search=${encodeURIComponent(consent.clientId)}`}
+            className="inline-flex flex-col text-brand-primary hover:underline"
+          >
+            <span>{consent.clientName || consent.clientId}</span>
+            {consent.clientName && (
+              <span className="font-mono text-xs text-ink-muted">{consent.clientId}</span>
+            )}
+          </Link>
+        </Tooltip>
+      ),
+    },
+    {
+      key: "scopes",
+      title: "Scopes",
+      width: "220px",
+      render: (_value, consent) => (
+        <div className="flex flex-wrap gap-1">
+          {consent.scopes.map((scope) => (
+            <Badge key={scope} variant="secondary" className="text-xs">
+              {scope}
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: "grantedAt",
+      title: "授权时间",
+      width: "180px",
+      render: (_value, consent) => (
+        <span className="text-sm text-ink-muted">{formatDate(consent.grantedAt)}</span>
+      ),
+    },
+    {
+      key: "revokedAt",
+      title: "撤销时间",
+      width: "180px",
+      render: (_value, consent) => (
+        <span className="text-sm text-ink-muted">
+          {consent.revokedAt ? formatDate(consent.revokedAt) : "-"}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      title: "状态",
+      width: "100px",
+      render: (_value, consent) => (
+        <Badge variant={consent.status === "active" ? "success" : "danger"}>
+          {consent.status === "active" ? "已授权" : "已撤销"}
+        </Badge>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "110px",
+      align: "right",
+      render: (_value, consent) => (
+        <div className="text-right">{renderAction(consent)}</div>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -410,31 +565,31 @@ function OAuthConsentsPage() {
       )}
 
       {/* 移动端卡片 */}
-      <MobileList
+      <DataTable
+        columns={columns}
+        data={consents}
         loading={loading}
-        error={
-          loadError ? (
-            <>
-              <p className="text-status-danger-fg">加载失败</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={fetchConsents}>
-                重试
-              </Button>
-            </>
-          ) : undefined
+        error={loadError ? "加载失败，请稍后重试" : null}
+        onRetry={fetchConsents}
+        rowKey="id"
+        minWidth="900px"
+        emptyText="暂无授权记录"
+        isFiltered={hasFilters}
+        onClearFilters={handleReset}
+        ariaLabel="OAuth 授权记录"
+        pagination={
+          total > 0 ? { page, pageSize, total, onChange: setPage } : undefined
         }
-        empty="暂无授权记录"
-        isEmpty={!loading && !loadError && consents.length === 0}
-      >
-        {consents.map((c) => (
-          <MobileListCard key={c.id}>
+        mobileCard={(consent) => (
+          <div>
             <div className="flex items-start gap-2">
-              {canWrite && c.status === "active" && (
+              {canWrite && consent.status === "active" && (
                 <label className="-ml-2 flex h-11 w-9 flex-shrink-0 items-center justify-center">
                   <input
                     type="checkbox"
-                    checked={selection.isSelected(c)}
-                    onChange={() => selection.toggle(c)}
-                    aria-label={`选择 ${c.phone || c.userId} 的授权`}
+                    checked={selection.isSelected(consent)}
+                    onChange={() => selection.toggle(consent)}
+                    aria-label={`选择 ${consent.phone || consent.userId} 的授权`}
                     className="h-4 w-4 rounded border-line-strong"
                   />
                 </label>
@@ -443,249 +598,51 @@ function OAuthConsentsPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <Link
-                      href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
+                      href={`/admin/users?search=${encodeURIComponent(consent.userId)}`}
                       className="truncate font-medium text-brand-primary"
                     >
-                      {c.phone ? maskPhone(c.phone) : c.userId}
+                      {consent.phone ? maskPhone(consent.phone) : consent.userId}
                     </Link>
-                    {c.nickname && (
+                    {consent.nickname && (
                       <p className="mt-0.5 truncate text-xs text-brand-charcoal/70">
-                        昵称：{c.nickname}
+                        昵称：{consent.nickname}
                       </p>
                     )}
                     <p className="mt-0.5 truncate text-xs text-ink-muted">
-                      Client：{c.clientName || c.clientId}
+                      Client：{consent.clientName || consent.clientId}
                     </p>
                   </div>
-                  <Badge variant={c.status === "active" ? "success" : "danger"}>
-                    {c.status === "active" ? "已授权" : "已撤销"}
+                  <Badge variant={consent.status === "active" ? "success" : "danger"}>
+                    {consent.status === "active" ? "已授权" : "已撤销"}
                   </Badge>
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  {c.scopes.slice(0, 3).map((scope) => (
+                  {consent.scopes.slice(0, 3).map((scope) => (
                     <Badge key={scope} variant="secondary" className="text-xs">
                       {scope}
                     </Badge>
                   ))}
-                  {c.scopes.length > 3 && (
-                    <span className="text-xs text-ink-muted">+{c.scopes.length - 3}</span>
+                  {consent.scopes.length > 3 && (
+                    <span className="text-xs text-ink-muted">
+                      +{consent.scopes.length - 3}
+                    </span>
                   )}
                 </div>
               </div>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2 border-t border-line pt-2">
               <span className="text-xs text-ink-muted">
-                授权于 {formatDate(c.grantedAt)}
-                {c.status === "revoked" && c.revokedAt && <> · 撤销于 {formatDate(c.revokedAt)}</>}
+                授权于 {formatDate(consent.grantedAt)}
+                {consent.status === "revoked" && consent.revokedAt && (
+                  <> · 撤销于 {formatDate(consent.revokedAt)}</>
+                )}
               </span>
-              {c.status === "active" ? (
-                canWrite ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-status-danger-fg hover:bg-status-danger-soft"
-                    onClick={() => {
-                      setRevokeTarget({
-                        userId: c.userId,
-                        phone: c.phone,
-                        clientId: c.clientId,
-                        clientName: c.clientName,
-                      });
-                      setShowRevoke(true);
-                    }}
-                  >
-                    撤销授权
-                  </Button>
-                ) : (
-                  <span className="text-xs text-ink-muted">只读</span>
-                )
-              ) : (
-                <span className="text-xs text-ink-muted">需重新授权</span>
-              )}
+              {renderAction(consent)}
             </div>
-          </MobileListCard>
-        ))}
-      </MobileList>
+          </div>
+        )}
+      />
 
-      {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead>
-            <tr className="border-b border-line bg-surface-subtle text-left">
-              {canWrite && (
-                <th scope="col" className="w-10 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selection.isAllSelected(consents.filter((c) => c.status === "active"))}
-                    onChange={(e) =>
-                      selection.toggleAll(
-                        consents.filter((c) => c.status === "active"),
-                        e.target.checked
-                      )
-                    }
-                    aria-label="全选已授权记录"
-                    className="h-4 w-4 rounded border-line-strong"
-                  />
-                </th>
-              )}
-              <th scope="col" className="px-4 py-3 font-normal">
-                用户手机号
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                用户昵称
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                Client
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                Scopes
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                授权时间
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                撤销时间
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                状态
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-normal">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRowSkeleton key={i} columns={canWrite ? 9 : 8} />
-              ))
-            ) : loadError ? (
-              <tr>
-                <td colSpan={canWrite ? 9 : 8}>
-                  <div className="flex flex-col items-center justify-center gap-3 py-10">
-                    <p className="text-sm text-status-danger-fg">加载失败，请稍后重试</p>
-                    <Button variant="outline" size="sm" onClick={fetchConsents}>
-                      重新加载
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ) : consents.length === 0 ? (
-              <tr>
-                <td colSpan={canWrite ? 9 : 8}>
-                  <div className="flex justify-center py-8">
-                    <Empty title="暂无授权记录" description="用户授权后记录会显示在这里" />
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              consents.map((c) => (
-                <tr key={c.id} className="hover:bg-surface-muted">
-                  {canWrite && (
-                    <td className="w-10 px-4 py-3">
-                      {c.status === "active" ? (
-                        <input
-                          type="checkbox"
-                          checked={selection.isSelected(c)}
-                          onChange={() => selection.toggle(c)}
-                          aria-label={`选择 ${c.phone || c.userId} 的授权`}
-                          className="h-4 w-4 rounded border-line-strong"
-                        />
-                      ) : null}
-                    </td>
-                  )}
-                  <td className="px-4 py-3 text-sm">
-                    <Tooltip content="查看用户详情" side="top">
-                      <Link
-                        href={`/admin/users?search=${encodeURIComponent(c.userId)}`}
-                        className="inline-flex text-brand-primary hover:underline"
-                      >
-                        {c.phone ? maskPhone(c.phone) : c.userId}
-                      </Link>
-                    </Tooltip>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/80">{c.nickname || "-"}</td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/80">
-                    <Tooltip content="查看 Client" side="top">
-                      <Link
-                        href={`/admin/oauth-clients?search=${encodeURIComponent(c.clientId)}`}
-                        className="inline-flex flex-col text-brand-primary hover:underline"
-                      >
-                        <span>{c.clientName || c.clientId}</span>
-                        {c.clientName && (
-                          <span className="font-mono text-xs text-ink-muted">
-                            {c.clientId}
-                          </span>
-                        )}
-                      </Link>
-                    </Tooltip>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {c.scopes.map((s) => (
-                        <Badge key={s} variant="secondary" className="text-xs">
-                          {s}
-                        </Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-ink-muted">
-                    {formatDate(c.grantedAt)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-ink-muted">
-                    {c.revokedAt ? formatDate(c.revokedAt) : "-"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={c.status === "active" ? "success" : "danger"}>
-                      {c.status === "active" ? "已授权" : "已撤销"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {c.status === "active" ? (
-                      canWrite ? (
-                        <Tooltip content="撤销授权" side="top">
-                          <IconButton
-                            label="撤销授权"
-                            variant="danger"
-                            onClick={() => {
-                              setRevokeTarget({
-                                userId: c.userId,
-                                phone: c.phone,
-                                clientId: c.clientId,
-                                clientName: c.clientName,
-                              });
-                              setShowRevoke(true);
-                            }}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </IconButton>
-                        </Tooltip>
-                      ) : (
-                        <span className="text-xs text-ink-muted">只读</span>
-                      )
-                    ) : (
-                      <span
-                        className="text-xs text-ink-muted"
-                        title="用户下次访问该 Client 时需要重新授权"
-                      >
-                        需重新授权
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {total > 0 && (
-        <div className="flex justify-center">
-          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
-        </div>
-      )}
-
-      {/* Revoke Confirm */}
       <ConfirmDialog
         open={showRevoke}
         onClose={() => setShowRevoke(false)}

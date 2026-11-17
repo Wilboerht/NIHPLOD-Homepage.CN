@@ -9,12 +9,11 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Play, AlertTriangle } from "lucide-react";
 import { RequirePermission } from "@/components/admin/RequirePermission";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
+import { DataTable, type Column } from "@/components/admin";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { Empty } from "@/components/ui/Empty";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
 import { useAdminPermissions } from "@/hooks/useAdminPermissions";
@@ -202,6 +201,91 @@ function AdminCronTasksContent() {
     }
   };
 
+  const renderTaskAction = (task: CronTask) =>
+    canRun ? (
+      <Button
+        variant="outline"
+        size="sm"
+        leftIcon={<Play className="h-3.5 w-3.5" />}
+        disabled={task.lastRun ? runStatus(task.lastRun) === "RUNNING" : false}
+        onClick={() => setTriggerTarget({ name: task.name, key: task.key })}
+      >
+        {task.lastRun && runStatus(task.lastRun) === "RUNNING" ? "运行中" : "手动执行"}
+      </Button>
+    ) : (
+      <span className="text-xs text-ink-muted">只读</span>
+    );
+
+  const taskColumns: Column<CronTask>[] = [
+    {
+      key: "name",
+      title: "任务",
+      render: (_value, task) => (
+        <div>
+          <p className="font-medium text-brand-charcoal">{task.name}</p>
+          <p className="mt-0.5 font-mono text-xs text-ink-muted">{task.cronExpression}</p>
+        </div>
+      ),
+    },
+    {
+      key: "lastRun",
+      title: "最近运行",
+      width: "220px",
+      render: (_value, task) => (
+        <div className="whitespace-nowrap text-brand-charcoal/70">
+          <p>{task.lastRun ? formatDateTime(task.lastRun.startedAt) : "从未运行"}</p>
+          {task.lastRun && (
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {triggerLabel(task.lastRun.trigger)}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      title: "结果",
+      width: "220px",
+      render: (_value, task) => {
+        if (!task.lastRun) return <Badge variant="secondary">未运行</Badge>;
+        const status = runStatus(task.lastRun);
+        const meta = STATUS_META[status];
+        return (
+          <div>
+            <Badge variant={meta.variant}>{meta.label}</Badge>
+            {task.lastRun.error && (
+              <p
+                className="mt-1 max-w-[18rem] truncate text-xs text-status-danger-fg"
+                title={task.lastRun.error}
+              >
+                {task.lastRun.error}
+              </p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "duration",
+      title: "耗时",
+      width: "100px",
+      render: (_value, task) => (
+        <span className="whitespace-nowrap text-brand-charcoal/70">
+          {task.lastRun
+            ? formatDuration(task.lastRun.startedAt, task.lastRun.finishedAt)
+            : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "120px",
+      align: "right",
+      render: (_value, task) => <div className="text-right">{renderTaskAction(task)}</div>,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -242,206 +326,71 @@ function AdminCronTasksContent() {
       )}
 
       {/* 任务列表 */}
-      {loading ? (
-        <div className="overflow-hidden rounded-card border border-line bg-white">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <h2 className="text-sm font-medium text-brand-charcoal">任务列表</h2>
-            <span className="text-xs text-ink-muted">加载中...</span>
-          </div>
-          <div className="space-y-2 p-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-12 animate-pulse rounded-lg bg-surface-muted" />
-            ))}
-          </div>
-        </div>
-      ) : loadError ? (
-        <div className="overflow-hidden rounded-card border border-line bg-white">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <h2 className="text-sm font-medium text-brand-charcoal">任务列表</h2>
-          </div>
-          <div className="flex h-48 flex-col items-center justify-center gap-3">
-            <p className="text-sm text-status-danger-fg">加载定时任务失败</p>
-            <Button variant="outline" size="sm" onClick={() => void fetchTasks()}>
-              重试
-            </Button>
-          </div>
-        </div>
-      ) : tasks.length === 0 ? (
-        <div className="overflow-hidden rounded-card border border-line bg-white">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <h2 className="text-sm font-medium text-brand-charcoal">任务列表</h2>
-          </div>
-          <Empty className="py-12" title="暂无定时任务" />
-        </div>
-      ) : (
-        <div className="hidden overflow-hidden rounded-card border border-line bg-white md:block">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <h2 className="text-sm font-medium text-brand-charcoal">任务列表</h2>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-brand-charcoal">任务列表</h2>
+          {!loading && !loadError && (
             <span className="text-xs text-ink-muted">共 {tasks.length} 个任务</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b border-line bg-surface-subtle text-left text-xs uppercase text-ink-muted">
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    任务
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    最近运行
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    结果
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    耗时
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right font-medium">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {tasks.map((task) => (
-                  <tr key={task.name} className="hover:bg-surface-subtle">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-brand-charcoal">{task.name}</p>
-                      <p className="mt-0.5 font-mono text-xs text-ink-muted">
-                        {task.cronExpression}
-                      </p>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-brand-charcoal/70">
-                      <p>{task.lastRun ? formatDateTime(task.lastRun.startedAt) : "从未运行"}</p>
-                      {task.lastRun && (
-                        <p className="mt-0.5 text-xs text-ink-muted">
-                          {triggerLabel(task.lastRun.trigger)}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {!task.lastRun ? (
-                        <Badge variant="secondary">未运行</Badge>
-                      ) : (
-                        (() => {
-                          const status = runStatus(task.lastRun);
-                          const meta = STATUS_META[status];
-                          return (
-                            <div>
-                              <Badge variant={meta.variant}>{meta.label}</Badge>
-                              {task.lastRun.error && (
-                                <p
-                                  className="mt-1 max-w-[18rem] truncate text-xs text-status-danger-fg"
-                                  title={task.lastRun.error}
-                                >
-                                  {task.lastRun.error}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })()
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-brand-charcoal/70">
-                      {task.lastRun
-                        ? formatDuration(task.lastRun.startedAt, task.lastRun.finishedAt)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {canRun ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          leftIcon={<Play className="h-3.5 w-3.5" />}
-                          disabled={task.lastRun ? runStatus(task.lastRun) === "RUNNING" : false}
-                          onClick={() => setTriggerTarget({ name: task.name, key: task.key })}
-                        >
-                          {task.lastRun && runStatus(task.lastRun) === "RUNNING"
-                            ? "运行中"
-                            : "手动执行"}
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-ink-muted">只读</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          )}
         </div>
-      )}
-
-      {!loading && !loadError && tasks.length > 0 && (
-        <>
-          <div className="flex items-center justify-between md:hidden">
-            <h2 className="text-sm font-medium text-brand-charcoal">任务列表</h2>
-            <span className="text-xs text-ink-muted">共 {tasks.length} 个任务</span>
-          </div>
-          <MobileList>
-            {tasks.map((task) => (
-              <MobileListCard key={task.name}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-brand-charcoal">{task.name}</p>
-                    <p className="mt-0.5 font-mono text-xs text-ink-muted">
-                      {task.cronExpression}
-                    </p>
-                  </div>
-                  {!task.lastRun ? (
-                    <Badge variant="secondary" className="shrink-0">
-                      未运行
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant={STATUS_META[runStatus(task.lastRun)].variant}
-                      className="shrink-0"
-                    >
-                      {STATUS_META[runStatus(task.lastRun)].label}
-                    </Badge>
-                  )}
-                </div>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
-                  <span>最近：{task.lastRun ? formatDateTime(task.lastRun.startedAt) : "—"}</span>
-                  <span>
-                    耗时：
-                    {task.lastRun
-                      ? formatDuration(task.lastRun.startedAt, task.lastRun.finishedAt)
-                      : "—"}
-                  </span>
-                  {task.lastRun && (
-                    <span className="col-span-2 text-ink-muted">
-                      {triggerLabel(task.lastRun.trigger)}
-                    </span>
-                  )}
-                </div>
-                {task.lastRun && task.lastRun.error && (
-                  <p className="mt-1 line-clamp-2 text-xs text-status-danger-fg" title={task.lastRun.error}>
-                    {task.lastRun.error}
+        <DataTable
+          columns={taskColumns}
+          data={tasks}
+          loading={loading}
+          error={loadError ? "加载定时任务失败" : null}
+          onRetry={() => void fetchTasks()}
+          rowKey="key"
+          minWidth="720px"
+          emptyText="暂无定时任务"
+          ariaLabel="定时任务列表"
+          mobileCard={(task) => (
+            <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-brand-charcoal">{task.name}</p>
+                  <p className="mt-0.5 font-mono text-xs text-ink-muted">
+                    {task.cronExpression}
                   </p>
-                )}
-                <div className="mt-2 flex justify-end border-t border-line pt-2">
-                  {canRun ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      leftIcon={<Play className="h-3.5 w-3.5" />}
-                      disabled={task.lastRun ? runStatus(task.lastRun) === "RUNNING" : false}
-                      onClick={() => setTriggerTarget({ name: task.name, key: task.key })}
-                    >
-                      {task.lastRun && runStatus(task.lastRun) === "RUNNING"
-                        ? "运行中"
-                        : "手动执行"}
-                    </Button>
-                  ) : (
-                    <span className="text-xs text-ink-muted">只读</span>
-                  )}
                 </div>
-              </MobileListCard>
-            ))}
-          </MobileList>
-        </>
-      )}
+                {!task.lastRun ? (
+                  <Badge variant="secondary" className="shrink-0">未运行</Badge>
+                ) : (
+                  <Badge
+                    variant={STATUS_META[runStatus(task.lastRun)].variant}
+                    className="shrink-0"
+                  >
+                    {STATUS_META[runStatus(task.lastRun)].label}
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
+                <span>最近：{task.lastRun ? formatDateTime(task.lastRun.startedAt) : "—"}</span>
+                <span>耗时：{task.lastRun
+                    ? formatDuration(task.lastRun.startedAt, task.lastRun.finishedAt)
+                    : "—"}
+                </span>
+                {task.lastRun && (
+                  <span className="col-span-2 text-ink-muted">
+                    {triggerLabel(task.lastRun.trigger)}
+                  </span>
+                )}
+              </div>
+              {task.lastRun && task.lastRun.error && (
+                <p
+                  className="mt-1 line-clamp-2 text-xs text-status-danger-fg"
+                  title={task.lastRun.error}
+                >
+                  {task.lastRun.error}
+                </p>
+              )}
+              <div className="mt-2 flex justify-end border-t border-line pt-2">
+                {renderTaskAction(task)}
+              </div>
+            </div>
+          )}
+        />
+      </div>
 
-      {/* 最近运行记录 */}
       <div className="overflow-hidden rounded-card border border-line bg-white">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <h2 className="text-sm font-medium text-brand-charcoal">最近运行记录</h2>
@@ -497,9 +446,7 @@ function AdminCronTasksContent() {
                               sourceRunId: run.id,
                             })
                           }
-                        >
-                          重跑
-                        </Button>
+                        >重跑</Button>
                       )}
                     </div>
                   </div>
@@ -515,7 +462,6 @@ function AdminCronTasksContent() {
         )}
       </div>
 
-      {/* 手动触发确认 */}
       <ConfirmDialog
         open={!!triggerTarget}
         onClose={() => setTriggerTarget(null)}

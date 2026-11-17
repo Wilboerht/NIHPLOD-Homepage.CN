@@ -17,23 +17,19 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Modal } from "@/components/ui/Modal";
-import { Empty } from "@/components/ui/Empty";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost, apiDelete, ApiError } from "@/lib/api-client";
 import {
   formatDateTime as formatDate,
   formatDateTimeSeconds as formatFullDateTime,
 } from "@/lib/format";
-import { RequirePermission } from "@/components/admin";
+import { RequirePermission, DataTable, type Column } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { AdminHubTabs } from "@/components/admin/AdminHubTabs";
-import { MobileList, MobileListCard } from "@/components/admin/MobileList";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { IconButton } from "@/components/admin/IconButton";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -300,6 +296,102 @@ function OAuthSessionsPage() {
     }
   };
 
+  const renderActions = (session: Session) => (
+    <div className="flex items-center justify-end gap-1">
+      <Tooltip content="查看详情" side="top">
+        <IconButton label="查看详情" onClick={() => setDetailSession(session)}>
+          <Eye className="h-4 w-4" />
+        </IconButton>
+      </Tooltip>
+      {canWrite && (
+        <Tooltip content="终止会话" side="top">
+          <IconButton
+            label="终止会话"
+            variant="danger"
+            onClick={() => {
+              setTerminateTarget({
+                id: session.id,
+                userId: session.userId,
+                phone: session.phone,
+                nickname: session.nickname,
+                clientId: session.clientId,
+              });
+              setShowTerminate(true);
+            }}
+          >
+            <LogOut className="h-4 w-4" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </div>
+  );
+
+  const columns: Column<Session>[] = [
+    {
+      key: "phone",
+      title: "用户",
+      width: "190px",
+      render: (_value, session) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-brand-charcoal/80">
+            {session.nickname || "未设置昵称"}
+          </p>
+          <p className="truncate font-mono text-xs text-ink-muted">
+            {maskForList(session.phone) || session.userId}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "clientId",
+      title: "Client",
+      width: "220px",
+      render: (_value, session) => (
+        <div className="min-w-0">
+          <p className="truncate text-brand-charcoal/80">{session.clientName || "-"}</p>
+          <p className="truncate font-mono text-xs text-ink-muted">{session.clientId}</p>
+        </div>
+      ),
+    },
+    {
+      key: "scopes",
+      title: "Scopes",
+      width: "220px",
+      render: (_value, session) => (
+        <div className="flex flex-wrap gap-1">
+          {session.scopes.map((scope) => (
+            <Badge key={scope} variant="secondary" className="text-xs">
+              {scope}
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: "createdAt",
+      title: "创建时间",
+      width: "180px",
+      render: (_value, session) => (
+        <span className="text-sm text-ink-muted">{formatDate(session.createdAt)}</span>
+      ),
+    },
+    {
+      key: "expiresAt",
+      title: "过期时间",
+      width: "180px",
+      render: (_value, session) => (
+        <span className="text-sm text-ink-muted">{formatDate(session.expiresAt)}</span>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "110px",
+      align: "right",
+      render: (_value, session) => renderActions(session),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -423,34 +515,34 @@ function OAuthSessionsPage() {
       )}
 
       {/* 移动端卡片 */}
-      <MobileList
+      <DataTable
+        columns={columns}
+        data={sessions}
         loading={loading}
-        error={
-          loadError ? (
-            <>
-              <p className="text-status-danger-fg">加载失败</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={fetchSessions}>
-                重试
-              </Button>
-            </>
-          ) : undefined
+        error={loadError ? "加载失败，请稍后重试" : null}
+        onRetry={fetchSessions}
+        rowKey="id"
+        minWidth="900px"
+        emptyText="暂无会话数据"
+        isFiltered={hasFilters}
+        onClearFilters={handleReset}
+        ariaLabel="SSO 会话列表"
+        pagination={
+          total > 0 ? { page, pageSize, total, onChange: setPage } : undefined
         }
-        empty="暂无会话数据"
-        isEmpty={!loading && !loadError && sessions.length === 0}
-      >
-        {sessions.map((s) => (
-          <MobileListCard key={s.id}>
+        mobileCard={(session) => (
+          <div>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate font-medium text-brand-charcoal">
-                  {s.nickname || "未设置昵称"}
+                  {session.nickname || "未设置昵称"}
                 </p>
                 <p className="truncate font-mono text-xs text-ink-muted">
-                  {maskForList(s.phone) || s.userId}
+                  {maskForList(session.phone) || session.userId}
                 </p>
               </div>
               <div className="flex flex-shrink-0 gap-1">
-                <IconButton label="查看会话详情" onClick={() => setDetailSession(s)}>
+                <IconButton label="查看会话详情" onClick={() => setDetailSession(session)}>
                   <Eye className="h-4 w-4" />
                 </IconButton>
                 {canWrite && (
@@ -459,11 +551,11 @@ function OAuthSessionsPage() {
                     variant="danger"
                     onClick={() => {
                       setTerminateTarget({
-                        id: s.id,
-                        userId: s.userId,
-                        phone: s.phone,
-                        nickname: s.nickname,
-                        clientId: s.clientId,
+                        id: session.id,
+                        userId: session.userId,
+                        phone: session.phone,
+                        nickname: session.nickname,
+                        clientId: session.clientId,
                       });
                       setShowTerminate(true);
                     }}
@@ -474,155 +566,28 @@ function OAuthSessionsPage() {
               </div>
             </div>
             <div className="mt-2 flex flex-wrap gap-1">
-              {s.scopes.slice(0, 3).map((scope) => (
+              {session.scopes.slice(0, 3).map((scope) => (
                 <Badge key={scope} variant="secondary" className="text-xs">
                   {scope}
                 </Badge>
               ))}
-              {s.scopes.length > 3 && (
-                <span className="text-xs text-ink-muted">+{s.scopes.length - 3}</span>
+              {session.scopes.length > 3 && (
+                <span className="text-xs text-ink-muted">
+                  +{session.scopes.length - 3}
+                </span>
               )}
             </div>
             <p className="mt-1.5 truncate text-xs text-ink-muted">
-              Client：{s.clientName || s.clientId}
+              Client：{session.clientName || session.clientId}
             </p>
             <div className="mt-2 grid grid-cols-2 gap-2 border-t border-line pt-2 text-xs text-ink-muted">
-              <span>创建：{formatDate(s.createdAt)}</span>
-              <span>过期：{formatDate(s.expiresAt)}</span>
+              <span>创建：{formatDate(session.createdAt)}</span>
+              <span>过期：{formatDate(session.expiresAt)}</span>
             </div>
-          </MobileListCard>
-        ))}
-      </MobileList>
+          </div>
+        )}
+      />
 
-      {/* 桌面端表格 */}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead>
-            <tr className="border-b border-line bg-surface-subtle text-left">
-              <th scope="col" className="px-4 py-3 font-normal">
-                用户
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                Client
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                Scopes
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                创建时间
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                过期时间
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-normal">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
-            ) : loadError ? (
-              <tr>
-                <td colSpan={6}>
-                  <div className="flex flex-col items-center justify-center gap-3 py-10">
-                    <p className="text-sm text-status-danger-fg">加载失败，请稍后重试</p>
-                    <Button variant="outline" size="sm" onClick={fetchSessions}>
-                      重新加载
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ) : sessions.length === 0 ? (
-              <tr>
-                <td colSpan={6}>
-                  <div className="flex justify-center py-8">
-                    <Empty
-                      title="暂无会话数据"
-                      description={
-                        hasFilters
-                          ? "当前筛选条件下没有活跃会话，请调整筛选条件"
-                          : "用户通过 SSO 登录后会话会显示在这里"
-                      }
-                    />
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              sessions.map((s) => (
-                <tr key={s.id} className="hover:bg-surface-muted">
-                  <td className="px-4 py-3">
-                    <p className="truncate font-medium text-brand-charcoal/80">
-                      {s.nickname || "未设置昵称"}
-                    </p>
-                    <p className="truncate font-mono text-xs text-ink-muted">
-                      {maskForList(s.phone) || s.userId}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="truncate text-brand-charcoal/80">{s.clientName || "-"}</p>
-                    <p className="truncate font-mono text-xs text-ink-muted">
-                      {s.clientId}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {s.scopes.map((scope) => (
-                        <Badge key={scope} variant="secondary" className="text-xs">
-                          {scope}
-                        </Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-ink-muted">
-                    {formatDate(s.createdAt)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-ink-muted">
-                    {formatDate(s.expiresAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Tooltip content="查看详情" side="top">
-                        <IconButton label="查看详情" onClick={() => setDetailSession(s)}>
-                          <Eye className="h-4 w-4" />
-                        </IconButton>
-                      </Tooltip>
-                      {canWrite && (
-                        <Tooltip content="终止会话" side="top">
-                          <IconButton
-                            label="终止会话"
-                            variant="danger"
-                            onClick={() => {
-                              setTerminateTarget({
-                                id: s.id,
-                                userId: s.userId,
-                                phone: s.phone,
-                                nickname: s.nickname,
-                                clientId: s.clientId,
-                              });
-                              setShowTerminate(true);
-                            }}
-                          >
-                            <LogOut className="h-4 w-4" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {total > 0 && (
-        <div className="flex justify-center">
-          <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
-        </div>
-      )}
-
-      {/* Terminate Single Session Confirm */}
       <ConfirmDialog
         open={showTerminate}
         onClose={() => setShowTerminate(false)}

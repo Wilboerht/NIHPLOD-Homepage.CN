@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
-import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPatch, apiPost, ApiError } from "@/lib/api-client";
@@ -24,7 +23,7 @@ import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import { formatDateTimeNumeric as formatDateTime } from "@/lib/format";
 import Link from "next/link";
-import { RequirePermission } from "@/components/admin/RequirePermission";
+import { RequirePermission, DataTable, type Column } from "@/components/admin";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
 import { RedemptionTimelineModal } from "@/components/admin/RedemptionTimelineModal";
 import { APPROVAL_THRESHOLDS } from "@/lib/admin-approval-policy";
@@ -154,12 +153,14 @@ function AdminPointGiftsContent() {
   const [productsError, setProductsError] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [stockEdit, setStockEdit] = useState<{ id: string; value: string } | null>(null);
+  const [stockError, setStockError] = useState("");
   const [savingStock, setSavingStock] = useState(false);
   const [limitTarget, setLimitTarget] = useState<RedeemableProductItem | null>(null);
   const [limitUnlimited, setLimitUnlimited] = useState(true);
   const [limitCount, setLimitCount] = useState("");
   const [limitWindowMode, setLimitWindowMode] = useState<"lifetime" | "rolling">("rolling");
   const [limitWindowDays, setLimitWindowDays] = useState("30");
+  const [limitError, setLimitError] = useState("");
   const [savingLimit, setSavingLimit] = useState(false);
 
   const [redemptions, setRedemptions] = useState<RedemptionItem[]>([]);
@@ -187,6 +188,7 @@ function AdminPointGiftsContent() {
     mode: "fulfill" | "waybill";
   } | null>(null);
   const [waybillInput, setWaybillInput] = useState("");
+  const [waybillError, setWaybillError] = useState("");
   const [submittingFulfill, setSubmittingFulfill] = useState(false);
   const isFulfillDirty =
     !!fulfillTarget && waybillInput !== (fulfillTarget.redemption.waybillNo ?? "");
@@ -445,9 +447,10 @@ function AdminPointGiftsContent() {
     const trimmed = stockEdit.value.trim();
     const stock = trimmed === "" ? null : Number(trimmed);
     if (stock !== null && (!Number.isInteger(stock) || stock < 0)) {
-      showError("库存须为非负整数，留空表示不限量");
+      setStockError("库存须为非负整数，留空表示不限量");
       return;
     }
+    setStockError("");
     setSavingStock(true);
     try {
       // 只提交库存字段，避免把列表快照中的 pointRedeemable 旧值覆盖回去
@@ -481,6 +484,7 @@ function AdminPointGiftsContent() {
     setLimitCount(unlimited ? "" : String(p.redeemLimitPerUser));
     setLimitWindowMode(p.redeemLimitWindowDays === null ? "lifetime" : "rolling");
     setLimitWindowDays(p.redeemLimitWindowDays === null ? "30" : String(p.redeemLimitWindowDays));
+    setLimitError("");
   };
 
   const handleLimitSave = async () => {
@@ -490,14 +494,14 @@ function AdminPointGiftsContent() {
     if (!limitUnlimited) {
       const parsedCount = Number(limitCount);
       if (!Number.isInteger(parsedCount) || parsedCount < 1 || parsedCount > 9999) {
-        showError("限购数量须为 1-9999 的整数");
+        setLimitError("限购数量须为 1-9999 的整数");
         return;
       }
       limit = parsedCount;
       if (limitWindowMode === "rolling") {
         const parsedDays = Number(limitWindowDays);
         if (!Number.isInteger(parsedDays) || parsedDays < 1 || parsedDays > 3650) {
-          showError("统计周期须为 1-3650 天");
+          setLimitError("统计周期须为 1-3650 天");
           return;
         }
         windowDays = parsedDays;
@@ -533,6 +537,7 @@ function AdminPointGiftsContent() {
   /** 打开履约/运单号弹窗（履约可录入运单号；已履约可补录/修改） */
   const openFulfillModal = (r: RedemptionItem) => {
     setWaybillInput(r.waybillNo ?? "");
+    setWaybillError("");
     setFulfillTarget({
       redemption: r,
       mode: r.status === "PENDING" ? "fulfill" : "waybill",
@@ -566,9 +571,10 @@ function AdminPointGiftsContent() {
     const { redemption, mode } = fulfillTarget;
     const waybillNo = waybillInput.trim();
     if (waybillNo && !/^[A-Za-z0-9-]{8,32}$/.test(waybillNo)) {
-      showError("运单号须为 8-32 位字母、数字或短横线");
+      setWaybillError("运单号须为 8-32 位字母、数字或短横线");
       return;
     }
+    setWaybillError("");
     setSubmittingFulfill(true);
     try {
       if (mode === "fulfill") {
@@ -665,6 +671,350 @@ function AdminPointGiftsContent() {
       </div>
     );
   }
+
+  const renderProductBadges = (product: RedeemableProductItem) => (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Badge
+        className={
+          product.pointRedeemable
+            ? "bg-status-warning-soft text-status-warning-strong"
+            : "bg-surface-hover text-ink-muted"
+        }
+      >
+        {product.pointRedeemable ? "可兑换" : "未设置"}
+      </Badge>
+      {product.pointRedeemable && product.redeemStock === 0 && (
+        <Badge className="bg-status-danger-soft text-status-danger-fg">已兑完</Badge>
+      )}
+    </div>
+  );
+
+  const renderProductStock = (product: RedeemableProductItem) =>
+    stockEdit?.id === product.id ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="number"
+          min={0}
+          value={stockEdit.value}
+          onChange={(event) => {
+            setStockEdit({ id: product.id, value: event.target.value });
+            if (stockError) setStockError("");
+          }}
+          placeholder="留空=不限量"
+          error={stockError || undefined}
+          className="w-28"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          loading={savingStock}
+          onClick={() => handleStockSave(product)}
+        >
+          保存
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setStockEdit(null)}>
+          取消
+        </Button>
+      </div>
+    ) : (
+      <div className="flex items-center gap-2">
+        <span className="text-brand-charcoal/70">
+          库存：{product.redeemStock === null ? "不限量" : product.redeemStock}
+        </span>
+        {canGiftWrite && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setStockError("");
+              setStockEdit({
+                id: product.id,
+                value: product.redeemStock === null ? "" : String(product.redeemStock),
+              });
+            }}
+          >
+            编辑库存
+          </Button>
+        )}
+      </div>
+    );
+
+  const renderProductLimit = (product: RedeemableProductItem) => (
+    <div className="flex items-center gap-2">
+      <span className="text-brand-charcoal/70">{redeemLimitLabel(product)}</span>
+      {canGiftWrite && (
+        <Button variant="outline" size="sm" onClick={() => openLimitEdit(product)}>
+          编辑限购
+        </Button>
+      )}
+    </div>
+  );
+
+  const renderProductToggle = (product: RedeemableProductItem) =>
+    canGiftWrite ? (
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={
+          togglingId === product.id ||
+          (!product.pointRedeemable && !product.published)
+        }
+        onClick={() => handleToggle(product)}
+      >
+        {togglingId === product.id
+          ? "处理中..."
+          : product.pointRedeemable
+            ? "取消可兑"
+            : "设为可兑"}
+      </Button>
+    ) : (
+      <span className="text-xs text-ink-muted">需要积分可兑设置权限</span>
+    );
+
+  const productColumns: Column<RedeemableProductItem>[] = [
+    {
+      key: "name",
+      title: "产品",
+      width: "180px",
+      render: (_value, product) => (
+        <span className="text-sm text-brand-charcoal/70">{product.name}</span>
+      ),
+    },
+    {
+      key: "categoryName",
+      title: "分类",
+      width: "100px",
+      render: (_value, product) => (
+        <span className="text-sm text-ink-muted">{product.categoryName}</span>
+      ),
+    },
+    {
+      key: "priceYuan",
+      title: "参考价格",
+      width: "100px",
+      numeric: true,
+      render: (_value, product) => (
+        <span className="text-sm text-brand-charcoal/70">
+          ¥{product.priceYuan.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: "published",
+      title: "发布状态",
+      width: "90px",
+      render: (_value, product) => (
+        <Badge
+          className={
+            product.published
+              ? "bg-status-success-soft text-status-success-strong"
+              : "bg-surface-hover text-ink-muted"
+          }
+        >
+          {product.published ? "已发布" : "草稿"}
+        </Badge>
+      ),
+    },
+    {
+      key: "pointRedeemable",
+      title: "积分可兑",
+      width: "120px",
+      render: (_value, product) => renderProductBadges(product),
+    },
+    {
+      key: "redeemStock",
+      title: "兑换库存",
+      width: "260px",
+      render: (_value, product) => renderProductStock(product),
+    },
+    {
+      key: "redeemLimitPerUser",
+      title: "每用户限购",
+      width: "170px",
+      render: (_value, product) => renderProductLimit(product),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "150px",
+      render: (_value, product) => renderProductToggle(product),
+    },
+  ];
+
+  const renderRedemptionShipping = (redemption: RedemptionItem) => (
+    <>
+      {redemption.recipient && redemption.address ? (
+        <>
+          <p className="text-sm text-brand-charcoal/70">
+            {redemption.recipient}
+            {redemption.phone && (
+              <span className="ml-2 text-xs text-ink-muted">{redemption.phone}</span>
+            )}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-muted">{redemption.address}</p>
+        </>
+      ) : (
+        <span className="text-xs text-ink-muted">未填写</span>
+      )}
+      {redemption.waybillNo && (
+        <p className="mt-0.5 text-xs text-brand-primary">
+          运单号：{redemption.waybillNo}
+          {redemption.carrier === "SF" ? "（顺丰）" : ""}
+        </p>
+      )}
+    </>
+  );
+
+  const renderRedemptionActions = (redemption: RedemptionItem) => (
+    <div className="flex flex-wrap gap-2">
+      <Button variant="ghost" size="sm" onClick={() => setTimelineId(redemption.id)}>
+        详情
+      </Button>
+      {redemption.status === "PENDING" ? (
+        <>
+          {canFulfill && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openFulfillModal(redemption)}
+              disabled={redemption.protectionActive}
+              title={
+                redemption.protectionActive
+                  ? `履约保护期至 ${formatDateTime(redemption.fulfillableAt)}`
+                  : undefined
+              }
+            >
+              {redemption.protectionActive ? "保护期内" : "标记履约"}
+            </Button>
+          )}
+          {!isOwnerActor &&
+            canRequestApproval &&
+            redemption.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
+              <ApprovalRequestAction
+                policyKey="redemption.cancel"
+                initialValues={{ redemptionId: redemption.id }}
+                label="申请取消退分"
+              />
+            )}
+          {canCancelRedemption &&
+            (isOwnerActor || redemption.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-status-danger-fg hover:bg-status-danger-soft"
+                onClick={() => setCancelTarget(redemption)}
+              >
+                取消退分
+              </Button>
+            )}
+          {!canFulfill && !canCancelRedemption && !canRequestApproval && (
+            <span className="text-xs text-ink-muted">只读</span>
+          )}
+        </>
+      ) : redemption.status === "FULFILLED" ? (
+        canFulfill ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openFulfillModal(redemption)}
+          >
+            {redemption.waybillNo ? "修改运单号" : "补录运单号"}
+          </Button>
+        ) : null
+      ) : null}
+    </div>
+  );
+
+  const renderRedemptionTime = (redemption: RedemptionItem) => (
+    <div>
+      <p>{formatDateTime(redemption.createdAt)}</p>
+      {redemption.status === "FULFILLED" && redemption.fulfilledAt && (
+        <p className="mt-0.5 text-xs text-ink-muted">
+          履约：{formatDateTime(redemption.fulfilledAt)}
+        </p>
+      )}
+      {redemption.status === "CANCELLED" && redemption.cancelledAt && (
+        <p className="mt-0.5 text-xs text-ink-muted">
+          取消：{formatDateTime(redemption.cancelledAt)}
+        </p>
+      )}
+      {redemption.status === "CANCELLED" && redemption.cancelNote && (
+        <p
+          className="mt-0.5 max-w-[14rem] truncate text-xs text-ink-muted"
+          title={redemption.cancelNote}
+        >
+          原因：{redemption.cancelNote}
+        </p>
+      )}
+    </div>
+  );
+
+  const redemptionColumns: Column<RedemptionItem>[] = [
+    {
+      key: "user",
+      title: "用户",
+      width: "150px",
+      render: (_value, redemption) => (
+        <div>
+          <p className="text-sm text-brand-charcoal/70">
+            {redemption.user.nickname || "未设置昵称"}
+          </p>
+          <p className="text-xs text-ink-muted">{redemption.user.phone}</p>
+        </div>
+      ),
+    },
+    {
+      key: "productName",
+      title: "产品",
+      width: "160px",
+      render: (_value, redemption) => (
+        <span className="text-sm text-brand-charcoal/70">{redemption.productName}</span>
+      ),
+    },
+    {
+      key: "points",
+      title: "价格 / 扣分",
+      width: "130px",
+      numeric: true,
+      render: (_value, redemption) => (
+        <span className="text-sm text-brand-charcoal/70">
+          ¥{redemption.priceYuan.toLocaleString()} / {redemption.points.toLocaleString()} 分
+        </span>
+      ),
+    },
+    {
+      key: "shipping",
+      title: "收货信息",
+      width: "260px",
+      render: (_value, redemption) => renderRedemptionShipping(redemption),
+    },
+    {
+      key: "status",
+      title: "状态",
+      width: "90px",
+      render: (_value, redemption) => (
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[redemption.status]}`}
+        >
+          {STATUS_LABELS[redemption.status]}
+        </span>
+      ),
+    },
+    {
+      key: "createdAt",
+      title: "时间",
+      width: "200px",
+      render: (_value, redemption) => (
+        <div className="text-sm text-ink-muted">{renderRedemptionTime(redemption)}</div>
+      ),
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "320px",
+      render: (_value, redemption) => renderRedemptionActions(redemption),
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -857,625 +1207,145 @@ function AdminPointGiftsContent() {
 
       {/* 礼品设置（无 gifts:read 权限时不展示，避免必然 403） */}
       {view === "gifts" && canGiftRead && (
-        <div className="overflow-hidden rounded-card border border-line bg-white">
-          <div className="md:hidden">
-            {productsLoading ? (
-              <div className="space-y-2 p-3">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-28 animate-pulse rounded-xl bg-surface-muted"
-                  />
-                ))}
+        <DataTable
+          columns={productColumns}
+          data={products}
+          loading={productsLoading}
+          error={productsError ? "加载产品失败" : null}
+          onRetry={fetchProducts}
+          rowKey="id"
+          minWidth="1000px"
+          emptyText="暂无匹配产品"
+          isFiltered={Boolean(searchParam) || redeemableFilter !== "all"}
+          onClearFilters={() =>
+            updateProductQuery({ productSearch: null, redeemable: "all" })
+          }
+          ariaLabel="积分可兑产品列表"
+          pagination={
+            productTotal > 0
+              ? {
+                  page: productPage,
+                  pageSize: 20,
+                  total: productTotal,
+                  onChange: (nextPage) =>
+                    update({ productPage: String(nextPage) }, { resetPage: false }),
+                }
+              : undefined
+          }
+          mobileCard={(product) => (
+            <div>
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 truncate font-medium text-brand-charcoal">
+                  {product.name}
+                </p>
+                <Badge
+                  className={
+                    product.published
+                      ? "bg-status-success-soft text-status-success-strong"
+                      : "bg-surface-hover text-ink-muted"
+                  }
+                >
+                  {product.published ? "已发布" : "草稿"}
+                </Badge>
               </div>
-            ) : productsError ? (
-              <div className="px-4 py-10 text-center">
-                <p className="text-sm text-status-danger-fg">加载产品失败</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={fetchProducts}>
-                  重试
-                </Button>
+              <p className="mt-1 text-xs text-ink-muted">
+                {product.categoryName} · ¥{product.priceYuan.toLocaleString()}
+              </p>
+              <div className="mt-1.5">{renderProductBadges(product)}</div>
+              <div className="mt-2 space-y-2 text-xs">
+                {renderProductStock(product)}
+                {renderProductLimit(product)}
               </div>
-            ) : products.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-ink-muted">暂无匹配产品</p>
-            ) : (
-              <div className="divide-y divide-line">
-                {products.map((p) => (
-                  <div key={p.id} className="space-y-2 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="min-w-0 truncate font-medium text-brand-charcoal">{p.name}</p>
-                      <Badge
-                        className={
-                          p.published
-                            ? "bg-status-success-soft text-status-success-strong"
-                            : "bg-surface-hover text-ink-muted"
-                        }
-                      >
-                        {p.published ? "已发布" : "草稿"}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-ink-muted">
-                      {p.categoryName} · ¥{p.priceYuan.toLocaleString()}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <Badge
-                        className={
-                          p.pointRedeemable
-                            ? "bg-status-warning-soft text-status-warning-strong"
-                            : "bg-surface-hover text-ink-muted"
-                        }
-                      >
-                        {p.pointRedeemable ? "可兑换" : "未设置"}
-                      </Badge>
-                      {p.pointRedeemable && p.redeemStock === 0 && (
-                        <Badge className="bg-status-danger-soft text-status-danger-fg">已兑完</Badge>
-                      )}
-                      {stockEdit?.id === p.id ? (
-                        <div className="flex w-full items-center gap-2">
-                          <Input
-                            type="number"
-                            min={0}
-                            value={stockEdit.value}
-                            onChange={(e) => setStockEdit({ id: p.id, value: e.target.value })}
-                            placeholder="留空=不限量"
-                            className="w-28"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            loading={savingStock}
-                            onClick={() => handleStockSave(p)}
-                          >
-                            保存
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => setStockEdit(null)}>
-                            取消
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="text-brand-charcoal/70">
-                            库存：{p.redeemStock === null ? "不限量" : p.redeemStock}
-                          </span>
-                          {canGiftWrite && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setStockEdit({
-                                  id: p.id,
-                                  value: p.redeemStock === null ? "" : String(p.redeemStock),
-                                })
-                              }
-                            >
-                              编辑库存
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="text-brand-charcoal/70">限购：{redeemLimitLabel(p)}</span>
-                      {canGiftWrite && (
-                        <Button variant="outline" size="sm" onClick={() => openLimitEdit(p)}>
-                          编辑限购
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex justify-end border-t border-line pt-2">
-                      {canGiftWrite ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={togglingId === p.id || (!p.pointRedeemable && !p.published)}
-                          onClick={() => handleToggle(p)}
-                        >
-                          {togglingId === p.id
-                            ? "处理中..."
-                            : p.pointRedeemable
-                              ? "取消可兑"
-                              : "设为可兑"}
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-ink-muted">仅超级管理员可设置</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-2 flex justify-end border-t border-line pt-2">
+                {renderProductToggle(product)}
               </div>
-            )}
-          </div>
-
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[900px]">
-              <thead>
-                <tr className="border-b bg-surface-muted text-left text-xs uppercase text-ink-muted">
-                  <th className="px-4 py-3 font-medium">产品</th>
-                  <th className="px-4 py-3 font-medium">分类</th>
-                  <th className="px-4 py-3 font-medium">参考价格</th>
-                  <th className="px-4 py-3 font-medium">发布状态</th>
-                  <th className="px-4 py-3 font-medium">积分可兑</th>
-                  <th className="px-4 py-3 font-medium">兑换库存</th>
-                  <th className="px-4 py-3 font-medium">每用户限购</th>
-                  <th className="px-4 py-3 font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {productsLoading ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center">
-                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-ink-muted" />
-                    </td>
-                  </tr>
-                ) : productsError ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center">
-                      <p className="text-sm text-status-danger-fg">加载产品失败</p>
-                      <Button variant="outline" size="sm" className="mt-3" onClick={fetchProducts}>
-                        重试
-                      </Button>
-                    </td>
-                  </tr>
-                ) : products.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-10 text-center text-sm text-ink-muted"
-                    >
-                      暂无匹配产品
-                    </td>
-                  </tr>
-                ) : (
-                  products.map((p) => (
-                    <tr key={p.id} className="hover:bg-surface-muted">
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-ink-muted">{p.categoryName}</td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                        ¥{p.priceYuan.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          className={
-                            p.published
-                              ? "bg-status-success-soft text-status-success-strong"
-                              : "bg-surface-hover text-ink-muted"
-                          }
-                        >
-                          {p.published ? "已发布" : "草稿"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge
-                            className={
-                              p.pointRedeemable
-                                ? "bg-status-warning-soft text-status-warning-strong"
-                                : "bg-surface-hover text-ink-muted"
-                            }
-                          >
-                            {p.pointRedeemable ? "可兑换" : "未设置"}
-                          </Badge>
-                          {p.pointRedeemable && p.redeemStock === 0 && (
-                            <Badge className="bg-status-danger-soft text-status-danger-fg">已兑完</Badge>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                        {stockEdit?.id === p.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              min={0}
-                              value={stockEdit.value}
-                              onChange={(e) => setStockEdit({ id: p.id, value: e.target.value })}
-                              placeholder="留空=不限量"
-                              className="w-28"
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              loading={savingStock}
-                              onClick={() => handleStockSave(p)}
-                            >
-                              保存
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => setStockEdit(null)}>
-                              取消
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span>{p.redeemStock === null ? "不限量" : p.redeemStock}</span>
-                            {canGiftWrite && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  setStockEdit({
-                                    id: p.id,
-                                    value: p.redeemStock === null ? "" : String(p.redeemStock),
-                                  })
-                                }
-                              >
-                                编辑
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                        <div className="flex items-center gap-2">
-                          <span>{redeemLimitLabel(p)}</span>
-                          {canGiftWrite && (
-                            <Button variant="outline" size="sm" onClick={() => openLimitEdit(p)}>
-                              编辑
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {canGiftWrite ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={
-                              togglingId === p.id ||
-                              // 仅"设为可兑"要求已发布；未发布但已可兑的产品必须允许取消
-                              (!p.pointRedeemable && !p.published)
-                            }
-                            onClick={() => handleToggle(p)}
-                          >
-                            {togglingId === p.id
-                              ? "处理中..."
-                              : p.pointRedeemable
-                                ? "取消可兑"
-                                : "设为可兑"}
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-ink-muted">
-                            需要积分可兑设置权限
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="border-t px-4 py-3">
-            <Pagination
-              page={productPage}
-              pageSize={20}
-              total={productTotal}
-              onChange={(nextPage) =>
-                update({ productPage: String(nextPage) }, { resetPage: false })
-              }
-            />
-          </div>
-        </div>
+            </div>
+          )}
+        />
       )}
 
-      {/* 兑换履约（需要 redemptions:read） */}
       {view === "redemptions" && canRedeemRead && (
-        <div className="overflow-hidden rounded-card border border-line bg-white">
-          <div className="md:hidden">
-            {redemptionLoading ? (
-              <div className="space-y-2 p-3">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-32 animate-pulse rounded-xl bg-surface-muted"
-                  />
-                ))}
+        <DataTable
+          columns={redemptionColumns}
+          data={redemptions}
+          loading={redemptionLoading}
+          error={redemptionsError ? "加载兑换记录失败" : null}
+          onRetry={fetchRedemptions}
+          rowKey="id"
+          minWidth="1100px"
+          emptyText="暂无兑换记录"
+          isFiltered={
+            tab !== "ALL" ||
+            Boolean(redemptionSearchParam) ||
+            Boolean(redemptionDateFrom) ||
+            Boolean(redemptionDateTo)
+          }
+          onClearFilters={() =>
+            update({
+              tab: "ALL",
+              search: null,
+              dateFrom: null,
+              dateTo: null,
+              page: null,
+            })
+          }
+          ariaLabel="积分兑换记录"
+          pagination={
+            redemptionsTotal > 0
+              ? {
+                  page,
+                  pageSize: 10,
+                  total: redemptionsTotal,
+                  onChange: (nextPage) =>
+                    update({ page: String(nextPage) }, { resetPage: false }),
+                }
+              : undefined
+          }
+          mobileCard={(redemption) => (
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-brand-charcoal">
+                    {redemption.user.nickname || "未设置昵称"}
+                  </p>
+                  <p className="truncate text-xs text-ink-muted">
+                    {redemption.user.phone}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[redemption.status]}`}
+                >
+                  {STATUS_LABELS[redemption.status]}
+                </span>
               </div>
-            ) : redemptionsError ? (
-              <div className="px-4 py-10 text-center">
-                <p className="text-sm text-status-danger-fg">加载兑换记录失败</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={fetchRedemptions}>
-                  重试
-                </Button>
+              <p className="truncate text-sm text-brand-charcoal/70">
+                {redemption.productName}
+              </p>
+              <p className="text-xs text-ink-muted">
+                ¥{redemption.priceYuan.toLocaleString()} /{" "}
+                {redemption.points.toLocaleString()} 分
+              </p>
+              <div className="text-xs text-ink-muted">
+                {renderRedemptionShipping(redemption)}
               </div>
-            ) : redemptions.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-ink-muted">暂无兑换记录</p>
-            ) : (
-              <div className="divide-y divide-line">
-                {redemptions.map((r) => (
-                  <div key={r.id} className="space-y-2 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-brand-charcoal">
-                          {r.user.nickname || "未设置昵称"}
-                        </p>
-                        <p className="truncate text-xs text-ink-muted">{r.user.phone}</p>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}
-                      >
-                        {STATUS_LABELS[r.status]}
-                      </span>
-                    </div>
-                    <p className="truncate text-sm text-brand-charcoal/70">{r.productName}</p>
-                    <p className="text-xs text-ink-muted">
-                      ¥{r.priceYuan.toLocaleString()} / {r.points.toLocaleString()} 分
-                    </p>
-                    <div className="text-xs text-ink-muted">
-                      {r.recipient && r.address ? (
-                        <>
-                          <p>
-                            {r.recipient}
-                            {r.phone && (
-                              <span className="ml-2 text-ink-muted">{r.phone}</span>
-                            )}
-                          </p>
-                          <p className="mt-0.5">{r.address}</p>
-                        </>
-                      ) : (
-                        <span>未填写收货信息</span>
-                      )}
-                      {r.waybillNo && (
-                        <p className="mt-0.5 text-brand-primary">
-                          运单号：{r.waybillNo}
-                          {r.carrier === "SF" ? "（顺丰）" : ""}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
-                      <span className="text-xs text-ink-muted">
-                        {r.status === "FULFILLED" && r.fulfilledAt
-                          ? `履约：${formatDateTime(r.fulfilledAt)}`
-                          : r.status === "CANCELLED" && r.cancelledAt
-                            ? `取消：${formatDateTime(r.cancelledAt)}`
-                            : formatDateTime(r.createdAt)}
-                        {r.status === "CANCELLED" && r.cancelNote && (
-                          <span className="mt-0.5 block text-ink-muted">
-                            原因：{r.cancelNote}
-                          </span>
-                        )}
-                      </span>
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setTimelineId(r.id)}>
-                          详情
-                        </Button>
-                        {r.status === "PENDING" ? (
-                          <>
-                            {canFulfill && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openFulfillModal(r)}
-                                disabled={r.protectionActive}
-                                title={
-                                  r.protectionActive
-                                    ? `履约保护期至 ${formatDateTime(r.fulfillableAt)}`
-                                    : undefined
-                                }
-                              >
-                                {r.protectionActive ? "保护期内" : "标记履约"}
-                              </Button>
-                            )}
-                            {!isOwnerActor &&
-                              canRequestApproval &&
-                              r.status === "PENDING" &&
-                              r.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
-                                <ApprovalRequestAction
-                                  policyKey="redemption.cancel"
-                                  initialValues={{ redemptionId: r.id }}
-                                  label="申请取消退分"
-                                />
-                              )}
-                            {canCancelRedemption &&
-                              (isOwnerActor || r.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-status-danger-fg hover:bg-status-danger-soft"
-                                  onClick={() => setCancelTarget(r)}
-                                >
-                                  取消退分
-                                </Button>
-                              )}
-                            {!canFulfill && !canCancelRedemption && !canRequestApproval && (
-                              <span className="text-xs text-ink-muted">只读</span>
-                            )}
-                          </>
-                        ) : r.status === "FULFILLED" ? (
-                          canFulfill ? (
-                            <Button variant="outline" size="sm" onClick={() => openFulfillModal(r)}>
-                              {r.waybillNo ? "修改运单号" : "补录运单号"}
-                            </Button>
-                          ) : null
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
+                <span className="text-xs text-ink-muted">
+                  {redemption.status === "FULFILLED" && redemption.fulfilledAt
+                    ? `履约：${formatDateTime(redemption.fulfilledAt)}`
+                    : redemption.status === "CANCELLED" && redemption.cancelledAt
+                      ? `取消：${formatDateTime(redemption.cancelledAt)}`
+                      : formatDateTime(redemption.createdAt)}
+                  {redemption.status === "CANCELLED" && redemption.cancelNote && (
+                    <span className="mt-0.5 block text-ink-muted">
+                      原因：{redemption.cancelNote}
+                    </span>
+                  )}
+                </span>
+                {renderRedemptionActions(redemption)}
               </div>
-            )}
-          </div>
-
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[900px]">
-              <thead>
-                <tr className="border-b bg-surface-muted text-left text-xs uppercase text-ink-muted">
-                  <th className="px-4 py-3 font-medium">用户</th>
-                  <th className="px-4 py-3 font-medium">产品</th>
-                  <th className="px-4 py-3 font-medium">价格 / 扣分</th>
-                  <th className="px-4 py-3 font-medium">收货信息</th>
-                  <th className="px-4 py-3 font-medium">状态</th>
-                  <th className="px-4 py-3 font-medium">时间</th>
-                  <th className="px-4 py-3 font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {redemptionLoading ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center">
-                      <RefreshCw className="mx-auto h-6 w-6 animate-spin text-ink-muted" />
-                    </td>
-                  </tr>
-                ) : redemptionsError ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center">
-                      <p className="text-sm text-status-danger-fg">加载兑换记录失败</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3"
-                        onClick={fetchRedemptions}
-                      >
-                        重试
-                      </Button>
-                    </td>
-                  </tr>
-                ) : redemptions.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-10 text-center text-sm text-ink-muted"
-                    >
-                      暂无兑换记录
-                    </td>
-                  </tr>
-                ) : (
-                  redemptions.map((r) => (
-                    <tr key={r.id} className="hover:bg-surface-muted">
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-brand-charcoal/70">
-                          {r.user.nickname || "未设置昵称"}
-                        </p>
-                        <p className="text-xs text-ink-muted">{r.user.phone}</p>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">{r.productName}</td>
-                      <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                        ¥{r.priceYuan.toLocaleString()} / {r.points.toLocaleString()} 分
-                      </td>
-                      <td className="px-4 py-3">
-                        {r.recipient && r.address ? (
-                          <>
-                            <p className="text-sm text-brand-charcoal/70">
-                              {r.recipient}
-                              {r.phone && (
-                                <span className="ml-2 text-xs text-ink-muted">
-                                  {r.phone}
-                                </span>
-                              )}
-                            </p>
-                            <p className="mt-0.5 text-xs text-ink-muted">{r.address}</p>
-                          </>
-                        ) : (
-                          <span className="text-xs text-ink-muted">未填写</span>
-                        )}
-                        {r.waybillNo && (
-                          <p className="mt-0.5 text-xs text-brand-primary">
-                            运单号：{r.waybillNo}
-                            {r.carrier === "SF" ? "（顺丰）" : ""}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs ${STATUS_BADGE[r.status]}`}
-                        >
-                          {STATUS_LABELS[r.status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-ink-muted">
-                        <p>{formatDateTime(r.createdAt)}</p>
-                        {r.status === "FULFILLED" && r.fulfilledAt && (
-                          <p className="mt-0.5 text-xs text-ink-muted">
-                            履约：{formatDateTime(r.fulfilledAt)}
-                          </p>
-                        )}
-                        {r.status === "CANCELLED" && r.cancelledAt && (
-                          <p className="mt-0.5 text-xs text-ink-muted">
-                            取消：{formatDateTime(r.cancelledAt)}
-                          </p>
-                        )}
-                        {r.status === "CANCELLED" && r.cancelNote && (
-                          <p
-                            className="mt-0.5 max-w-[14rem] truncate text-xs text-ink-muted"
-                            title={r.cancelNote}
-                          >
-                            原因：{r.cancelNote}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => setTimelineId(r.id)}>
-                            详情
-                          </Button>
-                          {r.status === "PENDING" ? (
-                            <>
-                              {canFulfill && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openFulfillModal(r)}
-                                  disabled={r.protectionActive}
-                                  title={
-                                    r.protectionActive
-                                      ? `履约保护期至 ${formatDateTime(r.fulfillableAt)}`
-                                      : undefined
-                                  }
-                                >
-                                  {r.protectionActive ? "保护期内" : "标记履约"}
-                                </Button>
-                              )}
-                              {!isOwnerActor &&
-                                canRequestApproval &&
-                                r.status === "PENDING" &&
-                                r.points >= APPROVAL_THRESHOLDS.redemptionCancel && (
-                                  <ApprovalRequestAction
-                                    policyKey="redemption.cancel"
-                                    initialValues={{ redemptionId: r.id }}
-                                    label="申请取消退分"
-                                  />
-                                )}
-                              {canCancelRedemption &&
-                                (isOwnerActor ||
-                                  r.points < APPROVAL_THRESHOLDS.redemptionCancel) && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-status-danger-fg hover:bg-status-danger-soft"
-                                    onClick={() => setCancelTarget(r)}
-                                  >
-                                    取消退分
-                                  </Button>
-                                )}
-                              {!canFulfill && !canCancelRedemption && !canRequestApproval && (
-                                <span className="text-xs text-ink-muted">只读</span>
-                              )}
-                            </>
-                          ) : r.status === "FULFILLED" ? (
-                            canFulfill ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openFulfillModal(r)}
-                              >
-                                {r.waybillNo ? "修改运单号" : "补录运单号"}
-                              </Button>
-                            ) : null
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="border-t px-4 py-3">
-            <Pagination
-              page={page}
-              pageSize={10}
-              total={redemptionsTotal}
-              onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
-            />
-          </div>
-        </div>
+            </div>
+          )}
+        />
       )}
 
       <Modal
@@ -1533,8 +1403,12 @@ function AdminPointGiftsContent() {
                   min={1}
                   max={9999}
                   value={limitCount}
-                  onChange={(e) => setLimitCount(e.target.value)}
+                  onChange={(e) => {
+                    setLimitCount(e.target.value);
+                    if (limitError) setLimitError("");
+                  }}
                   placeholder="如 1"
+                  error={limitError || undefined}
                 />
                 {limitWindowMode === "rolling" && (
                   <Input
@@ -1543,9 +1417,13 @@ function AdminPointGiftsContent() {
                     min={1}
                     max={3650}
                     value={limitWindowDays}
-                    onChange={(e) => setLimitWindowDays(e.target.value)}
+                    onChange={(e) => {
+                      setLimitWindowDays(e.target.value);
+                      if (limitError) setLimitError("");
+                    }}
                     placeholder="如 30"
                     hint="从当前时间向前滚动统计"
+                    error={limitError || undefined}
                   />
                 )}
               </>
@@ -1598,10 +1476,14 @@ function AdminPointGiftsContent() {
         <Input
           label="顺丰运单号"
           value={waybillInput}
-          onChange={(e) => setWaybillInput(e.target.value)}
+          onChange={(e) => {
+            setWaybillInput(e.target.value);
+            if (waybillError) setWaybillError("");
+          }}
           data-autofocus
           placeholder="如 SF1234567890123（选填）"
           hint="8-32 位字母、数字或短横线"
+          error={waybillError || undefined}
           className="mt-4 font-mono"
         />
       </Modal>

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { apiGet } from "@/lib/api-client";
@@ -747,6 +746,12 @@ function AuditLogsContent() {
           isFiltered={hasFilters}
           onClearFilters={clearFilters}
           onRowClick={openDetail}
+          pagination={{
+            page: pagination.page,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            onChange: (p) => updateParams({ page: String(p) }),
+          }}
           mobileCard={(log) => (
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
@@ -781,17 +786,6 @@ function AuditLogsContent() {
             </div>
           )}
         />
-      )}
-
-      {pagination.total > 0 && (
-        <div className="flex justify-center">
-          <Pagination
-            page={pagination.page}
-            pageSize={pagination.pageSize}
-            total={pagination.total}
-            onChange={(p) => updateParams({ page: String(p) })}
-          />
-        </div>
       )}
 
       <Modal

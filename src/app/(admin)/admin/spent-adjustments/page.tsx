@@ -6,9 +6,10 @@
  * 权限：查看需 spent:read，代客填写需 spent:create，审核/撤销需 spent:review，
  * Excel 导入需 spent:import；操作写入审计日志。
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CheckCircle2,
+  Clock3,
   Download,
   ExternalLink,
   Eye,
@@ -21,16 +22,13 @@ import {
   UserPlus,
   X,
   XCircle,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Empty } from "@/components/ui/Empty";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Modal } from "@/components/ui/Modal";
-import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { TableRowSkeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { downloadFromUrl } from "@/lib/client-download";
@@ -40,7 +38,7 @@ import { useAdminPermissions } from "@/hooks/useAdminPermissions";
 import { useListQuery } from "@/hooks/useListQuery";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
-import { RequirePermission } from "@/components/admin/RequirePermission";
+import { DataTable, RequirePermission, type Column } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { DateRangeFilter } from "@/components/admin/DateRangeFilter";
 import { ApprovalRequestAction } from "@/components/admin/ApprovalRequestAction";
@@ -99,11 +97,38 @@ interface ListData {
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 }
 
-const STATUS_BADGE_VARIANT: Record<AdjustmentStatus, "warning" | "success" | "danger"> = {
-  PENDING: "warning",
-  APPROVED: "success",
-  REJECTED: "danger",
+const SPENT_STATUS_META: Record<
+  AdjustmentStatus,
+  { label: string; icon: LucideIcon; className: string }
+> = {
+  PENDING: { label: "待审核", icon: Clock3, className: "text-status-warning-fg" },
+  APPROVED: { label: "已通过", icon: CheckCircle2, className: "text-status-success-fg" },
+  REJECTED: { label: "已驳回", icon: XCircle, className: "text-status-danger-fg" },
 };
+
+function SpentStatusIcon({
+  status,
+  showLabel = false,
+}: {
+  status: AdjustmentStatus;
+  showLabel?: boolean;
+}) {
+  const meta = SPENT_STATUS_META[status];
+  const Icon = meta.icon;
+  return (
+    <span
+      title={meta.label}
+      className={cn("inline-flex items-center gap-1 whitespace-nowrap", meta.className)}
+    >
+      <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+      {showLabel ? (
+        <span className="text-xs">{meta.label}</span>
+      ) : (
+        <span className="sr-only">{meta.label}</span>
+      )}
+    </span>
+  );
+}
 
 const TABS: { key: StatusFilter; label: string }[] = [
   { key: "PENDING", label: "待审核" },
@@ -136,6 +161,10 @@ function AdminSpentAdjustmentsContent() {
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [reviewAmount, setReviewAmount] = useState("");
   const [reviewNote, setReviewNote] = useState("");
+  const [reviewAmountError, setReviewAmountError] = useState("");
+  const [reviewNoteError, setReviewNoteError] = useState("");
+  const reviewAmountRef = useRef<HTMLInputElement>(null);
+  const reviewNoteRef = useRef<HTMLTextAreaElement>(null);
   const [saving, setSaving] = useState(false);
   const [undoTarget, setUndoTarget] = useState<ApplicationItem | null>(null);
   const [undoing, setUndoing] = useState(false);
@@ -193,10 +222,9 @@ function AdminSpentAdjustmentsContent() {
       if (!isLatest()) return;
       setData(result);
       setLoadError(false);
-    } catch (err) {
+    } catch {
       if (!isLatest()) return;
       setLoadError(true);
-      showError(err instanceof Error ? err.message : "加载失败");
     } finally {
       if (isLatest()) setLoading(false);
     }
@@ -206,7 +234,6 @@ function AdminSpentAdjustmentsContent() {
     searchParam,
     dateFrom,
     dateTo,
-    showError,
     canReadSpent,
     takeLatestSpent,
   ]);
@@ -259,6 +286,8 @@ function AdminSpentAdjustmentsContent() {
     setDecision("approve");
     setReviewAmount(item.amountClaimed != null ? String(item.amountClaimed) : "");
     setReviewNote("");
+    setReviewAmountError("");
+    setReviewNoteError("");
     setServerApprovalRequired(false);
   };
 
@@ -267,14 +296,18 @@ function AdminSpentAdjustmentsContent() {
     if (decision === "approve") {
       const amount = Number(reviewAmount);
       if (!reviewAmount || !Number.isInteger(amount) || amount <= 0) {
-        showError("请填写正整数核实金额（元）");
+        setReviewAmountError("请填写正整数核实金额（元）");
+        reviewAmountRef.current?.focus();
         return;
       }
     }
     if (decision === "reject" && !reviewNote.trim()) {
-      showError("请填写驳回原因");
+      setReviewNoteError("请填写驳回原因");
+      reviewNoteRef.current?.focus();
       return;
     }
+    setReviewAmountError("");
+    setReviewNoteError("");
     setSaving(true);
     try {
       const submit = (totpCode?: string) =>
@@ -432,6 +465,174 @@ function AdminSpentAdjustmentsContent() {
     );
   }
 
+  const applicationColumns: Column<ApplicationItem>[] = [
+    {
+      key: "user",
+      title: "用户",
+      width: "220px",
+      render: (_, a) => (
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-hover text-xs text-ink-muted">
+            {(a.user.nickname || a.user.phone || "U").charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm text-brand-charcoal/70">
+              {a.user.nickname || "未设置昵称"}
+            </p>
+            <p className="truncate text-xs text-ink-muted">{a.user.phone}</p>
+            {a.source === "ADMIN" && (
+              <span className="mt-1 inline-flex rounded-full bg-status-warning-soft px-1.5 py-0.5 text-2xs text-status-warning-strong">
+                客服代填{a.createdByAdmin ? ` · ${a.createdByAdmin.name}` : ""}
+              </span>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "channelLabel",
+      title: "渠道",
+      width: "100px",
+      render: (_, a) => <span className="text-brand-charcoal/70">{a.channelLabel}</span>,
+    },
+    {
+      key: "orderNo",
+      title: "订单号",
+      width: "160px",
+      render: (_, a) => (
+        <span className="block truncate font-mono text-brand-charcoal/70">{a.orderNo}</span>
+      ),
+    },
+    {
+      key: "amountClaimed",
+      title: "申报金额",
+      width: "110px",
+      numeric: true,
+      render: (_, a) =>
+        a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-",
+    },
+    {
+      key: "reviewAmount",
+      title: "核实金额",
+      width: "110px",
+      numeric: true,
+      render: (_, a) =>
+        a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-",
+    },
+    {
+      key: "purchasedAt",
+      title: "消费日期",
+      width: "110px",
+      render: (_, a) => <span className="text-brand-charcoal/70">{formatDate(a.purchasedAt)}</span>,
+    },
+    {
+      key: "images",
+      title: "凭证",
+      width: "70px",
+      align: "center",
+      render: (_, a) => (
+        <span className="text-brand-charcoal/70">{a.images.length > 0 ? `${a.images.length} 张` : "-"}</span>
+      ),
+    },
+    {
+      key: "status",
+      title: "状态",
+      width: "64px",
+      align: "center",
+      render: (_, a) => <SpentStatusIcon status={a.status} />,
+    },
+    {
+      key: "reviewedBy",
+      title: "审核人",
+      width: "110px",
+      render: (_, a) => <span className="text-ink-muted">{a.reviewedBy?.name ?? "-"}</span>,
+    },
+    {
+      key: "reviewedAt",
+      title: "审核时间",
+      width: "150px",
+      render: (_, a) => (
+        <span className="text-ink-muted">{a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}</span>
+      ),
+    },
+    {
+      key: "createdAt",
+      title: "提交时间",
+      width: "150px",
+      render: (_, a) => <span className="text-ink-muted">{formatDateTime(a.createdAt)}</span>,
+    },
+    {
+      key: "actions",
+      title: "操作",
+      width: "60px",
+      align: "right",
+      render: (_, a) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`${a.status === "PENDING" ? "审核" : "查看"} ${a.user.nickname || a.user.phone || "申请"}`}
+          onClick={() => openDetail(a)}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      ),
+    },
+  ];
+
+  const renderApplicationMobileCard = (a: ApplicationItem) => (
+    <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-brand-charcoal">
+            {a.user.nickname || "未设置昵称"}
+          </p>
+          <p className="truncate text-xs text-ink-muted">
+            {a.user.phone} · {a.channelLabel}
+          </p>
+        </div>
+        <SpentStatusIcon status={a.status} showLabel />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
+        {a.source === "ADMIN" && (
+          <span className="col-span-2 inline-flex w-fit items-center rounded-full bg-status-warning-soft px-2 py-0.5 text-2xs text-status-warning-strong">
+            客服代填{a.createdByAdmin ? ` · ${a.createdByAdmin.name}` : ""}
+          </span>
+        )}
+        <span className="col-span-2 truncate">
+          订单：<span className="font-mono">{a.orderNo}</span>
+        </span>
+        <span>
+          申报：{a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
+        </span>
+        <span>消费：{formatDate(a.purchasedAt)}</span>
+        {a.status !== "PENDING" && (
+          <>
+            <span>
+              核实：{a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
+            </span>
+            <span>审核人：{a.reviewedBy?.name ?? "-"}</span>
+            <span className="col-span-2">
+              审核时间：{a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
+            </span>
+          </>
+        )}
+        <span className="col-span-2">
+          凭证：{a.images.length > 0 ? `${a.images.length} 张` : "无"}
+        </span>
+      </div>
+      <div className="mt-3 flex justify-end border-t border-line pt-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`${a.status === "PENDING" ? "审核" : "查看"} ${a.user.nickname || a.user.phone || "申请"}`}
+          onClick={() => openDetail(a)}
+        >
+          <Eye className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
   const pagination = data?.pagination;
 
   return (
@@ -491,7 +692,8 @@ function AdminSpentAdjustmentsContent() {
                   ? Object.values(data?.counts ?? {}).reduce((sum, n) => sum + n, 0)
                   : (data?.counts[t.key] ?? 0);
               const active = tab === t.key;
-              return (
+
+  return (
                 <button
                   key={t.key}
                   type="button"
@@ -553,235 +755,32 @@ function AdminSpentAdjustmentsContent() {
         </div>
       </div>
 
-    {/* 列表（移动端卡片） */}
-      <div className="md:hidden">
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-surface-muted" />
-            ))}
-          </div>
-        ) : loadError ? (
-          <div className="rounded-card border border-line bg-white py-10 text-center">
-            <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchData}>
-              重试
-            </Button>
-          </div>
-        ) : data && data.applications.length > 0 ? (
-          <div className="divide-y divide-line rounded-card border border-line bg-white">
-            {data.applications.map((a) => (
-              <div key={a.id} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-brand-charcoal">
-                      {a.user.nickname || "未设置昵称"}
-                    </p>
-                    <p className="truncate text-xs text-ink-muted">
-                      {a.user.phone} · {a.channelLabel}
-                    </p>
-                  </div>
-                  <Badge variant={STATUS_BADGE_VARIANT[a.status]} className="shrink-0">
-                    {a.statusLabel}
-                  </Badge>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-brand-charcoal/70">
-                  {a.source === "ADMIN" && (
-                    <span className="col-span-2 inline-flex w-fit items-center rounded-full bg-status-warning-soft px-2 py-0.5 text-2xs text-status-warning-strong">
-                      客服代填{a.createdByAdmin ? ` · ${a.createdByAdmin.name}` : ""}
-                    </span>
-                  )}
-                  <span className="col-span-2 truncate">
-                    订单：<span className="font-mono">{a.orderNo}</span>
-                  </span>
-                  <span>
-                    申报：{a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
-                  </span>
-                  <span>消费：{formatDate(a.purchasedAt)}</span>
-                  {a.status !== "PENDING" && (
-                    <>
-                      <span>
-                        核实：{a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
-                      </span>
-                      <span>审核人：{a.reviewedBy?.name ?? "-"}</span>
-                      <span className="col-span-2">
-                        审核时间：{a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
-                      </span>
-                    </>
-                  )}
-                  <span className="col-span-2">
-                    凭证：{a.images.length > 0 ? `${a.images.length} 张` : "无"}
-                  </span>
-                </div>
-                <div className="mt-3 flex justify-end border-t border-line pt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`${a.status === "PENDING" ? "审核" : "查看"} ${a.user.nickname || a.user.phone || "申请"}`}
-                    onClick={() => openDetail(a)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-card border border-line bg-white py-10">
-            <Empty title="暂无申请" />
-          </div>
-        )}
-      </div>
+      <DataTable
+        columns={applicationColumns}
+        data={data?.applications ?? []}
+        loading={loading}
+        error={loadError ? "加载失败，请重试" : null}
+        onRetry={fetchData}
+        rowKey="id"
+        minWidth="1120px"
+        emptyText="暂无申请"
+        ariaLabel="消费补录审核列表"
+        onRowClick={(a) => openDetail(a)}
+        pagination={
+          pagination
+            ? {
+                page: pagination.page,
+                pageSize: pagination.pageSize,
+                total: pagination.total,
+                onChange: (nextPage) =>
+                  update({ page: String(nextPage) }, { resetPage: false }),
+              }
+            : undefined
+        }
+        mobileCard={renderApplicationMobileCard}
+      />
 
-      {/* 列表（桌面端表格） */}
-      <div className="hidden overflow-x-auto rounded-card border border-line bg-white md:block">
-        <table className="w-full min-w-[1120px] text-sm">
-          <thead>
-            <tr className="border-b border-line bg-surface-subtle text-left">
-              <th scope="col" className="px-4 py-3 font-normal">
-                用户
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                渠道
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                订单号
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                申报金额
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                核实金额
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                消费日期
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                凭证
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                状态
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                审核人
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                审核时间
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                提交时间
-              </th>
-              <th scope="col" className="px-4 py-3 font-normal">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={12} />)
-            ) : loadError ? (
-              <tr>
-                <td colSpan={12} className="px-4 py-10 text-center">
-                  <p className="text-sm text-status-danger-fg">加载失败，请重试</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={fetchData}
-                    leftIcon={<RefreshCw className="h-4 w-4" />}
-                  >
-                    重试
-                  </Button>
-                </td>
-              </tr>
-            ) : data && data.applications.length > 0 ? (
-              data.applications.map((a) => (
-                <tr key={a.id} className="hover:bg-surface-muted">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-hover text-xs text-ink-muted">
-                        {(a.user.nickname || a.user.phone || "U").charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm text-brand-charcoal/70">
-                          {a.user.nickname || "未设置昵称"}
-                        </p>
-                        <p className="text-xs text-ink-muted">{a.user.phone}</p>
-                        {a.source === "ADMIN" && (
-                          <span className="mt-1 inline-flex rounded-full bg-status-warning-soft px-1.5 py-0.5 text-2xs text-status-warning-strong">
-                            客服代填{a.createdByAdmin ? ` · ${a.createdByAdmin.name}` : ""}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">{a.channelLabel}</td>
-                  <td className="max-w-[180px] truncate px-4 py-3 font-mono text-sm text-brand-charcoal/70">
-                    {a.orderNo}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                    {a.amountClaimed != null ? `¥${a.amountClaimed.toLocaleString()}` : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                    {a.reviewAmount != null ? `¥${a.reviewAmount.toLocaleString()}` : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                    {formatDate(a.purchasedAt)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-brand-charcoal/70">
-                    {a.images.length > 0 ? `${a.images.length} 张` : "-"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={STATUS_BADGE_VARIANT[a.status]}>{a.statusLabel}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-ink-muted">
-                    {a.reviewedBy?.name ?? "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-ink-muted">
-                    {a.reviewedAt ? formatDateTime(a.reviewedAt) : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-ink-muted">
-                    {formatDateTime(a.createdAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`${a.status === "PENDING" ? "审核" : "查看"} ${a.user.nickname || a.user.phone || "申请"}`}
-                        onClick={() => openDetail(a)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={12}>
-                  <div className="flex justify-center py-12">
-                    <Empty title="暂无申请" />
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {pagination && pagination.total > 0 && (
-        <div className="flex justify-center">
-          <Pagination
-            page={pagination.page}
-            pageSize={pagination.pageSize}
-            total={pagination.total}
-            onChange={(nextPage) => update({ page: String(nextPage) }, { resetPage: false })}
-          />
-        </div>
-      )}
-
-      {/* 详情 / 审核弹窗 */}
+{/* 详情 / 审核弹窗 */}
       <Modal
         open={!!detail}
         onClose={() => setDetail(null)}
@@ -807,7 +806,7 @@ function AdminSpentAdjustmentsContent() {
                 <Button
                   onClick={handleReview}
                   loading={saving}
-                  className={decision === "reject" ? "bg-status-danger-fg hover:bg-status-danger-fg" : undefined}
+                  variant={decision === "reject" ? "danger" : "primary"}
                 >
                   {decision === "approve" ? "确认通过并入账" : "确认驳回"}
                 </Button>
@@ -928,7 +927,9 @@ function AdminSpentAdjustmentsContent() {
                 </div>
                 <div>
                   <p className="text-xs text-ink-muted">状态</p>
-                  <p className="mt-0.5 text-brand-charcoal/70">{detail.statusLabel}</p>
+                  <div className="mt-0.5">
+                    <SpentStatusIcon status={detail.status} showLabel />
+                  </div>
                 </div>
               </div>
               {detail.note && (
@@ -1033,7 +1034,10 @@ function AdminSpentAdjustmentsContent() {
                   <button
                     type="button"
                     aria-pressed={decision === "approve"}
-                    onClick={() => setDecision("approve")}
+                    onClick={() => {
+                      setDecision("approve");
+                      setReviewNoteError("");
+                    }}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors ${
                       decision === "approve"
                         ? "bg-status-success-fg text-white"
@@ -1046,7 +1050,10 @@ function AdminSpentAdjustmentsContent() {
                   <button
                     type="button"
                     aria-pressed={decision === "reject"}
-                    onClick={() => setDecision("reject")}
+                    onClick={() => {
+                      setDecision("reject");
+                      setReviewAmountError("");
+                    }}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors ${
                       decision === "reject"
                         ? "bg-status-danger-fg text-white"
@@ -1061,13 +1068,18 @@ function AdminSpentAdjustmentsContent() {
                 {decision === "approve" ? (
                   <div className="mt-4 space-y-3">
                     <Input
+                      ref={reviewAmountRef}
                       label="核实金额（元）"
                       type="number"
                       min={1}
                       max={1000000}
                       data-autofocus
                       value={reviewAmount}
-                      onChange={(e) => setReviewAmount(e.target.value)}
+                      error={reviewAmountError}
+                      onChange={(e) => {
+                        setReviewAmount(e.target.value);
+                        if (reviewAmountError) setReviewAmountError("");
+                      }}
                       placeholder="请输入核实后的消费金额"
                       hint="以人工核实为准，可与申报金额不同"
                     />
@@ -1082,12 +1094,17 @@ function AdminSpentAdjustmentsContent() {
                 ) : (
                   <div className="mt-4">
                     <Textarea
+                      ref={reviewNoteRef}
                       label="驳回原因"
                       required
                       rows={3}
                       maxLength={500}
                       value={reviewNote}
-                      onChange={(e) => setReviewNote(e.target.value)}
+                      error={reviewNoteError}
+                      onChange={(e) => {
+                        setReviewNote(e.target.value);
+                        if (reviewNoteError) setReviewNoteError("");
+                      }}
                       placeholder="如：订单号无法在商家后台查询到，请核对后重新提交"
                       hint="必填，将展示给用户"
                     />

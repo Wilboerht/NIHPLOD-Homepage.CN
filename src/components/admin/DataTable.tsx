@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, type HTMLAttributes } from "react";
+import { Fragment, ReactNode, useState, type HTMLAttributes } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableRowSkeleton } from "@/components/ui/Skeleton";
@@ -70,6 +70,8 @@ interface DataTableProps<T> {
   minWidth?: string;
   /** 移动端卡片渲染；提供后 md 以下使用卡片列表，表格仅桌面显示 */
   mobileCard?: (record: T, index: number) => ReactNode;
+  /** 展开行内容；返回 null 时不渲染。移动端请在 mobileCard 内自行处理 */
+  expandedRow?: (record: T, index: number) => ReactNode | null;
   /** 行级属性（如拖拽排序）；className / onClick / onKeyDown 会与内置行为合并 */
   rowProps?: (record: T, index: number) => HTMLAttributes<HTMLTableRowElement> | undefined;
 }
@@ -100,6 +102,7 @@ export function DataTable<T extends object>({
   tableLayout = "auto",
   minWidth,
   mobileCard,
+  expandedRow,
   rowProps,
 }: DataTableProps<T>) {
   const cellDensityCls = density === "compact" ? "px-3 py-2.5" : "px-4 py-3";
@@ -369,11 +372,13 @@ export function DataTable<T extends object>({
                   onKeyDown: rowOnKeyDown,
                   ...rowRestProps
                 } = rowProps?.(record, rowIndex) ?? {};
+                const rowKey = getRowKey(record, rowIndex);
+                const expanded = expandedRow?.(record, rowIndex);
                 return (
-                  <tr
-                    key={getRowKey(record, rowIndex)}
-                    {...rowRestProps}
-                    tabIndex={onRowClick ? 0 : undefined}
+                  <Fragment key={rowKey}>
+                    <tr
+                      {...rowRestProps}
+                      tabIndex={onRowClick ? 0 : undefined}
                     onKeyDown={(e) => {
                       rowOnKeyDown?.(e);
                       if (
@@ -421,6 +426,14 @@ export function DataTable<T extends object>({
                       );
                     })}
                   </tr>
+                    {expanded && (
+                      <tr className="bg-surface-subtle">
+                        <td colSpan={columns.length} className="px-4 py-3">
+                          {expanded}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })
             )}
