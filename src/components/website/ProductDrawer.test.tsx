@@ -41,9 +41,9 @@ describe("ProductDrawer", () => {
   it("默认展示三方购买入口，Logo 链接首页", () => {
     render(<ProductDrawer isOpen onClose={vi.fn()} product={PRODUCT} />);
 
-    // 桌面与移动端购买渠道均渲染
+    // 桌面与移动端购买渠道均渲染（图标模式，通过 aria-label 暴露平台名）
     expect(screen.getByText("购买渠道")).toBeInTheDocument();
-    expect(screen.getAllByText("天猫").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "在天猫购买" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /NIHPLOD Logo/ })).toHaveAttribute("href", "/");
   });
 
@@ -73,7 +73,7 @@ describe("ProductDrawer", () => {
       />
     );
 
-    const links = screen.getAllByRole("link", { name: "微信小店" });
+    const links = screen.getAllByRole("link", { name: "在微信小店购买" });
     expect(links).toHaveLength(2);
     for (const link of links) {
       expect(link).toHaveAttribute("href", h5Url);

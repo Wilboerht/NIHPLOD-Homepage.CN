@@ -403,6 +403,15 @@ export function ProductDetailContent({ product, faqs }: ProductDetailContentProp
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`在${link.platform}购买`}
+        onClick={() =>
+          trackEvent("purchase_click", {
+            productId: product.id,
+            productName: product.name,
+            platform: link.platform,
+            platformKey: link.platformKey ?? null,
+            url: link.url,
+          })
+        }
         className="-m-2 inline-flex min-h-[44px] items-center justify-center gap-2 p-2 text-sm text-brand-charcoal transition-opacity hover:opacity-60"
       >
         <PlatformIcon platform={link.platform} platformKey={link.platformKey} />

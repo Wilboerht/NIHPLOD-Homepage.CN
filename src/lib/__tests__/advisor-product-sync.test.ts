@@ -35,6 +35,7 @@ function productRow(overrides: Record<string, unknown> = {}) {
     price: 2800,
     capacity: "50ml",
     description: "<p>主站描述</p>",
+    ingredients: "<ul><li>玻尿酸</li></ul>",
     usage: "<p>每晚使用</p>",
     origin: "法国",
     benefits: ["保湿", "修护"],
@@ -83,15 +84,16 @@ beforeEach(() => {
 });
 
 describe("buildAdvisorProductSnapshot", () => {
-  it("构建共享字段快照：绝对图片、纯文本、纯数字价格、过滤不支持平台", async () => {
+  it("构建共享字段快照：绝对图片、消毒富文本、纯数字价格、过滤不支持平台", async () => {
     const snapshot = await buildAdvisorProductSnapshot();
     expect(snapshot.schemaVersion).toBe(1);
     expect(snapshot.products).toHaveLength(1);
     const item = snapshot.products[0];
     expect(item.sourceProductId).toBe("p1");
     expect(item.price).toBe("2800");
-    expect(item.description).toBe("主站描述");
-    expect(item.howToUse).toBe("每晚使用");
+    expect(item.description).toBe("<p>主站描述</p>");
+    expect(item.ingredients).toBe("<ul><li>玻尿酸</li></ul>");
+    expect(item.howToUse).toBe("<p>每晚使用</p>");
     expect(item.images).toEqual([
       "https://nihplod.cn/uploads/products/a.webp",
       "https://nihplod.cn/uploads/products/b.webp",

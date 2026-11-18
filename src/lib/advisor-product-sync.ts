@@ -12,7 +12,7 @@ import { randomUUID } from "crypto";
 import prisma from "@/lib/prisma";
 import { advisorRequest } from "@/lib/advisor-internal";
 import { apiConsole } from "@/lib/logger";
-import { htmlToPlainText } from "@/lib/html-sanitize";
+import { htmlToPlainText, sanitizeHtml } from "@/lib/html-sanitize";
 import {
   getPurchasePlatformLabel,
   isPurchasePlatformKey,
@@ -25,6 +25,7 @@ const SYNC_TIMEOUT_MS = 15_000;
 const MAX_IMAGES = 5;
 const MAX_IMAGE_URL_LENGTH = 500;
 const MAX_DESCRIPTION_LENGTH = 5000;
+const MAX_INGREDIENTS_LENGTH = 5000;
 const MAX_HOW_TO_USE_LENGTH = 2000;
 const MAX_BATCH_BYTES = 900 * 1024;
 const MAX_BATCH_PRODUCTS = 200;
@@ -43,6 +44,7 @@ export interface AdvisorProductSnapshotItem {
   category: string;
   price: string;
   description: string;
+  ingredients: string | null;
   published: boolean;
   updatedAt: string;
   capacity: string | null;
@@ -99,6 +101,16 @@ function sleep(ms: number): Promise<void> {
 
 function publicBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL || "https://nihplod.cn").replace(/\/+$/, "");
+}
+
+/**
+ * 同步给子站的富文本：先消毒；超长时退化为纯文本截断，避免截断标签。
+ */
+function toSafeRichText(html: string | null | undefined, maxLength: number): string {
+  const sanitized = sanitizeHtml(html).trim();
+  if (!sanitized) return "";
+  if (sanitized.length <= maxLength) return sanitized;
+  return htmlToPlainText(sanitized).slice(0, maxLength).trim();
 }
 
 function toAbsoluteAssetUrl(raw: string): string | null {
@@ -203,6 +215,7 @@ export async function buildAdvisorProductSnapshot(): Promise<AdvisorProductSnaps
       price: true,
       capacity: true,
       description: true,
+      ingredients: true,
       usage: true,
       origin: true,
       benefits: true,
@@ -241,11 +254,12 @@ export async function buildAdvisorProductSnapshot(): Promise<AdvisorProductSnaps
       name: product.name,
       category: product.category.name,
       price: Number.isFinite(priceNumber) ? String(priceNumber) : "0",
-      description: htmlToPlainText(product.description).slice(0, MAX_DESCRIPTION_LENGTH),
+      description: toSafeRichText(product.description, MAX_DESCRIPTION_LENGTH),
+      ingredients: toSafeRichText(product.ingredients, MAX_INGREDIENTS_LENGTH) || null,
       published: product.published && product.category.visible,
       updatedAt: product.updatedAt.toISOString(),
       capacity: product.capacity?.trim() || null,
-      howToUse: htmlToPlainText(product.usage).slice(0, MAX_HOW_TO_USE_LENGTH).trim() || null,
+      howToUse: toSafeRichText(product.usage, MAX_HOW_TO_USE_LENGTH) || null,
       origin: product.origin?.trim() || null,
       benefits: Array.isArray(product.benefits) ? product.benefits : [],
       images: imageResult.images,

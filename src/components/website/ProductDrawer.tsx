@@ -7,7 +7,7 @@ import { sanitizeHtml } from "@/lib/html-sanitize";
 import Image from "next/image";
 import { m, AnimatePresence } from "framer-motion";
 import { Link } from "next-view-transitions";
-import { ChevronLeft, ChevronRight, ShoppingBag, Store } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { XiaohongshuLink } from "@/components/website";
 import { getPlatformIcon } from "./PlatformIcons";
@@ -102,7 +102,7 @@ export function PlatformIcon({
     return <>{getPlatformIcon("douyin")}</>;
   }
   if (platformKey === "wechat-shop" || p.includes("微信小店") || p.includes("微信小铺")) {
-    return <Store className="h-4 w-4" />;
+    return <>{getPlatformIcon("wechat-shop")}</>;
   }
   return <ShoppingBag className="h-4 w-4" />;
 }
@@ -529,13 +529,13 @@ export function ProductDrawer({
                                     href={link.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    aria-label={`在${link.platform}购买`}
                                     className="flex items-center gap-2 text-[14px] text-brand-charcoal transition-opacity hover:opacity-60"
                                   >
                                     <PlatformIcon
                                       platform={link.platform}
                                       platformKey={link.platformKey}
                                     />
-                                    <span>{link.platform}</span>
                                   </a>
                                 ))
                               ) : (
@@ -721,13 +721,13 @@ export function ProductDrawer({
                               href={link.url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              aria-label={`在${link.platform}购买`}
                               className="flex items-center gap-1.5 rounded-full bg-[#FFFFFF] px-3 py-1.5 text-[12px] text-brand-charcoal"
                             >
                               <PlatformIcon
                                 platform={link.platform}
                                 platformKey={link.platformKey}
                               />
-                              <span>{link.platform}</span>
                             </a>
                           ))}
                       </div>
