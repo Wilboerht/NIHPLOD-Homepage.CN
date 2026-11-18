@@ -154,7 +154,14 @@ export function TechnologyContent() {
                   aria-label="专利保护"
                 >
                   <p className="text-[14px] font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80">
-                    NexStar 的脂质体技术已获多项国际专利保护。
+                    NexStar 的脂质体技术已获多项国际专利保护，并应用于 NIHPLOD{" "}
+                    <Link
+                      href="/products"
+                      className="text-brand-primary underline decoration-brand-primary/40 underline-offset-2 transition-colors hover:decoration-brand-primary"
+                    >
+                      产品系列
+                    </Link>
+                    。
                   </p>
                   <ul className="mt-2.5 grid gap-2 sm:mt-3 sm:grid-cols-3 sm:gap-6">
                     {patents.map((patent) => (
@@ -169,7 +176,14 @@ export function TechnologyContent() {
                     ))}
                   </ul>
                   <p className="mt-3 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50">
-                    可在世界知识产权组织专利检索系统中查询。
+                    可在世界知识产权组织专利检索系统中查询，或查看{" "}
+                    <Link
+                      href="/faq"
+                      className="text-brand-primary underline decoration-brand-primary/40 underline-offset-2 transition-colors hover:decoration-brand-primary"
+                    >
+                      常见问题
+                    </Link>
+                    。
                   </p>
                 </section>
               </article>

@@ -130,6 +130,39 @@ function safeDecodePathname(pathname: string): string {
   }
 }
 
+const CANONICAL_HOSTNAME = "nihplod.cn";
+const CANONICAL_HOSTNAMES = new Set([CANONICAL_HOSTNAME, `www.${CANONICAL_HOSTNAME}`]);
+
+/**
+ * 统一生产域名：http → https，www → 非 www。
+ * 仅处理 nihplod.cn / www.nihplod.cn，避免影响 localhost、预览域名与 IP 访问。
+ * GET/HEAD 返回 301，其他方法返回 308 以保留请求方法。
+ */
+function getCanonicalHostRedirect(request: NextRequest): NextResponse | null {
+  const rawHost =
+    request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.host;
+  const hostname = rawHost.split(",")[0].trim().toLowerCase().split(":")[0];
+  if (!CANONICAL_HOSTNAMES.has(hostname)) return null;
+
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const protocol =
+    forwardedProto?.split(",")[0].trim().toLowerCase() || request.nextUrl.protocol.replace(":", "");
+  const isWww = hostname === `www.${CANONICAL_HOSTNAME}`;
+  const isHttp = protocol === "http";
+
+  if (!isWww && !isHttp) return null;
+
+  const destination = new URL(request.url);
+  destination.protocol = "https:";
+  destination.hostname = CANONICAL_HOSTNAME;
+  destination.port = "";
+
+  const status = request.method === "GET" || request.method === "HEAD" ? 301 : 308;
+  const response = NextResponse.redirect(destination, status);
+  response.headers.set("Cache-Control", "public, max-age=86400");
+  return response;
+}
+
 function generateNonce(): string {
   const bytes = new Uint8Array(16);
   globalThis.crypto.getRandomValues(bytes);
@@ -264,6 +297,9 @@ function applyCspNonce(request: NextRequest, response: NextResponse): NextRespon
 }
 
 export async function proxy(request: NextRequest) {
+  const canonicalRedirect = getCanonicalHostRedirect(request);
+  if (canonicalRedirect) return canonicalRedirect;
+
   const { pathname } = request.nextUrl;
   const method = request.method;
 

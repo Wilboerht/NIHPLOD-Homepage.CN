@@ -32,6 +32,35 @@ async function createAdminToken(role = "hr") {
 }
 
 describe("proxy", () => {
+  it("http 访问主域时 301 到 https 并保留路径与 query", async () => {
+    const res = await proxy(new NextRequest("http://nihplod.cn/technology?utm_source=x"));
+
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("https://nihplod.cn/technology?utm_source=x");
+    expect(res.headers.get("cache-control")).toContain("max-age=86400");
+  });
+
+  it("www 访问时 301 到非 www", async () => {
+    const res = await proxy(new NextRequest("https://www.nihplod.cn/technology?utm_source=x"));
+
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("https://nihplod.cn/technology?utm_source=x");
+  });
+
+  it("http + www 一次跳转到 https 非 www", async () => {
+    const res = await proxy(new NextRequest("http://www.nihplod.cn/technology"));
+
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("https://nihplod.cn/technology");
+  });
+
+  it("非生产域名（localhost）不做域名跳转", async () => {
+    const res = await proxy(new NextRequest("http://localhost:3000/technology"));
+
+    expect(res.status).not.toBe(301);
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+  });
+
   it("未登录 GET /admin/** 保留 307 重定向到 /admin-login，并附加 CSP", async () => {
     const res = await proxy(new NextRequest("https://nihplod.cn/admin/users"));
 

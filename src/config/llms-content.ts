@@ -35,6 +35,23 @@ export const LLMS_BRAND_SECTION = `## 品牌理念与核心技术
 - **关于品牌**: 品牌注册及生产地位于法国，诞生于 2008 年的摩纳哥，由 TWK 朵科资本与 Dr. Stefan Rokem 博士联合成立，致力于为高净值人士打造舒适且高效的精简护肤体验。
 - **脂质体技术 (Liposome)**: 一种先进的活性成分封装/包囊技术，通过保护及加载产品中的有效及活性成分，使产品能靶向性的在皮肤表皮及真皮层进行有效释放。`;
 
+export function buildLlmsTechnologySection(siteUrl: string): string {
+  return `## 真脂质体技术 (Dolphin-Skin)
+- 技术页: ${siteUrl}/technology
+- **定义**: 脂质体（Liposome）是由磷脂双分子层构成的微型囊泡，可包裹并保护活性成分，使其更稳定地到达皮肤表皮与真皮层并释放。
+- **技术来源**: NIHPLOD 旎柏与 NexStar 联合实验室合作，将医药级脂质体技术应用于护肤。
+- **技术特性**:
+  - 渗透性：透过角质层与毛细血管间隙，更有效渗透肌肤内部。
+  - 稳定分散：纳米乳液结构稳定，避免有效成分聚集与相互作用。
+  - 控释效应：控制活性成分释放速率，延长作用时间，提升利用率。
+- **护肤效果**: 90% 高效吸收；3 天有效修护；28 天深层改善。
+- **专利**:
+  - EP0272091 含有两亲子体相关活性成分的给药工具 — https://patentscope.wipo.int/search/zh/result.jsf?query=EP0272091
+  - AU1991091780 制备含脂质体的药物的加载技术 — https://patentscope.wipo.int/search/zh/result.jsf?query=AU1991091780
+  - US5817334 干燥时稳定性提高的脂质体的制造方法 — https://patentscope.wipo.int/search/zh/result.jsf?query=US5817334
+- **来源**: 专利信息可在世界知识产权组织（WIPO）PATENTSCOPE 检索。`;
+}
+
 export const LLMS_RITUALS_SECTION = `### 1. 优雅日常 (Daily Ritual)
 每日专属的精简守护，包含晨间焕活与晚间呵护。
 - **晨间方案**: 净肤 (30秒) -> 焕活 (1-2分钟)。核心成分：洁面慕斯、面霜。

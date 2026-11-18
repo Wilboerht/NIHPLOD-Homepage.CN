@@ -60,6 +60,21 @@ describe("buildLlmsFullDoc", () => {
     expect(doc).toContain(sections.faqSection);
   });
 
+  it("包含脂质体技术章节、功效数据、专利号与 WIPO 链接", () => {
+    expect(doc).toContain("## 真脂质体技术 (Dolphin-Skin)");
+    expect(doc).toContain("https://nihplod.cn/technology");
+    expect(doc).toContain("渗透性");
+    expect(doc).toContain("稳定分散");
+    expect(doc).toContain("控释效应");
+    expect(doc).toContain("90%");
+    expect(doc).toContain("3 天");
+    expect(doc).toContain("28 天");
+    expect(doc).toContain("EP0272091");
+    expect(doc).toContain("AU1991091780");
+    expect(doc).toContain("US5817334");
+    expect(doc).toContain("https://patentscope.wipo.int/search/zh/result.jsf?query=EP0272091");
+  });
+
   it("后台 FAQ 优先，缺失时使用规则兜底", () => {
     expect(doc).toContain("### Q: 面霜怎么用？");
     expect(doc).toContain("### 净透温和洁面慕斯 (Foam Cleanser)");
@@ -84,10 +99,11 @@ describe("buildLlmsSummary", () => {
     expect(summary).not.toContain("/ai-consultation");
   });
 
-  it("核心内容包含产品/关于/指南入口与 llms-full 链接", () => {
+  it("核心内容包含产品/关于/指南/技术入口与 llms-full 链接", () => {
     expect(summary).toContain("https://nihplod.cn/products");
     expect(summary).toContain("https://nihplod.cn/about");
     expect(summary).toContain("https://nihplod.cn/guide");
+    expect(summary).toContain("https://nihplod.cn/technology");
     expect(summary).toContain("https://nihplod.cn/llms-full.txt");
   });
 
