@@ -79,16 +79,16 @@ export function TechnologyContent() {
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex min-h-full flex-col">
             <main className="w-full flex-1 px-6 pb-5 pt-5 sm:px-[8%] sm:pt-6">
-              <article className="mx-auto max-w-4xl font-sans">
-                <header className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_112px] sm:items-center">
+              <article className="mx-auto w-full font-sans">
+                <header className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_144px] sm:items-center">
                   <div>
                     <h1
                       tabIndex={-1}
-                      className="text-[20px] font-normal tracking-[0.05em] text-brand-charcoal focus:outline-none sm:text-[22px] lg:text-[24px]"
+                      className="text-[19px] font-normal tracking-[0.15em] text-brand-charcoal focus:outline-none sm:text-3xl sm:font-light sm:tracking-[0.08em]"
                     >
                       真脂质体技术
                     </h1>
-                    <p className="mt-2.5 max-w-2xl text-[14px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/70">
+                    <p className="mt-2.5 max-w-3xl text-[14px] font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80">
                       NIHPLOD 旎柏携手 NexStar
                       联合实验室，将医药级脂质体技术引入护肤，以「靶向直达」+「精简护肤」的前沿理念，科学逆转时光。
                     </p>
@@ -98,7 +98,7 @@ export function TechnologyContent() {
                       src="/images/technology/liposome-macro.webp"
                       alt="脂质体包裹技术的微观结构"
                       fill
-                      sizes="112px"
+                      sizes="144px"
                       className="object-cover"
                       priority
                     />
@@ -113,12 +113,12 @@ export function TechnologyContent() {
                     {features.map((feature) => (
                       <li
                         key={feature.title}
-                        className="grid grid-cols-[64px_1fr] items-baseline gap-3 sm:block"
+                        className="grid grid-cols-[80px_1fr] items-baseline gap-3 sm:block"
                       >
-                        <p className="text-[13px] font-normal tracking-[0.04em] text-brand-charcoal">
+                        <p className="text-[15px] font-normal tracking-[0.12em] text-brand-charcoal">
                           {feature.title}
                         </p>
-                        <p className="text-[13px] font-light leading-[1.7] tracking-[0.02em] text-brand-charcoal/70 sm:mt-1.5">
+                        <p className="text-[14px] font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80 sm:mt-2">
                           {feature.text}
                         </p>
                       </li>
@@ -133,15 +133,15 @@ export function TechnologyContent() {
                   <div className="grid grid-cols-3 gap-3 sm:gap-6">
                     {stats.map((item) => (
                       <div key={item.label}>
-                        <p className="flex flex-wrap items-baseline gap-x-2">
-                          <span className="font-num text-[22px] font-medium tracking-[0.02em] text-brand-charcoal lg:text-[24px]">
+                        <p className="flex flex-wrap items-baseline gap-x-2.5">
+                          <span className="font-num text-2xl font-light tracking-[0.02em] text-brand-charcoal sm:text-[28px]">
                             {item.value}
                           </span>
-                          <span className="text-[12px] font-normal tracking-[0.04em] text-brand-charcoal/80">
+                          <span className="text-[14px] font-normal tracking-[0.12em] text-brand-charcoal/80">
                             {item.label}
                           </span>
                         </p>
-                        <p className="mt-1.5 text-[11px] font-light leading-[1.6] tracking-[0.02em] text-brand-charcoal/70 sm:text-[12px]">
+                        <p className="mt-2 text-[14px] font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80">
                           {item.text}
                         </p>
                       </div>
@@ -153,7 +153,7 @@ export function TechnologyContent() {
                   className="mt-4 border-t border-brand-charcoal/10 pt-4 sm:mt-5"
                   aria-label="专利保护"
                 >
-                  <p className="text-[13px] font-light leading-[1.7] tracking-[0.02em] text-brand-charcoal/85">
+                  <p className="text-[14px] font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80">
                     NexStar 的脂质体技术已获多项国际专利保护。
                   </p>
                   <ul className="mt-2.5 grid gap-2 sm:mt-3 sm:grid-cols-3 sm:gap-6">
@@ -162,13 +162,13 @@ export function TechnologyContent() {
                         <span className="shrink-0 font-num text-[11px] tracking-[0.04em] text-brand-primary/70">
                           {patent.id}
                         </span>
-                        <span className="text-[12px] font-light leading-[1.6] tracking-[0.02em] text-brand-charcoal/75">
+                        <span className="text-[14px] font-light leading-[1.8] tracking-[0.08em] text-brand-charcoal/80">
                           {patent.title}
                         </span>
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-3 text-[11px] font-light tracking-[0.04em] text-brand-charcoal/50">
+                  <p className="mt-3 text-[12px] font-light tracking-[0.06em] text-brand-charcoal/50">
                     可在世界知识产权组织专利检索系统中查询。
                   </p>
                 </section>
