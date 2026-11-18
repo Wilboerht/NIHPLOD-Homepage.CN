@@ -61,6 +61,34 @@ describe("proxy", () => {
     expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("Cloudflare HTTPS 访客即使 x-forwarded-proto 为 http 也不跳转", async () => {
+    const res = await proxy(
+      new NextRequest("https://nihplod.cn/technology", {
+        headers: {
+          "x-forwarded-proto": "http",
+          "cf-visitor": '{"scheme":"https"}',
+        },
+      })
+    );
+
+    expect(res.status).not.toBe(301);
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("Cloudflare HTTP 访客即使 x-forwarded-proto 为 https 也 301 到 https", async () => {
+    const res = await proxy(
+      new NextRequest("http://nihplod.cn/technology", {
+        headers: {
+          "x-forwarded-proto": "https",
+          "cf-visitor": '{"scheme":"http"}',
+        },
+      })
+    );
+
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("https://nihplod.cn/technology");
+  });
+
   it("未登录 GET /admin/** 保留 307 重定向到 /admin-login，并附加 CSP", async () => {
     const res = await proxy(new NextRequest("https://nihplod.cn/admin/users"));
 

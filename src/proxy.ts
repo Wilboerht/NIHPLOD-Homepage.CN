@@ -134,6 +134,30 @@ const CANONICAL_HOSTNAME = "nihplod.cn";
 const CANONICAL_HOSTNAMES = new Set([CANONICAL_HOSTNAME, `www.${CANONICAL_HOSTNAME}`]);
 
 /**
+ * 获取访客真实协议。
+ * Cloudflare 隧道场景下，x-forwarded-proto 可能是 Cloudflare → 源站的 http，
+ * 不能代表访客协议；cf-visitor 才记录访客实际使用的 http/https。
+ */
+function getVisitorProtocol(request: NextRequest): string {
+  const cfVisitor = request.headers.get("cf-visitor");
+  if (cfVisitor) {
+    try {
+      const scheme = JSON.parse(cfVisitor)?.scheme;
+      if (scheme === "http" || scheme === "https") return scheme;
+    } catch {
+      // 忽略非法 JSON，继续使用其他信号
+    }
+  }
+
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (forwardedProto) {
+    return forwardedProto.split(",")[0].trim().toLowerCase();
+  }
+
+  return request.nextUrl.protocol.replace(":", "");
+}
+
+/**
  * 统一生产域名：http → https，www → 非 www。
  * 仅处理 nihplod.cn / www.nihplod.cn，避免影响 localhost、预览域名与 IP 访问。
  * GET/HEAD 返回 301，其他方法返回 308 以保留请求方法。
@@ -144,11 +168,8 @@ function getCanonicalHostRedirect(request: NextRequest): NextResponse | null {
   const hostname = rawHost.split(",")[0].trim().toLowerCase().split(":")[0];
   if (!CANONICAL_HOSTNAMES.has(hostname)) return null;
 
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  const protocol =
-    forwardedProto?.split(",")[0].trim().toLowerCase() || request.nextUrl.protocol.replace(":", "");
   const isWww = hostname === `www.${CANONICAL_HOSTNAME}`;
-  const isHttp = protocol === "http";
+  const isHttp = getVisitorProtocol(request) === "http";
 
   if (!isWww && !isHttp) return null;
 
