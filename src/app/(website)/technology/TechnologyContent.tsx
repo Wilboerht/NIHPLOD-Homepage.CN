@@ -6,25 +6,18 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
 
-const sourceFacts = [
-  { term: "1990 年", text: "NexStar 成立" },
-  { term: "40 余年", text: "深耕脂质体技术" },
-  { term: "世界五百强", text: "吉利德科学旗下" },
-  { term: "业内首批", text: "应用于护肤领域" },
-];
-
 const features = [
   {
     title: "渗透性",
-    text: "可以透过皮肤角质层和毛细血管间隙，更有效地渗透到肌肤内部。",
+    text: "透过角质层与毛细血管间隙，更有效渗透肌肤内部。",
   },
   {
     title: "稳定分散",
-    text: "纳米乳液拥有稳定的结构，避免有效成分颗粒间的聚集及相互作用。",
+    text: "纳米乳液结构稳定，避免有效成分聚集与相互作用。",
   },
   {
     title: "控释效应",
-    text: "特殊的颗粒结构能够控制活性成分的释放速率，延长有效成分在皮肤上的作用时间，提高溶解度与利用率。",
+    text: "控制活性成分释放速率，延长作用时间，提升利用率。",
   },
 ];
 
@@ -32,17 +25,17 @@ const stats = [
   {
     value: "90%",
     label: "高效吸收",
-    text: "脂质体包裹技术，大幅提高臻奢抗老因子的吸收利用率。",
+    text: "提升抗老因子吸收利用率。",
   },
   {
     value: "3天",
     label: "有效修护",
-    text: "纳米超微焕活粒子深入肌肤，即时改善干燥与泛红，修护受损屏障。",
+    text: "即时改善干燥泛红，修护屏障。",
   },
   {
     value: "28天",
     label: "深层改善",
-    text: "延缓肌肤松弛、淡化细纹，提亮暗沉肤色，重拾肌肤健康状态。",
+    text: "延缓松弛、淡化细纹、提亮肤色。",
   },
 ];
 
@@ -51,19 +44,6 @@ const patents = [
   { id: "AU1991091780", title: "制备含脂质体的药物的加载技术" },
   { id: "US5817334", title: "干燥时稳定性提高的脂质体的制造方法" },
 ];
-
-function SectionHeading({ index, title }: { index: string; title: string }) {
-  return (
-    <div className="flex items-baseline gap-3">
-      <span className="font-num text-[12px] font-light tracking-[0.08em] text-brand-charcoal/40">
-        {index}
-      </span>
-      <h2 className="text-[16px] font-normal tracking-[0.04em] text-brand-charcoal lg:text-[18px]">
-        {title}
-      </h2>
-    </div>
-  );
-}
 
 export function TechnologyContent() {
   const { isDrawerOpen } = useLayout();
@@ -97,145 +77,110 @@ export function TechnologyContent() {
 
         {/* 滚动内容区 */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <main className="w-full px-6 pb-10 pt-8 sm:px-[8%] md:pt-12">
-            <article className="mx-auto max-w-4xl font-sans">
-              <header className="grid gap-7 md:grid-cols-[minmax(0,1fr)_280px] md:items-center md:gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <div>
-                  <h1
-                    tabIndex={-1}
-                    className="text-[20px] font-normal tracking-[0.05em] text-brand-charcoal focus:outline-none sm:text-[22px] lg:text-[28px]"
-                  >
-                    真脂质体技术
-                  </h1>
-                  <p className="mt-3 max-w-2xl text-[14px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/70">
-                    NIHPLOD 旎柏携手 NexStar
-                    联合实验室，将医药级脂质体技术引入护肤，以「靶向直达」+「精简护肤」的前沿理念，科学逆转时光。
-                  </p>
-                </div>
-                <figure className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-brand-charcoal/[0.06] bg-brand-beige/25 md:aspect-square">
-                  <Image
-                    src="/images/technology/liposome-macro.webp"
-                    alt="脂质体包裹技术的微观结构"
-                    fill
-                    sizes="(max-width: 768px) 100vw, 320px"
-                    className="object-cover"
-                    priority
-                  />
-                </figure>
-              </header>
-
-              <section className="mt-10 border-t border-brand-charcoal/10 pt-8 md:mt-12 md:pt-10">
-                <SectionHeading index="01" title="技术来源" />
-                <div className="mt-4 max-w-3xl space-y-3.5 text-[14px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/[0.85]">
-                  <p>
-                    1990 年，NexStar 制药成立，后成为世界五百强吉利德科学公司旗下企业。40
-                    余年来，NexStar 深耕脂质体技术，是最早将其应用于护肤领域的公司之一。
-                  </p>
-                  <p>
-                    NIHPLOD 旎柏与 NexStar
-                    联合实验室合作，将「脂质体技术」与「纳米乳液技术」相结合，实现「靶向直达」+「精简护肤」，让活性成分的递送更精准、更稳定。
-                  </p>
-                </div>
-                <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-brand-charcoal/[0.06] pt-5 sm:grid-cols-4">
-                  {sourceFacts.map((fact) => (
-                    <div key={fact.term}>
-                      <dt className="font-num text-[15px] font-normal tracking-[0.02em] text-brand-charcoal">
-                        {fact.term}
-                      </dt>
-                      <dd className="mt-1 text-[12px] font-light leading-[1.7] tracking-[0.02em] text-brand-charcoal/65">
-                        {fact.text}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
-
-              <section className="mt-10 border-t border-brand-charcoal/10 pt-8 md:mt-12 md:pt-10">
-                <SectionHeading index="02" title="脂质体技术" />
-                <p className="mt-4 max-w-3xl text-[14px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/[0.85]">
-                  旎柏与 NexStar
-                  合作，引入先进的脂质体技术，将重要活性成分包封于类脂质双分子层内，以微型囊泡的形式进入皮肤。脂质体的结构近乎人体皮肤脂质构造，与表皮层细胞间质高度相融，从而对肌肤进行靶向修护，达到更高效、更理想的护肤效果。
-                </p>
-                <ul className="mt-6 grid gap-5 sm:grid-cols-3 sm:gap-6">
-                  {features.map((feature) => (
-                    <li key={feature.title} className="border-t border-brand-charcoal/15 pt-3">
-                      <p className="text-[13px] font-normal tracking-[0.04em] text-brand-charcoal">
-                        {feature.title}
-                      </p>
-                      <p className="mt-1.5 text-[13px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/70">
-                        {feature.text}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="mt-10 border-t border-brand-charcoal/10 pt-8 md:mt-12 md:pt-10">
-                <SectionHeading index="03" title="精简护肤" />
-                <div className="mt-6 grid gap-6 sm:grid-cols-3 sm:gap-8">
-                  {stats.map((item) => (
-                    <div key={item.label}>
-                      <p className="flex items-baseline gap-2">
-                        <span className="font-num text-[26px] font-medium tracking-[0.02em] text-brand-charcoal lg:text-[28px]">
-                          {item.value}
-                        </span>
-                        <span className="text-[13px] font-normal tracking-[0.04em] text-brand-charcoal/80">
-                          {item.label}
-                        </span>
-                      </p>
-                      <p className="mt-2 text-[13px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/70">
-                        {item.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="mt-10 border-t border-brand-charcoal/10 pt-8 md:mt-12 md:pt-10">
-                <SectionHeading index="04" title="脂质体专利" />
-                <p className="mt-4 max-w-3xl text-[14px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/[0.85]">
-                  NexStar 的脂质体相关技术已获得多项国际专利保护。
-                </p>
-                <ul className="mt-5 divide-y divide-brand-charcoal/[0.06] border-y border-brand-charcoal/[0.06]">
-                  {patents.map((patent) => (
-                    <li
-                      key={patent.id}
-                      className="flex flex-col gap-1 py-3 sm:flex-row sm:items-baseline sm:gap-4"
+          <div className="flex min-h-full flex-col">
+            <main className="w-full flex-1 px-6 pb-5 pt-5 sm:px-[8%] sm:pt-6">
+              <article className="mx-auto max-w-4xl font-sans">
+                <header className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_112px] sm:items-center">
+                  <div>
+                    <h1
+                      tabIndex={-1}
+                      className="text-[20px] font-normal tracking-[0.05em] text-brand-charcoal focus:outline-none sm:text-[22px] lg:text-[24px]"
                     >
-                      <span className="shrink-0 font-num text-[12px] tracking-[0.04em] text-brand-primary/70 sm:w-[132px]">
-                        {patent.id}
-                      </span>
-                      <span className="text-[13px] font-light leading-[1.7] tracking-[0.02em] text-brand-charcoal/75">
-                        {patent.title}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-4 text-[12px] font-light tracking-[0.04em] text-brand-charcoal/50">
-                  专利信息可在世界知识产权组织专利检索系统中查询。
-                </p>
-              </section>
+                      真脂质体技术
+                    </h1>
+                    <p className="mt-2.5 max-w-2xl text-[14px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/70">
+                      NIHPLOD 旎柏携手 NexStar
+                      联合实验室，将医药级脂质体技术引入护肤，以「靶向直达」+「精简护肤」的前沿理念，科学逆转时光。
+                    </p>
+                  </div>
+                  <figure className="relative hidden aspect-square w-full overflow-hidden rounded-2xl border border-brand-charcoal/[0.06] bg-brand-beige/25 sm:block">
+                    <Image
+                      src="/images/technology/liposome-macro.webp"
+                      alt="脂质体包裹技术的微观结构"
+                      fill
+                      sizes="112px"
+                      className="object-cover"
+                      priority
+                    />
+                  </figure>
+                </header>
 
-              <section className="mt-10 border-t border-brand-charcoal/10 pt-8 md:mt-12 md:pt-10">
-                <p className="text-[14px] font-light leading-[1.8] tracking-[0.02em] text-brand-charcoal/[0.85]">
-                  想亲自体验脂质体技术带来的护肤改变？前往{" "}
-                  <Link
-                    href="/products"
-                    className="text-brand-primary underline decoration-brand-primary/40 underline-offset-2 transition-colors hover:decoration-brand-primary"
-                  >
-                    产品系列
-                  </Link>
-                  ，探索搭载真脂质体技术的 NIHPLOD 产品。
-                </p>
-              </section>
-            </article>
-          </main>
+                <section
+                  className="mt-4 border-t border-brand-charcoal/10 pt-4 sm:mt-5"
+                  aria-label="技术特性"
+                >
+                  <ul className="grid gap-2.5 sm:grid-cols-3 sm:gap-6">
+                    {features.map((feature) => (
+                      <li
+                        key={feature.title}
+                        className="grid grid-cols-[64px_1fr] items-baseline gap-3 sm:block"
+                      >
+                        <p className="text-[13px] font-normal tracking-[0.04em] text-brand-charcoal">
+                          {feature.title}
+                        </p>
+                        <p className="text-[13px] font-light leading-[1.7] tracking-[0.02em] text-brand-charcoal/70 sm:mt-1.5">
+                          {feature.text}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
 
-          <footer className="w-full px-6 pb-6 pt-5 text-center sm:px-[8%]">
-            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.55] md:tracking-[0.15em]">
-              &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
-            </span>
-          </footer>
+                <section
+                  className="mt-4 border-t border-brand-charcoal/10 pt-4 sm:mt-5"
+                  aria-label="护肤效果"
+                >
+                  <div className="grid grid-cols-3 gap-3 sm:gap-6">
+                    {stats.map((item) => (
+                      <div key={item.label}>
+                        <p className="flex flex-wrap items-baseline gap-x-2">
+                          <span className="font-num text-[22px] font-medium tracking-[0.02em] text-brand-charcoal lg:text-[24px]">
+                            {item.value}
+                          </span>
+                          <span className="text-[12px] font-normal tracking-[0.04em] text-brand-charcoal/80">
+                            {item.label}
+                          </span>
+                        </p>
+                        <p className="mt-1.5 text-[11px] font-light leading-[1.6] tracking-[0.02em] text-brand-charcoal/70 sm:text-[12px]">
+                          {item.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section
+                  className="mt-4 border-t border-brand-charcoal/10 pt-4 sm:mt-5"
+                  aria-label="专利保护"
+                >
+                  <p className="text-[13px] font-light leading-[1.7] tracking-[0.02em] text-brand-charcoal/85">
+                    NexStar 的脂质体技术已获多项国际专利保护。
+                  </p>
+                  <ul className="mt-2.5 grid gap-2 sm:mt-3 sm:grid-cols-3 sm:gap-6">
+                    {patents.map((patent) => (
+                      <li key={patent.id} className="flex items-baseline gap-2.5">
+                        <span className="shrink-0 font-num text-[11px] tracking-[0.04em] text-brand-primary/70">
+                          {patent.id}
+                        </span>
+                        <span className="text-[12px] font-light leading-[1.6] tracking-[0.02em] text-brand-charcoal/75">
+                          {patent.title}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-[11px] font-light tracking-[0.04em] text-brand-charcoal/50">
+                    可在世界知识产权组织专利检索系统中查询。
+                  </p>
+                </section>
+              </article>
+            </main>
+
+            <footer className="w-full px-6 pb-2 pt-1.5 text-center sm:px-[8%] sm:pb-3 sm:pt-2">
+              <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.55] md:tracking-[0.15em]">
+                &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
+              </span>
+            </footer>
+          </div>
         </div>
       </div>
     </DrawerPageContainer>
