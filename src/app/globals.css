@@ -842,7 +842,6 @@
 .home-container .footer-links a,
 .home-container .footer-copyright,
 .home-container .footer-beian a,
-.home-container .footer-beian button,
 .home-container .footer-beian span {
   font-weight: 300;
   font-size: 11px;
@@ -852,8 +851,7 @@
 }
 
 .home-container .footer-links a:hover,
-.home-container .footer-beian a:hover,
-.home-container .footer-beian button:hover {
+.home-container .footer-beian a:hover {
   color: var(--home-text-primary);
 }
 
@@ -918,7 +916,6 @@
   /* 版权与备案信息大小深浅对齐：两行统一减浅减细，消除拉丁/中文及行间视觉重量差 */
   .home-container .footer-copyright,
   .home-container .footer-beian a,
-  .home-container .footer-beian button,
   .home-container .footer-beian span,
   .home-container .footer-latin {
     font-weight: 200;

@@ -22,7 +22,20 @@ export function PrivacyContent({ content }: PrivacyContentProps) {
 
       <div className="policy-print-main flex-1 px-6 md:px-10">
         <div className="mx-auto flex w-full max-w-3xl flex-col">
-          <PrivacyArticle content={content} />
+          <PrivacyArticle
+            content={content}
+            afterHeader={
+              <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-brand-charcoal/10 bg-white/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-brand-charcoal">管理 Cookie 偏好</p>
+                  <p className="mt-1 text-xs leading-5 text-brand-charcoal/60">
+                    您可以随时选择仅使用必要 Cookie，或允许分析 Cookie。
+                  </p>
+                </div>
+                <CookieSettingsButton className="shrink-0 self-start rounded-full border border-brand-charcoal/25 px-4 py-2 text-xs tracking-[0.08em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/[0.04] sm:self-auto" />
+              </div>
+            }
+          />
         </div>
       </div>
 
