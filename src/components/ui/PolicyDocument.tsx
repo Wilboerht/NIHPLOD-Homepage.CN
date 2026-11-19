@@ -25,7 +25,7 @@ export function PolicyDocument({ content, afterFirstSection }: PolicyDocumentPro
       <div className="mt-10 space-y-10 md:mt-12 md:space-y-12">
         {content.sections.map((section, index) => (
           <section key={section.id} id={section.id} className="scroll-mt-[100px] md:scroll-mt-32">
-            <h2 className="mb-4 font-sans text-[19px] font-light tracking-[0.04em] text-brand-charcoal md:mb-5 md:text-2xl md:tracking-[0.03em]">
+            <h2 className="mb-4 font-sans text-[16px] font-normal leading-[1.5] tracking-[0.06em] text-brand-charcoal md:mb-5 md:text-[18px]">
               {section.title}
             </h2>
             <div className="space-y-4">

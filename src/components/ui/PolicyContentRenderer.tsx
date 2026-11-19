@@ -17,7 +17,7 @@ const UNORDERED_ITEM_RE = /^(?:•\s*|-\s+)/;
 const HIGHLIGHT_PREFIX_RE = /^【重要提示】|^重要提示：/;
 
 const linkClassName =
-  "break-all text-brand-charcoal underline decoration-brand-charcoal/30 underline-offset-4 transition-colors hover:decoration-brand-charcoal/70";
+  "break-words text-brand-charcoal underline decoration-brand-charcoal/30 underline-offset-4 transition-colors hover:decoration-brand-charcoal/70";
 
 /** 行内排版：支持 **粗体**、[文字](url) 及裸链接/邮箱自动链接 */
 function renderTextWithLinks(text: string): ReactNode {
@@ -165,7 +165,7 @@ export function ContentParagraph({
       elements.push(
         <div
           key={index}
-          className="rounded-lg border border-line bg-surface-muted p-4 text-[15px] text-brand-charcoal/90"
+          className="rounded-lg border border-line bg-surface-muted p-4 text-[14px] leading-[1.9] tracking-[0.04em] text-brand-charcoal/80 md:text-[15px]"
         >
           <strong className="font-bold text-brand-charcoal">重要提示：</strong>
           <span>{renderTextWithLinks(trimmed.replace(HIGHLIGHT_PREFIX_RE, ""))}</span>
@@ -204,7 +204,7 @@ export function ContentParagraph({
     elements.push(
       <p
         key={index}
-        className="text-[15px] text-brand-charcoal/90 md:text-base md:text-brand-charcoal/90"
+        className="text-[14px] leading-[1.9] tracking-[0.04em] text-brand-charcoal/80 md:text-[15px]"
       >
         {renderTextWithLinks(trimmed)}
       </p>

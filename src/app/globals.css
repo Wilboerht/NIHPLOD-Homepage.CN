@@ -1626,10 +1626,11 @@
   }
 }
 
-/* 法律与政策长文：采用文章式垂直节奏，段落、章节和列表分别控制间距 */
+/* 法律与政策长文：与 technology 页共享字重、字距与行高节奏，保留长文层级 */
 .policy-article-body {
   font-weight: 300;
-  line-height: 1.8;
+  line-height: 1.9;
+  letter-spacing: 0.04em;
   overflow-wrap: break-word;
 }
 
@@ -1645,16 +1646,16 @@
 
 .policy-article-body > .policy-section-heading {
   margin-top: 2rem;
-  font-size: 1.1875rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
 
 .policy-article-body > .policy-subheading {
   margin-top: 1.75rem;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .policy-article-body > :first-child {
@@ -1662,7 +1663,7 @@
 }
 
 .policy-article-body .policy-list {
-  padding-left: 1.5rem;
+  padding-left: 1.25rem;
   list-style-type: decimal;
 }
 
@@ -1671,33 +1672,37 @@
 }
 
 .policy-article-body .policy-list > li {
-  padding-left: 0.125rem;
-  font-size: 0.9375rem;
-  color: rgb(0 38 62 / 90%);
+  padding-left: 0;
+  font-size: 0.875rem;
+  color: rgb(0 38 62 / 80%);
 }
 
 .policy-article-body .policy-list > li + li {
-  margin-top: 0.5rem;
+  margin-top: 0.375rem;
 }
 
 .policy-article-body .policy-list > li::marker {
-  color: rgb(0 38 62 / 65%);
+  color: rgb(0 38 62 / 45%);
+}
+
+.policy-article-body .policy-list--unordered > li::marker {
+  color: rgb(0 38 62 / 25%);
 }
 
 @media (min-width: 768px) {
   .policy-article-body .policy-section-heading {
-    font-size: 1.375rem;
+    font-size: 1rem;
     font-weight: 400;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.05em;
   }
 
   .policy-article-body .policy-subheading {
-    font-size: 1.125rem;
-    font-weight: 400;
+    font-size: 0.9375rem;
+    font-weight: 500;
   }
 
   .policy-article-body .policy-list > li {
-    color: rgb(0 38 62 / 90%);
+    font-size: 0.9375rem;
   }
 }
 
@@ -1729,6 +1734,49 @@
   .policy-article-body > .policy-section-heading,
   .policy-article-body > .policy-subheading,
   .policy-article-body .policy-list > li {
+    color: #000 !important;
+  }
+
+  .policy-page-shell h1 {
+    font-size: 20pt;
+    letter-spacing: 0.04em;
+    color: #000 !important;
+  }
+
+  .policy-page-shell h2 {
+    font-size: 14pt;
+    letter-spacing: 0.02em;
+    color: #000 !important;
+  }
+
+  .policy-article-body,
+  .policy-article-body p,
+  .policy-article-body .policy-list > li {
+    font-size: 12pt !important;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+  }
+
+  .policy-article-body > .policy-section-heading {
+    font-size: 13pt;
+  }
+
+  .policy-article-body > .policy-subheading {
+    font-size: 12pt;
+  }
+
+  .policy-print-main p {
+    font-size: 12pt;
+    line-height: 1.6;
+    color: #000 !important;
+  }
+
+  .policy-print-main main header p {
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+
+  .policy-article-body .policy-list > li::marker {
     color: #000 !important;
   }
 }

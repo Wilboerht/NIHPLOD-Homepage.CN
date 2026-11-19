@@ -18,12 +18,12 @@ export function PolicyDocumentHeader({
   description,
 }: PolicyDocumentHeaderProps) {
   return (
-    <header className="space-y-4 border-b border-brand-beige pb-6">
-      <h1 className="text-[19px] font-light leading-tight tracking-[0.01em] text-brand-charcoal sm:text-4xl">
+    <header className="space-y-4 border-b border-brand-beige pb-8">
+      <h1 className="text-[22px] font-normal leading-[1.3] tracking-[0.08em] text-brand-charcoal sm:text-[26px]">
         {title}
       </h1>
       {description && (
-        <p className="text-[13px] font-light leading-7 text-brand-charcoal/70 sm:text-[15px]">
+        <p className="text-[14px] font-light leading-[1.9] tracking-[0.04em] text-brand-charcoal/70">
           {description}
         </p>
       )}

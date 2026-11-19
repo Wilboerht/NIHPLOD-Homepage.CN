@@ -14,7 +14,7 @@ export function TermsArticle({ content }: TermsArticleProps) {
         content={content}
         afterFirstSection={
           <div className="mt-6 rounded-xl border border-line bg-surface-muted p-4 md:p-5">
-            <p className="text-[14px] leading-relaxed text-brand-charcoal/70">
+            <p className="text-[14px] font-light leading-[1.9] tracking-[0.04em] text-brand-charcoal/70">
               有关我们如何收集、使用和保护您的个人信息的详细说明，请参阅我们的{" "}
               <Link
                 href="/privacy"
