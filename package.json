@@ -134,5 +134,23 @@
     "readdir-glob": {
       "minimatch": "11.0.5"
     }
-  }
+  },
+  "description": "**NIHPLOD** is the official digital platform for the Monaco-based luxury skincare brand founded by David Nahmad and Dr. J. Stefan Rokem. This project represents a convergence of high-end beauty, biotechnology, and advanced artificial intelligence, designed to provide users with a personalized and immersive skincare experience.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wilboerht/NIHPLOD-Homepage.CN.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Wilboerht/NIHPLOD-Homepage.CN/issues"
+  },
+  "homepage": "https://github.com/Wilboerht/NIHPLOD-Homepage.CN#readme"
 }
