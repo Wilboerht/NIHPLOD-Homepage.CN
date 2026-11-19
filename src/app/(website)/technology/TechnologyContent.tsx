@@ -69,7 +69,15 @@ export function TechnologyContent() {
                       脂质体技术
                     </h1>
                     <p className="mt-4 text-[14px] font-light leading-[1.9] tracking-[0.04em] text-brand-charcoal/70">
-                      NIHPLOD 旎柏通过与 NexStar Pharmaceuticals
+                      NIHPLOD 旎柏通过与{" "}
+                      <a
+                        href="https://www.gilead.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-primary underline decoration-brand-primary/40 underline-offset-2 transition-colors hover:decoration-brand-primary"
+                      >
+                        NexStar Pharmaceuticals
+                      </a>{" "}
                       的合作，引入最先进的脂质体技术，将重要的活性成分包封于类脂质双分子层内，以微型囊泡的形式进入皮肤。脂质体的结构近乎人体皮肤脂质构造，与表皮层的细胞间质非常相融，进而对肌肤进行靶向修护或提升，达到更高效、更理想的护肤效果。
                     </p>
                     <ul className="mt-3 list-disc space-y-1.5 pl-4 text-[14px] font-light leading-[1.9] tracking-[0.04em] text-brand-charcoal/70 marker:text-brand-charcoal/25">
