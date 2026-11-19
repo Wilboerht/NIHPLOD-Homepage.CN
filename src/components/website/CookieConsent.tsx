@@ -2,27 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import {
-  COOKIE_SETTINGS_EVENT,
-  readCookieConsent,
-  writeCookieConsent,
-} from "@/lib/cookie-consent";
+import { X } from "lucide-react";
+import { COOKIE_SETTINGS_EVENT, writeCookieConsent } from "@/lib/cookie-consent";
 
 export function CookieConsent() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!readCookieConsent()) setVisible(true);
-    }, 0);
-
     const reopen = () => setVisible(true);
     window.addEventListener(COOKIE_SETTINGS_EVENT, reopen);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener(COOKIE_SETTINGS_EVENT, reopen);
-    };
+    return () => window.removeEventListener(COOKIE_SETTINGS_EVENT, reopen);
   }, []);
 
   const save = (nextAnalytics: boolean) => {
@@ -34,14 +24,14 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <div
-      role="region"
-      aria-label="Cookie 使用提示"
-      className="fixed inset-x-0 top-0 z-[90] border-b border-brand-charcoal/10 bg-[#fefcf8]/95 pt-[env(safe-area-inset-top)] backdrop-blur"
-    >
-      <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-2.5 text-xs text-brand-charcoal/70 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:text-sm">
+    <div className="pointer-events-none fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top))] z-[90] flex justify-center px-4">
+      <div
+        role="region"
+        aria-label="Cookie 使用提示"
+        className="pointer-events-auto flex max-w-full flex-col items-center gap-2 rounded-3xl border border-brand-charcoal/10 bg-[#fefcf8]/95 px-4 py-2.5 text-center text-xs text-brand-charcoal/70 shadow-[0_10px_36px_-16px_rgba(0,38,62,0.35)] backdrop-blur-md sm:flex-row sm:gap-4 sm:rounded-full sm:py-1.5 sm:pl-5 sm:pr-1.5 sm:text-left"
+      >
         <p className="leading-5">
-          我们使用 Cookie 提升浏览体验，必要 Cookie 用于登录与安全。详情见
+          Cookie 用于提升体验与保障安全，详情见
           <a
             href="/privacy"
             target="_blank"
@@ -52,20 +42,28 @@ export function CookieConsent() {
           </a>
           。
         </p>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             onClick={() => save(false)}
-            className="border border-brand-charcoal/25 px-3 py-1.5 text-xs tracking-[0.08em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/[0.04]"
+            className="rounded-full px-3 py-1.5 tracking-[0.06em] text-brand-charcoal/70 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
           >
             仅必要
           </button>
           <button
             type="button"
             onClick={() => save(true)}
-            className="border border-brand-charcoal bg-brand-charcoal px-3 py-1.5 text-xs tracking-[0.08em] text-white transition-opacity hover:opacity-90"
+            className="rounded-full bg-brand-charcoal px-3.5 py-1.5 font-medium tracking-[0.06em] text-white transition-opacity hover:opacity-90"
           >
             接受分析
+          </button>
+          <button
+            type="button"
+            onClick={() => setVisible(false)}
+            aria-label="关闭"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-brand-charcoal/40 transition-colors hover:bg-brand-charcoal/[0.06] hover:text-brand-charcoal"
+          >
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
