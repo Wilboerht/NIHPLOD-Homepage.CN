@@ -20,11 +20,11 @@ describe("legal default content normalization", () => {
     expect(legalDocumentContentSchema.safeParse(defaultLegalDocuments.privacy).success).toBe(true);
   });
 
-  it("服务条款保持 27 章，且每章标题/正文可无损还原", () => {
+  it("服务条款保持 25 章，且每章标题/正文可无损还原", () => {
     const source = defaultTermsContent.tabs.general.content;
     const sections = defaultLegalDocuments.terms.sections;
 
-    expect(sections).toHaveLength(27);
+    expect(sections).toHaveLength(25);
     expect(sections[0].id).toBe("terms-1");
     expect(sections[0].title).toBe("1. 隐私权");
 

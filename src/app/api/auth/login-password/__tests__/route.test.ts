@@ -37,6 +37,14 @@ vi.mock("@/lib/ratelimit", () => ({
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
 }));
 
+vi.mock("@/lib/privacy-consent", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));

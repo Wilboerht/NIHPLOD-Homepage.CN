@@ -33,6 +33,7 @@ import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { recordPasswordHistory } from "@/lib/password-policy";
+import { recordConsent } from "@/lib/privacy-consent";
 import {
   checkNicknameContent,
   NICKNAME_BANNED_MESSAGE,
@@ -48,6 +49,13 @@ const registerSchema = z
     code: z.string().regex(/^\d{6}$/, "验证码为6位数字"),
     password: passwordSchema,
     confirmPassword: z.string(),
+    privacyConsent: z.boolean().refine((value) => value === true, {
+      message: "请先阅读并同意隐私政策",
+    }),
+    termsConsent: z.boolean().refine((value) => value === true, {
+      message: "请先阅读并同意服务条款",
+    }),
+    marketingConsent: z.boolean().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "两次密码不一致",
@@ -96,7 +104,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, phone, code, password } = result.data;
+    const { name, phone, code, password, marketingConsent } = result.data;
 
     // 昵称（注册姓名）内容风控：非法名称在核销验证码前拒绝
     if (name) {
@@ -283,6 +291,36 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // 记录隐私政策/服务条款同意（注册即同意的独立记录，便于审计与撤回）
+    const consentIp = getClientIP(request);
+    const consentUserAgent = request.headers.get("user-agent");
+    await recordConsent({
+      userId: user.id,
+      document: "PRIVACY",
+      channel: "web",
+      ip: consentIp,
+      userAgent: consentUserAgent,
+      evidence: { source: "register" },
+    });
+    await recordConsent({
+      userId: user.id,
+      document: "TERMS",
+      channel: "web",
+      ip: consentIp,
+      userAgent: consentUserAgent,
+      evidence: { source: "register" },
+    });
+    if (marketingConsent === true) {
+      await recordConsent({
+        userId: user.id,
+        document: "MARKETING",
+        channel: "web",
+        ip: consentIp,
+        userAgent: consentUserAgent,
+        evidence: { source: "register" },
+      });
     }
 
     // 记录初始密码历史

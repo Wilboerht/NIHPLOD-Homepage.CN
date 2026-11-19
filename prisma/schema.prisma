@@ -369,6 +369,7 @@ model User {
   oauthCodes    OAuthAuthorizationCode[] @relation("OAuthCodeUser")
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
   oauthConsents UserConsent[]            @relation("UserConsentUser")
+  privacyConsents PrivacyConsent[]
 
   externalIdentities     ExternalIdentity[]
   accountDeletionRequest AccountDeletionRequest?
@@ -628,6 +629,37 @@ model UserConsent {
   @@index([grantedAt(sort: Desc)])
   @@index([clientId, revokedAt, grantedAt])
   @@index([revokedAt])
+}
+
+/**
+ * 隐私政策 / 服务条款 / 营销同意的可审计记录。
+ * 与 OAuth 的 UserConsent 分开：后者只表示第三方应用授权。
+ */
+enum PrivacyConsentDocument {
+  PRIVACY
+  TERMS
+  MARKETING
+}
+
+model PrivacyConsent {
+  id          String                 @id @default(cuid())
+  userId      String
+  document    PrivacyConsentDocument
+  version     String
+  contentHash String?
+  channel     String                 @default("web")
+  grantedAt   DateTime               @default(now())
+  revokedAt   DateTime?
+  ipHash      String?
+  userAgent   String?                @db.Text
+  evidence    Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, document, version, channel])
+  @@index([userId, document])
+  @@index([document, version])
+  @@index([grantedAt(sort: Desc)])
 }
 
 model SsoAuditEvent {

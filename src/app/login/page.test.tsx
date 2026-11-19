@@ -146,7 +146,7 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByPlaceholderText("密码"), { target: { value: "Passw0rd" } });
     fireEvent.submit(document.getElementById("pc-login-form")!);
 
-    expect(await screen.findByText("请先阅读并同意《用户协议》和《隐私政策》")).toBeInTheDocument();
+    expect(await screen.findByText("请先阅读并同意《服务条款》和《隐私政策》")).toBeInTheDocument();
     expect(mockApiPost).not.toHaveBeenCalled();
   });
 

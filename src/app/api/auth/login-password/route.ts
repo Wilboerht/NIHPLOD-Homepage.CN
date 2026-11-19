@@ -31,6 +31,7 @@ import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/li
 import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCaptchaToken } from "@/lib/captcha";
+import { getConsentStatus } from "@/lib/privacy-consent";
 import { z } from "zod";
 
 // 请求参数验证
@@ -247,6 +248,7 @@ export async function POST(request: NextRequest) {
     );
 
     // 12. 构建响应
+    const consentStatus = await getConsentStatus(user.id);
     const response = NextResponse.json({
       success: true,
       data: {
@@ -256,6 +258,7 @@ export async function POST(request: NextRequest) {
           nickname: user.nickname,
           avatar: user.avatar,
           passwordChangeRequired: user.passwordChangeRequired,
+          consentRequired: consentStatus.required,
         },
       },
     });

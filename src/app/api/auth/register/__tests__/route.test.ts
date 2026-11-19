@@ -71,6 +71,10 @@ vi.mock("@/lib/nickname-audit", () => ({
   auditNicknameBlocked: (...args: unknown[]) => mockAuditNicknameBlocked(...args),
 }));
 
+vi.mock("@/lib/privacy-consent", () => ({
+  recordConsent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/password-policy", () => ({
   recordPasswordHistory: vi.fn().mockResolvedValue(undefined),
 }));
@@ -97,6 +101,8 @@ const registerBody = {
   code: "123456",
   password: "Abc12345!",
   confirmPassword: "Abc12345!",
+  privacyConsent: true,
+  termsConsent: true,
 };
 
 describe("POST /api/auth/register 防枚举（查重后置）", () => {

@@ -37,6 +37,14 @@ vi.mock("@/lib/sms", () => ({
   SMS_CODE_MAX_ATTEMPTS: 5,
 }));
 
+vi.mock("@/lib/privacy-consent", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));

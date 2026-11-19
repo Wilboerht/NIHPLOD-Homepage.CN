@@ -92,7 +92,7 @@ export function AgreementCheckbox({
                 rel="noopener noreferrer"
                 className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
               >
-                《用户协议》
+                《服务条款》
               </a>
               和
               <a

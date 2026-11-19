@@ -4,8 +4,8 @@ import "./globals.css";
 import { MotionProvider } from "@/components/providers/MotionProvider";
 import { ChunkErrorBoundary } from "@/components/providers/ChunkErrorBoundary";
 import { OrganizationJsonLd, WebSiteJsonLd, BrandJsonLd } from "@/components/seo/JsonLd";
-import { BaiduAnalytics } from "@/components/seo/BaiduAnalytics";
-import { GoogleAnalytics } from "@/components/seo/GoogleAnalytics";
+import { Analytics } from "@/components/seo/Analytics";
+import { CookieConsent } from "@/components/website/CookieConsent";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SITE_URL as baseUrl } from "@/lib/site-url";
@@ -183,10 +183,8 @@ export default function RootLayout({
           <OrganizationJsonLd />
           <WebSiteJsonLd />
           <BrandJsonLd />
-          {/* 百度统计 */}
-          <BaiduAnalytics />
-          {/* Google Analytics */}
-          <GoogleAnalytics />
+          {/* 分析脚本：Consent Mode 默认拒绝，同意后再加载 */}
+          <Analytics />
         </head>
         <body className="font-sans antialiased" suppressHydrationWarning>
           <ChunkErrorBoundary>
@@ -194,6 +192,7 @@ export default function RootLayout({
               <AuthProvider>
                 <ToastProvider>
                   <div id="app-root">{children}</div>
+                  <CookieConsent />
                 </ToastProvider>
               </AuthProvider>
             </MotionProvider>

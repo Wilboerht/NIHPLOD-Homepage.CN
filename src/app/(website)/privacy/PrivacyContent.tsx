@@ -1,5 +1,6 @@
 import { StandaloneNav } from "@/components/ui/StandaloneNav";
 import { PrivacyArticle } from "@/components/ui/PrivacyArticle";
+import { CookieSettingsButton } from "@/components/website/CookieSettingsButton";
 import Link from "next/link";
 import Image from "next/image";
 import type { LegalDocumentContent } from "@/types/legal";
@@ -53,6 +54,8 @@ export function PrivacyContent({ content }: PrivacyContentProps) {
               />
               <span>沪公网安备31010702010178号</span>
             </Link>
+            <span className="text-brand-charcoal/30">|</span>
+            <CookieSettingsButton />
           </div>
         </div>
       </footer>

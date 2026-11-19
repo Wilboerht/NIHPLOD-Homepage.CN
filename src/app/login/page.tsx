@@ -17,7 +17,7 @@ import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ChevronLeft, Clock } from "lucide-react";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiPost, ApiError } from "@/lib/api-client";
+import { apiGet, apiPost, ApiError } from "@/lib/api-client";
 import { solveCaptcha } from "@/lib/captcha-client";
 import { SESSION_EXPIRED_HINT_KEY } from "@/lib/fetch-with-auth";
 import { isSafeSameOriginUrlOrPath } from "@/lib/url-safety";
@@ -572,12 +572,14 @@ function LoginPageContent() {
     setLoginNotice("");
     if (!mobileAgreed) {
       setAgreementShake((n) => n + 1);
-      setFieldErrors({ agreement: "请先阅读并同意《用户协议》和《隐私政策》" });
+      setFieldErrors({ agreement: "请先阅读并同意《服务条款》和《隐私政策》" });
       return;
     }
     const requestId = ++authRequestIdRef.current;
     try {
-      let result: { user: { passwordChangeRequired?: boolean } };
+      let result: {
+        user: { passwordChangeRequired?: boolean; consentRequired?: boolean };
+      };
       if (loginMethod === "code") {
         // 验证码登录：短信码即凭证，无需人机验证
         setLoading(true);
@@ -604,6 +606,12 @@ function LoginPageContent() {
           await refreshUser(true).catch(() => undefined);
           setPasswordChangeRequired(true);
         }
+        return;
+      }
+      if (result.user?.consentRequired) {
+        await refreshUser(true).catch(() => undefined);
+        const next = returnTo ?? "/";
+        router.push(`/consent?return_to=${encodeURIComponent(next)}`);
         return;
       }
       await handleAuthSuccess("登录成功", requestId);
@@ -640,7 +648,7 @@ function LoginPageContent() {
     }
     if (!mobileAgreed) {
       setAgreementShake((n) => n + 1);
-      setFieldErrors({ agreement: "请先阅读并同意《用户协议》和《隐私政策》" });
+      setFieldErrors({ agreement: "请先阅读并同意《服务条款》和《隐私政策》" });
       return;
     }
     setLoading(true);
@@ -652,6 +660,9 @@ function LoginPageContent() {
         code: regCode,
         password: regPassword,
         confirmPassword: regConfirmPassword,
+        privacyConsent: mobileAgreed,
+        termsConsent: mobileAgreed,
+        marketingConsent: false,
       });
       if (requestId !== authRequestIdRef.current) return;
       await handleAuthSuccess("注册成功", requestId);
@@ -678,7 +689,7 @@ function LoginPageContent() {
     }
     if (!mobileAgreed) {
       setAgreementShake((n) => n + 1);
-      setFieldErrors({ agreement: "请先阅读并同意《用户协议》和《隐私政策》" });
+      setFieldErrors({ agreement: "请先阅读并同意《服务条款》和《隐私政策》" });
       return;
     }
     setLoading(true);
@@ -689,6 +700,12 @@ function LoginPageContent() {
         ...(regPassword ? { password: regPassword } : {}),
         allowAutoPassword: !regPassword,
       });
+      const consent = await apiGet<{ required?: boolean }>("/api/user/consent").catch(() => null);
+      if (consent?.required) {
+        await refreshUser(true).catch(() => undefined);
+        router.push(`/consent?return_to=${encodeURIComponent(returnTo ?? "/")}`);
+        return;
+      }
       await handleAuthSuccess(
         bindResult?.passwordGenerated ? "绑定成功，已自动生成登录密码" : "绑定成功"
       );

@@ -9,12 +9,12 @@ function countHeadings(html: string, level: 1 | 2): number {
 }
 
 describe("real legal default content rendering", () => {
-  it("服务条款 27 章全部渲染且标题不重复", () => {
+  it("服务条款 25 章全部渲染且标题不重复", () => {
     const html = renderToStaticMarkup(<TermsArticle content={defaultLegalDocuments.terms} />);
     expect(countHeadings(html, 1)).toBe(1);
-    expect(countHeadings(html, 2)).toBe(27);
+    expect(countHeadings(html, 2)).toBe(25);
     expect(html).toContain("1. 隐私权");
-    expect(html).toContain("27. 条款解释与争议解决");
+    expect(html).toContain("25. 企业微信 AI 客服");
     // 标题只出现在 h2，不应在正文里再次出现
     expect(html.match(/>1\. 隐私权</g)).toHaveLength(1);
   });

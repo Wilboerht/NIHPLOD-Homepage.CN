@@ -56,6 +56,10 @@ vi.mock("@/lib/sms", () => ({
   SMS_CODE_MAX_ATTEMPTS: 5,
 }));
 
+vi.mock("@/lib/privacy-consent", () => ({
+  recordConsent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/password-policy", () => ({
   recordPasswordHistory: vi.fn().mockResolvedValue(undefined),
 }));
@@ -120,6 +124,8 @@ const registerBody = {
   code: "123456",
   password: "Abc12345!",
   confirmPassword: "Abc12345!",
+  privacyConsent: true,
+  termsConsent: true,
 };
 
 describe("POST /api/auth/register（第三轮修复）", () => {
