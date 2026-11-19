@@ -8,7 +8,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "品牌故事",
   description:
-    "探索 NIHPLOD 旎柏的品牌故事——源自摩纳哥的高端护肤品牌，以真脂质体专利技术（Dolphin-Skin）为核心，融合前沿科技与珍贵成分，为您带来逆转时光的奢华护肤体验。",
+    "探索 NIHPLOD 旎柏的品牌故事——源自摩纳哥的高端护肤品牌，以脂质体专利技术（Dolphin-Skin）为核心，融合前沿科技与珍贵成分，为您带来逆转时光的奢华护肤体验。",
   authors: [{ name: "NIHPLOD 官方" }],
   alternates: {
     canonical: "/about",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     "品牌故事",
     "摩纳哥护肤品牌",
     "高端护肤",
-    "真脂质体技术",
+    "脂质体技术",
     "Dolphin-Skin",
     "科学护肤",
   ],

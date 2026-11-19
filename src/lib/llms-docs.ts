@@ -142,7 +142,7 @@ ${LLMS_FACTS_SECTION}
 
 ## 核心内容
 ${productLine}
-- [脂质体技术](${siteUrl}/technology): 了解真脂质体技术（Dolphin-Skin）的原理、功效数据与专利。
+- [脂质体技术](${siteUrl}/technology): 了解脂质体技术（Dolphin-Skin）的原理、功效数据与专利。
 - [关于旎柏](${siteUrl}/about): 深入了解 2008 年诞生于摩纳哥的科学愿景、奢华哲学及历年媒体殊荣。
 - [官方指南](${siteUrl}/guide): 探索不同场景下我们推崇的护肤仪式及方法。
 - [常见问题](${siteUrl}/faq): 查看品牌、成分、使用方式与购买渠道等常见问答。
@@ -151,7 +151,7 @@ ${productLine}
 
 ${productLinks ? `## 产品目录\n${productLinks}\n` : ""}
 ## 核心技术
-- **真脂质体技术 (Dolphin-Skin)**：以脂质体包裹活性成分，帮助有效成分更稳定地到达皮肤表皮与真皮层并释放。
+- **脂质体技术 (Dolphin-Skin)**：以脂质体包裹活性成分，帮助有效成分更稳定地到达皮肤表皮与真皮层并释放。
 - **精简护肤理念**：以更少的产品步骤覆盖清洁、修护、防护等核心需求。
 
 请访问 [llms-full.txt](${siteUrl}/llms-full.txt) 获取完整的品牌及产品底层数据文档。`.trim();

@@ -61,7 +61,7 @@ describe("buildLlmsFullDoc", () => {
   });
 
   it("包含脂质体技术章节、功效数据、专利号与 WIPO 链接", () => {
-    expect(doc).toContain("## 真脂质体技术 (Dolphin-Skin)");
+    expect(doc).toContain("## 脂质体技术 (Dolphin-Skin)");
     expect(doc).toContain("https://nihplod.cn/technology");
     expect(doc).toContain("渗透性");
     expect(doc).toContain("稳定分散");

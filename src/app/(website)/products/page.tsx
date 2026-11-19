@@ -20,7 +20,7 @@ const isDev = process.env.NODE_ENV === "development";
 export const metadata: Metadata = {
   title: "产品系列",
   description:
-    "NIHPLOD 旎柏全线产品系列：抗衰老面霜、修护精华、焕活身体乳等高端护肤产品，以真脂质体专利技术（Dolphin-Skin）驱动，简单高效，科学呵护肌肤。",
+    "NIHPLOD 旎柏全线产品系列：抗衰老面霜、修护精华、焕活身体乳等高端护肤产品，以脂质体专利技术（Dolphin-Skin）驱动，简单高效，科学呵护肌肤。",
   alternates: {
     canonical: "/products",
     languages: {
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     "产品系列",
     "高端护肤产品",
     "摩纳哥护肤品",
-    "真脂质体科技",
+    "脂质体科技",
     "抗衰老产品",
     "科学护肤",
   ],
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     url: "/products",
     siteName: "NIHPLOD 旎柏",
     title: "产品系列 | NIHPLOD 旎柏",
-    description: "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
+    description: "NIHPLOD 旎柏全线产品系列，以脂质体科技为核心，致力于打造简单、高效的护肤体验。",
     images: [
       {
         url: "/images/og-image.png",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "产品系列 | NIHPLOD 旎柏",
-    description: "NIHPLOD 旎柏全线产品系列，以真脂质体科技为核心，致力于打造简单、高效的护肤体验。",
+    description: "NIHPLOD 旎柏全线产品系列，以脂质体科技为核心，致力于打造简单、高效的护肤体验。",
     images: ["/images/og-image.png"],
   },
 };

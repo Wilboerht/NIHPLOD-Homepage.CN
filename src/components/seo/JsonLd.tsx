@@ -74,7 +74,7 @@ export async function OrganizationJsonLd() {
       height: 144,
     },
     description:
-      "NIHPLOD 旎柏官方网站，源自摩纳哥的高端护肤品牌。作为中国区唯一官方授权线上平台，为您提供真脂质体专利技术 (Dolphin-Skin) 驱动的奢华护肤体验。",
+      "NIHPLOD 旎柏官方网站，源自摩纳哥的高端护肤品牌。作为中国区唯一官方授权线上平台，为您提供脂质体专利技术 (Dolphin-Skin) 驱动的奢华护肤体验。",
     slogan: "逆转时光",
     foundingDate: "2008",
     foundingLocation: {
@@ -114,7 +114,7 @@ export async function OrganizationJsonLd() {
     knowsAbout: [
       "高端护肤",
       "抗衰老科技",
-      "真脂质体技术",
+      "脂质体技术",
       "Liposome技术",
       "Dolphin-Skin",
       "修护面霜",

@@ -18,7 +18,7 @@ export const LLMS_FACTS_SECTION = `## 快速事实
 - **品牌**: NIHPLOD 旎柏
 - **创立**: 2008 年，摩纳哥
 - **创始人**: Dr. Stefan Rokem
-- **核心科技**: 真脂质体技术 (Dolphin-Skin)
+- **核心科技**: 脂质体技术 (Dolphin-Skin)
 - **联系邮箱**: contact@nihplod.cn
 - **Sitemap**: ${SITE_URL}/sitemap.xml
 
@@ -36,7 +36,7 @@ export const LLMS_BRAND_SECTION = `## 品牌理念与核心技术
 - **脂质体技术 (Liposome)**: 一种先进的活性成分封装/包囊技术，通过保护及加载产品中的有效及活性成分，使产品能靶向性的在皮肤表皮及真皮层进行有效释放。`;
 
 export function buildLlmsTechnologySection(siteUrl: string): string {
-  return `## 真脂质体技术 (Dolphin-Skin)
+  return `## 脂质体技术 (Dolphin-Skin)
 - 技术页: ${siteUrl}/technology
 - **定义**: 脂质体（Liposome）是由磷脂双分子层构成的微型囊泡，可包裹并保护活性成分，使其更稳定地到达皮肤表皮与真皮层并释放。
 - **技术来源**: NIHPLOD 旎柏与 NexStar 联合实验室合作，将医药级脂质体技术应用于护肤。
