@@ -28,7 +28,7 @@ export function TechnologyContent() {
   const { isDrawerOpen } = useLayout();
 
   return (
-    <DrawerPageContainer wrapperClassName="!top-[var(--cookie-banner-offset,0px)] !pointer-events-none">
+    <DrawerPageContainer wrapperClassName="!top-0 !pointer-events-none">
       {/* 矿物纹理覆盖层 */}
       <div className="texture-overlay absolute inset-0" />
 

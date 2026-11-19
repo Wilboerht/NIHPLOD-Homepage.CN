@@ -60,7 +60,7 @@ export function StandaloneNav({ title, links = [], leftButton }: StandaloneNavPr
   return (
     <>
       <nav
-        className="fixed left-0 right-0 top-[var(--cookie-banner-offset,0px)] z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md transition-[top] duration-200 md:px-20"
+        className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:px-20"
         aria-label="主导航"
       >
         <div className="relative flex w-full items-center justify-center md:justify-between">

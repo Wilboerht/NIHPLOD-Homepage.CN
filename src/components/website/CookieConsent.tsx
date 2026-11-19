@@ -1,19 +1,16 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { COOKIE_SETTINGS_EVENT, readCookieConsent, writeCookieConsent } from "@/lib/cookie-consent";
-
-const BANNER_CLASS = "has-cookie-banner";
-const BANNER_OFFSET_VAR = "--cookie-banner-offset";
-
-const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+import {
+  COOKIE_SETTINGS_EVENT,
+  readCookieConsent,
+  writeCookieConsent,
+} from "@/lib/cookie-consent";
 
 export function CookieConsent() {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
-  const bannerRef = useRef<HTMLDivElement>(null);
-  const show = visible && !pathname?.startsWith("/admin");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -28,51 +25,16 @@ export function CookieConsent() {
     };
   }, []);
 
-  useIsomorphicLayoutEffect(() => {
-    const root = document.documentElement;
-
-    if (!show) {
-      root.classList.remove(BANNER_CLASS);
-      root.style.removeProperty(BANNER_OFFSET_VAR);
-      return;
-    }
-
-    const banner = bannerRef.current;
-    if (!banner) return;
-
-    const syncOffset = () => {
-      root.style.setProperty(BANNER_OFFSET_VAR, `${banner.getBoundingClientRect().height}px`);
-    };
-    syncOffset();
-    root.classList.add(BANNER_CLASS);
-
-    if (typeof ResizeObserver === "undefined") {
-      return () => {
-        root.classList.remove(BANNER_CLASS);
-        root.style.removeProperty(BANNER_OFFSET_VAR);
-      };
-    }
-
-    const observer = new ResizeObserver(syncOffset);
-    observer.observe(banner);
-
-    return () => {
-      observer.disconnect();
-      root.classList.remove(BANNER_CLASS);
-      root.style.removeProperty(BANNER_OFFSET_VAR);
-    };
-  }, [show]);
-
   const save = (nextAnalytics: boolean) => {
     writeCookieConsent({ analytics: nextAnalytics, marketing: false });
     setVisible(false);
   };
 
-  if (!show) return null;
+  if (pathname?.startsWith("/admin")) return null;
+  if (!visible) return null;
 
   return (
     <div
-      ref={bannerRef}
       role="region"
       aria-label="Cookie 使用提示"
       className="fixed inset-x-0 top-0 z-[90] border-b border-brand-charcoal/10 bg-[#fefcf8]/95 pt-[env(safe-area-inset-top)] backdrop-blur"
