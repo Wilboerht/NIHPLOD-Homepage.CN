@@ -35,7 +35,7 @@ export function DrawerPageContainer({
   defaultExpanded = false,
   buttonWidth = "px-5 lg:w-[160px] lg:px-0",
   shadowOpacity = 0.2,
-  wrapperClassName = "!-top-[1px] !pointer-events-none",
+  wrapperClassName = "!top-[var(--cookie-banner-offset,-1px)] !pointer-events-none",
   onCollapse,
 }: DrawerPageContainerProps) {
   const contentId = useId();

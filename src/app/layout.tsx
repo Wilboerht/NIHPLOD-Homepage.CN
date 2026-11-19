@@ -191,8 +191,8 @@ export default function RootLayout({
             <MotionProvider>
               <AuthProvider>
                 <ToastProvider>
-                  <div id="app-root">{children}</div>
                   <CookieConsent />
+                  <div id="app-root">{children}</div>
                 </ToastProvider>
               </AuthProvider>
             </MotionProvider>

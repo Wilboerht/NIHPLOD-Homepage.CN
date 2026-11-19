@@ -94,7 +94,7 @@ export function FAQContent() {
   };
 
   return (
-    <DrawerPageContainer wrapperClassName="!top-0 !pointer-events-none">
+    <DrawerPageContainer wrapperClassName="!top-[var(--cookie-banner-offset,0px)] !pointer-events-none">
       {/* Texture Overlay */}
       <div className="texture-overlay absolute inset-0" />
 

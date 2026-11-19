@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/contexts/LayoutContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { DrawerPageContainer } from "@/components/ui/DrawerPageContainer";
+import { CookieSettingsButton } from "@/components/website/CookieSettingsButton";
 
 /**
  * 独立的 URL 参数处理器组件
@@ -458,6 +459,10 @@ export default function HomeClient(_: HomeClientProps) {
                         沪公网安备<span className="footer-latin">31010702010178</span>号
                       </span>
                     </Link>
+                    <span className="text-brand-charcoal/20" aria-hidden="true">
+                      |
+                    </span>
+                    <CookieSettingsButton />
                   </div>
                 </footer>
               </div>

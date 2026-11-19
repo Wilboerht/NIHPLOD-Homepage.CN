@@ -71,6 +71,13 @@
     overflow-x: hidden;
     /* 移动端安全区域 */
     padding-bottom: env(safe-area-inset-bottom);
+    /* Cookie 同意横幅占用高度时平滑下推/回弹页面内容 */
+    transition: padding-top 240ms ease;
+  }
+
+  /* Cookie 同意横幅出现时为其预留高度，避免遮挡页面内容 */
+  html.has-cookie-banner body {
+    padding-top: var(--cookie-banner-offset, 0px);
   }
 
   /* 确保所有元素不会超出视口 */
@@ -100,7 +107,7 @@
   /* 安全区域内的内容容器 - fixed 定位，通过 GPU 层隔离内部滚动，防止 iOS 抖动 */
   .safe-area-content {
     position: fixed;
-    top: max(1.5rem, env(safe-area-inset-top, 1.5rem));
+    top: calc(max(1.5rem, env(safe-area-inset-top, 1.5rem)) + var(--cookie-banner-offset, 0px));
     left: max(1.5rem, env(safe-area-inset-left, 1.5rem));
     right: max(1.5rem, env(safe-area-inset-right, 1.5rem));
     bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
@@ -110,12 +117,14 @@
     -webkit-transform: translateZ(0);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    /* Cookie 同意横幅出现/消失时平滑让位 */
+    transition: top 240ms ease;
   }
 
   /* 平板端安全区域调整 — 上下与左右等距 */
   @media (min-width: 640px) {
     .safe-area-content {
-      top: max(2.5rem, env(safe-area-inset-top, 2.5rem));
+      top: calc(max(2.5rem, env(safe-area-inset-top, 2.5rem)) + var(--cookie-banner-offset, 0px));
       left: max(2.5rem, env(safe-area-inset-left, 2.5rem));
       right: max(2.5rem, env(safe-area-inset-right, 2.5rem));
       bottom: max(2.5rem, env(safe-area-inset-bottom, 2.5rem));
@@ -125,7 +134,7 @@
   @media (min-width: 1024px) {
     .safe-area-content {
       /* left = right = bottom(4rem) + handle(4rem) = 8rem */
-      top: max(4rem, env(safe-area-inset-top, 4rem));
+      top: calc(max(4rem, env(safe-area-inset-top, 4rem)) + var(--cookie-banner-offset, 0px));
       bottom: max(4rem, env(safe-area-inset-bottom, 4rem));
       left: max(8rem, env(safe-area-inset-left, 8rem));
       right: max(8rem, env(safe-area-inset-right, 8rem));
@@ -137,7 +146,7 @@
      覆盖"桌面宽度 + 小高度"的组合。 */
   @media (min-width: 1024px) and (max-height: 760px) {
     .safe-area-content {
-      top: max(2rem, env(safe-area-inset-top, 2rem));
+      top: calc(max(2rem, env(safe-area-inset-top, 2rem)) + var(--cookie-banner-offset, 0px));
       bottom: max(2rem, env(safe-area-inset-bottom, 2rem));
       left: max(5rem, env(safe-area-inset-left, 5rem));
       right: max(5rem, env(safe-area-inset-right, 5rem));
@@ -146,7 +155,7 @@
 
   @media (min-width: 1024px) and (max-height: 640px) {
     .safe-area-content {
-      top: max(1.25rem, env(safe-area-inset-top, 1.25rem));
+      top: calc(max(1.25rem, env(safe-area-inset-top, 1.25rem)) + var(--cookie-banner-offset, 0px));
       bottom: max(1.25rem, env(safe-area-inset-bottom, 1.25rem));
       left: max(3rem, env(safe-area-inset-left, 3rem));
       right: max(3rem, env(safe-area-inset-right, 3rem));
@@ -842,6 +851,7 @@
 .home-container .footer-links a,
 .home-container .footer-copyright,
 .home-container .footer-beian a,
+.home-container .footer-beian button,
 .home-container .footer-beian span {
   font-weight: 300;
   font-size: 11px;
@@ -851,7 +861,8 @@
 }
 
 .home-container .footer-links a:hover,
-.home-container .footer-beian a:hover {
+.home-container .footer-beian a:hover,
+.home-container .footer-beian button:hover {
   color: var(--home-text-primary);
 }
 
@@ -916,6 +927,7 @@
   /* 版权与备案信息大小深浅对齐：两行统一减浅减细，消除拉丁/中文及行间视觉重量差 */
   .home-container .footer-copyright,
   .home-container .footer-beian a,
+  .home-container .footer-beian button,
   .home-container .footer-beian span,
   .home-container .footer-latin {
     font-weight: 200;

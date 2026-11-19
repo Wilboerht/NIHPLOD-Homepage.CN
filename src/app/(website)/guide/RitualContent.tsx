@@ -341,7 +341,7 @@ export function RitualContent({ products = [] }: RitualContentProps) {
 
   return (
     <>
-      <DrawerPageContainer wrapperClassName="!top-0 !pointer-events-none">
+      <DrawerPageContainer wrapperClassName="!top-[var(--cookie-banner-offset,0px)] !pointer-events-none">
         {/* 矿物纹理覆盖层 */}
         <div className="texture-overlay absolute inset-0" />
 

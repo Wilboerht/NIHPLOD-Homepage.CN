@@ -37,7 +37,7 @@ export function AccountDeletionBanner() {
   return (
     <div
       role="alert"
-      className="fixed inset-x-0 top-0 z-40 border-b border-amber-200 bg-amber-50/95 px-4 py-2.5 backdrop-blur"
+      className="fixed inset-x-0 top-[var(--cookie-banner-offset,0px)] z-40 border-b border-amber-200 bg-amber-50/95 px-4 py-2.5 backdrop-blur transition-[top] duration-200"
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-2 text-xs text-amber-900 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:text-sm">
         <p className="flex items-start gap-1.5">
