@@ -75,14 +75,15 @@ export function UserCenterModal() {
     };
   }, [userCenterOpen]);
 
-  // ESC 关闭
+  // ESC 关闭；退出确认框打开时不关闭用户中心
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeUserCenter();
+      if (e.key !== "Escape" || showLogoutConfirm) return;
+      closeUserCenter();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [closeUserCenter]);
+  }, [closeUserCenter, showLogoutConfirm]);
 
   // 打开时聚焦弹窗，关闭后归位焦点
   useEffect(() => {
@@ -99,7 +100,7 @@ export function UserCenterModal() {
 
   // 焦点陷阱：Tab 键只在弹窗内部循环
   useEffect(() => {
-    if (!userCenterOpen) return;
+    if (!userCenterOpen || showLogoutConfirm) return;
 
     const handleTabKey = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
@@ -134,7 +135,7 @@ export function UserCenterModal() {
 
     window.addEventListener("keydown", handleTabKey);
     return () => window.removeEventListener("keydown", handleTabKey);
-  }, [userCenterOpen]);
+  }, [showLogoutConfirm, userCenterOpen]);
 
   if (!mounted || !user) return null;
 
@@ -157,7 +158,7 @@ export function UserCenterModal() {
     <AnimatePresence>
       {userCenterOpen && (
         // 移动端底对齐（顶部留出 2.5rem 缝隙、底部贴边）；桌面端居中
-        <div className="fixed inset-0 z-[9999] flex items-end justify-center p-0 md:items-center md:p-4">
+        <div className="fixed inset-0 z-drawer flex items-end justify-center p-0 md:items-center md:p-4">
           {/* 遮罩：全端毛玻璃模糊；仅桌面有可点击边距，移动端全屏遮罩仅供淡入语义 */}
           <m.div
             initial={{ opacity: 0 }}
