@@ -492,6 +492,32 @@ export async function mergeUserAccounts(input: {
         where: { userId: source.id },
         data: { userId: target.id },
       });
+
+      // KF 外部身份是主站账号的弱关联；合并时迁移到目标账号，避免台账指向匿名化后的 source。
+      const sourceKfLinks = await tx.kfIdentityLink.findMany({
+        where: { userId: source.id },
+        select: { id: true, openKfid: true, externalUserId: true },
+      });
+      if (sourceKfLinks.length > 0) {
+        const targetKfLinks = await tx.kfIdentityLink.findMany({
+          where: { userId: target.id },
+          select: { openKfid: true, externalUserId: true },
+        });
+        const targetKeys = new Set(
+          targetKfLinks.map((link) => `${link.openKfid}\u0000${link.externalUserId}`)
+        );
+        const duplicateIds = sourceKfLinks
+          .filter((link) => targetKeys.has(`${link.openKfid}\u0000${link.externalUserId}`))
+          .map((link) => link.id);
+        if (duplicateIds.length > 0) {
+          await tx.kfIdentityLink.deleteMany({ where: { id: { in: duplicateIds } } });
+        }
+        await tx.kfIdentityLink.updateMany({
+          where: { userId: source.id },
+          data: { userId: target.id },
+        });
+      }
+
       await tx.loginAttempt.updateMany({
         where: { userId: source.id },
         data: { userId: target.id },

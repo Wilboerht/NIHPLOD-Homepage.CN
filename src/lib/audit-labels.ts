@@ -63,6 +63,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   point_redemption_after_sales_close: "关闭兑换售后",
   user_detail_view: "查看用户详情",
   user_detail_sensitive_view: "查看用户敏感信息",
+  user_consent_view: "查看用户授权状态",
   advisor_user_view: "查看用户测肤档案",
   advisor_user_update: "更新用户测肤权限",
   advisor_report_view: "查看用户完整测肤报告",

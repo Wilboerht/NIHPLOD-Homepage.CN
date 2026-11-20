@@ -370,6 +370,7 @@ model User {
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
   oauthConsents UserConsent[]            @relation("UserConsentUser")
   privacyConsents PrivacyConsent[]
+  kfIdentityLinks KfIdentityLink[]
 
   externalIdentities     ExternalIdentity[]
   accountDeletionRequest AccountDeletionRequest?
@@ -407,6 +408,26 @@ model ExternalIdentity {
   @@unique([provider, subjectId])
   @@index([userId])
   @@index([provider, unionId])
+}
+
+/**
+ * 企业微信 KF 外部身份与主站用户映射。
+ * 只在用户从带 sessionId 的测肤报告入口进入 KF 且能解析出主站 userId 时写入。
+ */
+model KfIdentityLink {
+  id             String   @id @default(cuid())
+  openKfid       String
+  externalUserId String
+  userId         String
+  source         String   @default("advisor_report")
+  linkedAt       DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([openKfid, externalUserId])
+  @@index([userId])
+  @@index([linkedAt])
 }
 
 /**
@@ -660,6 +681,50 @@ model PrivacyConsent {
   @@index([userId, document])
   @@index([document, version])
   @@index([grantedAt(sort: Desc)])
+}
+
+enum ConsentEventAction {
+  GRANTED
+  REVOKED
+}
+
+enum ConsentEventProject {
+  MAIN
+  POINTS
+  SKIN
+  KF
+  BA
+  RECRUIT
+  UNKNOWN
+}
+
+/**
+ * 只追加的同意事件台账。不要对 User 建外键：
+ * 用户注销/硬删除后仍需保留最小化证据。
+ */
+model ConsentEvent {
+  id             String                 @id @default(cuid())
+  userId         String?
+  subjectType    String                 @default("USER")
+  subjectHash    String
+  project        ConsentEventProject    @default(UNKNOWN)
+  document       PrivacyConsentDocument
+  version        String
+  contentHash    String?
+  action         ConsentEventAction
+  channel        String
+  occurredAt     DateTime
+  ipHash         String?
+  userAgent      String?                @db.Text
+  evidence       Json?
+  retentionUntil DateTime?
+  createdAt      DateTime               @default(now())
+
+  @@index([userId, occurredAt(sort: Desc)])
+  @@index([subjectHash, occurredAt(sort: Desc)])
+  @@index([project, document, occurredAt(sort: Desc)])
+  @@index([retentionUntil])
+  @@index([occurredAt(sort: Desc)])
 }
 
 model SsoAuditEvent {

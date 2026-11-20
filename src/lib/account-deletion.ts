@@ -24,10 +24,12 @@ import { randomUUID } from "crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { purgeUserFromSubsites } from "@/lib/advisor-internal";
+import { purgeKfExternalUser } from "@/lib/kf-pii";
 import { quiesceUserSessions } from "@/lib/user-status";
 import { beginAuditLog, finishAuditLog } from "@/lib/audit";
 import { enqueueNotification, purgeNotificationOutboxForUser } from "@/lib/notification-outbox";
 import { hashIdentifier } from "@/lib/auth-security";
+import { consentRetentionUntil } from "@/lib/privacy-consent";
 import { purgeAvatarAssets } from "@/lib/avatar-assets";
 import { deleteSpentProofFile } from "@/lib/spent-adjustment-files";
 import { apiConsole } from "@/lib/logger";
@@ -62,6 +64,16 @@ export const DELETION_LEASE_MS = 10 * 60 * 1000;
  */
 function anonymizedPhone(originalPhone: string, userId: string): string {
   return `deleted_${hashIdentifier(`${originalPhone}:${userId}`).slice(0, 16)}`;
+}
+
+async function purgeKfUserData(userId: string): Promise<void> {
+  const links = await prisma.kfIdentityLink.findMany({
+    where: { userId },
+    select: { openKfid: true, externalUserId: true },
+  });
+  for (const link of links) {
+    await purgeKfExternalUser(link.openKfid, link.externalUserId);
+  }
 }
 
 export type DeletionExecuteResult = "completed" | "skipped" | "failed";
@@ -191,6 +203,9 @@ export async function executeAccountDeletion(
       throw new Error(`subsite_purge_failed:${purge.target}:${purge.code}:${purge.message}`);
     }
 
+    // KF 外部身份需要 openKfid/externalUserId，先清 KF 档案；失败由注销重试。
+    await purgeKfUserData(userId);
+
     // 4. 当前头像 + 所有已登记头像及派生对象清理；失败对象进入删除队列继续重试
     const avatarPurge = await purgeAvatarAssets(userId);
     const avatarPurgeFailed = avatarPurge.failed > 0;
@@ -289,6 +304,18 @@ export async function executeAccountDeletion(
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      // 同意事件台账不删：注销后保留最小化证据，到期由清理任务删除
+      await tx.consentEvent.updateMany({
+        where: { userId },
+        data: {
+          retentionUntil: consentRetentionUntil(now),
+          userId: null,
+          userAgent: null,
+        },
+      });
+      // 当前状态表随账号注销删除；历史证据已转入 ConsentEvent
+      await tx.privacyConsent.deleteMany({ where: { userId } });
+      await tx.kfIdentityLink.deleteMany({ where: { userId } });
 
       // 积分兑换单：待履约的一律取消（用户已注销，不再寄送）。
       // 逐行 CAS 抢占后再归还库存：避免与管理员取消并发时 updateMany 命中 0 行、

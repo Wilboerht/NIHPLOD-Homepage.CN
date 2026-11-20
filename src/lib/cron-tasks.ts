@@ -12,6 +12,7 @@ import {
   cleanupRevokedUserConsents,
 } from "./auth-security";
 import { cleanupExpiredCodes } from "./oauth-code";
+import { cleanupExpiredConsentEvents } from "./privacy-consent";
 import { cleanupExpiredAdminSsoCodes } from "./admin-sso";
 import { cleanupInternalApiNonces } from "./internal-api";
 import { retryFailedBackchannelLogouts } from "./backchannel-logout";
@@ -98,6 +99,7 @@ const TASK_KEYS: Record<string, string> = {
   "Cleanup Expired Token Blacklist Records": "cleanup-expired-token-blacklist-records",
   "Cleanup Revoked Sessions and Tokens": "cleanup-revoked-sessions-and-tokens",
   "Cleanup Revoked User Consents": "cleanup-revoked-user-consents",
+  "Cleanup Expired Consent Events": "cleanup-expired-consent-events",
   "Anchor Missing Audit Days": "anchor-missing-audit-days",
   "Archive Audit Logs": "archive-audit-logs",
   "Verify Audit Integrity": "verify-audit-integrity",
@@ -386,8 +388,24 @@ const tasks: ScheduledTask[] = [
         apiConsole.info(`[Cron] 已撤销用户授权记录清理完成: ${count} 条`);
         markCleanupOk("已撤销用户授权记录");
       } catch (error) {
-        apiConsole.error("[Cron] 已撤销用户授权记录清理失败:", error);
+        apiConsole.error("[Cron] 清理已撤销用户授权记录失败:", error);
         markCleanupFailed("已撤销用户授权记录");
+        throw error;
+      }
+    },
+  },
+  {
+    name: "Cleanup Expired Consent Events",
+    cronExpression: "10 5 * * *",
+    isCleanup: true,
+    handler: async () => {
+      try {
+        const count = await cleanupExpiredConsentEvents();
+        apiConsole.info(`[Cron] 过期同意证据清理完成: ${count} 条`);
+        markCleanupOk("过期同意证据");
+      } catch (error) {
+        apiConsole.error("[Cron] 过期同意证据清理失败:", error);
+        markCleanupFailed("过期同意证据");
         throw error;
       }
     },

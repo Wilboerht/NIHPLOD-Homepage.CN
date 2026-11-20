@@ -30,6 +30,7 @@ import {
   ReceiptText,
   History,
   Sparkles,
+  ShieldCheck,
   Copy,
   X,
   LayoutDashboard,
@@ -62,6 +63,7 @@ import { DataTable, RequirePermission, type Column } from "@/components/admin";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { UserAvatar } from "@/components/admin/UserAvatar";
 import { UserAdvisorPanel } from "@/components/admin/UserAdvisorPanel";
+import { UserConsentPanel } from "@/components/admin/UserConsentPanel";
 import { useTotpConfirm, isTotpRequired } from "@/hooks/useTotpConfirm";
 import { useUnsavedChanges } from "@/hooks/useUnsavedChanges";
 import {
@@ -127,12 +129,21 @@ const membershipLevelMap: Record<
 };
 
 type DetailTab =
-  "overview" | "basic" | "advisor" | "points" | "address" | "spent" | "growth" | "login";
+  | "overview"
+  | "basic"
+  | "advisor"
+  | "consent"
+  | "points"
+  | "address"
+  | "spent"
+  | "growth"
+  | "login";
 
 const DETAIL_TABS: { key: DetailTab; label: string; icon: LucideIcon }[] = [
   { key: "overview", label: "概览", icon: LayoutDashboard },
   { key: "basic", label: "账号资料", icon: User },
   { key: "advisor", label: "测肤档案", icon: Sparkles },
+  { key: "consent", label: "授权状态", icon: ShieldCheck },
   { key: "points", label: "积分与兑换", icon: Wallet },
   { key: "address", label: "收货地址", icon: MapPin },
   { key: "spent", label: "消费记录", icon: ReceiptText },
@@ -2064,6 +2075,17 @@ function AdminUsersContent() {
                 )}
 
                 {/* 积分与兑换 */}
+                {/* 授权状态 */}
+                {activeDetailTab === "consent" &&
+                  (detailUser.status === "DELETED" ? (
+                    <Empty
+                      title="账号已注销"
+                      description="当前授权状态已清理；历史同意证据已去标识化归档。"
+                    />
+                  ) : (
+                    <UserConsentPanel key={detailUser.id} userId={detailUser.id} />
+                  ))}
+
                 {activeDetailTab === "points" && (
                   <div className="space-y-4">
                     <div className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 sm:flex-row sm:items-center sm:justify-between">

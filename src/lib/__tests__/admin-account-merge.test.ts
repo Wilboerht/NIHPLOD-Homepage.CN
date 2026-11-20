@@ -50,6 +50,10 @@ const tx = {
   spentImportRow: writeModel(),
   pointRedemption: writeModel(),
   externalIdentity: writeModel(),
+  kfIdentityLink: {
+    findMany: vi.fn().mockResolvedValue([]),
+    ...writeModel(),
+  },
   loginAttempt: writeModel(),
   contactMessage: writeModel(),
   jobApplication: writeModel(),
@@ -238,6 +242,25 @@ describe("admin account merge", () => {
         query: expect.objectContaining({ mode: "execute", operationId: "merge-1" }),
       })
     );
+  });
+
+  it("migrates KF identity links and removes duplicate target keys", async () => {
+    tx.kfIdentityLink.findMany
+      .mockResolvedValueOnce([
+        { id: "kf-source-1", openKfid: "kf-1", externalUserId: "e-1" },
+        { id: "kf-source-2", openKfid: "kf-1", externalUserId: "e-2" },
+      ])
+      .mockResolvedValueOnce([{ openKfid: "kf-1", externalUserId: "e-2" }]);
+
+    await mergeUserAccounts(mergeInput());
+
+    expect(tx.kfIdentityLink.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["kf-source-2"] } },
+    });
+    expect(tx.kfIdentityLink.updateMany).toHaveBeenCalledWith({
+      where: { userId: source.id },
+      data: { userId: target.id },
+    });
   });
 
   it("子站不支持时阻止执行", async () => {

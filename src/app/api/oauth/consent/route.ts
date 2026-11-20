@@ -66,11 +66,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const evidence = { source: "oauth_consent", at: new Date().toISOString() };
+    const clientId = auth.payload.client_id?.trim() || "miniprogram";
+    const evidence = {
+      source: "oauth_consent",
+      clientId: auth.payload.client_id ?? null,
+      at: new Date().toISOString(),
+    };
     await recordConsent({
       userId: auth.payload.id,
       document: "PRIVACY",
-      channel: "miniprogram",
+      channel: clientId,
       ip: auth.ip,
       userAgent: request.headers.get("user-agent"),
       evidence,
@@ -78,7 +83,7 @@ export async function POST(request: NextRequest) {
     await recordConsent({
       userId: auth.payload.id,
       document: "TERMS",
-      channel: "miniprogram",
+      channel: clientId,
       ip: auth.ip,
       userAgent: request.headers.get("user-agent"),
       evidence,
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
       await recordConsent({
         userId: auth.payload.id,
         document: "MARKETING",
-        channel: "miniprogram",
+        channel: clientId,
         ip: auth.ip,
         userAgent: request.headers.get("user-agent"),
         evidence,

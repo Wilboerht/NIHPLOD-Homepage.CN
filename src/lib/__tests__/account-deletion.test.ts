@@ -42,6 +42,8 @@ const mockTxPointLedgerUpdateMany = vi.fn();
 
 const mockPurgeUserFromSubsites = vi.fn();
 const mockPurgeAvatarAssets = vi.fn();
+const mockKfFindMany = vi.fn();
+const mockPurgeKfExternalUser = vi.fn();
 const mockDeleteOSSFiles = vi.fn();
 const mockDeleteSpentProofFile = vi.fn();
 const mockSpentProofFindMany = vi.fn();
@@ -75,12 +77,19 @@ vi.mock("@/lib/prisma", () => ({
     pointRedemption: {
       findMany: (...args: unknown[]) => mockTxPointRedemptionFindMany(...args),
     },
+    kfIdentityLink: {
+      findMany: (...args: unknown[]) => mockKfFindMany(...args),
+    },
     $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
 }));
 
 vi.mock("@/lib/advisor-internal", () => ({
   purgeUserFromSubsites: (...args: unknown[]) => mockPurgeUserFromSubsites(...args),
+}));
+
+vi.mock("@/lib/kf-pii", () => ({
+  purgeKfExternalUser: (...args: unknown[]) => mockPurgeKfExternalUser(...args),
 }));
 
 vi.mock("@/lib/avatar-assets", () => ({
@@ -185,6 +194,9 @@ function mockTxSuccess() {
         updateMany: mockTxOAuthSessionUpdateMany,
       },
       userConsent: { updateMany: mockTxUserConsentUpdateMany },
+      consentEvent: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      privacyConsent: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      kfIdentityLink: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       pointRedemption: {
         findMany: mockTxPointRedemptionFindMany,
         updateMany: mockTxPointRedemptionUpdateMany,
@@ -220,6 +232,8 @@ describe("executeAccountDeletion", () => {
     mockUserFindUnique.mockResolvedValue(activeUser);
     mockPurgeUserFromSubsites.mockResolvedValue({ ok: true });
     mockPurgeAvatarAssets.mockResolvedValue({ failed: 0 });
+    mockKfFindMany.mockResolvedValue([]);
+    mockPurgeKfExternalUser.mockResolvedValue(undefined);
     mockDeleteOSSFiles.mockResolvedValue(undefined);
     mockDeleteSpentProofFile.mockResolvedValue(true);
     mockSpentProofFindMany.mockResolvedValue([]);
@@ -702,5 +716,21 @@ describe("executeDueAccountDeletions", () => {
 
     expect(result.reminded).toBe(0);
     expect(mockWarn).toHaveBeenCalled();
+  });
+
+  it("purges KF external identity before deleting local mapping", async () => {
+    mockUpdateMany.mockResolvedValue({ count: 1 });
+    mockFindUnique.mockResolvedValue({
+      userId: "user-1",
+      phoneHash: expectedHash("13800138000"),
+    });
+    mockUserFindUnique.mockResolvedValue(activeUser);
+    mockKfFindMany.mockResolvedValue([
+      { openKfid: "wk-1", externalUserId: "wm-1" },
+    ]);
+
+    await executeAccountDeletion("req-1");
+
+    expect(mockPurgeKfExternalUser).toHaveBeenCalledWith("wk-1", "wm-1");
   });
 });
