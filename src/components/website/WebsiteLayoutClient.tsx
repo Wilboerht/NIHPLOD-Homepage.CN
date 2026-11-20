@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LayoutProvider } from "@/contexts/LayoutContext";
 import { BottomNavBar } from "@/components/website/BottomNavBar";
 import { AccountDeletionBanner } from "@/components/website/AccountDeletionBanner";
@@ -35,12 +35,59 @@ export function MainContent({ children }: { children: ReactNode }) {
   );
 }
 
+const CONSENT_EXEMPT_PREFIXES = [
+  "/consent",
+  "/privacy",
+  "/terms",
+  "/login",
+  "/logout",
+  "/admin",
+  "/account/embed",
+];
+
+/**
+ * 已登录但尚未完成当前政策同意的用户，统一引导到 /consent。
+ * 覆盖手机号登录、微信/抖音登录、扫码登录等所有进入网站的会话。
+ */
+function ConsentGate() {
+  const { user, isLoading } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading || !user) return;
+    if (CONSENT_EXEMPT_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+      return;
+    }
+
+    const controller = new AbortController();
+    fetch("/api/user/consent", {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { success?: boolean; data?: { required?: boolean } } | null) => {
+        if (!data?.success || data.data?.required !== true) return;
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        router.replace(`/consent?return_to=${encodeURIComponent(returnTo)}`);
+      })
+      .catch(() => {
+        // 网络异常时不阻断页面；下一次路由/刷新会再次检查。
+      });
+
+    return () => controller.abort();
+  }, [isLoading, pathname, router, user]);
+
+  return null;
+}
+
 /**
  * WebsiteLayoutClient
  *
- * 作用：
- * 1. 提供 LayoutContext (管理抽屉状态)
- * 2. 渲染全局单一的 BottomNavBar (避免页面切换时的闪烁)
+ * 职责：
+ * 1. 提供 LayoutContext (布局折叠状态)
+ * 2. 渲染全局唯一 BottomNavBar (路由切换时闪烁)
  * 3. 包装页面内容
  */
 export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
@@ -125,7 +172,8 @@ export function WebsiteLayoutClient({ children }: { children: ReactNode }) {
 
   return (
     <LayoutProvider>
-      {/* 注销冷静期全局横幅（存在 PENDING 注销申请时展示，fixed 定位不影响布局） */}
+      <ConsentGate />
+      {/* 注册冷静期全局横幅：有 PENDING 注销申请时展示，fixed 定位不影响布局 */}
       <AccountDeletionBanner />
       {children}
       <BottomNavBar />

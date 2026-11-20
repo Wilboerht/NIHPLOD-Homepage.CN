@@ -5,13 +5,15 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
-import type { LegalDocumentContent } from "@/types/legal";
+import { Checkbox } from "@/components/ui/Checkbox";
+import type { LegalDocumentContent, LegalDocumentSlug } from "@/types/legal";
 
 interface LegalPublishDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (note: string) => void | Promise<void>;
+  onConfirm: (note: string, requiresReconsent: boolean) => void | Promise<void>;
   loading: boolean;
+  slug: LegalDocumentSlug;
   content: LegalDocumentContent;
   baseContent: LegalDocumentContent | null;
   nextVersion: number;
@@ -40,6 +42,7 @@ export function LegalPublishDialog({
   onClose,
   onConfirm,
   loading,
+  slug,
   content,
   baseContent,
   nextVersion,
@@ -52,6 +55,13 @@ export function LegalPublishDialog({
     ? content.sections.map((section) => section.id).join("|") !==
       baseContent.sections.map((section) => section.id).join("|")
     : false;
+  const contentChanged =
+    !baseContent ||
+    JSON.stringify({ ...content, lastUpdated: baseContent.lastUpdated }) !==
+      JSON.stringify(baseContent);
+  const [requiresReconsent, setRequiresReconsent] = useState(
+    slug === "privacy" && (contentChanged || changedSections > 0 || orderChanged)
+  );
 
   return (
     <Modal open={open} onClose={onClose} title="发布新版本" size="lg" closeOnBackdrop={!loading}>
@@ -103,8 +113,15 @@ export function LegalPublishDialog({
           hint={noteValid ? `${note.length}/200` : "必填，用于审计记录与版本历史"}
         />
 
+        <Checkbox
+          checked={requiresReconsent}
+          onChange={setRequiresReconsent}
+          label="本次修改属于重大变更，要求用户重新同意"
+          description="勾选后，所有未同意本版本的用户下次访问主站或 SSO 子站时必须重新同意。"
+        />
+
         <p className="text-xs text-ink-muted">
-          发布属于高风险操作，确认后会要求输入动态验证码，并写入审计日志与版本历史。
+          发布属于高风险操作，确认后需要输入动态验证码，并写入审计日志与版本历史。
         </p>
 
         <div className="flex justify-end gap-2">
@@ -114,7 +131,7 @@ export function LegalPublishDialog({
           <Button
             onClick={() => {
               if (!noteValid) return;
-              void onConfirm(note.trim());
+              void onConfirm(note.trim(), requiresReconsent);
             }}
             disabled={loading || !noteValid}
           >

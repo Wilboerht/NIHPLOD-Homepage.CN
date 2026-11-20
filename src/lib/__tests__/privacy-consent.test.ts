@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   consentEvent: { deleteMany: vi.fn() },
+  privacyConsent: { findMany: vi.fn() },
   legalDocumentVersion: { findFirst: vi.fn() },
 }));
 
@@ -10,8 +11,36 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 vi.mock("@/lib/auth-security", () => ({
   hashIdentifier: (value: string) => `hash:${value}`,
 }));
+vi.mock("@/lib/consent-policy", () => {
+  const privacy = {
+    document: "PRIVACY",
+    slug: "privacy",
+    publishedVersion: 2,
+    publishedContentHash: "legal-hash",
+    requiredVersion: 2,
+    requiredContentHash: "legal-hash",
+  };
+  const terms = {
+    document: "TERMS",
+    slug: "terms",
+    publishedVersion: 2,
+    publishedContentHash: "terms-hash",
+    requiredVersion: null,
+    requiredContentHash: null,
+  };
+  return {
+    getConsentPolicySnapshot: vi.fn().mockResolvedValue({ privacy, terms }),
+    getConsentPolicyForDocument: (_snapshot: unknown, document: string) =>
+      document === "PRIVACY" ? privacy : terms,
+  };
+});
 
-import { cleanupExpiredConsentEvents, recordConsent, revokeConsent } from "@/lib/privacy-consent";
+import {
+  cleanupExpiredConsentEvents,
+  getConsentStatus,
+  recordConsent,
+  revokeConsent,
+} from "@/lib/privacy-consent";
 
 const tx = {
   privacyConsent: {
@@ -51,6 +80,7 @@ describe("privacy consent evidence", () => {
       expect.objectContaining({
         create: expect.objectContaining({
           channel: "wechat-mp-points",
+          documentVersion: 2,
           contentHash: "legal-hash",
         }),
       })
@@ -63,6 +93,7 @@ describe("privacy consent evidence", () => {
         project: "POINTS",
         document: "PRIVACY",
         version: "2026-11-19",
+        documentVersion: 2,
         contentHash: "legal-hash",
         action: "GRANTED",
         channel: "wechat-mp-points",
@@ -82,6 +113,31 @@ describe("privacy consent evidence", () => {
       data: expect.objectContaining({
         project: "SKIN",
         channel: "q6n4aitms0wgn2sz1nj96au5",
+      }),
+    });
+  });
+
+  it("records marketing consent without a legal document version", async () => {
+    await recordConsent({
+      userId: "user-1",
+      document: "MARKETING",
+      channel: "web",
+    });
+
+    expect(tx.privacyConsent.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          document: "MARKETING",
+          documentVersion: null,
+          contentHash: null,
+        }),
+      })
+    );
+    expect(tx.consentEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        document: "MARKETING",
+        documentVersion: null,
+        contentHash: null,
       }),
     });
   });
@@ -109,6 +165,50 @@ describe("privacy consent evidence", () => {
     await expect(cleanupExpiredConsentEvents()).resolves.toBe(2);
     expect(prismaMock.consentEvent.deleteMany).toHaveBeenCalledWith({
       where: { retentionUntil: { lt: expect.any(Date) } },
+    });
+  });
+
+  it("requires a fresh consent when documentVersion is behind the latest major version", async () => {
+    prismaMock.privacyConsent.findMany.mockResolvedValue([
+      {
+        document: "PRIVACY",
+        version: "2026-11-11",
+        documentVersion: 1,
+        grantedAt: new Date("2026-11-11T10:00:00.000Z"),
+      },
+      {
+        document: "TERMS",
+        version: "2026-11-19",
+        documentVersion: 2,
+        grantedAt: new Date("2026-11-19T10:00:00.000Z"),
+      },
+    ]);
+
+    const status = await getConsentStatus("user-1");
+
+    expect(status.required).toBe(true);
+    expect(status.missing).toEqual(["PRIVACY"]);
+  });
+
+  it("accepts a consent at or after the major version", async () => {
+    prismaMock.privacyConsent.findMany.mockResolvedValue([
+      {
+        document: "PRIVACY",
+        version: "2026-11-19",
+        documentVersion: 2,
+        grantedAt: new Date("2026-11-19T10:00:00.000Z"),
+      },
+      {
+        document: "TERMS",
+        version: "2026-11-19",
+        documentVersion: 2,
+        grantedAt: new Date("2026-11-19T10:00:00.000Z"),
+      },
+    ]);
+
+    await expect(getConsentStatus("user-1")).resolves.toMatchObject({
+      required: false,
+      missing: [],
     });
   });
 });

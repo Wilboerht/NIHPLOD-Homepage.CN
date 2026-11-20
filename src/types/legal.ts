@@ -52,6 +52,7 @@ export interface LegalVersionSummary {
   version: number;
   note: string | null;
   contentHash: string;
+  requiresReconsent: boolean;
   sectionCount: number;
   createdAt: string;
   createdBy: string | null;

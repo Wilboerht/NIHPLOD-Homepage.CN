@@ -14,6 +14,8 @@ import {
   refreshAccessToken,
   UnauthorizedError,
   SESSION_EXPIRED_EVENT,
+  CONSENT_REQUIRED_EVENT,
+  CONSENT_REQUIRED_HINT_KEY,
 } from "@/lib/fetch-with-auth";
 import { apiPost } from "@/lib/api-client";
 import { deferInEffect } from "@/hooks/deferInEffect";
@@ -201,7 +203,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         if (error instanceof UnauthorizedError) {
-          localStorage.removeItem("auth_hint");
+          if (sessionStorage.getItem(CONSENT_REQUIRED_HINT_KEY) !== "1") {
+            localStorage.removeItem("auth_hint");
+          }
         }
         setUser(null);
         setDeletionRequest(null);
@@ -299,6 +303,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, [handleSessionExpired]);
 
+  const handleConsentRequired = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const pathname = window.location.pathname;
+    if (pathname === "/consent" || pathname === "/login") return;
+    const returnTo = `${pathname}${window.location.search}`;
+    window.location.assign(`/consent?return_to=${encodeURIComponent(returnTo)}`);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.addEventListener(CONSENT_REQUIRED_EVENT, handleConsentRequired);
+    return () => window.removeEventListener(CONSENT_REQUIRED_EVENT, handleConsentRequired);
+  }, [handleConsentRequired]);
+
   // 定时主动刷新 Access Token（每 479 分钟一次，Access Token 8 小时过期）
   useEffect(() => {
     const AUTH_HINT_KEY = "auth_hint";
@@ -319,6 +337,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .then((result) => {
                 if (result.ok) {
                   localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
+                } else if (result.kind === "consent") {
+                  window.dispatchEvent(new CustomEvent(CONSENT_REQUIRED_EVENT));
                 } else {
                   const count =
                     parseInt(localStorage.getItem(REFRESH_FAIL_COUNT_KEY) || "0", 10) + 1;
@@ -363,6 +383,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem(REFRESH_FAIL_COUNT_KEY, "0");
             return;
           }
+          if (result.kind === "consent") {
+            window.dispatchEvent(new CustomEvent(CONSENT_REQUIRED_EVENT));
+            return;
+          }
           if (result.kind === "fatal") {
             // 服务端明确判定会话终结（令牌被吊销/设备超限等）
             handleSessionExpired();
@@ -381,7 +405,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearInterval(intervalId);
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [user, handleSessionExpired]);
+  }, [user, handleSessionExpired, handleConsentRequired]);
 
   const value = useMemo(
     () => ({

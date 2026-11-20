@@ -20,6 +20,11 @@ export class UnauthorizedError extends Error {
  */
 export const SESSION_EXPIRED_EVENT = "nihplod:session-expired";
 
+/** 刷新被法律同意拦截时广播，由 AuthContext 跳转到 /consent，而不是强制退出。 */
+export const CONSENT_REQUIRED_EVENT = "nihplod:consent-required";
+
+export const CONSENT_REQUIRED_HINT_KEY = "nihplod_consent_required_hint";
+
 /** 会话过期原因提示的 sessionStorage key（登录页读取后清除，10 分钟内有效） */
 export const SESSION_EXPIRED_HINT_KEY = "nihplod_session_expired_hint";
 
@@ -38,7 +43,9 @@ const FATAL_REFRESH_ERROR_CODES = new Set([
  * - fatal：服务端明确判定会话已终结（广播登出事件）
  * - retryable：网络异常/5xx/429/无法识别的 401 等可恢复失败（保留登录态并退避重试）
  */
-export type RefreshResult = { ok: true } | { ok: false; kind: "fatal" | "retryable" };
+export type RefreshResult =
+  | { ok: true }
+  | { ok: false; kind: "fatal" | "retryable" | "consent" };
 
 let refreshPromise: Promise<RefreshResult> | null = null;
 
@@ -89,7 +96,10 @@ async function doRefresh(): Promise<RefreshResult> {
       credentials: "include",
       headers,
     });
-    if (res.ok) return { ok: true };
+    if (res.ok) {
+      sessionStorage.removeItem(CONSENT_REQUIRED_HINT_KEY);
+      return { ok: true };
+    }
 
     // 解析错误码：用于区分"会话终结"与"可恢复失败"
     let errorCode: string | undefined;
@@ -112,6 +122,11 @@ async function doRefresh(): Promise<RefreshResult> {
     }
 
     // 网络/限流/服务端故障：保留登录态，退避重试
+    if (errorCode === "CONSENT_REQUIRED") {
+      sessionStorage.setItem(CONSENT_REQUIRED_HINT_KEY, "1");
+      return { ok: false, kind: "consent" };
+    }
+
     if (res.status >= 500 || res.status === 429 || res.status === 408) {
       return { ok: false, kind: "retryable" };
     }
@@ -179,6 +194,12 @@ export async function fetchWithAuth(
   if (response.status === 401) {
     const refreshed = await refreshAccessToken();
     if (!refreshed.ok) {
+      if (refreshed.kind === "consent") {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent(CONSENT_REQUIRED_EVENT));
+        }
+        throw new UnauthorizedError("需要先完成隐私政策和服务条款同意");
+      }
       if (refreshed.kind === "fatal") {
         // 服务端明确判定会话终结（全局退出/吊销/设备超限）：广播事件由 AuthContext 统一处理
         if (typeof window !== "undefined") {
@@ -190,6 +211,24 @@ export async function fetchWithAuth(
       throw new UnauthorizedError("网络异常，登录状态暂时无法确认，请稍后重试");
     }
     response = await fetch(input, mergedInit);
+  }
+
+  if (response.status === 403) {
+    let consentRequired = false;
+    try {
+      const body = (await response.clone().json()) as {
+        error?: { code?: string };
+      };
+      consentRequired = body?.error?.code === "CONSENT_REQUIRED";
+    } catch {
+      // 非 JSON 403，保持原响应。
+    }
+    if (consentRequired) {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent(CONSENT_REQUIRED_EVENT));
+      }
+      throw new UnauthorizedError("需要先完成隐私政策和服务条款同意");
+    }
   }
 
   return response;

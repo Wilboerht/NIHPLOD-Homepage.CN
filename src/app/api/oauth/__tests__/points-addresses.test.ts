@@ -7,6 +7,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
+vi.mock("@/lib/consent-status", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
+
 vi.mock("@/lib/ratelimit", () => ({
   rateLimit: vi.fn().mockResolvedValue({ success: true }),
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
@@ -66,6 +74,7 @@ import {
   PUT as addressPUT,
   DELETE as addressDELETE,
 } from "../addresses/[id]/route";
+import { getConsentStatus } from "@/lib/consent-status";
 
 function authedToken(scope = "openid membership") {
   mockVerifyOAuthAccessToken.mockResolvedValue({
@@ -143,6 +152,22 @@ describe("/api/oauth/points* 与 /api/oauth/addresses*", () => {
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toBe("account_disabled");
+  });
+
+  it("requires legal consent before delegated points resources", async () => {
+    authedToken();
+    vi.mocked(getConsentStatus).mockResolvedValueOnce({
+      required: true,
+      missing: ["PRIVACY", "TERMS"],
+      versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+    });
+
+    const res = await pointsGET(req("GET", "/api/oauth/points"));
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("consent_required");
+    expect(mall.getPointsOverviewResponse).not.toHaveBeenCalled();
   });
 
   it("积分余额/礼品/记录/物流/地址列表均委派共享核心", async () => {

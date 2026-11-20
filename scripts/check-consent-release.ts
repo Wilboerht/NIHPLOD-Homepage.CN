@@ -15,37 +15,24 @@ async function main() {
       prisma.consentEvent.count(),
     ]);
 
-    const documents = await prisma.legalDocument.findMany({
-      select: { id: true, slug: true, publishedVersion: true },
-    });
-    const published = new Map(documents.map((document) => [document.slug, document]));
+    const { getConsentPolicySnapshot } = await import("../src/lib/consent-policy");
+    const snapshot = await getConsentPolicySnapshot();
 
-    const policy = await Promise.all(
-      (["privacy", "terms"] as const).map(async (slug) => {
-        const document = published.get(slug);
-        const expected = hashLegalContent(defaultLegalDocuments[slug]);
-        const version =
-          document && document.publishedVersion > 0
-            ? await prisma.legalDocumentVersion.findUnique({
-                where: {
-                  documentId_version: {
-                    documentId: document.id,
-                    version: document.publishedVersion,
-                  },
-                },
-                select: { contentHash: true },
-              })
-            : null;
-        const actual = version?.contentHash ?? null;
-        return {
-          slug,
-          publishedVersion: document?.publishedVersion ?? 0,
-          sourceMatchesPublished: actual !== null && actual === expected,
-          expectedHash: expected,
-          publishedHash: actual,
-        };
-      })
-    );
+    const policy = (["privacy", "terms"] as const).map((slug) => {
+      const document = snapshot[slug];
+      const expected = hashLegalContent(defaultLegalDocuments[slug]);
+      const actual = document.publishedContentHash;
+      return {
+        slug,
+        publishedVersion: document.publishedVersion ?? 0,
+        requiredVersion: document.requiredVersion,
+        requiresReconsent: document.requiredVersion !== null,
+        sourceMatchesPublished: actual !== null && actual === expected,
+        expectedHash: expected,
+        publishedHash: actual,
+        requiredHash: document.requiredContentHash,
+      };
+    });
 
     console.log(
       JSON.stringify(

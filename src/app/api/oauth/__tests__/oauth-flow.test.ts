@@ -48,6 +48,14 @@ const mockStore = vi.hoisted(() => ({
 // ============================================
 
 // === Prisma：内存化授权码记录，使 create/consume 能自洽 ===
+vi.mock("@/lib/privacy-consent", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
+
 vi.mock("@/lib/prisma", () => {
   const _flowPrismaClient = {
     oAuthAuthorizationCode: {

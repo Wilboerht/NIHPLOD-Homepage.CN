@@ -57,6 +57,7 @@ import { recordLoginAttempt } from "@/lib/auth-security";
 import { maskPhone } from "@/lib/mask-phone";
 import { prisma } from "@/lib/prisma";
 import { OIDC_IMPLICIT_SCOPES } from "@/lib/oauth-constants";
+import { getConsentStatus } from "@/lib/privacy-consent";
 import { resolveSsoAvatar } from "@/lib/default-avatar";
 import { validateDPoPProof, dpopNonceHeader, getDPoPHtu, getDpopNonce } from "@/lib/dpop";
 import { apiConsole } from "@/lib/logger";
@@ -76,6 +77,20 @@ const MAX_OAUTH_SESSIONS_PER_CLIENT = 10;
  * 多实例部署不共享，跨实例重试以首次换取创建的 OAuthSession.createdAt 兜底。
  */
 const recentCodeConsumptions = new LRUCache<string, number>({ max: 5000, ttl: 60 * 1000 });
+
+function legalConsentErrorPayload(request: NextRequest) {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    request.nextUrl.origin;
+  const consentUrl = new URL("/consent", base);
+  consentUrl.searchParams.set("return_to", "/");
+  return {
+    error: "invalid_grant",
+    error_description: "需要先完成主站隐私政策和服务条款同意",
+    consent_uri: consentUrl.toString(),
+  };
+}
 
 /** 良性重试判定窗口：距首次消费 ≤ 10 秒 */
 const CODE_BENIGN_RETRY_WINDOW_MS = 10 * 1000;
@@ -452,6 +467,20 @@ export async function POST(request: NextRequest) {
       }
 
       // 授权码签发后用户改密/全设备登出：该 code 属于旧凭据，不得再换取 token。
+      const legalConsent = await getConsentStatus(user.id);
+      if (legalConsent.required) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: user.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type, reason: "legal_consent_required" },
+        });
+        return resJson(legalConsentErrorPayload(request), 400);
+      }
+
       const credentialCutoffMs = Math.max(
         user.passwordChangedAt?.getTime() ?? 0,
         user.sessionsInvalidatedAt?.getTime() ?? 0
@@ -850,6 +879,20 @@ export async function POST(request: NextRequest) {
       // 仅当旧 token 未携带 scope 时才从 OAuthSession 回退获取。
       // refresh 的 scope 必须是「旧 token scope ∩ 当前 consent scope ∩ 当前 client.scopes」
       // 的交集，避免 client 缩权/consent 缩权后继续换发已移除的权限。
+      const legalConsent = await getConsentStatus(refreshPayload.id);
+      if (legalConsent.required) {
+        scheduleSsoEvent({
+          event: "token",
+          userId: refreshPayload.id,
+          clientId: client_id,
+          clientName: client.name,
+          ip,
+          success: false,
+          detail: { grant_type: "refresh_token", reason: "legal_consent_required" },
+        });
+        return resJson(legalConsentErrorPayload(request), 400);
+      }
+
       const consent = await prisma.userConsent.findUnique({
         where: { userId_clientId: { userId: refreshPayload.id, clientId: client_id } },
       });

@@ -22,6 +22,32 @@ vi.mock("@/lib/logger", () => ({
   apiConsole: { warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("@/lib/consent-policy", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/consent-policy")>(
+    "@/lib/consent-policy"
+  );
+  const privacy = {
+    document: "PRIVACY" as const,
+    slug: "privacy" as const,
+    publishedVersion: 2,
+    publishedContentHash: "hash",
+    requiredVersion: 2,
+    requiredContentHash: "hash",
+  };
+  const terms = {
+    document: "TERMS" as const,
+    slug: "terms" as const,
+    publishedVersion: 2,
+    publishedContentHash: "hash",
+    requiredVersion: null,
+    requiredContentHash: null,
+  };
+  return {
+    ...actual,
+    getConsentPolicySnapshot: vi.fn().mockResolvedValue({ privacy, terms }),
+  };
+});
+
 import { buildUserConsentOverview } from "@/lib/user-consent-overview";
 
 const current = "2026-11-19";
@@ -34,6 +60,7 @@ function mainRow(
   return {
     document,
     version: current,
+    documentVersion: 2,
     channel,
     grantedAt: new Date("2026-11-19T10:00:00.000Z"),
     revokedAt: null,
@@ -131,7 +158,7 @@ describe("buildUserConsentOverview", () => {
 
   it("marks an old main consent as outdated and warns", async () => {
     prismaMock.privacyConsent.findMany.mockResolvedValue([
-      mainRow("PRIVACY", "web", { version: "2026-11-11" }),
+      mainRow("PRIVACY", "web", { version: "2026-11-11", documentVersion: 1 }),
       mainRow("TERMS", "web"),
     ]);
 

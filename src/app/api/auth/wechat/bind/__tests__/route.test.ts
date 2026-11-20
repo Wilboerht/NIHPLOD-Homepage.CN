@@ -10,6 +10,10 @@ vi.mock("@/lib/wechat-binding", () => ({
   resolveWechatBinding: vi.fn(),
 }));
 
+vi.mock("@/lib/login-consent", () => ({
+  recordLoginConsent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@/lib/wechat", () => ({
   getMiniprogramPhone: vi.fn(),
 }));

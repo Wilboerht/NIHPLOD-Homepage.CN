@@ -23,6 +23,7 @@ describe("LegalPublishDialog", () => {
           onClose={vi.fn()}
           onConfirm={onConfirm}
           loading={false}
+          slug="terms"
           content={content}
           baseContent={null}
           nextVersion={1}
@@ -40,6 +41,6 @@ describe("LegalPublishDialog", () => {
     fireEvent.change(noteInput, { target: { value: "法务更新" } });
     expect(confirmButton).toBeEnabled();
     fireEvent.click(confirmButton);
-    expect(onConfirm).toHaveBeenCalledWith("法务更新");
+    expect(onConfirm).toHaveBeenCalledWith(expect.any(String), false);
   });
 });

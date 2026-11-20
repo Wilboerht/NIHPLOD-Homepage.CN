@@ -16,6 +16,8 @@ import {
   fetchWithAuth,
   refreshAccessToken,
   SESSION_EXPIRED_EVENT,
+  CONSENT_REQUIRED_EVENT,
+  CONSENT_REQUIRED_HINT_KEY,
   SESSION_EXPIRED_HINT_KEY,
   UnauthorizedError,
 } from "@/lib/fetch-with-auth";
@@ -176,6 +178,23 @@ describe("fetch-with-auth 刷新三态", () => {
 
     expect(results.every((r) => r.status === 200)).toBe(true);
     expect(refreshCalls).toBe(1);
+  });
+
+  it("403 CONSENT_REQUIRED dispatches consent event and sets hint", async () => {
+    queue = [
+      jsonResponse(401, {}),
+      jsonResponse(403, { error: { code: "CONSENT_REQUIRED" } }),
+    ];
+    const eventSpy = vi.fn();
+    window.addEventListener(CONSENT_REQUIRED_EVENT, eventSpy);
+
+    await expect(fetchWithAuth("/api/user/points")).rejects.toBeInstanceOf(
+      UnauthorizedError
+    );
+
+    expect(eventSpy).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem(CONSENT_REQUIRED_HINT_KEY)).toBe("1");
+    window.removeEventListener(CONSENT_REQUIRED_EVENT, eventSpy);
   });
 
   it("refreshAccessToken 返回值区分 ok/fatal/retryable", async () => {

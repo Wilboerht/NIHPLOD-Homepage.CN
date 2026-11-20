@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { hashIdentifier } from "@/lib/auth-security";
+import {
+  getConsentPolicyForDocument,
+  getConsentPolicySnapshot,
+} from "@/lib/consent-policy";
+import {
+  CONSENT_EVIDENCE_RETENTION_YEARS,
+  getDocumentVersion,
+} from "@/lib/consent-constants";
 import type {
   ConsentEventProject,
   Prisma,
@@ -10,15 +18,19 @@ import type {
  * 隐私政策与服务条款的当前版本。
  * 文本每次发生实质变更时必须同时更新这两个值，并要求用户重新同意。
  */
-export const PRIVACY_POLICY_VERSION = "2026-11-19";
-export const TERMS_OF_SERVICE_VERSION = "2026-11-19";
-
-export const REQUIRED_CONSENT_DOCUMENTS = [
-  "PRIVACY",
-  "TERMS",
-] as const satisfies readonly PrivacyConsentDocument[];
-
-export const CONSENT_EVIDENCE_RETENTION_YEARS = 3;
+export {
+  CONSENT_EVIDENCE_RETENTION_YEARS,
+  MARKETING_CONSENT_VERSION,
+  PRIVACY_POLICY_VERSION,
+  REQUIRED_CONSENT_DOCUMENTS,
+  TERMS_OF_SERVICE_VERSION,
+  getDocumentVersion,
+} from "@/lib/consent-constants";
+export {
+  getConsentStatus,
+  hasRequiredConsent,
+  type ConsentStatus,
+} from "@/lib/consent-status";
 
 export function consentRetentionUntil(from: Date = new Date()): Date {
   const until = new Date(from);
@@ -39,67 +51,6 @@ function resolveConsentProject(channel: string): ConsentEventProject {
   return PROJECT_BY_CHANNEL[channel] ?? "UNKNOWN";
 }
 
-async function getCurrentContentHash(document: PrivacyConsentDocument): Promise<string | null> {
-  const slug = document === "PRIVACY" ? "privacy" : document === "TERMS" ? "terms" : null;
-  if (!slug) return null;
-
-  try {
-    const latest = await prisma.legalDocumentVersion.findFirst({
-      where: { document: { slug } },
-      orderBy: { version: "desc" },
-      select: { contentHash: true },
-    });
-    return latest?.contentHash ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export function getDocumentVersion(document: PrivacyConsentDocument): string | null {
-  if (document === "PRIVACY") return PRIVACY_POLICY_VERSION;
-  if (document === "TERMS") return TERMS_OF_SERVICE_VERSION;
-  return null;
-}
-
-export interface ConsentStatus {
-  required: boolean;
-  missing: PrivacyConsentDocument[];
-  versions: {
-    privacy: string;
-    terms: string;
-  };
-}
-
-export async function getConsentStatus(userId: string): Promise<ConsentStatus> {
-  const rows = await prisma.privacyConsent.findMany({
-    where: {
-      userId,
-      revokedAt: null,
-      OR: [
-        { document: "PRIVACY", version: PRIVACY_POLICY_VERSION },
-        { document: "TERMS", version: TERMS_OF_SERVICE_VERSION },
-      ],
-    },
-    select: { document: true },
-  });
-
-  const granted = new Set(rows.map((row) => row.document));
-  const missing = REQUIRED_CONSENT_DOCUMENTS.filter((document) => !granted.has(document));
-
-  return {
-    required: missing.length > 0,
-    missing: [...missing],
-    versions: {
-      privacy: PRIVACY_POLICY_VERSION,
-      terms: TERMS_OF_SERVICE_VERSION,
-    },
-  };
-}
-
-export async function hasRequiredConsent(userId: string): Promise<boolean> {
-  return !(await getConsentStatus(userId)).required;
-}
-
 export interface RecordConsentInput {
   userId: string;
   document: PrivacyConsentDocument;
@@ -118,7 +69,13 @@ export async function recordConsent(input: RecordConsentInput): Promise<void> {
   const channel = input.channel ?? "web";
   const occurredAt = new Date();
   const ipHash = input.ip ? hashIdentifier(input.ip) : null;
-  const contentHash = await getCurrentContentHash(input.document);
+  const isMarketing = input.document === "MARKETING";
+  const policy = isMarketing ? null : await getConsentPolicySnapshot();
+  const documentPolicy = policy
+    ? getConsentPolicyForDocument(policy, input.document)
+    : null;
+  const documentVersion = documentPolicy?.publishedVersion ?? null;
+  const contentHash = documentPolicy?.publishedContentHash ?? null;
 
   await prisma.$transaction(async (tx) => {
     await tx.privacyConsent.upsert({
@@ -134,6 +91,7 @@ export async function recordConsent(input: RecordConsentInput): Promise<void> {
         userId: input.userId,
         document: input.document,
         version,
+        documentVersion,
         contentHash,
         channel,
         ipHash,
@@ -143,6 +101,7 @@ export async function recordConsent(input: RecordConsentInput): Promise<void> {
       update: {
         grantedAt: occurredAt,
         revokedAt: null,
+        documentVersion,
         contentHash: contentHash ?? undefined,
         ipHash,
         userAgent: input.userAgent ?? null,
@@ -158,6 +117,7 @@ export async function recordConsent(input: RecordConsentInput): Promise<void> {
         project: resolveConsentProject(channel),
         document: input.document,
         version,
+        documentVersion,
         contentHash,
         action: "GRANTED",
         channel,
@@ -181,13 +141,16 @@ export async function revokeConsent(
   }
 
   const occurredAt = new Date();
+  const isMarketing = document === "MARKETING";
+  const policy = isMarketing ? null : await getConsentPolicySnapshot();
+  const documentPolicy = policy ? getConsentPolicyForDocument(policy, document) : null;
+  const documentVersion = documentPolicy?.publishedVersion ?? null;
 
   await prisma.$transaction(async (tx) => {
     const result = await tx.privacyConsent.updateMany({
       where: {
         userId,
         document,
-        version,
         channel,
         revokedAt: null,
       },
@@ -204,7 +167,8 @@ export async function revokeConsent(
         project: resolveConsentProject(channel),
         document,
         version,
-        contentHash: null,
+        documentVersion,
+        contentHash: documentPolicy?.publishedContentHash ?? null,
         action: "REVOKED",
         channel,
         occurredAt,

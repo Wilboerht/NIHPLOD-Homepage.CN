@@ -53,6 +53,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       content: parsed.content,
       expectedRevision: parsed.expectedRevision,
       note: parsed.note,
+      requiresReconsent: parsed.requiresReconsent,
       admin: { id: admin.id, email: admin.email, name: admin.name },
       request,
     });

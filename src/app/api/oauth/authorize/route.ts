@@ -19,6 +19,7 @@ import { isBodyTooLargeError, payloadTooLargeResponse, readJsonBody } from "@/li
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { SUPPORTED_SCOPES, OIDC_IMPLICIT_SCOPES, getIssuer } from "@/lib/oauth-constants";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
+import { getConsentStatus } from "@/lib/privacy-consent";
 import { apiConsole } from "@/lib/logger";
 import { respondOAuthError } from "@/lib/oauth-error-page";
 import {
@@ -182,15 +183,30 @@ function buildErrorRedirect(
   error: string,
   errorDescription: string,
   state?: string | null,
-  popupNonce?: string | null
+  popupNonce?: string | null,
+  extraParams?: Record<string, string>
 ): NextResponse {
   const url = new URL(redirectUri);
   url.searchParams.set("error", error);
   url.searchParams.set("error_description", errorDescription);
   if (state) url.searchParams.set("state", state);
   if (popupNonce) url.searchParams.set("popup_nonce", popupNonce);
+  if (extraParams) {
+    for (const [key, value] of Object.entries(extraParams)) {
+      url.searchParams.set(key, value);
+    }
+  }
   url.searchParams.set("iss", getIssuer());
   return redirectNoStore(url);
+}
+
+function buildLegalConsentUrl(request: NextRequest): string {
+  const url = new URL("/consent", getPublicOrigin(request));
+  url.searchParams.set(
+    "return_to",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`
+  );
+  return url.toString();
 }
 
 export async function GET(request: NextRequest) {
@@ -298,7 +314,8 @@ export async function GET(request: NextRequest) {
       uri: string,
       error: string,
       description: string,
-      stateValue?: string | null
+      stateValue?: string | null,
+      extraParams?: Record<string, string>
     ) => {
       scheduleSsoEvent({
         event: "authorize",
@@ -313,7 +330,8 @@ export async function GET(request: NextRequest) {
         error,
         description,
         stateValue,
-        searchParams.get("popup_nonce")
+        searchParams.get("popup_nonce"),
+        extraParams
       );
     };
 
@@ -526,7 +544,25 @@ export async function GET(request: NextRequest) {
       return withRefreshedSession(redirectNoStore(loginUrl));
     }
 
-    // 11. 已登录 → 查询用户是否已授权过该 client 且 scope 未扩大
+    // 10.1 法律同意必须先于 OAuth scope 同意
+    const legalConsent = await getConsentStatus(sessionUserId);
+    if (legalConsent.required) {
+      const consentUri = buildLegalConsentUrl(request);
+      if (prompt === "none") {
+        return withRefreshedSession(
+          failRedirect(
+            safeRedirectUri,
+            "interaction_required",
+            "需要先完成主站隐私政策和服务条款同意",
+            state,
+            { consent_uri: consentUri }
+          )
+        );
+      }
+      return withRefreshedSession(redirectNoStore(new URL(consentUri)));
+    }
+
+    // 11. 已登录 → 查询用户是否授权过该 client 和 scope 组合
     const existingConsent = await prisma.userConsent.findUnique({
       where: { userId_clientId: { userId: sessionUserId, clientId: client_id } },
     });
@@ -725,7 +761,8 @@ export async function POST(request: NextRequest) {
       uri: string,
       error: string,
       description: string,
-      stateValue?: string | null
+      stateValue?: string | null,
+      extraParams?: Record<string, string>
     ) => {
       scheduleSsoEvent({
         event: "authorize",
@@ -740,7 +777,8 @@ export async function POST(request: NextRequest) {
         error,
         description,
         stateValue,
-        typeof body.popup_nonce === "string" ? body.popup_nonce : null
+        typeof body.popup_nonce === "string" ? body.popup_nonce : null,
+        extraParams
       );
     };
 
@@ -904,12 +942,29 @@ export async function POST(request: NextRequest) {
     // 服务端存储，缺失时无法确认回传参数未被篡改，拒绝并提示重新发起授权
     if (!oauthId) {
       return noStoreJson(
-        { error: "invalid_request", error_description: "缺少 oauth_id，请重新发起授权" },
+        { error: "invalid_request", error_description: "ȱ�� oauth_id���������·�����Ȩ" },
         { status: 400 }
       );
     }
 
-    // 持久化用户 consent：合并 scope、清除撤销标记
+    // 防止绕过 GET 阶段的政策检查。
+    const legalConsent = await getConsentStatus(userPayload.id);
+    if (legalConsent.required) {
+      const consentUrl = new URL("/consent", getPublicOrigin(request));
+      consentUrl.searchParams.set(
+        "return_to",
+        `/api/oauth/authorize?oauth_id=${encodeURIComponent(oauthId)}`
+      );
+      return failRedirect(
+        safeRedirectUri,
+        "interaction_required",
+        "需要先完成主站隐私政策和服务条款同意",
+        state,
+        { consent_uri: consentUrl.toString() }
+      );
+    }
+
+    // 持久化用户 consent，合并 scope，用于后续授权
     await ensureUserConsent(userPayload.id, client_id, requestedScopes);
 
     // 创建授权码

@@ -14,8 +14,28 @@ import {
   type OAuthResJson,
 } from "@/lib/oauth-resource-auth";
 import { guardOAuthUserActive } from "@/lib/oauth-user-guard";
+import { getConsentStatus } from "@/lib/consent-status";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import type { OAuthAccessTokenPayload } from "@/types/auth";
+
+const LEGAL_CONSENT_EXEMPT_PREFIXES = [
+  "/api/oauth/consent",
+  "/api/oauth/account/deletion",
+  "/api/oauth/security",
+  "/api/oauth/user/password",
+] as const;
+
+function defaultRequireLegalConsent(pathname: string): boolean {
+  return !LEGAL_CONSENT_EXEMPT_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
+export interface OAuthUserAuthOptions {
+  scope: string;
+  action: string;
+  requireLegalConsent?: boolean;
+}
 
 export interface OAuthUserAuthOk {
   ok: true;
@@ -31,7 +51,7 @@ export type OAuthUserAuthResult = OAuthUserAuthOk | { ok: false; response: Respo
 export async function authenticateOAuthUserRequest(
   request: NextRequest,
   method: string,
-  options: { scope: string; action: string }
+  options: OAuthUserAuthOptions
 ): Promise<OAuthUserAuthResult> {
   const auth = await authenticateOAuthResourceRequest(request, method);
   if (!auth.ok) return { ok: false, response: auth.response };
@@ -96,6 +116,40 @@ export async function authenticateOAuthUserRequest(
         guard.status
       ),
     };
+  }
+
+  const requireLegalConsent =
+    options.requireLegalConsent ??
+    defaultRequireLegalConsent(request.nextUrl?.pathname ?? "");
+  if (requireLegalConsent) {
+    const consent = await getConsentStatus(payload.id);
+    if (consent.required) {
+      scheduleSsoEvent({
+        event: "userinfo",
+        userId: payload.id,
+        clientId: payload.client_id,
+        ip,
+        success: false,
+        detail: { action: options.action, reason: "legal_consent_required" },
+      });
+      const base =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        request.nextUrl.origin;
+      const consentUrl = new URL("/consent", base);
+      consentUrl.searchParams.set("return_to", "/");
+      return {
+        ok: false,
+        response: resJson(
+          {
+            error: "consent_required",
+            error_description: "需要先完成主站隐私政策和服务条款同意",
+            consent_uri: consentUrl.toString(),
+          },
+          403
+        ),
+      };
+    }
   }
 
   return { ok: true, payload, ip, resJson, corsHeaders: auth.corsHeaders };

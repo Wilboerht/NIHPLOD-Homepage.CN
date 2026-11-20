@@ -13,7 +13,12 @@
  * 本路由仅保留路由层职责：限流、CSRF、Cookie 读写与 HTTP 响应映射。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenExpiresAt, getRefreshTokenExpiresAt } from "@/lib/jwt";
+import {
+  getTokenExpiresAt,
+  getRefreshTokenExpiresAt,
+  verifyRefreshToken,
+} from "@/lib/jwt";
+import { getConsentStatus } from "@/lib/privacy-consent";
 import { extractDeviceInfo } from "@/lib/auth-security";
 import { refreshUserSession } from "@/lib/session-refresh";
 import {
@@ -70,6 +75,29 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. 核心刷新事务（JWT 验证 → OAuth token 拒绝 → 账号状态 → 原子轮换 → 重签）
+    const refreshPayload = await verifyRefreshToken(refreshToken);
+    if (refreshPayload?.id) {
+      const consent = await getConsentStatus(refreshPayload.id);
+      if (consent.required) {
+        logAuthEvent("user_refresh_token", {
+          success: false,
+          reason: "legal_consent_required",
+          ip: getClientIP(request),
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "CONSENT_REQUIRED",
+              message: "请先完成隐私政策和服务条款同意",
+              consentUri: "/consent",
+            },
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const result = await refreshUserSession(refreshToken, {
       ip: getClientIP(request),
       deviceInfo: extractDeviceInfo(request),

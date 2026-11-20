@@ -31,12 +31,16 @@ import { apiConsole } from "@/lib/logger";
 import { maskPhone } from "@/lib/mask-phone";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { getConsentStatus } from "@/lib/privacy-consent";
+import { recordLoginConsent } from "@/lib/login-consent";
 import { z } from "zod";
 
-// 请求参数验证
+// 手机号验证码登录
 const loginSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   code: z.string().regex(/^\d{6}$/, "验证码为6位数字"),
+  privacyConsent: z.boolean().optional(),
+  termsConsent: z.boolean().optional(),
+  marketingConsent: z.boolean().optional(),
 });
 
 // 强制动态渲染，禁止静态预渲染
@@ -252,6 +256,15 @@ export async function POST(request: NextRequest) {
 
     // 8. 清除该账户所有类型的失败登录记录（跨类型严格计数，成功登录后全量重置）
     await clearLoginAttempts(phone);
+
+    await recordLoginConsent({
+      userId: user.id,
+      request,
+      ip: clientIP,
+      privacyConsent: result.data.privacyConsent,
+      termsConsent: result.data.termsConsent,
+      marketingConsent: result.data.marketingConsent,
+    });
 
     // 9. 签发 Access Token（短期，8小时）
     const accessToken = await signUserToken({

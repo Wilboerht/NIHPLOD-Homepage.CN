@@ -1,11 +1,19 @@
-/**
- * OAuth SkinTestUsage 端点单元测试
+﻿/**
+ * OAuth SkinTestUsage 端点的单元测试
  * GET /api/oauth/skin-test-usage
  *
- * 覆盖：未认证 401 / 缺 scope 403 / 用量透传 / 子站失败 fail-soft 返回 usage: null
+ * 覆盖：未认证 401 / 缺 scope 403 / 正常透传 / 子站失败 fail-soft（usage: null）
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+
+vi.mock("@/lib/consent-status", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
 
 vi.mock("@/lib/token-blacklist", () => ({
   isTokenBlacklisted: vi.fn().mockReturnValue(false),

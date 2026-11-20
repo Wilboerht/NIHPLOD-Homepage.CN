@@ -17,6 +17,7 @@ import {
 import { prisma } from "./prisma";
 import type { UserStatus, AdminStatus } from "@/generated/prisma/client";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
+import { getConsentStatus } from "@/lib/consent-status";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { resolveAdminPermissions } from "@/lib/admin-permissions";
 
@@ -444,8 +445,35 @@ export async function getCurrentLoginUser(): Promise<UserInfo | null> {
 /**
  * API 路由保护高阶函数（C端用户）
  */
+export interface UserAuthOptions {
+  /**
+   * 需要当前隐私政策/条款同意后才能访问的高风险数据接口。
+   * 登录、consent、profile、注销、密码/设备等账户安全接口不启用。
+   */
+  requireLegalConsent?: boolean;
+}
+
+const LEGAL_CONSENT_EXEMPT_PREFIXES = [
+  "/api/user/consent",
+  "/api/user/profile",
+  "/api/user/account/deletion",
+  "/api/user/password",
+  "/api/user/phone",
+  "/api/user/identities",
+  "/api/user/devices",
+  "/api/user/login-history",
+  "/api/user/oauth",
+] as const;
+
+function defaultRequireLegalConsent(pathname: string): boolean {
+  return !LEGAL_CONSENT_EXEMPT_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 export function withUserAuth<T extends NextRequest>(
-  handler: (request: T, user: UserJWTPayload) => Promise<Response>
+  handler: (request: T, user: UserJWTPayload) => Promise<Response>,
+  options: UserAuthOptions = {}
 ): (request: T) => Promise<Response> {
   return async (request: T) => {
     const method = request.method?.toUpperCase() ?? "";
@@ -469,6 +497,26 @@ export function withUserAuth<T extends NextRequest>(
         },
         { status: 401 }
       );
+    }
+
+    const requireLegalConsent =
+      options.requireLegalConsent ??
+      defaultRequireLegalConsent(request.nextUrl?.pathname ?? "");
+    if (requireLegalConsent) {
+      const consent = await getConsentStatus(user.id);
+      if (consent.required) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "CONSENT_REQUIRED",
+              message: "请先完成隐私政策和服务条款同意",
+              consentUri: "/consent",
+            },
+          },
+          { status: 403 }
+        );
+      }
     }
 
     return handler(request, user);

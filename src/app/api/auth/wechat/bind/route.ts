@@ -12,6 +12,7 @@ import { passwordSchema } from "@/lib/password";
 import { verifyWechatBindToken, consumeWechatBindToken, releaseWechatBindToken } from "@/lib/jwt";
 import { resolveWechatBinding } from "@/lib/wechat-binding";
 import { getMiniprogramPhone } from "@/lib/wechat";
+import { recordLoginConsent } from "@/lib/login-consent";
 import {
   DEFAULT_MINIPROGRAM_CLIENT_ID,
   resolveMiniprogramCredentials,
@@ -43,6 +44,9 @@ const bindSchema = z.object({
   password: passwordSchema.optional(),
   allowAutoPassword: z.boolean().default(false),
   bindToken: z.string().max(4096).optional(),
+  privacyConsent: z.boolean().optional(),
+  termsConsent: z.boolean().optional(),
+  marketingConsent: z.boolean().optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -249,6 +253,15 @@ export async function POST(request: NextRequest) {
     }
 
     const { user, accessToken, refreshToken, passwordGenerated, message } = bindingResult.data;
+
+    await recordLoginConsent({
+      userId: user.id,
+      request,
+      ip: clientIP,
+      privacyConsent: result.data.privacyConsent,
+      termsConsent: result.data.termsConsent,
+      marketingConsent: result.data.marketingConsent,
+    });
 
     // bindToken 通道（小程序等无 Cookie 环境）Cookie 无效，改为在 body 返回双 Token
     const responseData: Record<string, unknown> = { user, message, passwordGenerated };

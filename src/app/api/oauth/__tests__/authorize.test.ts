@@ -22,6 +22,14 @@ vi.mock("@/lib/sso-audit", () => ({
   scheduleSsoEvent: vi.fn(),
 }));
 
+vi.mock("@/lib/privacy-consent", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
+
 // === Mock Prisma（UserConsent 查询）===
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -83,6 +91,7 @@ import { createAuthorizationCode } from "@/lib/oauth-code";
 import { verifyUserToken } from "@/lib/jwt";
 import { refreshUserSession } from "@/lib/session-refresh";
 import { prisma } from "@/lib/prisma";
+import { getConsentStatus } from "@/lib/privacy-consent";
 import { NextRequest } from "next/server";
 
 const mockRefreshUserSession = refreshUserSession as ReturnType<typeof vi.fn>;
@@ -159,6 +168,46 @@ describe("GET /api/oauth/authorize", () => {
     expect(location.startsWith("https://example.com/cb")).toBe(true);
     expect(location).toContain("error=unsupported_response_type");
     expect(location).toContain(`state=${VALID_STATE}`);
+  });
+
+  it("legal consent required redirects to /consent before OAuth scope consent", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    vi.mocked(getConsentStatus).mockResolvedValueOnce({
+      required: true,
+      missing: ["PRIVACY", "TERMS"],
+      versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+    });
+
+    const res = await GET(
+      new NextRequest(buildAuthorizeUrl(), {
+        headers: { Cookie: "__Host-user_token=dummy-token" },
+      })
+    );
+
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.pathname).toBe("/consent");
+    expect(location.searchParams.get("return_to")).toContain("/api/oauth/authorize");
+  });
+
+  it("prompt=none with missing legal consent returns interaction_required", async () => {
+    vi.mocked(getOAuthClientByClientId).mockResolvedValue(validClient());
+    vi.mocked(getConsentStatus).mockResolvedValueOnce({
+      required: true,
+      missing: ["PRIVACY", "TERMS"],
+      versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+    });
+
+    const res = await GET(
+      new NextRequest(buildAuthorizeUrl({ prompt: "none" }), {
+        headers: { Cookie: "__Host-user_token=dummy-token" },
+      })
+    );
+
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.searchParams.get("error")).toBe("interaction_required");
+    expect(location.searchParams.get("consent_uri")).toContain("/consent");
   });
 
   it("client 不存在应返回 400", async () => {

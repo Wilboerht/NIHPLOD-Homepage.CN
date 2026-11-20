@@ -1,5 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+
+vi.mock("@/lib/consent-status", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
 
 vi.mock("@/lib/ratelimit", () => ({
   rateLimit: vi.fn().mockResolvedValue({ success: true }),

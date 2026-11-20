@@ -43,6 +43,7 @@ vi.mock("@/lib/privacy-consent", () => ({
     missing: [],
     versions: { privacy: "2026-11-19", terms: "2026-11-19" },
   }),
+  recordConsent: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -65,6 +66,7 @@ vi.mock("@/lib/captcha", () => ({
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { recordLoginAttempt } from "@/lib/auth-security";
+import { recordConsent } from "@/lib/privacy-consent";
 import { POST } from "@/app/api/auth/login-password/route";
 
 const mockUserFindUnique = prisma.user.findUnique as ReturnType<typeof vi.fn>;
@@ -192,5 +194,24 @@ describe("POST /api/auth/login-password 审计顺序", () => {
     const data = await res.json();
 
     expect(data.error.details).toBeUndefined();
+  });
+
+  it("password login writes privacy and terms consent when both flags are true", async () => {
+    const res = await POST(
+      createRequest({
+        ...loginBody,
+        privacyConsent: true,
+        termsConsent: true,
+        marketingConsent: false,
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(recordConsent).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-1", document: "PRIVACY", channel: "web" })
+    );
+    expect(recordConsent).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-1", document: "TERMS", channel: "web" })
+    );
   });
 });

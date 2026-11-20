@@ -2,6 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { advisorRequest } from "@/lib/advisor-internal";
 import { baInternalRequest, type BaInternalResult } from "@/lib/ba-internal";
 import { PRIVACY_POLICY_VERSION, TERMS_OF_SERVICE_VERSION } from "@/lib/privacy-consent";
+import {
+  getConsentPolicySnapshot,
+  type ConsentDocumentPolicy,
+  type ConsentPolicySnapshot,
+} from "@/lib/consent-policy";
 import { apiConsole } from "@/lib/logger";
 import type {
   ConsentDocumentKey,
@@ -17,6 +22,7 @@ import type {
 type MainConsentRow = {
   document: "PRIVACY" | "TERMS" | "MARKETING";
   version: string;
+  documentVersion: number | null;
   channel: string;
   grantedAt: Date;
   revokedAt: Date | null;
@@ -119,7 +125,8 @@ function latestDate(values: Array<Date | string | null | undefined>): string | n
 
 function statusFromRow(
   row: MainConsentRow | undefined,
-  currentVersion: string | null
+  policy: ConsentDocumentPolicy | null,
+  fallbackVersion: string | null
 ): ConsentDocumentStatus {
   if (!row) {
     return {
@@ -131,14 +138,22 @@ function statusFromRow(
     };
   }
 
-  let state: ConsentDocumentState;
-  if (row.revokedAt) state = "revoked";
-  else if (currentVersion && row.version !== currentVersion) state = "outdated";
-  else state = "current";
+  let state: ConsentDocumentState = "current";
+  if (row.revokedAt) {
+    state = "revoked";
+  } else if (policy?.requiredVersion != null) {
+    state =
+      row.documentVersion != null && row.documentVersion >= policy.requiredVersion
+        ? "current"
+        : "outdated";
+  } else if (policy?.publishedVersion == null) {
+    state = fallbackVersion && row.version !== fallbackVersion ? "outdated" : "current";
+  }
 
   return {
     state,
     version: row.version,
+    documentVersion: row.documentVersion,
     grantedAt: iso(row.grantedAt),
     revokedAt: iso(row.revokedAt),
     channel: row.channel,
@@ -166,7 +181,7 @@ function buildMainProject(
   key: "main" | "points" | "legacy",
   rows: MainConsentRow[],
   events: ConsentEventSummary[],
-  currentVersions: { privacy: string; terms: string },
+  policy: ConsentPolicySnapshot,
   note?: string
 ): ConsentProjectStatus {
   const latestByDocument = new Map<ConsentDocumentKey, MainConsentRow>();
@@ -180,13 +195,19 @@ function buildMainProject(
 
   const documents: Partial<Record<ConsentDocumentKey, ConsentDocumentStatus>> = {};
   for (const document of MAIN_DOCUMENTS) {
-    const currentVersion =
+    const documentPolicy =
+      document === "privacy" ? policy.privacy : document === "terms" ? policy.terms : null;
+    const fallbackVersion =
       document === "privacy"
-        ? currentVersions.privacy
+        ? PRIVACY_POLICY_VERSION
         : document === "terms"
-          ? currentVersions.terms
+          ? TERMS_OF_SERVICE_VERSION
           : null;
-    documents[document] = statusFromRow(latestByDocument.get(document), currentVersion);
+    documents[document] = statusFromRow(
+      latestByDocument.get(document),
+      documentPolicy,
+      fallbackVersion
+    );
   }
 
   return {
@@ -570,13 +591,15 @@ export async function buildUserConsentOverview(input: {
         })
       : Promise.resolve(null);
 
-  const [mainRows, mainEvents, job, kfLink, skinResult, baResult] = await Promise.all([
+  const [mainRows, mainEvents, job, kfLink, skinResult, baResult, consentPolicy] =
+    await Promise.all([
     prisma.privacyConsent.findMany({
       where: { userId: input.userId },
       orderBy: { grantedAt: "desc" },
       select: {
         document: true,
         version: true,
+        documentVersion: true,
         channel: true,
         grantedAt: true,
         revokedAt: true,
@@ -611,6 +634,7 @@ export async function buildUserConsentOverview(input: {
     }),
     skinPromise,
     baPromise,
+    getConsentPolicySnapshot(),
   ]);
 
   const skinData = skinResult?.ok && skinResult.data?.data ? skinResult.data.data : null;
@@ -657,14 +681,13 @@ export async function buildUserConsentOverview(input: {
   const legacyRows = mainRows.filter((row) => row.channel === "miniprogram") as MainConsentRow[];
 
   const projects: ConsentProjectStatus[] = [
-    buildMainProject("main", mainRowsFor("web"), eventsFor("main"), {
-      privacy: PRIVACY_POLICY_VERSION,
-      terms: TERMS_OF_SERVICE_VERSION,
-    }),
-    buildMainProject("points", mainRowsFor("wechat-mp-points"), eventsFor("points"), {
-      privacy: PRIVACY_POLICY_VERSION,
-      terms: TERMS_OF_SERVICE_VERSION,
-    }),
+    buildMainProject("main", mainRowsFor("web"), eventsFor("main"), consentPolicy),
+    buildMainProject(
+      "points",
+      mainRowsFor("wechat-mp-points"),
+      eventsFor("points"),
+      consentPolicy
+    ),
     input.canReadSkin === false
       ? buildRestrictedProject("skin", "无测肤查看权限")
       : buildSkinProject(skinData, mainSkinRows, skinError, eventsFor("skin")),
@@ -681,7 +704,7 @@ export async function buildUserConsentOverview(input: {
         "legacy",
         legacyRows,
         eventsFor("legacy"),
-        { privacy: PRIVACY_POLICY_VERSION, terms: TERMS_OF_SERVICE_VERSION },
+        consentPolicy,
         "旧版小程序同意记录未区分具体小程序"
       )
     );

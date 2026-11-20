@@ -273,7 +273,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     setPublishOpen(true);
   };
 
-  const confirmPublish = async (note: string) => {
+  const confirmPublish = async (note: string, requiresReconsent: boolean) => {
     if (!content || !document || saving || publishing) return;
     const publishNote = note.trim();
     if (publishNote.length < 2) {
@@ -286,6 +286,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
       content,
       expectedRevision: document.draftRevision,
       note: publishNote,
+      requiresReconsent,
     };
 
     const submit = () =>
@@ -675,6 +676,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
         }}
         onConfirm={confirmPublish}
         loading={publishing}
+        slug={slug}
         content={content}
         baseContent={document.publishedContent}
         nextVersion={document.publishedVersion + 1}

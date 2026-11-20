@@ -583,15 +583,24 @@ function LoginPageContent() {
       if (loginMethod === "code") {
         // 验证码登录：短信码即凭证，无需人机验证
         setLoading(true);
-        result = await apiPost("/api/auth/login", { phone: loginPhone, code: loginCode });
+        result = await apiPost("/api/auth/login", {
+          phone: loginPhone,
+          code: loginCode,
+          privacyConsent: mobileAgreed,
+          termsConsent: mobileAgreed,
+          marketingConsent: false,
+        });
       } else {
-        // 密码登录先过 PoW 人机验证（求解期间按钮显示「核验中…」）
+        // 密码登录先过 PoW 人机验证，提交期间按钮显示“登录中”
         const captchaToken = await runWithCaptcha("login");
         setLoading(true);
         result = await apiPost("/api/auth/login-password", {
           phone: loginPhone,
           password: loginPassword,
           captchaToken,
+          privacyConsent: mobileAgreed,
+          termsConsent: mobileAgreed,
+          marketingConsent: false,
         });
       }
       if (requestId !== authRequestIdRef.current) return;
@@ -699,6 +708,9 @@ function LoginPageContent() {
         code: regCode,
         ...(regPassword ? { password: regPassword } : {}),
         allowAutoPassword: !regPassword,
+        privacyConsent: mobileAgreed,
+        termsConsent: mobileAgreed,
+        marketingConsent: false,
       });
       const consent = await apiGet<{ required?: boolean }>("/api/user/consent").catch(() => null);
       if (consent?.required) {

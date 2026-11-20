@@ -32,14 +32,18 @@ import { apiConsole } from "@/lib/logger";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { verifyCaptchaToken } from "@/lib/captcha";
 import { getConsentStatus } from "@/lib/privacy-consent";
+import { recordLoginConsent } from "@/lib/login-consent";
 import { z } from "zod";
 
-// 请求参数验证
+// 密码登录参数校验
 const loginSchema = z.object({
   phone: z.string().regex(/^1[3-9]\d{9}$/, "请输入正确的手机号"),
   password: z.string().min(8, "密码至少8位").max(32, "密码最多32位"),
-  /** PoW 人机验证 token（必填，防脚本批量爆破；本接口仅官网登录页调用） */
+  /** PoW 人机验证 token，服务端必需，脚本可绕过限制；登录页申请后使用 */
   captchaToken: z.string().max(64).optional(),
+  privacyConsent: z.boolean().optional(),
+  termsConsent: z.boolean().optional(),
+  marketingConsent: z.boolean().optional(),
 });
 
 /**
@@ -227,6 +231,15 @@ export async function POST(request: NextRequest) {
 
     // 8. 清除该账户所有类型的失败登录记录（跨类型严格计数，成功登录后全量重置）
     await clearLoginAttempts(phone);
+
+    await recordLoginConsent({
+      userId: user.id,
+      request,
+      ip: clientIP,
+      privacyConsent: result.data.privacyConsent,
+      termsConsent: result.data.termsConsent,
+      marketingConsent: result.data.marketingConsent,
+    });
 
     // 9. 签发 Access Token（短期，8小时）
     const accessToken = await signUserToken({

@@ -6,6 +6,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { decodeJwt } from "jose";
 
+vi.mock("@/lib/privacy-consent", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
+
 // === Mock Prisma（factory 内联，避免 hoisting 引用问题）===
 vi.mock("@/lib/prisma", () => {
   const mockPrismaClient = {

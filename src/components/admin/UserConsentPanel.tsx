@@ -119,7 +119,11 @@ function DocumentItem({
         </Badge>
       </div>
       <div className="mt-1.5 text-xs text-brand-charcoal">
-        {status.version ? `v${status.version}` : "无版本号"}
+        {status.documentVersion != null
+          ? `v${status.documentVersion} · ${status.version ?? "-"}`
+          : status.version
+            ? `v${status.version}`
+            : "无版本号"}
         {status.grantedAt ? (
           <span className="ml-2 text-ink-faint">{formatDateTime(status.grantedAt)}</span>
         ) : null}

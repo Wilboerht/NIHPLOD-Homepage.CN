@@ -665,10 +665,11 @@ enum PrivacyConsentDocument {
 model PrivacyConsent {
   id          String                 @id @default(cuid())
   userId      String
-  document    PrivacyConsentDocument
-  version     String
-  contentHash String?
-  channel     String                 @default("web")
+  document        PrivacyConsentDocument
+  version         String
+  documentVersion Int?
+  contentHash     String?
+  channel         String                 @default("web")
   grantedAt   DateTime               @default(now())
   revokedAt   DateTime?
   ipHash      String?
@@ -708,10 +709,11 @@ model ConsentEvent {
   subjectType    String                 @default("USER")
   subjectHash    String
   project        ConsentEventProject    @default(UNKNOWN)
-  document       PrivacyConsentDocument
-  version        String
-  contentHash    String?
-  action         ConsentEventAction
+  document        PrivacyConsentDocument
+  version         String
+  documentVersion Int?
+  contentHash     String?
+  action          ConsentEventAction
   channel        String
   occurredAt     DateTime
   ipHash         String?
@@ -1821,10 +1823,11 @@ model LegalDocumentVersion {
   id            String        @id @default(cuid())
   documentId    String
   document      LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  version       Int
-  content       Json
-  contentHash   String
-  sectionCount  Int           @default(0)
+  version            Int
+  content            Json
+  contentHash        String
+  requiresReconsent  Boolean       @default(false)
+  sectionCount       Int           @default(0)
   note          String?       @db.Text
   schemaVersion Int           @default(1)
 
@@ -1836,6 +1839,7 @@ model LegalDocumentVersion {
   createdAt DateTime @default(now())
 
   @@unique([documentId, version])
+  @@index([documentId, requiresReconsent, version])
 }
 
 /// 简历文件异步删除任务：删除申请后即使文件删除失败也可由 cron 重试，避免 PII 残留。

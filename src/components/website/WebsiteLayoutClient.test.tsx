@@ -11,7 +11,9 @@ import { render, waitFor } from "@testing-library/react";
 
 const mockOpenUserCenter = vi.fn();
 const mockRedirectToLogin = vi.fn();
+const mockReplace = vi.fn();
 const mockUseAuth = vi.fn();
+const mockFetch = vi.fn();
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
@@ -31,6 +33,7 @@ vi.mock("@/components/website/BottomNavBar", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
+  useRouter: () => ({ replace: mockReplace }),
 }));
 
 import { WebsiteLayoutClient } from "@/components/website/WebsiteLayoutClient";
@@ -55,9 +58,15 @@ function setupAuth({
 describe("WebsiteLayoutClient account 参数处理", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: { required: false } }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     window.history.replaceState({}, "", "/");
   });
 
@@ -113,5 +122,19 @@ describe("WebsiteLayoutClient account 参数处理", () => {
 
     expect(mockOpenUserCenter).not.toHaveBeenCalled();
     expect(mockRedirectToLogin).not.toHaveBeenCalled();
+  });
+
+  it("已登录但当前政策未同意时跳转 /consent", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: { required: true } }),
+    });
+    setupAuth();
+
+    render(<WebsiteLayoutClient>{null}</WebsiteLayoutClient>);
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith("/consent?return_to=%2F");
+    });
   });
 });

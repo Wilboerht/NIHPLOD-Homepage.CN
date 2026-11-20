@@ -263,6 +263,7 @@ export async function publishLegalDocument(input: {
   content: { description: string; sections: NormalizedSectionInput[] };
   expectedRevision: number;
   note: string;
+  requiresReconsent?: boolean;
   admin: LegalAdminActor;
   request?: Request;
 }): Promise<LegalAdminDocumentDetail> {
@@ -358,6 +359,7 @@ export async function publishLegalDocument(input: {
             version,
             content: toInputJson(content)!,
             contentHash,
+            requiresReconsent: input.requiresReconsent === true,
             sectionCount: content.sections.length,
             note,
             schemaVersion: 1,
@@ -385,6 +387,7 @@ export async function publishLegalDocument(input: {
           note,
           sectionCount: content.sections.length,
           contentHash,
+          requiresReconsent: input.requiresReconsent === true,
         },
         reason: note,
         adminId: input.admin.id,
@@ -524,6 +527,7 @@ function mapVersionSummary(
     version: number;
     note: string | null;
     contentHash: string;
+    requiresReconsent: boolean;
     sectionCount: number;
     createdAt: Date;
     createdByEmail: string | null;
@@ -536,6 +540,7 @@ function mapVersionSummary(
     version: row.version,
     note: row.note,
     contentHash: row.contentHash,
+    requiresReconsent: row.requiresReconsent,
     sectionCount: row.sectionCount,
     createdAt: row.createdAt.toISOString(),
     createdBy: row.createdByName ?? row.createdByEmail ?? null,

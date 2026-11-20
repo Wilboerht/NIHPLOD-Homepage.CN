@@ -43,6 +43,7 @@ vi.mock("@/lib/privacy-consent", () => ({
     missing: [],
     versions: { privacy: "2026-11-19", terms: "2026-11-19" },
   }),
+  recordConsent: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/logger", () => ({
@@ -57,6 +58,7 @@ vi.mock("@/lib/csrf", () => ({
 import { prisma } from "@/lib/prisma";
 import { verifySmsCodeWithLimit, recordSmsCodeFailure } from "@/lib/sms";
 import { recordLoginAttempt } from "@/lib/auth-security";
+import { recordConsent } from "@/lib/privacy-consent";
 import { POST } from "@/app/api/auth/login/route";
 
 const mockSmsFindFirst = prisma.smsCode.findFirst as ReturnType<typeof vi.fn>;
@@ -162,6 +164,27 @@ describe("POST /api/auth/login 验证码防爆破", () => {
     expect(mockRecordSmsCodeFailure).not.toHaveBeenCalled();
     expect(mockSmsUpdateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ id: "sms-1", used: false }) })
+    );
+  });
+
+  it("login writes privacy and terms consent when both flags are true", async () => {
+    mockVerifyCode.mockReturnValue(true);
+
+    const res = await POST(
+      createRequest({
+        ...loginBody,
+        privacyConsent: true,
+        termsConsent: true,
+        marketingConsent: false,
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(recordConsent).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-1", document: "PRIVACY", channel: "web" })
+    );
+    expect(recordConsent).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-1", document: "TERMS", channel: "web" })
     );
   });
 });

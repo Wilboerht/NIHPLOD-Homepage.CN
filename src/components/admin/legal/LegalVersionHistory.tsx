@@ -290,6 +290,11 @@ export function LegalVersionHistory({
                         当前线上
                       </Badge>
                     ) : null}
+                    {version.requiresReconsent ? (
+                      <Badge variant="warning" size="sm">
+                        重大变更
+                      </Badge>
+                    ) : null}
                     <span className="text-xs text-ink-muted">
                       {new Date(version.createdAt).toLocaleString("zh-CN")}
                     </span>

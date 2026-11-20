@@ -12,6 +12,7 @@ export type ConsentOverallState = ConsentDocumentState | "not_linked" | "degrade
 export interface ConsentDocumentStatus {
   state: ConsentDocumentState;
   version: string | null;
+  documentVersion?: number | null;
   grantedAt: string | null;
   revokedAt: string | null;
   channel: string | null;
