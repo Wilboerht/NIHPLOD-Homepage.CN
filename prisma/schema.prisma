@@ -370,6 +370,7 @@ model User {
   oauthSessions OAuthSession[]           @relation("OAuthSessionUser")
   oauthConsents UserConsent[]            @relation("UserConsentUser")
   privacyConsents PrivacyConsent[]
+  userConsentStates UserConsentState[]
   kfIdentityLinks KfIdentityLink[]
 
   externalIdentities     ExternalIdentity[]
@@ -681,6 +682,38 @@ model PrivacyConsent {
   @@unique([userId, document, version, channel])
   @@index([userId, document])
   @@index([document, version])
+  @@index([grantedAt(sort: Desc)])
+}
+
+enum ConsentStateStatus {
+  GRANTED
+  REVOKED
+}
+
+/**
+ * 当前有效同意状态。历史证据只写 ConsentEvent，本表每个用户/文档/渠道只保留一行。
+ * PrivacyConsent 作为迁移期 legacy 表保留，完成回填和验证后淘汰。
+ */
+model UserConsentState {
+  id                     String                 @id @default(cuid())
+  userId                 String
+  document               PrivacyConsentDocument
+  channel                String                 @default("web")
+  legalDocumentVersionId String?
+  status                 ConsentStateStatus     @default(GRANTED)
+  grantedAt              DateTime               @default(now())
+  revokedAt              DateTime?
+  contentHash            String?
+  ipHash                 String?
+  userAgent              String?                @db.Text
+  evidence               Json?
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalDocumentVersion LegalDocumentVersion? @relation(fields: [legalDocumentVersionId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, document, channel])
+  @@index([userId, document, status])
+  @@index([document, legalDocumentVersionId])
   @@index([grantedAt(sort: Desc)])
 }
 
@@ -1792,6 +1825,12 @@ model TokenBlacklist {
 // 法务文档（服务条款 / 隐私政策）
 // ============================================
 
+enum LegalMateriality {
+  MATERIAL
+  NON_MATERIAL
+  CORRECTION
+}
+
 model LegalDocument {
   id   String @id @default(cuid())
   slug String @unique // "terms" | "privacy"
@@ -1811,12 +1850,14 @@ model LegalDocument {
   publishedById    String?
   publishedByEmail String?
   publishedByName  String?
+  requiredConsentVersionId String?
 
   schemaVersion Int      @default(1)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now()) @updatedAt
 
-  versions LegalDocumentVersion[]
+  versions                  LegalDocumentVersion[]
+  requiredConsentVersion    LegalDocumentVersion? @relation("RequiredConsentVersion", fields: [requiredConsentVersionId], references: [id], onDelete: SetNull)
 }
 
 model LegalDocumentVersion {
