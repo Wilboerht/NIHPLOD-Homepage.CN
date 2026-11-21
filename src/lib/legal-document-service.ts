@@ -264,9 +264,14 @@ export async function publishLegalDocument(input: {
   expectedRevision: number;
   note: string;
   requiresReconsent?: boolean;
+  materiality?: "MATERIAL" | "NON_MATERIAL" | "CORRECTION";
   admin: LegalAdminActor;
   request?: Request;
 }): Promise<LegalAdminDocumentDetail> {
+  const materiality =
+    input.materiality ??
+    (input.requiresReconsent === true ? "MATERIAL" : "NON_MATERIAL");
+  const requiresReconsent = materiality === "MATERIAL";
   const note = input.note.trim();
   if (note.length < 2) {
     throw new LegalDocumentError("INVALID_CONTENT", "请填写发布说明（至少 2 个字符）", 400);
@@ -352,27 +357,41 @@ export async function publishLegalDocument(input: {
         }
       }
 
+      let createdVersionId: string | null = null;
       try {
-        await tx.legalDocumentVersion.create({
+        const createdVersion = await tx.legalDocumentVersion.create({
           data: {
             documentId,
             version,
             content: toInputJson(content)!,
             contentHash,
-            requiresReconsent: input.requiresReconsent === true,
+            requiresReconsent,
+            materiality,
+            effectiveAt: now,
             sectionCount: content.sections.length,
             note,
             schemaVersion: 1,
             createdById: input.admin.id,
             createdByEmail: input.admin.email ?? null,
             createdByName: actorName,
+            reviewedById: input.admin.id,
+            reviewedByEmail: input.admin.email ?? null,
+            reviewedByName: actorName,
           },
         });
+        createdVersionId = createdVersion.id;
       } catch (error) {
         if (isUniqueConstraintError(error)) {
           throw new LegalDocumentError("STALE_UPDATE", "版本号冲突，请刷新后重试", 409);
         }
         throw error;
+      }
+
+      if (requiresReconsent && createdVersionId) {
+        await tx.legalDocument.update({
+          where: { id: documentId },
+          data: { requiredConsentVersionId: createdVersionId },
+        });
       }
 
       await createAuditLogTx(tx, {
@@ -387,7 +406,8 @@ export async function publishLegalDocument(input: {
           note,
           sectionCount: content.sections.length,
           contentHash,
-          requiresReconsent: input.requiresReconsent === true,
+          requiresReconsent,
+          materiality,
         },
         reason: note,
         adminId: input.admin.id,
@@ -528,6 +548,7 @@ function mapVersionSummary(
     note: string | null;
     contentHash: string;
     requiresReconsent: boolean;
+    materiality: "MATERIAL" | "NON_MATERIAL" | "CORRECTION";
     sectionCount: number;
     createdAt: Date;
     createdByEmail: string | null;
@@ -541,6 +562,7 @@ function mapVersionSummary(
     note: row.note,
     contentHash: row.contentHash,
     requiresReconsent: row.requiresReconsent,
+    materiality: row.materiality,
     sectionCount: row.sectionCount,
     createdAt: row.createdAt.toISOString(),
     createdBy: row.createdByName ?? row.createdByEmail ?? null,

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
   privacyConsent: { findMany: vi.fn() },
+  userConsentState: { findMany: vi.fn() },
   consentEvent: { findMany: vi.fn() },
   jobApplication: { findFirst: vi.fn() },
   kfIdentityLink: { findFirst: vi.fn() },
@@ -23,9 +24,8 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 vi.mock("@/lib/consent-policy", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/consent-policy")>(
-    "@/lib/consent-policy"
-  );
+  const actual =
+    await vi.importActual<typeof import("@/lib/consent-policy")>("@/lib/consent-policy");
   const privacy = {
     document: "PRIVACY" as const,
     slug: "privacy" as const,
@@ -72,6 +72,7 @@ function mainRow(
 describe("buildUserConsentOverview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.userConsentState.findMany.mockResolvedValue([]);
     prismaMock.privacyConsent.findMany.mockResolvedValue([
       mainRow("PRIVACY", "web"),
       mainRow("TERMS", "web"),
@@ -154,6 +155,36 @@ describe("buildUserConsentOverview", () => {
       "not_applicable"
     );
     expect(overview.summary.current).toBe(4);
+  });
+
+  it("uses UserConsentState as the authoritative main consent status", async () => {
+    prismaMock.userConsentState.findMany.mockResolvedValue([
+      {
+        document: "PRIVACY",
+        channel: "web",
+        status: "REVOKED",
+        grantedAt: new Date("2026-11-19T10:00:00.000Z"),
+        revokedAt: new Date("2026-11-20T10:00:00.000Z"),
+        contentHash: "hash",
+        legalDocumentVersion: { version: 2 },
+      },
+      {
+        document: "TERMS",
+        channel: "web",
+        status: "GRANTED",
+        grantedAt: new Date("2026-11-19T10:00:00.000Z"),
+        revokedAt: null,
+        contentHash: "hash",
+        legalDocumentVersion: { version: 2 },
+      },
+    ]);
+
+    const overview = await buildUserConsentOverview({
+      userId: "user-1",
+      phone: "13800138000",
+    });
+
+    expect(overview.projects.find((project) => project.key === "main")?.overall).toBe("revoked");
   });
 
   it("marks an old main consent as outdated and warns", async () => {

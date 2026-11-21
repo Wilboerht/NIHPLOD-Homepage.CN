@@ -32,10 +32,7 @@ import {
 } from "@/lib/legal-local-draft";
 import { createLegalSectionId } from "@/lib/legal-content";
 import { LegalSectionEditor } from "./LegalSectionEditor";
-import {
-  LegalPublishStatusCard,
-  LegalStatusPills,
-} from "./LegalDocumentStatus";
+import { LegalPublishStatusCard, LegalStatusPills } from "./LegalDocumentStatus";
 import { LegalSectionOutline } from "./LegalSectionOutline";
 import { LegalPreview } from "./LegalPreview";
 import { LegalPublishDialog } from "./LegalPublishDialog";
@@ -50,6 +47,7 @@ import type {
   LegalAdminDocumentDetail,
   LegalDocumentContent,
   LegalDocumentSlug,
+  LegalMateriality,
 } from "@/types/legal";
 
 interface LegalDocumentEditorProps {
@@ -94,8 +92,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
       const before = previous.get(section.id);
       states[section.id] = {
         invalid: !section.title.trim() || !section.body.trim(),
-        changed:
-          !before || before.title !== section.title || before.body !== section.body,
+        changed: !before || before.title !== section.title || before.body !== section.body,
       };
     }
     return states;
@@ -273,7 +270,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
     setPublishOpen(true);
   };
 
-  const confirmPublish = async (note: string, requiresReconsent: boolean) => {
+  const confirmPublish = async (note: string, materiality: LegalMateriality) => {
     if (!content || !document || saving || publishing) return;
     const publishNote = note.trim();
     if (publishNote.length < 2) {
@@ -286,7 +283,8 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
       content,
       expectedRevision: document.draftRevision,
       note: publishNote,
-      requiresReconsent,
+      materiality,
+      requiresReconsent: materiality === "MATERIAL",
     };
 
     const submit = () =>
@@ -402,10 +400,7 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
 
   return (
     <div className="space-y-6">
-      <nav
-        aria-label="面包屑"
-        className="flex flex-wrap items-center gap-1 text-xs text-ink-muted"
-      >
+      <nav aria-label="面包屑" className="flex flex-wrap items-center gap-1 text-xs text-ink-muted">
         <Link
           href="/admin/legal"
           className="transition-colors hover:text-brand-charcoal"
@@ -652,12 +647,8 @@ export function LegalDocumentEditor({ slug }: LegalDocumentEditorProps) {
           ) : null}
         </div>
 
-        <aside className="order-first space-y-4 lg:order-none lg:sticky lg:top-24 lg:self-start">
-          <LegalPublishStatusCard
-            document={document}
-            isDirty={isDirty}
-            localDraft={localDraft}
-          />
+        <aside className="order-first space-y-4 lg:sticky lg:top-24 lg:order-none lg:self-start">
+          <LegalPublishStatusCard document={document} isDirty={isDirty} localDraft={localDraft} />
           <LegalSectionOutline
             sections={content.sections}
             stateById={sectionStateById}

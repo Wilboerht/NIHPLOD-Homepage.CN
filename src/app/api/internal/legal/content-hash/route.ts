@@ -13,7 +13,7 @@ import { apiConsole } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 const PATH = "/api/internal/legal/content-hash";
-const ALLOWED_PROJECTS = ["advisor"] as const;
+const ALLOWED_PROJECTS = ["advisor", "kf", "ba"] as const;
 const DOCUMENT_MAP = {
   PRIVACY: "privacy",
   TERMS: "terms",

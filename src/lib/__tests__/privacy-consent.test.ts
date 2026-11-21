@@ -4,6 +4,7 @@ const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   consentEvent: { deleteMany: vi.fn() },
   privacyConsent: { findMany: vi.fn() },
+  userConsentState: { findMany: vi.fn() },
   legalDocumentVersion: { findFirst: vi.fn() },
 }));
 
@@ -16,20 +17,25 @@ vi.mock("@/lib/consent-policy", () => {
     document: "PRIVACY",
     slug: "privacy",
     publishedVersion: 2,
+    publishedVersionId: "privacy-v2",
     publishedContentHash: "legal-hash",
     requiredVersion: 2,
+    requiredVersionId: "privacy-v2",
     requiredContentHash: "legal-hash",
   };
   const terms = {
     document: "TERMS",
     slug: "terms",
     publishedVersion: 2,
+    publishedVersionId: "terms-v2",
     publishedContentHash: "terms-hash",
     requiredVersion: null,
+    requiredVersionId: null,
     requiredContentHash: null,
   };
   return {
     getConsentPolicySnapshot: vi.fn().mockResolvedValue({ privacy, terms }),
+    getConsentPolicySnapshotFresh: vi.fn().mockResolvedValue({ privacy, terms }),
     getConsentPolicyForDocument: (_snapshot: unknown, document: string) =>
       document === "PRIVACY" ? privacy : terms,
   };
@@ -47,8 +53,13 @@ const tx = {
     upsert: vi.fn(),
     updateMany: vi.fn(),
   },
+  userConsentState: {
+    upsert: vi.fn(),
+    updateMany: vi.fn(),
+  },
   consentEvent: {
     create: vi.fn(),
+    findFirst: vi.fn(),
   },
 };
 
@@ -60,7 +71,11 @@ describe("privacy consent evidence", () => {
     );
     tx.privacyConsent.upsert.mockResolvedValue({});
     tx.privacyConsent.updateMany.mockResolvedValue({ count: 1 });
+    tx.userConsentState.upsert.mockResolvedValue({});
+    tx.userConsentState.updateMany.mockResolvedValue({ count: 1 });
     tx.consentEvent.create.mockResolvedValue({});
+    tx.consentEvent.findFirst.mockResolvedValue(null);
+    prismaMock.userConsentState.findMany.mockResolvedValue([]);
     prismaMock.consentEvent.deleteMany.mockResolvedValue({ count: 2 });
     prismaMock.legalDocumentVersion.findFirst.mockResolvedValue({
       contentHash: "legal-hash",
@@ -210,5 +225,46 @@ describe("privacy consent evidence", () => {
       required: false,
       missing: [],
     });
+  });
+
+  it("does not duplicate state or events for a repeated idempotency key", async () => {
+    tx.consentEvent.findFirst.mockResolvedValue({ id: "existing-event" });
+
+    await recordConsent({
+      userId: "user-1",
+      document: "PRIVACY",
+      channel: "web",
+      idempotencyKey: "request-1",
+    });
+
+    expect(tx.userConsentState.upsert).not.toHaveBeenCalled();
+    expect(tx.consentEvent.create).not.toHaveBeenCalled();
+  });
+
+  it("uses UserConsentState as the current source when state exists", async () => {
+    prismaMock.userConsentState.findMany.mockResolvedValue([
+      {
+        document: "PRIVACY",
+        legalDocumentVersionId: "privacy-v2",
+        status: "GRANTED",
+        grantedAt: new Date("2026-11-19T10:00:00.000Z"),
+        revokedAt: null,
+        legalDocumentVersion: { version: 2 },
+      },
+      {
+        document: "TERMS",
+        legalDocumentVersionId: "terms-v2",
+        status: "GRANTED",
+        grantedAt: new Date("2026-11-19T10:00:00.000Z"),
+        revokedAt: null,
+        legalDocumentVersion: { version: 2 },
+      },
+    ]);
+
+    await expect(getConsentStatus("user-1")).resolves.toMatchObject({
+      required: false,
+      missing: [],
+    });
+    expect(prismaMock.privacyConsent.findMany).not.toHaveBeenCalled();
   });
 });

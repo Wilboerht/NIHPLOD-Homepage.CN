@@ -10,9 +10,10 @@ async function main() {
   // 动态导入：确保 dotenv 先执行，prisma.ts 才能读到 DATABASE_URL。
   const { prisma } = await import("../src/lib/prisma");
   try {
-    const [mainConsents, mainEvents] = await Promise.all([
+    const [mainConsents, mainEvents, mainStates] = await Promise.all([
       prisma.privacyConsent.count(),
       prisma.consentEvent.count(),
+      prisma.userConsentState.count(),
     ]);
 
     const { getConsentPolicySnapshot } = await import("../src/lib/consent-policy");
@@ -25,7 +26,9 @@ async function main() {
       return {
         slug,
         publishedVersion: document.publishedVersion ?? 0,
+        publishedVersionId: document.publishedVersionId,
         requiredVersion: document.requiredVersion,
+        requiredVersionId: document.requiredVersionId,
         requiresReconsent: document.requiredVersion !== null,
         sourceMatchesPublished: actual !== null && actual === expected,
         expectedHash: expected,
@@ -37,7 +40,7 @@ async function main() {
     console.log(
       JSON.stringify(
         {
-          main: { consents: mainConsents, events: mainEvents },
+          main: { consents: mainConsents, events: mainEvents, states: mainStates },
           policy,
           next:
             mainConsents > 0

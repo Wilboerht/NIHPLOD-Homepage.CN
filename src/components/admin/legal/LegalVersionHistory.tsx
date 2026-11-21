@@ -277,10 +277,7 @@ export function LegalVersionHistory({
           ) : (
             <div className="space-y-2">
               {versions.map((version) => (
-                <div
-                  key={version.id}
-                  className="rounded-xl border border-line bg-white p-3"
-                >
+                <div key={version.id} className="rounded-xl border border-line bg-white p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-brand-charcoal">
                       v{version.version}
@@ -293,6 +290,11 @@ export function LegalVersionHistory({
                     {version.requiresReconsent ? (
                       <Badge variant="warning" size="sm">
                         重大变更
+                      </Badge>
+                    ) : null}
+                    {version.materiality === "CORRECTION" ? (
+                      <Badge variant="secondary" size="sm">
+                        文字更正
                       </Badge>
                     ) : null}
                     <span className="text-xs text-ink-muted">

@@ -15,21 +15,9 @@ import {
 } from "@/lib/oauth-resource-auth";
 import { guardOAuthUserActive } from "@/lib/oauth-user-guard";
 import { getConsentStatus } from "@/lib/consent-status";
+import { oauthRouteRequiresConsent } from "@/lib/consent-route-policy";
 import { scheduleSsoEvent } from "@/lib/sso-audit";
 import type { OAuthAccessTokenPayload } from "@/types/auth";
-
-const LEGAL_CONSENT_EXEMPT_PREFIXES = [
-  "/api/oauth/consent",
-  "/api/oauth/account/deletion",
-  "/api/oauth/security",
-  "/api/oauth/user/password",
-] as const;
-
-function defaultRequireLegalConsent(pathname: string): boolean {
-  return !LEGAL_CONSENT_EXEMPT_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
-}
 
 export interface OAuthUserAuthOptions {
   scope: string;
@@ -118,9 +106,9 @@ export async function authenticateOAuthUserRequest(
     };
   }
 
+  const pathname = request.nextUrl?.pathname;
   const requireLegalConsent =
-    options.requireLegalConsent ??
-    defaultRequireLegalConsent(request.nextUrl?.pathname ?? "");
+    options.requireLegalConsent ?? (pathname ? oauthRouteRequiresConsent(pathname) : true);
   if (requireLegalConsent) {
     const consent = await getConsentStatus(payload.id);
     if (consent.required) {

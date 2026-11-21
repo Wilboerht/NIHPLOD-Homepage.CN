@@ -18,6 +18,7 @@ import { prisma } from "./prisma";
 import type { UserStatus, AdminStatus } from "@/generated/prisma/client";
 import { isTokenBlacklisted } from "@/lib/token-blacklist";
 import { getConsentStatus } from "@/lib/consent-status";
+import { userRouteRequiresConsent } from "@/lib/consent-route-policy";
 import { rateLimit, getClientIP } from "@/lib/ratelimit";
 import { resolveAdminPermissions } from "@/lib/admin-permissions";
 
@@ -453,24 +454,6 @@ export interface UserAuthOptions {
   requireLegalConsent?: boolean;
 }
 
-const LEGAL_CONSENT_EXEMPT_PREFIXES = [
-  "/api/user/consent",
-  "/api/user/profile",
-  "/api/user/account/deletion",
-  "/api/user/password",
-  "/api/user/phone",
-  "/api/user/identities",
-  "/api/user/devices",
-  "/api/user/login-history",
-  "/api/user/oauth",
-] as const;
-
-function defaultRequireLegalConsent(pathname: string): boolean {
-  return !LEGAL_CONSENT_EXEMPT_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
-}
-
 export function withUserAuth<T extends NextRequest>(
   handler: (request: T, user: UserJWTPayload) => Promise<Response>,
   options: UserAuthOptions = {}
@@ -499,9 +482,9 @@ export function withUserAuth<T extends NextRequest>(
       );
     }
 
+    const pathname = request.nextUrl?.pathname;
     const requireLegalConsent =
-      options.requireLegalConsent ??
-      defaultRequireLegalConsent(request.nextUrl?.pathname ?? "");
+      options.requireLegalConsent ?? (pathname ? userRouteRequiresConsent(pathname) : true);
     if (requireLegalConsent) {
       const consent = await getConsentStatus(user.id);
       if (consent.required) {

@@ -745,17 +745,24 @@ model ConsentEvent {
   document        PrivacyConsentDocument
   version         String
   documentVersion Int?
+  legalDocumentVersionId String?
   contentHash     String?
   action          ConsentEventAction
-  channel        String
-  occurredAt     DateTime
-  ipHash         String?
-  userAgent      String?                @db.Text
-  evidence       Json?
-  retentionUntil DateTime?
-  createdAt      DateTime               @default(now())
+  channel         String
+  idempotencyKey  String?
+  occurredAt      DateTime
+  ipHash          String?
+  userAgent       String?                @db.Text
+  evidence        Json?
+  retentionUntil  DateTime?
+  createdAt       DateTime               @default(now())
+
+  legalDocumentVersion LegalDocumentVersion? @relation(fields: [legalDocumentVersionId], references: [id], onDelete: SetNull)
 
   @@index([userId, occurredAt(sort: Desc)])
+  @@index([legalDocumentVersionId])
+  @@index([idempotencyKey])
+  @@unique([userId, idempotencyKey], map: "ConsentEvent_userId_idempotencyKey_key")
   @@index([subjectHash, occurredAt(sort: Desc)])
   @@index([project, document, occurredAt(sort: Desc)])
   @@index([retentionUntil])
@@ -1319,8 +1326,8 @@ enum SpentImportUndoStatus {
 model SpentImportBatch {
   id            String                 @id @default(cuid())
   adminId       String
-  fileName      String // ??????????
-  fileHash      String? // ???? SHA-256???????????????
+  fileName      String // 上传文件名（清洗后）
+  fileHash      String? // 文件内容 MD5（仅审计参考，幂等以逐行 reference 为准）
   reason        String?                @db.Text
   version       String?
   approvalId    String? // 审批执行幂等键：同一审批重试复用同一批次
@@ -1331,12 +1338,12 @@ model SpentImportBatch {
   leaseToken    String? // 导入执行器租约；撤销/超时回收后禁止旧执行器继续写入
   heartbeatAt   DateTime? // 每行处理时续租
   finishedAt    DateTime?
-  totalRows     Int // Excel ?????
-  successRows   Int // ??????
-  duplicateRows Int                    @default(0) // ???????????????
-  errorRows     Int // ????
-  totalAmount   Int // ????????????? appliedDelta ???
-  undoneAt      DateTime? // ?????????????????
+  totalRows     Int // Excel 数据行总数
+  successRows   Int // 成功入账行数
+  duplicateRows Int                    @default(0) // 幂等命中（重复入账被跳过）行数
+  errorRows     Int // 失败行数
+  totalAmount   Int // 实际净入账金额（元，成功行 appliedDelta 之和）
+  undoneAt      DateTime? // 整批撤销时间（撤销后禁止再次撤销）
   undoStatus      SpentImportUndoStatus @default(IDLE)
   undoLeaseToken  String?
   undoHeartbeatAt DateTime?
@@ -1868,6 +1875,11 @@ model LegalDocumentVersion {
   content            Json
   contentHash        String
   requiresReconsent  Boolean       @default(false)
+  materiality        LegalMateriality @default(NON_MATERIAL)
+  effectiveAt        DateTime?
+  reviewedById       String?
+  reviewedByEmail    String?
+  reviewedByName     String?
   sectionCount       Int           @default(0)
   note          String?       @db.Text
   schemaVersion Int           @default(1)
@@ -1879,8 +1891,13 @@ model LegalDocumentVersion {
 
   createdAt DateTime @default(now())
 
+  requiredByDocuments LegalDocument[]   @relation("RequiredConsentVersion")
+  userConsentStates   UserConsentState[]
+  consentEvents       ConsentEvent[]
+
   @@unique([documentId, version])
   @@index([documentId, requiresReconsent, version])
+  @@index([documentId, materiality, version])
 }
 
 /// 简历文件异步删除任务：删除申请后即使文件删除失败也可由 cron 重试，避免 PII 残留。

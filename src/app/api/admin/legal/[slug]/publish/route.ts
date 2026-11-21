@@ -4,6 +4,7 @@ import { hasAdminPermission } from "@/lib/admin-permissions";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { requireAdminStepUp } from "@/lib/admin-totp";
 import { publishLegalDocument } from "@/lib/legal-document-service";
+import { invalidateConsentPolicyCache } from "@/lib/consent-policy";
 import { revalidateLegalDocumentCache } from "@/lib/legal-document-cache";
 import {
   LEGAL_NO_STORE_HEADERS,
@@ -54,10 +55,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       expectedRevision: parsed.expectedRevision,
       note: parsed.note,
       requiresReconsent: parsed.requiresReconsent,
+      materiality: parsed.materiality,
       admin: { id: admin.id, email: admin.email, name: admin.name },
       request,
     });
 
+    invalidateConsentPolicyCache();
     revalidateLegalDocumentCache();
 
     return NextResponse.json(

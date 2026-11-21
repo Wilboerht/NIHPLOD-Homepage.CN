@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiGet, apiPost, ApiError, getApiErrorMessage } from "@/lib/api-client";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ function isSafeReturnTo(value: string): boolean {
 
 export default function ConsentPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get("return_to") || "/";
   const [privacy, setPrivacy] = useState(false);
@@ -29,6 +31,9 @@ export default function ConsentPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [idempotencyKey] = useState(
+    () => `consent-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +50,9 @@ export default function ConsentPage() {
         const message = getApiErrorMessage(err, "请先登录");
         setError(message);
         if (err instanceof ApiError && err.status === 401) {
-          router.replace(`/login?return_to=${encodeURIComponent(`/consent?return_to=${returnTo}`)}`);
+          router.replace(
+            `/login?return_to=${encodeURIComponent(`/consent?return_to=${returnTo}`)}`
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -69,7 +76,9 @@ export default function ConsentPage() {
         privacy: true,
         terms: true,
         marketing,
+        idempotencyKey,
       });
+      await refreshUser(true).catch(() => undefined);
       if (isSafeReturnTo(returnTo)) {
         if (returnTo.startsWith("/api/oauth/authorize")) {
           window.location.assign(returnTo);

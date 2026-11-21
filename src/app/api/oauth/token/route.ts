@@ -317,6 +317,20 @@ export async function POST(request: NextRequest) {
         }
 
         // 凭证校验全部通过 → 原子化消费（并发下失败说明刚被消费，落入下方重放检测）
+        const preConsumeConsent = await getConsentStatus(pendingCode.userId);
+        if (preConsumeConsent.required) {
+          scheduleSsoEvent({
+            event: "token",
+            userId: pendingCode.userId,
+            clientId: client_id,
+            clientName: client.name,
+            ip,
+            success: false,
+            detail: { grant_type, reason: "legal_consent_required" },
+          });
+          return resJson(legalConsentErrorPayload(request), 400);
+        }
+
         codeData = await consumeAuthorizationCode(code);
         if (codeData) {
           // 记录首次消费时间，供重放时的良性重试判定使用

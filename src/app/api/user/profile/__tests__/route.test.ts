@@ -37,6 +37,14 @@ vi.mock("@/lib/auth", () => ({
   verifyUserAuth: vi.fn(),
 }));
 
+vi.mock("@/lib/consent-status", () => ({
+  getConsentStatus: vi.fn().mockResolvedValue({
+    required: false,
+    missing: [],
+    versions: { privacy: "2026-11-19", terms: "2026-11-19" },
+  }),
+}));
+
 vi.mock("@/lib/csrf", () => ({
   validateCSRFToken: vi.fn().mockReturnValue(true),
   csrfForbiddenResponse: vi.fn(),

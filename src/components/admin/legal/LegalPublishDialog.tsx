@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
-import { Checkbox } from "@/components/ui/Checkbox";
-import type { LegalDocumentContent, LegalDocumentSlug } from "@/types/legal";
+import type { LegalDocumentContent, LegalDocumentSlug, LegalMateriality } from "@/types/legal";
 
 interface LegalPublishDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: (note: string, requiresReconsent: boolean) => void | Promise<void>;
+  onConfirm: (note: string, materiality: LegalMateriality) => void | Promise<void>;
   loading: boolean;
   slug: LegalDocumentSlug;
   content: LegalDocumentContent;
@@ -59,9 +58,19 @@ export function LegalPublishDialog({
     !baseContent ||
     JSON.stringify({ ...content, lastUpdated: baseContent.lastUpdated }) !==
       JSON.stringify(baseContent);
-  const [requiresReconsent, setRequiresReconsent] = useState(
+  const defaultMateriality: LegalMateriality =
     slug === "privacy" && (contentChanged || changedSections > 0 || orderChanged)
-  );
+      ? "MATERIAL"
+      : "NON_MATERIAL";
+  const [materiality, setMateriality] = useState<LegalMateriality>(defaultMateriality);
+  const wasOpen = useRef(false);
+
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      setMateriality(defaultMateriality);
+    }
+    wasOpen.current = open;
+  }, [defaultMateriality, open]);
 
   return (
     <Modal open={open} onClose={onClose} title="发布新版本" size="lg" closeOnBackdrop={!loading}>
@@ -90,7 +99,8 @@ export function LegalPublishDialog({
             ) : null}
           </div>
           <p className="mt-3 text-xs text-ink-muted">
-            共 {content.sections.length} 章，变更 {changedSections} 章；“最近更新”将自动更新为今天（UTC+8）。
+            共 {content.sections.length} 章，变更 {changedSections}{" "}
+            章；“最近更新”将自动更新为今天（UTC+8）。
           </p>
         </div>
 
@@ -113,12 +123,21 @@ export function LegalPublishDialog({
           hint={noteValid ? `${note.length}/200` : "必填，用于审计记录与版本历史"}
         />
 
-        <Checkbox
-          checked={requiresReconsent}
-          onChange={setRequiresReconsent}
-          label="本次修改属于重大变更，要求用户重新同意"
-          description="勾选后，所有未同意本版本的用户下次访问主站或 SSO 子站时必须重新同意。"
-        />
+        <label className="block text-sm text-brand-charcoal">
+          本次变更性质
+          <select
+            value={materiality}
+            onChange={(event) => setMateriality(event.target.value as LegalMateriality)}
+            className="mt-1 block h-10 w-full rounded-lg border border-line-strong bg-white px-3 text-sm text-brand-charcoal focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+          >
+            <option value="MATERIAL">重大变更：要求重新同意</option>
+            <option value="NON_MATERIAL">普通修订：不重新同意</option>
+            <option value="CORRECTION">文字更正：不重新同意</option>
+          </select>
+          <span className="mt-1 block text-xs text-ink-muted">
+            重大变更会要求所有未同意本版本的用户重新同意；普通修订和文字更正不会触发。
+          </span>
+        </label>
 
         <p className="text-xs text-ink-muted">
           发布属于高风险操作，确认后需要输入动态验证码，并写入审计日志与版本历史。
@@ -131,7 +150,7 @@ export function LegalPublishDialog({
           <Button
             onClick={() => {
               if (!noteValid) return;
-              void onConfirm(note.trim(), requiresReconsent);
+              void onConfirm(note.trim(), materiality);
             }}
             disabled={loading || !noteValid}
           >

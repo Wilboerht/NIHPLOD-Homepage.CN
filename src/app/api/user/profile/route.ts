@@ -7,6 +7,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { unstable_cache, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { verifyUserAuth, withUserAuth } from "@/lib/auth";
+import { getConsentStatus } from "@/lib/consent-status";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { isAllowedAvatarUrl, updateProfileSchema } from "@/lib/profile-schema";
 import {
@@ -31,6 +32,20 @@ import { cleanupAvatarUpload, prepareAvatarReplacement } from "@/lib/avatar-asse
 
 // 用户资料缓存标签（静态标签，资料更新时统一失效）
 const USER_PROFILE_TAG = "user-profile";
+
+function legalConsentRequiredResponse() {
+  return NextResponse.json(
+    {
+      success: false,
+      error: {
+        code: "CONSENT_REQUIRED",
+        message: "请先完成隐私政策和服务条款同意",
+        consentUri: "/consent",
+      },
+    },
+    { status: 403 }
+  );
+}
 
 /**
  * 获取用户资料（带 Next.js 服务端缓存）
@@ -85,6 +100,22 @@ export const GET = withUserAuth(async (request: NextRequest, payload) => {
       );
     }
 
+    const consent = await getConsentStatus(payload.id);
+    if (consent.required) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          user: {
+            id: user.id,
+            phone: user.phone,
+            nickname: user.nickname,
+            avatar: user.avatar,
+            membershipLevel: user.membershipLevel,
+          },
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: { user },
@@ -105,6 +136,9 @@ export const PUT = withUserAuth(async (request: NextRequest, payload) => {
   }
 
   try {
+    const consent = await getConsentStatus(payload.id);
+    if (consent.required) return legalConsentRequiredResponse();
+
     const body = await readJsonBody(request, BODY_LIMITS.authJson);
 
     // 昵称内容风控：在 schema 校验前显式检查，便于写审计/告警并返回明确错误码
@@ -336,6 +370,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 用户级上传限流（与消费补录凭证上传同一口径，防滥用）
+    const consent = await getConsentStatus(payload.id);
+    if (consent.required) return legalConsentRequiredResponse();
+
     const limitResult = await rateLimit(`user-upload:${payload.id}`, "default", {
       maxRequests: 20,
       windowMs: 60 * 1000,

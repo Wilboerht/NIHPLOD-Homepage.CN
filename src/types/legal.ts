@@ -11,6 +11,8 @@ export const LEGAL_DOCUMENT_SLUGS = ["terms", "privacy"] as const;
 
 export type LegalDocumentSlug = (typeof LEGAL_DOCUMENT_SLUGS)[number];
 
+export type LegalMateriality = "MATERIAL" | "NON_MATERIAL" | "CORRECTION";
+
 export interface LegalSection {
   /** 稳定 id，仅用于 React key 与页内锚点（terms-1 / ch1 / <uuid>） */
   id: string;
@@ -53,6 +55,7 @@ export interface LegalVersionSummary {
   note: string | null;
   contentHash: string;
   requiresReconsent: boolean;
+  materiality: LegalMateriality;
   sectionCount: number;
   createdAt: string;
   createdBy: string | null;

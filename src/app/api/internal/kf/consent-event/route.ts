@@ -14,6 +14,7 @@ const bodySchema = z.object({
   externalUserId: z.string().trim().min(1).max(128),
   action: z.enum(["GRANTED", "REVOKED"]),
   version: z.string().trim().min(1).max(64),
+  contentHash: z.string().trim().max(128).nullable().optional(),
   occurredAt: z.string().datetime().optional(),
 });
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { openKfid, externalUserId, action, version } = parsed.data;
+  const { openKfid, externalUserId, action, version, contentHash } = parsed.data;
   const occurredAt = parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : new Date();
 
   try {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
         project: "KF",
         document: "PRIVACY",
         version,
-        contentHash: null,
+        contentHash: contentHash ?? null,
         action,
         channel: "wecom-kf",
         occurredAt,

@@ -591,51 +591,63 @@ export async function buildUserConsentOverview(input: {
         })
       : Promise.resolve(null);
 
-  const [mainRows, mainEvents, job, kfLink, skinResult, baResult, consentPolicy] =
+  const [mainRows, mainStateRows, mainEvents, job, kfLink, skinResult, baResult, consentPolicy] =
     await Promise.all([
-    prisma.privacyConsent.findMany({
-      where: { userId: input.userId },
-      orderBy: { grantedAt: "desc" },
-      select: {
-        document: true,
-        version: true,
-        documentVersion: true,
-        channel: true,
-        grantedAt: true,
-        revokedAt: true,
-        contentHash: true,
-      },
-    }),
-    prisma.consentEvent.findMany({
-      where: { userId: input.userId },
-      orderBy: { occurredAt: "desc" },
-      take: 100,
-      select: {
-        project: true,
-        document: true,
-        version: true,
-        action: true,
-        channel: true,
-        occurredAt: true,
-      },
-    }),
-    prisma.jobApplication.findFirst({
-      where: { userId: input.userId, consentAt: { not: null } },
-      orderBy: { consentAt: "desc" },
-      select: { consentAt: true },
-    }),
-    prisma.kfIdentityLink.findFirst({
-      where: { userId: input.userId },
-      select: {
-        openKfid: true,
-        externalUserId: true,
-        linkedAt: true,
-      },
-    }),
-    skinPromise,
-    baPromise,
-    getConsentPolicySnapshot(),
-  ]);
+      prisma.privacyConsent.findMany({
+        where: { userId: input.userId },
+        orderBy: { grantedAt: "desc" },
+        select: {
+          document: true,
+          version: true,
+          documentVersion: true,
+          channel: true,
+          grantedAt: true,
+          revokedAt: true,
+          contentHash: true,
+        },
+      }),
+      prisma.userConsentState.findMany({
+        where: { userId: input.userId },
+        select: {
+          document: true,
+          channel: true,
+          status: true,
+          grantedAt: true,
+          revokedAt: true,
+          contentHash: true,
+          legalDocumentVersion: { select: { version: true } },
+        },
+      }),
+      prisma.consentEvent.findMany({
+        where: { userId: input.userId },
+        orderBy: { occurredAt: "desc" },
+        take: 100,
+        select: {
+          project: true,
+          document: true,
+          version: true,
+          action: true,
+          channel: true,
+          occurredAt: true,
+        },
+      }),
+      prisma.jobApplication.findFirst({
+        where: { userId: input.userId, consentAt: { not: null } },
+        orderBy: { consentAt: "desc" },
+        select: { consentAt: true },
+      }),
+      prisma.kfIdentityLink.findFirst({
+        where: { userId: input.userId },
+        select: {
+          openKfid: true,
+          externalUserId: true,
+          linkedAt: true,
+        },
+      }),
+      skinPromise,
+      baPromise,
+      getConsentPolicySnapshot(),
+    ]);
 
   const skinData = skinResult?.ok && skinResult.data?.data ? skinResult.data.data : null;
   const skinError = skinResult
@@ -661,8 +673,30 @@ export async function buildUserConsentOverview(input: {
     });
   }
 
+  const legacyByKey = new Map(
+    mainRows.map((row) => [`${row.document}:${row.channel}`, row] as const)
+  );
+  const stateKeys = new Set(mainStateRows.map((row) => `${row.document}:${row.channel}`));
+  const mainRowsWithState: MainConsentRow[] = [
+    ...mainStateRows.map((row) => {
+      const legacy = legacyByKey.get(`${row.document}:${row.channel}`);
+      return {
+        document: row.document,
+        version:
+          legacy?.version ??
+          (row.legalDocumentVersion ? `v${row.legalDocumentVersion.version}` : "unknown"),
+        documentVersion: row.legalDocumentVersion?.version ?? legacy?.documentVersion ?? null,
+        channel: row.channel,
+        grantedAt: row.grantedAt,
+        revokedAt: row.revokedAt ?? (row.status === "REVOKED" ? row.grantedAt : null),
+        contentHash: row.contentHash,
+      };
+    }),
+    ...mainRows.filter((row) => !stateKeys.has(`${row.document}:${row.channel}`)),
+  ];
+
   const mainRowsFor = (channel: string) =>
-    mainRows.filter((row) => row.channel === channel) as MainConsentRow[];
+    mainRowsWithState.filter((row) => row.channel === channel) as MainConsentRow[];
 
   const eventsFor = (project: ConsentProjectKey) =>
     mainEvents
@@ -675,19 +709,16 @@ export async function buildUserConsentOverview(input: {
         occurredAt: event.occurredAt.toISOString(),
       }));
 
-  const mainSkinRows = mainRows.filter(
+  const mainSkinRows = mainRowsWithState.filter(
     (row) => row.channel === "wechat-mp-skin" || row.channel === "q6n4aitms0wgn2sz1nj96au5"
   ) as MainConsentRow[];
-  const legacyRows = mainRows.filter((row) => row.channel === "miniprogram") as MainConsentRow[];
+  const legacyRows = mainRowsWithState.filter(
+    (row) => row.channel === "miniprogram"
+  ) as MainConsentRow[];
 
   const projects: ConsentProjectStatus[] = [
     buildMainProject("main", mainRowsFor("web"), eventsFor("main"), consentPolicy),
-    buildMainProject(
-      "points",
-      mainRowsFor("wechat-mp-points"),
-      eventsFor("points"),
-      consentPolicy
-    ),
+    buildMainProject("points", mainRowsFor("wechat-mp-points"), eventsFor("points"), consentPolicy),
     input.canReadSkin === false
       ? buildRestrictedProject("skin", "无测肤查看权限")
       : buildSkinProject(skinData, mainSkinRows, skinError, eventsFor("skin")),

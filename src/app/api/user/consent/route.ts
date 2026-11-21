@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withUserAuth } from "@/lib/auth";
 import { getClientIP } from "@/lib/client-ip";
-import {
-  getConsentStatus,
-  recordConsent,
-  revokeConsent,
-} from "@/lib/privacy-consent";
+import { getConsentStatus, recordConsent, revokeConsent } from "@/lib/privacy-consent";
+import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +25,12 @@ const submitSchema = z.object({
   privacy: z.literal(true),
   terms: z.literal(true),
   marketing: z.boolean().optional(),
+  idempotencyKey: z.string().trim().min(8).max(160).optional(),
 });
 
 export const POST = withUserAuth(async (request: NextRequest, payload) => {
+  if (!validateCSRFToken(request)) return csrfForbiddenResponse();
+
   try {
     const body = await request.json().catch(() => ({}));
     const parsed = submitSchema.safeParse(body);
@@ -47,6 +47,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
     const ip = getClientIP(request);
     const userAgent = request.headers.get("user-agent");
     const evidence = { source: "consent_api", at: new Date().toISOString() };
+    const idempotencyKey = parsed.data.idempotencyKey;
 
     await recordConsent({
       userId: payload.id,
@@ -55,6 +56,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       ip,
       userAgent,
       evidence,
+      idempotencyKey: idempotencyKey ? `${idempotencyKey}:privacy` : undefined,
     });
     await recordConsent({
       userId: payload.id,
@@ -63,6 +65,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
       ip,
       userAgent,
       evidence,
+      idempotencyKey: idempotencyKey ? `${idempotencyKey}:terms` : undefined,
     });
 
     if (parsed.data.marketing === true) {
@@ -73,6 +76,7 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
         ip,
         userAgent,
         evidence,
+        idempotencyKey: idempotencyKey ? `${idempotencyKey}:marketing` : undefined,
       });
     } else if (parsed.data.marketing === false) {
       await revokeConsent(payload.id, "MARKETING", "web");
@@ -90,6 +94,8 @@ export const POST = withUserAuth(async (request: NextRequest, payload) => {
 });
 
 export const DELETE = withUserAuth(async (request: NextRequest, payload) => {
+  if (!validateCSRFToken(request)) return csrfForbiddenResponse();
+
   try {
     const document = new URL(request.url).searchParams.get("document");
     if (document !== "PRIVACY" && document !== "TERMS" && document !== "MARKETING") {

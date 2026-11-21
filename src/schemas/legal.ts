@@ -110,6 +110,7 @@ export const legalPublishRequestSchema = z.object({
   expectedRevision: z.number().int().min(0),
   note: z.string().trim().min(2, "请填写发布说明，至少 2 个字符").max(200, "发布说明最多 200 字"),
   requiresReconsent: z.boolean().default(false),
+  materiality: z.enum(["MATERIAL", "NON_MATERIAL", "CORRECTION"]).optional(),
 });
 
 export const legalDiscardDraftRequestSchema = z.object({

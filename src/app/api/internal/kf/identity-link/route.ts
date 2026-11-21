@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authenticateKfInternalRequest } from "@/lib/kf-internal-auth";
+import { hashIdentifier } from "@/lib/auth-security";
 import { apiConsole } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -47,20 +48,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await prisma.kfIdentityLink.upsert({
-      where: {
-        openKfid_externalUserId: { openKfid, externalUserId },
-      },
-      create: {
-        openKfid,
-        externalUserId,
-        userId,
-        source: source ?? "advisor_report",
-      },
-      update: {
-        userId,
-        source: source ?? "advisor_report",
-      },
+    const subjectHash = hashIdentifier(`${openKfid}:${externalUserId}`);
+    await prisma.$transaction(async (tx) => {
+      await tx.kfIdentityLink.upsert({
+        where: {
+          openKfid_externalUserId: { openKfid, externalUserId },
+        },
+        create: {
+          openKfid,
+          externalUserId,
+          userId,
+          source: source ?? "advisor_report",
+        },
+        update: {
+          userId,
+          source: source ?? "advisor_report",
+        },
+      });
+
+      // KF 通常在用户提交测肤报告后才建立身份映射；把此前发生的
+      // KF_EXTERNAL 同意事件补绑到主站 userId，后台才能看到完整链路。
+      await tx.consentEvent.updateMany({
+        where: {
+          subjectType: "KF_EXTERNAL",
+          project: "KF",
+          subjectHash,
+          userId: null,
+        },
+        data: { userId },
+      });
     });
 
     return NextResponse.json({ success: true }, { headers: { "Cache-Control": "no-store" } });

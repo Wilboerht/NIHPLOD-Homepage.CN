@@ -41,6 +41,6 @@ describe("LegalPublishDialog", () => {
     fireEvent.change(noteInput, { target: { value: "法务更新" } });
     expect(confirmButton).toBeEnabled();
     fireEvent.click(confirmButton);
-    expect(onConfirm).toHaveBeenCalledWith(expect.any(String), false);
+    expect(onConfirm).toHaveBeenCalledWith(expect.any(String), "NON_MATERIAL");
   });
 });
