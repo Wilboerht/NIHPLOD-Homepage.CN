@@ -11,6 +11,7 @@ import { createReadStream } from "fs";
 import { stat } from "fs/promises";
 import { Readable } from "stream";
 import { verifyUserAuth } from "@/lib/auth";
+import { userLegalConsentRequiredResponse } from "@/lib/consent-guard";
 import { apiConsole } from "@/lib/logger";
 import { resolveSpentProofImage } from "@/lib/spent-adjustment-files";
 
@@ -32,6 +33,9 @@ export async function GET(request: NextRequest) {
         { status: 401, headers: NO_STORE_HEADERS }
       );
     }
+
+    const consentRequired = await userLegalConsentRequiredResponse(payload.id);
+    if (consentRequired) return consentRequired;
 
     const key = request.nextUrl.searchParams.get("key") ?? "";
     const result = await resolveSpentProofImage(payload.id, key);

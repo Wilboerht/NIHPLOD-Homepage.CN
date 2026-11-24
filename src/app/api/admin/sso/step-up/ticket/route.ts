@@ -79,7 +79,9 @@ export const POST = withAuth(async (request: NextRequest, admin) => {
       adminId: admin.id,
       request,
       detail: { clientId: client.clientId, action: parsed.action, reason: "totp_rejected" },
-    }).catch(() => {});
+    }).catch((auditError) => {
+      apiConsole.error("[AdminStepUpTicket] 拒绝审计写入失败", auditError);
+    });
     return totpFailure;
   }
 

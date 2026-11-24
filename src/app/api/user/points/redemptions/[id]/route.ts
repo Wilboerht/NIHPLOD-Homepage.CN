@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
+import { userLegalConsentRequiredResponse } from "@/lib/consent-guard";
 import { getRedemptionDetailResponse } from "@/lib/points-mall-api";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -18,6 +19,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
       { status: 401 }
     );
   }
+  const consentRequired = await userLegalConsentRequiredResponse(user.id);
+  if (consentRequired) return consentRequired;
+
   const { id } = await context.params;
   return getRedemptionDetailResponse(user.id, id);
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { verifyAuth, checkAdminRateLimit } from "@/lib/auth";
+import { createAuditLog } from "@/lib/audit";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { invalidateAdminStats } from "@/lib/admin-stats-invalidate";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
@@ -30,6 +31,20 @@ export async function POST(request: NextRequest) {
 
     invalidateAdminStats();
     revalidateTag("admin-sso-stats", "max");
+
+    await createAuditLog({
+      action: "admin_stats_refresh",
+      targetType: "system",
+      targetLabel: "仪表盘统计缓存",
+      actorType: "ADMIN",
+      actorEmail: admin.email,
+      actorName: admin.name,
+      actorRole: admin.role,
+      authMethod: "session",
+      adminId: admin.id,
+      request,
+      detail: { source: "admin_stats_refresh" },
+    });
 
     return NextResponse.json({ success: true, data: { refreshedAt: new Date().toISOString() } });
   } catch (error) {

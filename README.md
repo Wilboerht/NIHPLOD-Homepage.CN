@@ -45,7 +45,7 @@ A comprehensive CMS for operational control.
 The project utilizes a modern, type-safe full-stack TypeScript architecture.
 
 ### Frontend
-*   **Framework:** Next.js 14 (App Router)
+*   **Framework:** Next.js 16 (App Router)
 *   **Language:** TypeScript
 *   **Styling:** Tailwind CSS
 *   **Animation:** Framer Motion, GSAP
@@ -86,8 +86,8 @@ To set up the project locally for development:
     Copy `.env.example` to `.env` and configure your database and API keys.
 4.  **Database Migration**:
     ```bash
-    npx prisma generate
-    npx prisma db push
+    npm run db:generate
+    npm run db:deploy
     ```
 5.  **Run Development Server**:
     ```bash

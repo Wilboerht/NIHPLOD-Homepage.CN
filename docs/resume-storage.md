@@ -2,6 +2,22 @@
 
 本文覆盖候选人简历（`JobApplication`）的存储、迁移、缓存、孤儿清理和保留期操作。
 
+## 当前部署选择：本地存储
+
+当前生产/开发环境暂不使用阿里云 OSS，而是使用服务器本地私有目录：
+
+`env
+STORAGE_MODE=local
+ALI_OSS_PRIVATE_BUCKET=
+ALLOW_LOCAL_RESUME_STORAGE=true
+ALLOW_LOCAL_SPENT_PROOF_STORAGE=true
+ALLOW_PUBLIC_SPENT_PROOF_STORAGE=false
+`
+
+- private/ 必须位于持久卷，不能被 CDN 或 public/ 静态服务直接暴露；
+- 仅适用于单实例部署，多实例需要共享卷或切换私有 OSS；
+- 必须把 private/ 纳入数据库同级的加密备份和恢复演练。
+
 ## 1. 存储模型
 
 新代码的 `resumePath` 显式携带存储后端：

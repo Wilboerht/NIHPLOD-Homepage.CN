@@ -18,6 +18,8 @@ private/spent-adjustments/<userId>/<uuid>.webp
 
 ```env
 # 允许本地私有凭证存储（生产必须显式开启）
+STORAGE_MODE=local
+ALLOW_LOCAL_RESUME_STORAGE=true
 ALLOW_LOCAL_SPENT_PROOF_STORAGE=true
 
 # 历史公开存储已下线，生产必须为 false

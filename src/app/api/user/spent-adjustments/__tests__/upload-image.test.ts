@@ -24,6 +24,8 @@ vi.mock("@/lib/ratelimit", () => ({
   rateLimit: vi.fn().mockResolvedValue({ success: true }),
 }));
 
+vi.mock("@/lib/consent-guard", () => ({ userLegalConsentRequiredResponse: vi.fn().mockResolvedValue(null) }));
+
 vi.mock("@/lib/logger", () => ({
   apiConsole: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));

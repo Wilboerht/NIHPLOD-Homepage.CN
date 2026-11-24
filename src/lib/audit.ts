@@ -212,7 +212,8 @@ export type AuditAction =
   | "legal_document_published"
   | "legal_document_draft_discarded"
   | "legal_document_version_restored"
-  | "legal_document_seeded";
+  | "legal_document_seeded"
+  | "admin_stats_refresh";
 
 export type AuditTargetType =
   | "order"

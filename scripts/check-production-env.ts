@@ -104,14 +104,15 @@ if (!isProduction && !force) {
       pass("ALI_OSS_PRIVATE_BUCKET", "已配置私有 OSS bucket 与凭证");
     }
   } else if (process.env.ALLOW_LOCAL_RESUME_STORAGE === "true") {
-    warn(
+    pass(
       "ALI_OSS_PRIVATE_BUCKET",
-      "未配置私有 OSS，但 ALLOW_LOCAL_RESUME_STORAGE=true：简历落本地 private/，请确认持久卷、备份与单实例"
+      "未配置私有 OSS；已启用本地 private/resumes（需单实例、持久卷和定期备份）"
     );
+
   } else {
     warn(
       "ALI_OSS_PRIVATE_BUCKET",
-      "未配置私有 OSS 且未开启本地逃生开关：简历上传将 503（PII 不允许落公开存储）"
+      "未配置私有 OSS 且未启用本地存储：简历上传会 503；PII 不允许写入公开存储。"
     );
   }
 

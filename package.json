@@ -2,6 +2,9 @@
   "name": "nihplod.cn",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.12 <25"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build --webpack",

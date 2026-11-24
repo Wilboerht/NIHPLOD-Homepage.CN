@@ -196,6 +196,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   legal_document_published: "发布法务文档新版本",
   legal_document_draft_discarded: "丢弃法务文档草稿",
   legal_document_version_restored: "恢复法务文档历史版本为草稿",
+  admin_stats_refresh: "手动刷新后台统计缓存",
   legal_document_seeded: "导入法务文档初始内容",
 };
 

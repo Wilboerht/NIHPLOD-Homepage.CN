@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserAuth } from "@/lib/auth";
+import { userLegalConsentRequiredResponse } from "@/lib/consent-guard";
 import { validateCSRFToken, csrfForbiddenResponse } from "@/lib/csrf";
 import { rateLimit } from "@/lib/ratelimit";
 import { submitReturnShipmentResponse } from "@/lib/points-mall-api";
@@ -31,6 +32,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       { status: 429 }
     );
   }
+  const consentRequired = await userLegalConsentRequiredResponse(user.id);
+  if (consentRequired) return consentRequired;
+
   const { id } = await context.params;
   return submitReturnShipmentResponse(user.id, id, request);
 }

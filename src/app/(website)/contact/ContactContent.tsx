@@ -225,7 +225,7 @@ export function ContactContent({ content }: ContactContentProps) {
   };
 
   return (
-    <div className="mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] lg:mb-[-6rem]">
+    <div className="mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] pt-[100px] md:pt-32 lg:mb-[-6rem]">
       {/* Top Bar */}
       <nav
         className="fixed left-0 right-0 top-0 z-50 flex w-full items-center bg-[#fefcf8]/80 px-6 py-6 backdrop-blur-md md:px-20"
@@ -430,16 +430,13 @@ export function ContactContent({ content }: ContactContentProps) {
         </div>
       </div>
 
-      {/* Spacer */}
-      <div className="h-[88px] shrink-0 md:h-[88px]" />
-
       {/* Header */}
-      <div className="pb-8 pt-8 text-center md:pb-12 md:pt-20">
-        <h1 className="mb-2 text-[19px] font-normal tracking-[0.15em] text-brand-charcoal md:mb-4 md:text-4xl md:font-light md:tracking-wider">
+      <div className="pb-8 pt-0 text-center md:pb-12">
+        <h1 className="mb-2 text-[22px] font-normal leading-[1.3] tracking-[0.08em] text-brand-charcoal sm:text-[26px] md:mb-4">
           {title.zh}
         </h1>
         <div className="mx-auto mb-4 w-[70px] border-b border-brand-primary md:hidden" />
-        <p className="mx-auto max-w-md px-6 text-[13px] font-light leading-[1.8] tracking-[0.06em] text-brand-charcoal/70 md:px-0 md:text-[15px] md:tracking-[0.12em]">
+        <p className="mx-auto max-w-xl px-6 text-[14px] font-light leading-[1.9] tracking-[0.04em] text-brand-charcoal/70 md:px-0">
           {description}
         </p>
       </div>
@@ -478,7 +475,7 @@ export function ContactContent({ content }: ContactContentProps) {
                 <div>
                   <label
                     htmlFor="name"
-                    className="mb-1 block text-[13px] font-light tracking-[0.06em] text-brand-charcoal/70 md:mb-1.5 md:text-[14px] md:tracking-[0.12em]"
+                    className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
                   >
                     称呼 <span className="text-red-400">*</span>
                   </label>
@@ -504,7 +501,7 @@ export function ContactContent({ content }: ContactContentProps) {
                 <div>
                   <label
                     htmlFor="phone"
-                    className="mb-1 block text-[13px] font-light tracking-[0.06em] text-brand-charcoal/70 md:mb-1.5 md:text-[14px] md:tracking-[0.12em]"
+                    className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
                   >
                     手机号 <span className="text-red-400">*</span>
                   </label>
@@ -534,7 +531,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <div>
                 <label
                   htmlFor="type"
-                  className="mb-1 block text-[13px] font-light tracking-[0.06em] text-brand-charcoal/70 md:mb-1.5 md:text-[14px] md:tracking-[0.12em]"
+                  className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
                 >
                   留言类型 <span className="text-red-400">*</span>
                 </label>
@@ -571,7 +568,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <div>
                 <label
                   htmlFor="content"
-                  className="mb-1 block text-[13px] font-light tracking-[0.06em] text-brand-charcoal/70 md:mb-1.5 md:text-[14px] md:tracking-[0.12em]"
+                  className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
                 >
                   留言内容 <span className="text-red-400">*</span>
                 </label>
@@ -598,7 +595,7 @@ export function ContactContent({ content }: ContactContentProps) {
 
               {/* 隐私政策同意（与加入我们页投递表单保持一致） */}
               <div>
-                <label className="flex items-start gap-2 text-[13px] font-light leading-5 text-brand-charcoal/70">
+                <label className="flex items-start gap-2 text-[14px] font-light leading-[1.8] text-brand-charcoal/70">
                   <input
                     type="checkbox"
                     checked={consent}
@@ -633,7 +630,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 bg-[#00263E]/[0.04] px-6 py-2.5 text-[15px] font-light tracking-[0.08em] text-brand-charcoal transition-colors active:border-[#00263E] active:bg-[#00263E]/10 disabled:opacity-50 md:gap-2 md:bg-transparent md:py-3.5 md:tracking-[0.15em] md:hover:border-[#00263E] md:hover:bg-[#00263E]/5"
+                className="flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 bg-[#00263E]/[0.04] px-6 py-3 text-[15px] font-light tracking-[0.12em] text-brand-charcoal transition-colors active:border-[#00263E] active:bg-[#00263E]/10 disabled:opacity-50 md:gap-2 md:bg-transparent md:py-3.5 md:hover:border-[#00263E] md:hover:bg-[#00263E]/5"
               >
                 {status === "loading" ? (
                   <>
@@ -653,10 +650,10 @@ export function ContactContent({ content }: ContactContentProps) {
       </main>
 
       {/* Page Footer */}
-      <footer className="md:border-t md:border-brand-charcoal/10">
+      <footer className="mt-12 md:mt-24 md:border-t md:border-brand-charcoal/10">
         <div className="mx-auto overflow-visible px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
           <div className="flex items-center justify-center gap-3">
-            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:tracking-[0.15em]">
+            <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:text-xs md:tracking-[0.12em]">
               &copy; {new Date().getFullYear()} NIHPLOD. All Rights Reserved.
             </span>
             <span className="text-[11px] font-light text-brand-charcoal/20">|</span>
