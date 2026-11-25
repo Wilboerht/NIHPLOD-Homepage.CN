@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import Image from "next/image";
 import { RefreshCw, Home, AlertTriangle } from "lucide-react";
 import { logger } from "@/lib/logger";
 import "./globals.css";
@@ -29,69 +28,72 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
     <html lang="zh-CN">
       <body>
-        <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-brand-cream px-4 font-sans text-brand-charcoal">
-          {/* 装饰背景 (硬编码颜色以确保不依赖外部 CSS) */}
-          <div className="pointer-events-none absolute inset-0 opacity-5">
-            <div className="absolute -left-20 -top-20 h-80 w-80 rounded-full bg-red-500 blur-3xl" />
-            <div className="absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-brand-gold blur-3xl" />
+        <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#fefcf8] px-6 py-16 font-sans text-brand-charcoal">
+          {/* 装饰背景 */}
+          <div className="pointer-events-none absolute inset-0 opacity-[0.06]">
+            <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-brand-gold blur-3xl" />
+            <div className="absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-brand-charcoal blur-3xl" />
           </div>
 
           {/* 内容区域 */}
-          <div className="relative z-10 text-center">
-            {/* Logo - 使用 img 标签因为 Next Image 可能加载失败 */}
-            <div className="mb-8">
-              {/* global-error 处于应用壳层之外，Next.js 官方要求使用原生 HTML 标签，不可用 next/link */}
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-              <a href="/" className="inline-block">
-                <div className="relative h-[26px] w-[124px] sm:h-8 sm:w-[160px]">
-                  <Image
-                    src="/images/NIHPLOD-logo.svg"
-                    alt="NIHPLOD"
-                    fill
-                    className="mx-auto object-contain"
-                    priority
-                    unoptimized
-                  />
-                </div>
-              </a>
+          <div className="relative z-10 flex w-full max-w-md flex-col items-center text-center">
+            {/* Logo - 使用原生 img 标签，避免 Global Error 时 next/image 依赖的应用壳不可用 */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a href="/" className="mb-10 inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/NIHPLOD-logo.svg"
+                alt="NIHPLOD"
+                width={143}
+                height={40}
+                className="h-[30px] w-[107px] object-contain sm:h-10 sm:w-[143px]"
+              />
+            </a>
+
+            {/* 状态标识 */}
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-brand-charcoal/15 bg-white/60">
+              <AlertTriangle className="h-6 w-6 text-brand-charcoal/45" strokeWidth={1.25} />
             </div>
 
-            {/* 错误图标 */}
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
-              <AlertTriangle className="h-10 w-10 text-red-400" />
-            </div>
+            <p className="mb-3 text-[11px] font-light uppercase tracking-[0.35em] text-brand-charcoal/40">
+              System Error
+            </p>
+            <h1 className="text-[24px] font-normal leading-[1.35] tracking-[0.06em] text-brand-charcoal sm:text-[28px]">
+              系统遇到一点问题
+            </h1>
 
-            {/* 文字说明 */}
-            <h1 className="font-sans text-3xl font-medium md:text-4xl">系统遇到一点问题</h1>
-            <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-brand-charcoal/60">
-              我们正在经历一次严重的系统故障。
+            <div className="my-6 h-px w-12 bg-brand-charcoal/15" />
+
+            <p className="text-[13px] font-light leading-[1.9] tracking-[0.02em] text-brand-charcoal/60 sm:text-sm">
+              我们正在处理一次临时的系统故障。
               <br />
-              请尝试刷新页面重置系统。
+              请刷新页面重试，或稍后再访问。
             </p>
 
             {/* 错误详情（开发环境显示） */}
             {process.env.NODE_ENV === "development" && error.message && (
-              <div className="mx-auto mt-4 max-w-lg rounded-lg border border-red-100 bg-red-50 p-4 text-left">
-                <p className="text-xs font-medium text-red-600">Global Error:</p>
-                <p className="mt-1 font-mono text-xs text-red-500">{error.message}</p>
+              <div className="mt-6 w-full rounded-lg border border-red-100 bg-red-50/70 p-4 text-left">
+                <p className="text-xs font-medium text-red-600">Global Error</p>
+                <p className="mt-1 break-words font-mono text-xs text-red-500">{error.message}</p>
               </div>
             )}
 
             {/* 操作按钮 */}
-            <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <div className="mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
               <button
+                type="button"
                 onClick={() => reset()}
-                className="flex items-center gap-2 rounded-full bg-brand-gold px-8 py-3 text-sm font-medium text-white shadow-md transition-all hover:bg-brand-gold-dark hover:shadow-lg"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand-primary px-8 text-[13px] font-normal tracking-[0.12em] text-white transition-colors hover:bg-brand-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fefcf8]"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
                 重启应用
               </button>
               {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a
                 href="/"
-                className="flex items-center gap-2 rounded-full border border-brand-charcoal/20 px-8 py-3 text-sm font-medium text-brand-charcoal/60 transition-all hover:border-brand-gold hover:bg-brand-cream hover:text-brand-gold"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-brand-charcoal/20 px-8 text-[13px] font-light tracking-[0.12em] text-brand-charcoal/70 transition-colors hover:border-brand-charcoal/40 hover:bg-brand-charcoal/[0.03] hover:text-brand-charcoal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fefcf8]"
               >
-                <Home className="h-4 w-4" />
+                <Home className="h-4 w-4" strokeWidth={1.5} />
                 返回首页
               </a>
             </div>
