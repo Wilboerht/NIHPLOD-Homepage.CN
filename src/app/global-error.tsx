@@ -28,15 +28,9 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
     <html lang="zh-CN">
       <body>
-        <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#fefcf8] px-6 py-16 font-sans text-brand-charcoal">
-          {/* 装饰背景 */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.06]">
-            <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-brand-gold blur-3xl" />
-            <div className="absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-brand-charcoal blur-3xl" />
-          </div>
-
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-[#fefcf8] px-6 py-16 font-sans text-brand-charcoal">
           {/* 内容区域 */}
-          <div className="relative z-10 flex w-full max-w-md flex-col items-center text-center">
+          <div className="flex w-full max-w-md flex-col items-center text-center">
             {/* Logo - 使用原生 img 标签，避免 Global Error 时 next/image 依赖的应用壳不可用 */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="mb-10 inline-block">
@@ -83,7 +77,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               <button
                 type="button"
                 onClick={() => reset()}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand-primary px-8 text-[13px] font-normal tracking-[0.12em] text-white transition-colors hover:bg-brand-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fefcf8]"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-brand-charcoal/15 bg-brand-ecru px-8 text-[13px] font-normal tracking-[0.12em] text-brand-charcoal shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_1px_2px_rgba(0,38,62,0.08)] transition-colors hover:bg-[#dcd0b2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fefcf8]"
               >
                 <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
                 重启应用
