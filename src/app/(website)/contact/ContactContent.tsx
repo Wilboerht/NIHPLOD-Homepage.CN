@@ -431,7 +431,7 @@ export function ContactContent({ content }: ContactContentProps) {
       </div>
 
       {/* Header */}
-      <div className="pb-8 pt-0 text-center md:pb-12">
+      <div className="pb-8 pt-0 text-center">
         <h1 className="mb-2 text-[22px] font-normal leading-[1.3] tracking-[0.08em] text-brand-charcoal sm:text-[26px] md:mb-4">
           {title.zh}
         </h1>
@@ -442,8 +442,8 @@ export function ContactContent({ content }: ContactContentProps) {
       </div>
 
       {/* Contact Form */}
-      <main className="container mx-auto flex-1 px-6 pb-10 pt-0 md:px-8 md:pb-16 lg:px-12 xl:px-16">
-        <div className="mx-auto max-w-xl">
+      <main className="container mx-auto flex-1 px-6 pb-10 pt-0 md:px-8 md:pb-12 lg:px-12 xl:px-16">
+        <div className="mx-auto max-w-lg">
           {status === "success" ? (
             <div className="py-16 text-center">
               <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
@@ -457,7 +457,7 @@ export function ContactContent({ content }: ContactContentProps) {
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Honeypot */}
               <input
                 type="text"
@@ -471,7 +471,7 @@ export function ContactContent({ content }: ContactContentProps) {
               />
 
               {/* Name + Phone */}
-              <div className="grid gap-4 sm:grid-cols-2 md:gap-5">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label
                     htmlFor="name"
@@ -490,7 +490,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     autoComplete="name"
                     maxLength={50}
                     className={cn(
-                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                       errors.name
                         ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
                         : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
@@ -517,7 +517,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     inputMode="tel"
                     maxLength={11}
                     className={cn(
-                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                       errors.phone
                         ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
                         : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
@@ -546,7 +546,7 @@ export function ContactContent({ content }: ContactContentProps) {
                     }}
                     onBlur={handleBlur}
                     className={cn(
-                      "w-full appearance-none rounded-none border-0 border-b px-0 py-3 pr-8 text-base font-light tracking-wide outline-none transition-colors md:rounded-lg md:border md:px-4 md:py-3.5 md:pr-12 md:text-[15px] md:tracking-[0.06em]",
+                      "w-full appearance-none rounded-none border-0 border-b px-0 py-3 pr-8 text-base font-light tracking-wide outline-none transition-colors md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:pr-12 md:text-[15px] md:tracking-[0.06em]",
                       !formData.type && "text-sm text-brand-charcoal/40",
                       errors.type
                         ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
@@ -580,7 +580,7 @@ export function ContactContent({ content }: ContactContentProps) {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   placeholder="请输入您的留言内容..."
-                  rows={4}
+                  rows={3}
                   maxLength={2000}
                   className={cn(
                     "w-full resize-none rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
@@ -630,7 +630,7 @@ export function ContactContent({ content }: ContactContentProps) {
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg border border-[#00263E]/30 bg-[#00263E]/[0.04] px-6 py-3 text-[15px] font-light tracking-[0.12em] text-brand-charcoal transition-colors active:border-[#00263E] active:bg-[#00263E]/10 disabled:opacity-50 md:gap-2 md:bg-transparent md:py-3.5 md:hover:border-[#00263E] md:hover:bg-[#00263E]/5"
+                className="flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg bg-brand-primary px-6 py-3 text-[15px] font-light tracking-[0.12em] text-white transition-colors duration-300 hover:bg-brand-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 active:bg-brand-primary-dark disabled:cursor-not-allowed disabled:opacity-50 md:h-11 md:min-h-0 md:gap-2 md:py-0"
               >
                 {status === "loading" ? (
                   <>
@@ -650,7 +650,7 @@ export function ContactContent({ content }: ContactContentProps) {
       </main>
 
       {/* Page Footer */}
-      <footer className="mt-12 md:mt-24 md:border-t md:border-brand-charcoal/10">
+      <footer className="mt-12 md:mt-16 md:border-t md:border-brand-charcoal/10">
         <div className="mx-auto overflow-visible px-6 py-6 text-center md:px-8 md:py-10 lg:px-12 xl:px-16">
           <div className="flex items-center justify-center gap-3">
             <span className="text-[11px] font-light tracking-[0.08em] text-brand-charcoal/[0.48] md:text-xs md:tracking-[0.12em]">
