@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { sanitizeHtml } from "@/lib/html-sanitize";
 import { apiPost, ApiError } from "@/lib/api-client";
+import { Checkbox } from "@/components/ui/Checkbox";
 
 // ============================================
 // Types
@@ -1078,32 +1079,31 @@ function JobModal({
                 </div>
 
                 <div>
-                  <label className="flex items-start gap-2 text-[13px] font-light leading-5 text-brand-charcoal/70">
-                    <input
-                      type="checkbox"
-                      checked={consent}
-                      onChange={(e) => {
-                        setConsent(e.target.checked);
-                        setFieldErrors((prev) => ({ ...prev, consent: "" }));
-                      }}
-                      aria-invalid={Boolean(fieldErrors.consent)}
-                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-300 text-[#00263E] focus:ring-[#00263E]/30"
-                    />
-                    <span>
-                      我已阅读并同意{" "}
-                      <Link
-                        href="/privacy"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline underline-offset-2 hover:text-brand-charcoal"
-                      >
-                        《隐私政策》
-                      </Link>
-                      ，同意公司为招聘目的处理我的姓名、电话和简历信息。
-                    </span>
-                  </label>
+                  <Checkbox
+                    id="careers-consent"
+                    checked={consent}
+                    onChange={(checked) => {
+                      setConsent(checked);
+                      setFieldErrors((prev) => ({ ...prev, consent: "" }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.consent)}
+                    label={
+                      <span className="text-[13px] font-light leading-5 text-brand-charcoal/70">
+                        我已阅读并同意{" "}
+                        <Link
+                          href="/privacy"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+                        >
+                          《隐私政策》
+                        </Link>
+                        ，同意公司为招聘目的处理我的姓名、电话和简历信息。
+                      </span>
+                    }
+                  />
                   {fieldErrors.consent && (
-                    <p className="mt-1 text-xs text-red-500" role="alert">
+                    <p className="mt-1 pl-[26px] text-xs text-red-500" role="alert">
                       {fieldErrors.consent}
                     </p>
                   )}

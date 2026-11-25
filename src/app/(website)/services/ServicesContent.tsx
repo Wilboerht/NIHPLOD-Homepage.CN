@@ -186,6 +186,15 @@ export function ServicesContent({ content }: ServicesContentProps) {
     }
   }, [desktopMenuOpen]);
 
+  useEffect(() => {
+    if (!qrModalOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setQrModalOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [qrModalOpen]);
+
   return (
     <div className="mb-[-7rem] flex min-h-dvh animate-fade-in flex-col bg-[#fefcf8] lg:mb-[-6rem]">
       {/* Top Bar */}
@@ -449,25 +458,30 @@ export function ServicesContent({ content }: ServicesContentProps) {
             >
               服务号
             </button>
-            {/* PC端：hover 显示 */}
-            <div className="group relative hidden cursor-pointer md:inline-flex">
-              <span className="text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors group-hover:text-brand-charcoal/70">
-                服务号
+            {/* PC端：hover 预览，点击/聚焦可打开二维码 */}
+            <button
+              type="button"
+              onClick={() => setQrModalOpen(true)}
+              aria-haspopup="dialog"
+              className="group relative hidden cursor-pointer rounded-sm text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors hover:text-brand-charcoal/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fefcf8] md:inline-flex"
+            >
+              服务号
+              <span className="invisible absolute bottom-full left-1/2 z-50 -translate-x-1/2 pb-2 opacity-0 transition-[opacity,visibility] duration-200 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100">
+                <Image
+                  src="/images/wechat-qrcode.jpg"
+                  alt="NIHPLOD 微信服务号"
+                  width={160}
+                  height={160}
+                  unoptimized
+                  className="h-auto w-40 rounded-lg bg-white p-2 shadow-lg"
+                />
               </span>
-              <Image
-                src="/images/wechat-qrcode.jpg"
-                alt="NIHPLOD 微信服务号"
-                width={160}
-                height={160}
-                unoptimized
-                className="absolute bottom-full left-1/2 z-50 mb-2 hidden h-auto w-40 -translate-x-1/2 rounded-lg bg-white p-2 shadow-lg group-hover:block"
-              />
-            </div>
+            </button>
           </div>
         </div>
       </footer>
 
-      {/* 移动端二维码模态框 */}
+      {/* 二维码模态框（移动端 + PC 点击/键盘） */}
       <AnimatePresence>
         {qrModalOpen && (
           <m.div
@@ -475,10 +489,13 @@ export function ServicesContent({ content }: ServicesContentProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-brand-charcoal/30 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-brand-charcoal/30 backdrop-blur-sm"
             onClick={() => setQrModalOpen(false)}
           >
             <m.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="NIHPLOD 服务号二维码"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -489,10 +506,10 @@ export function ServicesContent({ content }: ServicesContentProps) {
               <Image
                 src="/images/wechat-qrcode.jpg"
                 alt="NIHPLOD 微信服务号"
-                width={200}
-                height={200}
+                width={240}
+                height={240}
                 unoptimized
-                className="h-[200px] w-[200px] rounded-lg"
+                className="h-[200px] w-[200px] rounded-lg md:h-[240px] md:w-[240px]"
               />
               <p className="mt-4 text-[13px] font-light tracking-[0.06em] text-brand-charcoal/60">
                 扫码关注 NIHPLOD 服务号
