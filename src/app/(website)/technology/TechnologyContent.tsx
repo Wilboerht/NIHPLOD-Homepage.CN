@@ -95,7 +95,7 @@ export function TechnologyContent() {
                       </li>
                     </ul>
                   </div>
-                  <div className="mx-auto mt-6 flex items-center justify-center gap-4 sm:gap-6">
+                  <div className="mt-6 flex flex-wrap items-center gap-4 sm:gap-6">
                     <div className="overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-brand-beige/25">
                       <Image
                         src="/images/technology/liposome-macro.webp"
@@ -114,6 +114,16 @@ export function TechnologyContent() {
                         width={715}
                         height={547}
                         sizes="(max-width: 640px) 190px, 260px"
+                        className="h-[120px] w-auto object-cover sm:h-[180px]"
+                      />
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-brand-charcoal/[0.06] bg-brand-beige/25">
+                      <Image
+                        src="/images/story/lab-research.webp"
+                        alt="科研实验室场景"
+                        width={1200}
+                        height={670}
+                        sizes="(max-width: 640px) 220px, 340px"
                         className="h-[120px] w-auto object-cover sm:h-[180px]"
                       />
                     </div>
