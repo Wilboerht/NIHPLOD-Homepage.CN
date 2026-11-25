@@ -6,9 +6,6 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { m, AnimatePresence } from "framer-motion";
 import {
-  Send,
-  CheckCircle,
-  Loader2,
   MessageSquare,
   Briefcase,
   MessageCircle,
@@ -22,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks";
 import { apiPost, ApiError } from "@/lib/api-client";
+import { MorphSubmitButton } from "@/components/website/MorphSubmitButton";
 import type { ContactPageContent } from "@/types/page-content";
 
 // ============================================
@@ -174,6 +172,14 @@ export function ContactContent({ content }: ContactContentProps) {
     }
   }, [desktopMenuOpen]);
 
+  useEffect(() => {
+    if (status !== "success") return;
+    const timer = window.setTimeout(() => {
+      setStatus("idle");
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [status]);
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = "请输入您的称呼";
@@ -192,7 +198,7 @@ export function ContactContent({ content }: ContactContentProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (status === "loading") return; // 防止重复提交
+    if (status === "loading" || status === "success") return;
     if (!validateForm()) return;
     setStatus("loading");
     try {
@@ -444,210 +450,182 @@ export function ContactContent({ content }: ContactContentProps) {
       {/* Contact Form */}
       <main className="container mx-auto flex-1 px-6 pb-10 pt-0 md:px-8 md:pb-12 lg:px-12 xl:px-16">
         <div className="mx-auto max-w-lg">
-          {status === "success" ? (
-            <div className="py-16 text-center">
-              <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-500" />
-              <h2 className="mb-2 text-xl font-medium text-brand-charcoal">留言已提交</h2>
-              <p className="text-brand-charcoal/60">感谢您的留言，我们会尽快回复</p>
-              <Link
-                href="/"
-                className="mt-6 inline-block text-[15px] font-light tracking-[0.12em] text-brand-charcoal hover:underline"
-              >
-                返回首页
-              </Link>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Honeypot */}
-              <input
-                type="text"
-                name="website"
-                value={formData.website}
-                onChange={handleChange}
-                autoComplete="off"
-                tabIndex={-1}
-                className="absolute left-[-9999px] opacity-0"
-                aria-hidden="true"
-              />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Honeypot */}
+            <input
+              type="text"
+              name="website"
+              value={formData.website}
+              onChange={handleChange}
+              autoComplete="off"
+              tabIndex={-1}
+              className="absolute left-[-9999px] opacity-0"
+              aria-hidden="true"
+            />
 
-              {/* Name + Phone */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
-                  >
-                    称呼 <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="您的称呼"
-                    autoComplete="name"
-                    maxLength={50}
-                    className={cn(
-                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
-                      errors.name
-                        ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
-                        : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
-                    )}
-                  />
-                  {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
-                </div>
-                <div>
-                  <label
-                    htmlFor="phone"
-                    className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
-                  >
-                    手机号 <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    placeholder="您的手机号"
-                    autoComplete="tel"
-                    inputMode="tel"
-                    maxLength={11}
-                    className={cn(
-                      "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
-                      errors.phone
-                        ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
-                        : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
-                    )}
-                  />
-                  {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
-                </div>
-              </div>
-
-              {/* Message Type Dropdown */}
+            {/* Name + Phone */}
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label
-                  htmlFor="type"
+                  htmlFor="name"
                   className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
                 >
-                  留言类型 <span className="text-red-400">*</span>
+                  称呼 <span className="text-red-400">*</span>
                 </label>
-                <div className="relative">
-                  <select
-                    id="type"
-                    name="type"
-                    value={formData.type}
-                    onChange={(e) => {
-                      setFormData((prev) => ({ ...prev, type: e.target.value }));
-                      if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
-                    }}
-                    onBlur={handleBlur}
-                    className={cn(
-                      "w-full appearance-none rounded-none border-0 border-b px-0 py-3 pr-8 text-base font-light tracking-wide outline-none transition-colors md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:pr-12 md:text-[15px] md:tracking-[0.06em]",
-                      !formData.type && "text-sm text-brand-charcoal/40",
-                      errors.type
-                        ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
-                        : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:hover:border-[#00263E]/40 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
-                    )}
-                  >
-                    {messageTypes.map((type) => (
-                      <option key={type.value} value={type.value} disabled={type.value === ""}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40 md:right-4" />
-                </div>
-                {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
-              </div>
-
-              {/* Content */}
-              <div>
-                <label
-                  htmlFor="content"
-                  className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
-                >
-                  留言内容 <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  ref={textareaRef}
-                  id="content"
-                  name="content"
-                  value={formData.content}
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder="请输入您的留言内容..."
-                  rows={3}
-                  maxLength={2000}
+                  placeholder="您的称呼"
+                  autoComplete="name"
+                  maxLength={50}
                   className={cn(
-                    "w-full resize-none rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
-                    errors.content
+                    "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                    errors.name
                       ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
                       : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                   )}
-                  style={{ maxHeight: "200px" }}
                 />
-                {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
+                {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
               </div>
-
-              {/* 隐私政策同意（与加入我们页投递表单保持一致） */}
               <div>
-                <label className="flex items-start gap-2 text-[14px] font-light leading-[1.8] text-brand-charcoal/70">
-                  <input
-                    type="checkbox"
-                    checked={consent}
-                    onChange={(e) => {
-                      setConsent(e.target.checked);
-                      if (errors.consent) setErrors((prev) => ({ ...prev, consent: "" }));
-                    }}
-                    aria-invalid={Boolean(errors.consent)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-300 text-[#00263E] focus:ring-[#00263E]/30"
-                  />
-                  <span>
-                    我已阅读并同意{" "}
-                    <Link
-                      href="/privacy"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2 hover:text-brand-charcoal"
-                    >
-                      《隐私政策》
-                    </Link>
-                    ，同意公司为处理我的留言使用我的姓名和电话信息。
-                  </span>
-                </label>
-                {errors.consent && (
-                  <p className="mt-1 text-xs text-red-500" role="alert">
-                    {errors.consent}
-                  </p>
-                )}
-              </div>
-
-              {/* Submit */}
-              <div className="pt-1">
-                <button
-                  type="submit"
-                  disabled={status === "loading"}
-                  className="flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg border border-brand-charcoal/30 px-6 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/20 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 md:h-11 md:min-h-0 md:gap-2 md:py-0"
+                <label
+                  htmlFor="phone"
+                  className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
                 >
-                  {status === "loading" ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin md:h-4 md:w-4" strokeWidth={1.5} />
-                      提交中...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={1.5} />
-                      提交留言
-                    </>
+                  手机号 <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="您的手机号"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  maxLength={11}
+                  className={cn(
+                    "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                    errors.phone
+                      ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                      : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                   )}
-                </button>
+                />
+                {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
               </div>
-            </form>
-          )}
+            </div>
+
+            {/* Message Type Dropdown */}
+            <div>
+              <label
+                htmlFor="type"
+                className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
+              >
+                留言类型 <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="type"
+                  name="type"
+                  value={formData.type}
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, type: e.target.value }));
+                    if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
+                  }}
+                  onBlur={handleBlur}
+                  className={cn(
+                    "w-full appearance-none rounded-none border-0 border-b px-0 py-3 pr-8 text-base font-light tracking-wide outline-none transition-colors md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:pr-12 md:text-[15px] md:tracking-[0.06em]",
+                    !formData.type && "text-sm text-brand-charcoal/40",
+                    errors.type
+                      ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                      : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:hover:border-[#00263E]/40 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
+                  )}
+                >
+                  {messageTypes.map((type) => (
+                    <option key={type.value} value={type.value} disabled={type.value === ""}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40 md:right-4" />
+              </div>
+              {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
+            </div>
+
+            {/* Content */}
+            <div>
+              <label
+                htmlFor="content"
+                className="mb-1 block text-[14px] font-light tracking-[0.04em] text-brand-charcoal/70 md:mb-1.5"
+              >
+                留言内容 <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                ref={textareaRef}
+                id="content"
+                name="content"
+                value={formData.content}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="请输入您的留言内容..."
+                rows={3}
+                maxLength={2000}
+                className={cn(
+                  "w-full resize-none rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                  errors.content
+                    ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                    : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
+                )}
+                style={{ maxHeight: "200px" }}
+              />
+              {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
+            </div>
+
+            {/* 隐私政策同意（与加入我们页投递表单保持一致） */}
+            <div>
+              <label className="flex items-start gap-2 text-[14px] font-light leading-[1.8] text-brand-charcoal/70">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => {
+                    setConsent(e.target.checked);
+                    if (errors.consent) setErrors((prev) => ({ ...prev, consent: "" }));
+                  }}
+                  aria-invalid={Boolean(errors.consent)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-300 text-[#00263E] focus:ring-[#00263E]/30"
+                />
+                <span>
+                  我已阅读并同意{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-brand-charcoal"
+                  >
+                    《隐私政策》
+                  </Link>
+                  ，同意公司为处理我的留言使用我的姓名和电话信息。
+                </span>
+              </label>
+              {errors.consent && (
+                <p className="mt-1 text-xs text-red-500" role="alert">
+                  {errors.consent}
+                </p>
+              )}
+            </div>
+
+            {/* Submit */}
+            <div className="pt-1">
+              <MorphSubmitButton
+                phase={status === "success" ? "done" : status === "loading" ? "loading" : "idle"}
+              />
+            </div>
+          </form>
         </div>
       </main>
 
