@@ -1,6 +1,7 @@
 import { StandaloneNav } from "@/components/ui/StandaloneNav";
 import { PrivacyArticle } from "@/components/ui/PrivacyArticle";
 import { CookieSettingsButton } from "@/components/website/CookieSettingsButton";
+import { Cookie } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import type { LegalDocumentContent } from "@/types/legal";
@@ -25,14 +26,19 @@ export function PrivacyContent({ content }: PrivacyContentProps) {
           <PrivacyArticle
             content={content}
             afterHeader={
-              <div className="mt-8 flex flex-col gap-3 rounded-2xl border border-brand-charcoal/10 bg-white/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-brand-charcoal">管理 Cookie 偏好</p>
-                  <p className="mt-1 text-xs leading-5 text-brand-charcoal/60">
-                    您可以随时选择仅使用必要 Cookie，或允许分析 Cookie。
-                  </p>
+              <div className="mt-8 flex flex-col gap-4 rounded-xl border border-brand-charcoal/10 bg-white/60 p-4 shadow-hairline sm:flex-row sm:items-center sm:gap-5 sm:p-5">
+                <div className="flex flex-1 items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-charcoal/[0.05] text-brand-charcoal/70">
+                    <Cookie className="h-4 w-4" strokeWidth={1.5} />
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-brand-charcoal">管理 Cookie 偏好</p>
+                    <p className="mt-1 text-xs leading-5 text-brand-charcoal/60">
+                      您可以随时选择仅使用必要 Cookie，或允许分析 Cookie。
+                    </p>
+                  </div>
                 </div>
-                <CookieSettingsButton className="shrink-0 self-start rounded-full border border-brand-charcoal/25 px-4 py-2 text-xs tracking-[0.08em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/[0.04] sm:self-auto" />
+                <CookieSettingsButton className="inline-flex h-9 w-full shrink-0 items-center justify-center rounded-full border border-brand-charcoal/15 bg-brand-ecru px-4 text-xs font-light tracking-[0.08em] text-brand-charcoal transition-colors hover:bg-[#dcd0b2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fefcf8] sm:w-auto" />
               </div>
             }
           />

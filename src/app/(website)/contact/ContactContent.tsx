@@ -607,22 +607,22 @@ export function ContactContent({ content }: ContactContentProps) {
                 }}
                 aria-invalid={Boolean(errors.consent)}
                 label={
-                  <span className="text-[14px] font-light leading-[1.8] tracking-[0.04em] text-brand-charcoal/70">
-                    我已阅读并同意{" "}
+                  <span className="text-[13px] font-light leading-5 text-brand-charcoal/70">
+                    我已阅读并同意
                     <Link
                       href="/privacy"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+                      className="underline decoration-brand-charcoal/30 underline-offset-2 transition-colors hover:text-brand-charcoal"
                     >
                       《隐私政策》
                     </Link>
-                    ，同意公司为处理我的留言使用我的姓名和电话信息。
+                    ，同意公司为处理留言使用我的姓名和手机号。
                   </span>
                 }
               />
               {errors.consent && (
-                <p className="mt-1 pl-[26px] text-xs text-red-500" role="alert">
+                <p className="mt-1 pl-[28px] text-xs text-red-500" role="alert">
                   {errors.consent}
                 </p>
               )}

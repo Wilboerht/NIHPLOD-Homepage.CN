@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { COOKIE_SETTINGS_EVENT, readCookieConsent, writeCookieConsent } from "@/lib/cookie-consent";
 
 export function CookieConsent() {
@@ -38,14 +39,14 @@ export function CookieConsent() {
           <button
             type="button"
             onClick={() => save(false)}
-            className="rounded-full border border-brand-charcoal/20 px-4 py-2 text-xs tracking-[0.08em] text-brand-charcoal transition-colors hover:bg-brand-charcoal/[0.04]"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-brand-charcoal/25 px-5 text-[13px] font-light tracking-[0.08em] text-brand-charcoal transition-colors hover:border-brand-charcoal/40 hover:bg-brand-charcoal/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 focus-visible:ring-offset-2"
           >
             仅必要
           </button>
           <button
             type="button"
             onClick={() => save(analytics)}
-            className="rounded-full bg-brand-charcoal px-4 py-2 text-xs font-medium tracking-[0.08em] text-white transition-opacity hover:opacity-90"
+            className="inline-flex h-10 items-center justify-center rounded-full bg-brand-primary px-5 text-[13px] font-normal tracking-[0.08em] text-white transition-colors hover:bg-brand-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             保存选择
           </button>
@@ -53,36 +54,25 @@ export function CookieConsent() {
       }
     >
       <div className="space-y-5">
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-brand-charcoal">必要 Cookie</p>
-              <p className="mt-1 text-xs leading-5 text-ink-muted">
-                登录、会话保持与 CSRF 安全防护，无法关闭。
-              </p>
-            </div>
-            <input
-              type="checkbox"
+        <div className="divide-y divide-brand-charcoal/[0.06]">
+          <div className="pb-4">
+            <Checkbox
+              id="cookie-necessary"
               checked
               disabled
-              className="mt-1 h-4 w-4 shrink-0 accent-[#00263E]"
+              label="必要 Cookie"
+              description="登录、会话保持与 CSRF 安全防护，无法关闭。"
             />
           </div>
-
-          <label className="flex cursor-pointer items-start justify-between gap-4">
-            <span>
-              <span className="block text-sm font-medium text-brand-charcoal">分析 Cookie</span>
-              <span className="mt-1 block text-xs leading-5 text-ink-muted">
-                Google Analytics，用于统计访问情况与改进网站体验。
-              </span>
-            </span>
-            <input
-              type="checkbox"
+          <div className="pt-4">
+            <Checkbox
+              id="cookie-analytics"
               checked={analytics}
-              onChange={(event) => setAnalytics(event.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0 accent-[#00263E]"
+              onChange={setAnalytics}
+              label="分析 Cookie"
+              description="Google Analytics，用于统计访问情况与改进网站体验。"
             />
-          </label>
+          </div>
         </div>
 
         <p className="text-xs leading-5 text-ink-muted">

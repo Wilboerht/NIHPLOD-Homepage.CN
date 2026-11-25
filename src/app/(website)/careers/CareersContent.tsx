@@ -1089,12 +1089,12 @@ function JobModal({
                     aria-invalid={Boolean(fieldErrors.consent)}
                     label={
                       <span className="text-[13px] font-light leading-5 text-brand-charcoal/70">
-                        我已阅读并同意{" "}
+                        我已阅读并同意
                         <Link
                           href="/privacy"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="underline decoration-brand-charcoal/20 underline-offset-2 transition-colors hover:text-brand-charcoal"
+                          className="underline decoration-brand-charcoal/30 underline-offset-2 transition-colors hover:text-brand-charcoal"
                         >
                           《隐私政策》
                         </Link>
@@ -1103,7 +1103,7 @@ function JobModal({
                     }
                   />
                   {fieldErrors.consent && (
-                    <p className="mt-1 pl-[26px] text-xs text-red-500" role="alert">
+                    <p className="mt-1 pl-[28px] text-xs text-red-500" role="alert">
                       {fieldErrors.consent}
                     </p>
                   )}

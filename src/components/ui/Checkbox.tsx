@@ -51,12 +51,12 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
               disabled={disabled}
               aria-invalid={error ? true : undefined}
               {...props}
-              className="peer h-4 w-4 appearance-none rounded border border-brand-charcoal/25 bg-white transition-colors checked:border-brand-primary checked:bg-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-1 disabled:cursor-not-allowed"
+              className="peer h-[18px] w-[18px] appearance-none rounded-[4px] border border-brand-charcoal/30 bg-white transition-colors checked:border-brand-primary checked:bg-brand-primary hover:border-brand-charcoal/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40 focus-visible:ring-offset-1 disabled:cursor-not-allowed"
             />
             <Check
               aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100"
-              strokeWidth={3}
+              className="pointer-events-none absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+              strokeWidth={2.5}
             />
           </span>
           {(label || description) && (
@@ -64,9 +64,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
               {label && (
                 <span className="block text-sm font-medium text-brand-charcoal">{label}</span>
               )}
-              {description && (
-                <span className="block text-xs text-ink-muted">{description}</span>
-              )}
+              {description && <span className="block text-xs text-ink-muted">{description}</span>}
             </span>
           )}
         </label>
