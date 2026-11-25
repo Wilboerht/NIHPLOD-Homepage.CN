@@ -627,23 +627,25 @@ export function ContactContent({ content }: ContactContentProps) {
               </div>
 
               {/* Submit */}
-              <button
-                type="submit"
-                disabled={status === "loading"}
-                className="flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg bg-brand-primary px-6 py-3 text-[15px] font-light tracking-[0.12em] text-white transition-colors duration-300 hover:bg-brand-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/30 active:bg-brand-primary-dark disabled:cursor-not-allowed disabled:opacity-50 md:h-11 md:min-h-0 md:gap-2 md:py-0"
-              >
-                {status === "loading" ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin md:h-4 md:w-4" />
-                    提交中...
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                    提交留言
-                  </>
-                )}
-              </button>
+              <div className="pt-1">
+                <button
+                  type="submit"
+                  disabled={status === "loading"}
+                  className="flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg border border-brand-charcoal/30 px-6 py-3 text-[15px] font-light tracking-[0.15em] text-brand-charcoal transition-all duration-300 hover:border-brand-charcoal/50 hover:bg-brand-charcoal/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/20 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 md:h-11 md:min-h-0 md:gap-2 md:py-0"
+                >
+                  {status === "loading" ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin md:h-4 md:w-4" strokeWidth={1.5} />
+                      提交中...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={1.5} />
+                      提交留言
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           )}
         </div>
