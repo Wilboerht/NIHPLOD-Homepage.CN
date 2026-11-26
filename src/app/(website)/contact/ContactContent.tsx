@@ -203,7 +203,14 @@ export function ContactContent({ content }: ContactContentProps) {
     else if (formData.content.length > 2000) newErrors.content = "留言内容最多2000个字符";
     if (!consent) newErrors.consent = "请阅读并同意隐私政策";
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const firstError = Object.values(newErrors)[0];
+    if (firstError) {
+      toastError(firstError);
+      const firstKey = Object.keys(newErrors)[0];
+      document.getElementById(firstKey === "consent" ? "contact-consent" : firstKey)?.focus();
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -489,17 +496,17 @@ export function ContactContent({ content }: ContactContentProps) {
                   value={formData.name}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder="您的称呼"
+                  placeholder={errors.name || "您的称呼"}
                   autoComplete="name"
                   maxLength={50}
+                  aria-invalid={Boolean(errors.name)}
                   className={cn(
-                    "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                    "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                     errors.name
-                      ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
-                      : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
+                      ? "border-red-300 placeholder:text-red-400 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                      : "border-brand-charcoal/25 placeholder:text-brand-charcoal/40 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                   )}
                 />
-                {errors.name && <p className="mt-1.5 text-xs text-red-500">{errors.name}</p>}
               </div>
               <div>
                 <label
@@ -515,18 +522,18 @@ export function ContactContent({ content }: ContactContentProps) {
                   value={formData.phone}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder="您的手机号"
+                  placeholder={errors.phone || "您的手机号"}
                   autoComplete="tel"
                   inputMode="tel"
                   maxLength={11}
+                  aria-invalid={Boolean(errors.phone)}
                   className={cn(
-                    "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                    "w-full rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                     errors.phone
-                      ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
-                      : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
+                      ? "border-red-300 placeholder:text-red-400 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                      : "border-brand-charcoal/25 placeholder:text-brand-charcoal/40 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                   )}
                 />
-                {errors.phone && <p className="mt-1.5 text-xs text-red-500">{errors.phone}</p>}
               </div>
             </div>
 
@@ -548,9 +555,11 @@ export function ContactContent({ content }: ContactContentProps) {
                     if (errors.type) setErrors((prev) => ({ ...prev, type: "" }));
                   }}
                   onBlur={handleBlur}
+                  aria-invalid={Boolean(errors.type)}
                   className={cn(
                     "w-full appearance-none rounded-none border-0 border-b px-0 py-3 pr-8 text-base font-light tracking-wide outline-none transition-colors md:h-11 md:rounded-lg md:border md:px-4 md:py-0 md:pr-12 md:text-[15px] md:tracking-[0.06em]",
-                    !formData.type && "text-sm text-brand-charcoal/40",
+                    !formData.type &&
+                      (errors.type ? "text-sm text-red-400" : "text-sm text-brand-charcoal/40"),
                     errors.type
                       ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
                       : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:hover:border-[#00263E]/40 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
@@ -564,7 +573,6 @@ export function ContactContent({ content }: ContactContentProps) {
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-charcoal/40 md:right-4" />
               </div>
-              {errors.type && <p className="mt-1.5 text-xs text-red-500">{errors.type}</p>}
             </div>
 
             {/* Content */}
@@ -582,18 +590,18 @@ export function ContactContent({ content }: ContactContentProps) {
                 value={formData.content}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                placeholder="请输入您的留言内容..."
+                placeholder={errors.content || "请输入您的留言内容..."}
                 rows={3}
                 maxLength={2000}
+                aria-invalid={Boolean(errors.content)}
                 className={cn(
-                  "w-full resize-none rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider placeholder:text-brand-charcoal/40 md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
+                  "w-full resize-none rounded-none border-0 border-b px-0 py-3 text-base font-light tracking-wide outline-none transition-colors placeholder:text-sm placeholder:uppercase placeholder:tracking-wider md:rounded-lg md:border md:px-4 md:py-3.5 md:text-[15px] md:tracking-[0.06em] md:placeholder:text-[15px] md:placeholder:font-light md:placeholder:normal-case md:placeholder:tracking-[0.06em]",
                   errors.content
-                    ? "border-red-300 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
-                    : "border-brand-charcoal/25 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
+                    ? "border-red-300 placeholder:text-red-400 focus:border-red-500 md:focus:ring-2 md:focus:ring-red-100"
+                    : "border-brand-charcoal/25 placeholder:text-brand-charcoal/40 focus:border-brand-primary/60 md:border-brand-charcoal/20 md:focus:border-[#00263E]/40 md:focus:ring-4 md:focus:ring-[#00263E]/10"
                 )}
                 style={{ maxHeight: "200px" }}
               />
-              {errors.content && <p className="mt-1.5 text-xs text-red-500">{errors.content}</p>}
             </div>
 
             {/* 隐私政策同意（与登录/注册页协议勾选保持一致） */}
@@ -662,14 +670,14 @@ export function ContactContent({ content }: ContactContentProps) {
               className="group relative hidden cursor-pointer rounded-sm text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors hover:text-brand-charcoal/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fefcf8] md:inline-flex"
             >
               服务号
-              <span className="invisible absolute bottom-full left-1/2 z-50 -translate-x-1/2 pb-2 opacity-0 transition-[opacity,visibility] duration-200 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100">
+              <span className="invisible absolute bottom-full left-1/2 z-50 block w-40 -translate-x-1/2 pb-2 opacity-0 transition-[opacity,visibility] duration-200 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100">
                 <Image
                   src="/images/wechat-qrcode.jpg"
                   alt="NIHPLOD 微信服务号"
                   width={160}
                   height={160}
                   unoptimized
-                  className="h-auto w-40 rounded-lg bg-white p-2 shadow-lg"
+                  className="h-auto w-full rounded-lg bg-white p-2 shadow-lg"
                 />
               </span>
             </button>

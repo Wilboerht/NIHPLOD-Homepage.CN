@@ -466,14 +466,14 @@ export function ServicesContent({ content }: ServicesContentProps) {
               className="group relative hidden cursor-pointer rounded-sm text-[11px] font-light tracking-[0.15em] text-brand-charcoal/[0.48] transition-colors hover:text-brand-charcoal/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fefcf8] md:inline-flex"
             >
               服务号
-              <span className="invisible absolute bottom-full left-1/2 z-50 -translate-x-1/2 pb-2 opacity-0 transition-[opacity,visibility] duration-200 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100">
+              <span className="invisible absolute bottom-full left-1/2 z-50 block w-40 -translate-x-1/2 pb-2 opacity-0 transition-[opacity,visibility] duration-200 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100">
                 <Image
                   src="/images/wechat-qrcode.jpg"
                   alt="NIHPLOD 微信服务号"
                   width={160}
                   height={160}
                   unoptimized
-                  className="h-auto w-40 rounded-lg bg-white p-2 shadow-lg"
+                  className="h-auto w-full rounded-lg bg-white p-2 shadow-lg"
                 />
               </span>
             </button>
